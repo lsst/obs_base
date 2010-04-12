@@ -1,0 +1,8 @@
+setupRequired(boost >= 1.37.0)
+setupRequired(daf_base >= 3.2.11)
+setupRequired(pex_exceptions >= 3.2.2)
+setupRequired(pex_logging >= 3.3.2)
+setupRequired(pex_policy >= 3.3.2)
+setupRequired(utils >= 3.4.3)
+
+envAppend(PYTHONPATH, ${PRODUCT_DIR}/python)
