@@ -16,8 +16,8 @@ class Registry(object):
             return FileRegistry(location, policy)
         if re.match(r'.*\.paf', location):
             return CalibRegistry(location, policy)
-        # if re.match(r'.*\.sqlite3', location):
-        #     return SqliteRegistry(location, policy)
+        if re.match(r'.*\.sqlite3', location):
+            return SqliteRegistry(location, policy)
         if re.match(r'mysql:', location):
             return DbRegistry(location, policy)
         return FsRegistry(location, policy)
@@ -103,12 +103,19 @@ class FsRegistry(Registry):
 class SqliteRegistry(Registry):
     def __init__(self, location):
         Registry.__init__(self)
-        self.conn = sqlite3.connect(location)
+        if os.path.exists(location):
+            self.conn = sqlite3.connect(location)
+        else:
+            self.conn = None
 
     def __del__(self):
-        self.conn.close()
+        if self.conn:
+            self.conn.close()
 
-    def executeQuery(self, returnFields, joinClause, whereFields, range):
+    def executeQuery(self, returnFields, joinClause, whereFields, range=None):
+        if not self.conn:
+            return None
+
         cmd = "SELECT DISTINCT "
         cmd += ", ".join(returnFields)
         cmd += " FROM " + " NATURAL JOIN ".join(joinClause)
@@ -122,7 +129,7 @@ class SqliteRegistry(Registry):
                     cmd += "(%s = '%s')" % (k, v)
                 else:
                     cmd += "(%s = %s)" % (k, str(v))
-        if range:
+        if range is not None:
             cmd += " AND (%s BETWEEN %s AND %s)" % (range)
         c = self.conn.execute(cmd)
         result = []
