@@ -5,6 +5,7 @@
 import glob
 import os
 import re
+import sys
 
 class FsScanner(object):
     """Class to scan a filesystem location for paths matching a template.
@@ -55,7 +56,7 @@ class FsScanner(object):
                 fieldType = float
                 self.reString += r'(?P<' + fieldName + '>[\d.eE+-]+?)'
             else:
-                fieldType = long
+                fieldType = int
                 self.reString += r'(?P<' + fieldName + '>[\d+-]+?)'
 
             self.fields[fieldName] = dict(pos=pos, fieldType=fieldType)
@@ -75,12 +76,12 @@ class FsScanner(object):
     def isNumeric(self, name):
         """Return true if the given field contains a number."""
 
-        return self.fields[name]['fieldType'] in (float, long)
+        return self.fields[name]['fieldType'] in (float, int)
 
     def isInt(self, name):
         """Return true if the given field contains an integer."""
 
-        return self.fields[name]['fieldType'] == long
+        return self.fields[name]['fieldType'] == int
 
     def isFloat(self, name):
         """Return true if the given field contains an float."""
@@ -94,11 +95,15 @@ class FsScanner(object):
         os.chdir(location)
         pathList = glob.glob(self.globString)
         for path in pathList:
-            dataId = re.search(self.reString, path).groupdict()
-            for f in self.fields.keys():
-                if self.fields[f]['isInt']:
-                    dataId[f] = long(dataId[f])
-                elif self.fields[f]['isFloat']:
-                    dataId[f] = float(dataId[f])
-            callback(path, dataId)
+            m = re.search(self.reString, path)
+            if m:
+                dataId = m.groupdict()
+                for f in self.fields.keys():
+                    if self.isInt(f):
+                        dataId[f] = int(dataId[f])
+                    elif self.isFloat(f):
+                        dataId[f] = float(dataId[f])
+                callback(path, dataId)
+            else:
+                print >> sys.stderr, "Warning: unmatched path: %s" % (path,)
         os.chdir(curdir)
