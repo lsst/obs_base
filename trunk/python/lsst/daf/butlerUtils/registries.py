@@ -3,7 +3,11 @@
 import glob
 import os
 import re
-import sqlite3
+try:
+    import sqlite3
+    haveSqlite3 = True
+except:
+    haveSqlite3 = False
 import lsst.pex.policy as pexPolicy
 
 class Registry(object):
@@ -16,7 +20,7 @@ class Registry(object):
             return FileRegistry(location, policy)
         if re.match(r'.*\.paf', location):
             return CalibRegistry(location, policy)
-        if re.match(r'.*\.sqlite3', location):
+        if haveSqlite3 and re.match(r'.*\.sqlite3', location):
             return SqliteRegistry(location, policy)
         if re.match(r'mysql:', location):
             return DbRegistry(location, policy)
