@@ -10,8 +10,6 @@ dependencies = ["utils", "pex_exceptions"]
 env = scons.makeEnv("daf_butlerUtils",
                     r"$HeadURL$",
                     [
-                     ["utils", "lsst/utils/Utils.h", "utils:C++"],
-                     ["pex_exceptions", "lsst/pex/exceptions/Runtime.h", "pex_exceptions:C++"]
                     ])
 env.Help("""
 LSST Data Access Framework butler utilities package
