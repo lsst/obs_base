@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # import glob
-# import os
+import os
 import re
 try:
     import sqlite3
