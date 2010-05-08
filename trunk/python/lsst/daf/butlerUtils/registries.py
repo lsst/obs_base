@@ -31,6 +31,7 @@ class SqliteRegistry(Registry):
         Registry.__init__(self)
         if os.path.exists(location):
             self.conn = sqlite3.connect(location)
+            self.conn.text_factory = str
         else:
             self.conn = None
 
