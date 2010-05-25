@@ -4,7 +4,7 @@
 import os
 import re
 try:
-    import sqlite3
+    import sqlite as sqlite3
     haveSqlite3 = True
 except:
     haveSqlite3 = False
