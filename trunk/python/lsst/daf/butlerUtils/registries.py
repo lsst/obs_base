@@ -27,10 +27,14 @@
 import os
 import re
 try:
-    import sqlite as sqlite3
+    import sqlite3
     haveSqlite3 = True
 except:
-    haveSqlite3 = False
+	try:
+		import sqlite as sqlite3
+		haveSqlite3 = True
+	except:
+		haveSqlite3 = False
 
 class Registry(object):
     def __init__(self):
