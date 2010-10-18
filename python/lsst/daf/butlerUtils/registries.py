@@ -27,14 +27,15 @@
 import os
 import re
 try:
-    import sqlite3
+    import sqlite as sqlite3
     haveSqlite3 = True
 except:
-	try:
-		import sqlite as sqlite3
-		haveSqlite3 = True
-	except:
-		haveSqlite3 = False
+    try:
+        import sqlite3
+        haveSqlite3 = True
+    except:
+        haveSqlite3 = False
+import lsst.pex.exceptions as pexExcept
 
 class Registry(object):
     def __init__(self):
@@ -51,7 +52,8 @@ class Registry(object):
         # if re.match(r'mysql:', location):
         #     return DbRegistry(location)
         # return FsRegistry(location)
-        return None
+        raise RuntimeError, \
+                "Unable to create registry using location: " + location
 
 class SqliteRegistry(Registry):
     def __init__(self, location):
