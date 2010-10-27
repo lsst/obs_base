@@ -1,0 +1,59 @@
+#<?cfg paf dictionary ?>
+
+target: CameraMapper
+
+definitions: {
+    root: {
+        type: string
+        description: "The pathname to the root directory for images."
+        maxOccurs: 1
+    }
+    calibRoot: {
+        type: string
+        description: "The pathname to the calibration root directory."
+        maxOccurs: 1
+    }
+    registryPath: {
+        type: string
+        description: "The pathname to the image registry.  Can be absolute, relative to the root, or relative to the current directory."
+        maxOccurs: 1
+    }
+    calibRegistryPath: {
+        type: string
+        description: "The pathname to the calibration registry.  Can be absolute, relative to the root, or relative to the current directory."
+        maxOccurs: 1
+    }
+    skypixPolicy: {
+        type: policy
+        # description: "Subpolicy for configuring the sky pixelization."
+        maxOccurs: 1
+    }
+    camera: {
+        type: string
+        description: "The pathname to the camera description (in PAF form).  Can be absolute or relative to the repository containing this dictionary."
+        maxOccurs: 1
+    }
+    defects: {
+        type: string
+        description: "The pathname to the directory containing the defect policies and registry.  Relative to the repository containing this dictionary."
+        maxOccurs: 1
+    }
+    filters: {
+        type: string
+        description: "The pathname to the filter description (in PAF form).  Can be absolute or relative to the repository containing this dictionary."
+	maxOccurs: 1
+    }
+
+	exposures: {
+		type: Policy
+		description: "Data sets that are exposures"
+	}
+
+	calibrations: {
+		type: Policy
+		description: "Data sets that are calibrations"
+	}				
+}
+
+
+
