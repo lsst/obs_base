@@ -22,6 +22,11 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
+"""This module provides registry classes for maintaining dataset metadata for
+use by the Data Butler.  Currently only a SQLite3-based registry is
+implemented, but registries based on a text file, a policy file, a MySQL (or
+other) relational database, and data gathered from scanning a filesystem are
+all anticipated."""
 
 # import glob
 import os
@@ -38,11 +43,17 @@ except:
 import lsst.pex.exceptions as pexExcept
 
 class Registry(object):
+    """The registry base class."""
+
     def __init__(self):
         pass
 
     @staticmethod
     def create(location):
+        """Create a registry object of an appropriate type.
+        @param location (string) Path or URL for registry, or None if
+                                 unavailable"""
+
         # if re.match(r'.*\.registry', location):
         #     return FileRegistry(location)
         # if re.match(r'.*\.paf', location):
@@ -55,8 +66,16 @@ class Registry(object):
         raise RuntimeError, \
                 "Unable to create registry using location: " + location
 
+    # TODO - flesh out the generic interface as more registry types are
+    # defined.
+
 class SqliteRegistry(Registry):
+    """A SQLite3-based registry."""
+
     def __init__(self, location):
+        """Constructor.
+        @param location (string) Path to SQLite3 file"""
+
         Registry.__init__(self)
         if os.path.exists(location):
             self.conn = sqlite3.connect(location)
@@ -70,6 +89,21 @@ class SqliteRegistry(Registry):
 
     def executeQuery(self, returnFields, joinClause, whereFields, range,
             values):
+        """Extract metadata from the registry.
+        @param returnFields (list of strings) Metadata fields to be extracted.
+        @param joinClause   (list of strings) Tables in which metadata fields
+                            are located.
+        @param whereFields  (dict) Keys are metadata fields to query; values
+                            are values those fields must have.
+        @param range        (tuple) Value, lower limit, and upper limit for a
+                            range condition on the metadata.  Any of these can
+                            be metadata fields.
+        @param values       (tuple) Tuple of values to be substituted for '?'
+                            characters in the whereFields values or the range
+                            values.
+        @return (list of tuples) All sets of field values that meet the
+                criteria"""
+
         if not self.conn:
             return None
         cmd = "SELECT DISTINCT "

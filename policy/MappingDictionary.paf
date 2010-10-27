@@ -1,0 +1,60 @@
+#<?cfg paf dictionary ?>
+
+target: CameraMapper
+
+definitions: {
+	template: {
+        type: string
+        description: "Python substitution template for the path"
+		minOccurs: 1
+        maxOccurs: 1
+    }
+	python: {
+		type: string
+		description: "The Python type for this data set type"
+		minOccurs: 1
+		maxOccurs: 1
+	}
+	cpp: {
+		type: string
+		description: "The C++ type for this data set type"
+		minOccurs: 1
+		maxOccurs: 1
+	}
+	storage: {
+		type: string
+		description: "The storage type for this data set type"
+		minOccurs: 1
+		maxOccurs: 1
+	}
+	level: {
+		type: string
+		description: "The camera hierarchy level for this data set type"
+		maxOccurs: 1
+	}
+	tables: {
+		type: string
+		description: "Tables to use for queries of the registry"
+		maxOccurs: 1
+	}
+	query: {
+		type: string
+		description: "Query to use for queries of the registry"
+		maxOccurs: 1
+	}
+	map: {
+		type: string
+		description: "Function to use for mapping this data set type"
+		maxOccurs: 1
+	}
+	standardize: {
+		type: string
+		description: "Function to use for standardizing this data set type"
+		maxOccurs: 1
+	}
+	lookup: {
+		type: string
+		description: "Function to use for looking up this data set type"
+		maxOccurs: 1
+	}
+}
