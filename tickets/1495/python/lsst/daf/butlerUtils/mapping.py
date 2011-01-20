@@ -110,10 +110,10 @@ class Mapping(object):
                     lambda dataId: self._map(mapper, dataId))
         if not hasattr(mapper, "std_" + datasetType):
             setattr(mapper, "std_" + datasetType,
-                    lambda item, dataid: mapper._standardize(
+                    lambda item, dataId: mapper._standardize(
                         self, item, dataId))
         if policy.exists("tables"):
-            tables = policy.getStringArray("tables")
+            self.tables = policy.getStringArray("tables")
         else:
             self.tables = None
         if policy.exists("match"):
@@ -125,7 +125,6 @@ class Mapping(object):
             setattr(mapper, "query_" + datasetType,
                     lambda key, format, dataId: self.lookup(
                         mapper, format, dataId))
-        return
 
     def _map(self, mapper, dataId):
         """Standard implementation of map function.
@@ -143,19 +142,24 @@ class Mapping(object):
     def lookup(self, mapper, properties, dataId):
         """Look up properties for in a metadata registry given a partial
         dataset identifier.
+        @param mapper     (lsst.daf.persistence.Mapper) needed for subclasses
         @param properties (list of strings)
         @param dataId     (dict) Dataset identifier
         @return (list of tuples) values of properties"""
 
+        if self.registry is None:
+            raise RuntimeError, "No registry for lookup"
+
         where = {}
         values = []
-        for k, v in dataId.iteritems():
-            if k == 'taiObs':
-                continue
-            where[k] = '?'
-            values.append(v)
-        if self.range is not None:
-            values.append(dataId['taiObs'])
+        if dataId is not None:
+            for k, v in dataId.iteritems():
+                if k == 'taiObs':
+                    continue
+                where[k] = '?'
+                values.append(v)
+            if self.range is not None:
+                values.append(dataId['taiObs'])
         return self.registry.executeQuery(properties, self.tables, where,
                 self.range, values)
 
@@ -183,7 +187,10 @@ class Mapping(object):
         @return (dict) copy of dataset identifier with enhanced values
         """
         
-        newId = dataId.copy()
+        if dataId is None:
+            newId = dict()
+        else:
+            newId = dataId.copy()
         if self.have(properties, newId):
             return newId
         if not refresh:
@@ -233,7 +240,7 @@ class CalibrationMapping(Mapping):
         queryProps = ["taiObs"]
         if self.where is not None:
             queryProps.append(self.where)
-        if not self.have(queryProps, dataId):
+        if dataId is None or not self.have(queryProps, dataId):
             # Try to get them from the mapping for the raw data
             raw = mapper.getMapping("raw")
             dataId = raw.need(mapper, queryProps, dataId,

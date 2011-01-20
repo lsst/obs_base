@@ -1,0 +1,22 @@
+#<?cfg paf policy ?>
+
+# Minimal mapper configuration policy
+
+exposures: {
+    x: {
+        template:    "foo%(sensor)d.pickle"
+        python:      "lsst.afw.image.BBox"
+        cpp:         "lsst::afw::image::BBox"
+        storage:     "PickleStorage"
+        level:       "Ccd"
+	tables:      "x"
+    }
+    badSourceHist: {
+        template:    "badSourceHist%(sensor)d.pickle"
+        python:      "lsst.afw.image.BBox"
+        cpp:         "lsst::afw::image::BBox"
+        storage:     "PickleStorage"
+        level:       "Ccd"
+	tables:      "x"
+    }
+}

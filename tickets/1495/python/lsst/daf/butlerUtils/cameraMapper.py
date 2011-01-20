@@ -23,6 +23,8 @@
 
 import os
 import re
+import weakref
+
 import lsst.daf.persistence as dafPersist
 from lsst.daf.butlerUtils import Mapping, CalibrationMapping, Registry
 import lsst.daf.base as dafBase
@@ -41,20 +43,11 @@ class CameraMapper(dafPersist.Mapper):
     camera and products derived from them.  This provides an abstraction layer
     between the data on disk and the code.
 
-    Public methods: getKeys, queryMetadata, getDatasetTypes, map,
+    Public methods: keys, queryMetadata, getDatasetTypes, map,
     canStandardize, standardize, getMapping
 
     Mappers for specific data sources (e.g., CFHT Megacam, LSST
-    simulations, etc.) should inherit this class.  Such subclasses
-    should set in __init__:
-
-    keys: List of keys that can be used in data IDs.
-
-    filterMap: Dict with mapping from data's filter name (e.g.,
-    "r.12345") to the code's filter name (e.g., "r")
-
-    filterIdMap: Mapping from the code's filter name (e.g., "r") to an
-    integer identifier.
+    simulations, etc.) should inherit this class.
 
     The following method must be provided by the subclass:
 
@@ -136,10 +129,7 @@ class CameraMapper(dafPersist.Mapper):
         # Root directories
         self.root = root
         if self.root is None:
-            if self.policy.exists('root'):
-                self.root = self.policy.getString('root')
-            else:
-                self.root = "."
+            self.root = "."
         self.calibRoot = calibRoot
         if self.calibRoot is None:
             if self.policy.exists('calibRoot'):
@@ -153,11 +143,12 @@ class CameraMapper(dafPersist.Mapper):
             self.log.log(pexLog.Log.WARN,
                     "Root directory not found: %s" % (root,))
         if not os.path.exists(self.calibRoot):
-            self.log.log(pexLog.Log.WARN,
+            eelf.log.log(pexLog.Log.WARN,
                     "Calibration root directory not found: %s" % (calibRoot,))
 
         # Registries
-        self.registry = self._setupRegistry("registry", registry, "registryPath", root)
+        self.registry = self._setupRegistry(
+                "registry", registry, "registryPath", root)
         if self.policy.exists('needCalibRegistry') and \
                 self.policy.getBool('needCalibRegistry'):
             self.calibRegistry = self._setupRegistry(
@@ -172,6 +163,9 @@ class CameraMapper(dafPersist.Mapper):
         mappingPolicy = pexPolicy.Policy.createPolicy(mappingFile,
                 mappingFile.getRepositoryPath())
 
+        # Set of valid keys
+        self.keySet = set()
+
         # Mappings
         self.mappings = dict()
         if self.policy.exists("exposures"):
@@ -179,22 +173,25 @@ class CameraMapper(dafPersist.Mapper):
             for datasetType in exposures.names(True):
                 subPolicy = exposures.getPolicy(datasetType)
                 subPolicy.mergeDefaults(mappingPolicy)
+                # Weak reference needed here to avoid circular references
                 self.mappings[datasetType] = Mapping(
-                        mapper=self, policy=subPolicy, datasetType=datasetType,
+                        mapper=weakref.proxy(self), policy=subPolicy,
+                        datasetType=datasetType,
                         registry=self.registry, root=self.root)
+                template = subPolicy.getString("template")
+                self.keySet.update(set(re.findall(r'%\((\w+)\)', template)))
         if self.policy.exists("calibrations"):
             calibs = self.policy.getPolicy("calibrations") # List of calibration types
             for datasetType in calibs.names(True):
                 subPolicy = calibs.getPolicy(datasetType)
                 subPolicy.mergeDefaults(mappingPolicy)
+                # Weak reference needed here to avoid circular references
                 self.mappings[datasetType] = CalibrationMapping(
-                        mapper=self, policy=subPolicy, datasetType=datasetType,
+                        mapper=weakref.proxy(self), policy=subPolicy,
+                        datasetType=datasetType,
                         registry=self.calibRegistry, root=self.calibRoot)
-
-        # Subclass should override these!
-        self.keys = []
-        self.filterMap = {}
-        self.filterIdMap = {}
+                template = subPolicy.getString("template")
+                self.keySet.update(set(re.findall(r'%\((\w+)\)', template)))
 
         # Camera geometry
         self.cameraPolicyLocation = None
@@ -228,11 +225,10 @@ class CameraMapper(dafPersist.Mapper):
                     filterPolicyLocation, repositoryDir)
             imageUtils.defineFiltersFromPolicy(filterPolicy, reset=True)
 
-
-    def getKeys(self):
+    def keys(self):
         """Return supported keys.
         @return (iterable) List of keys usable in a dataset identifier"""
-        return self.keys
+        return self.keySet
 
     def getMapping(self, datasetType):
         """Return the appropriate mapping for the dataset type.
@@ -269,13 +265,22 @@ class CameraMapper(dafPersist.Mapper):
         @param root       (string) Root directory to look in
         @return (lsst.daf.butlerUtils.Registry) Registry object"""
 
-        if path is None and self.policy.exists(policyName):
+        if path is None and self.policy.exists(policyKey):
             path = dafPersist.LogicalLocation(
-                    self.policy.getString(policyName)).locString()
+                    self.policy.getString(policyKey)).locString()
             if not os.path.exists(path):
-                self.log.log(pexLog.Log.WARN,
-                        "Unable to locate registry at path: %s" % path)
-                path = None
+                if not os.path.isabs(path) and root is not None:
+                    rootedPath = os.path.join(root, path)
+                    if not os.path.exists(rootedPath):
+                        self.log.log(pexLog.Log.WARN,
+                                "Unable to locate registry at policy path (also looked in root): %s" % path)
+                        path = None
+                    else:
+                        path = rootedPath
+                else:
+                    self.log.log(pexLog.Log.WARN,
+                            "Unable to locate registry at policy path: %s" % path)
+                    path = None
         if path is None and root is not None:
             path = os.path.join(root, "%s.sqlite3" % name)
             if not os.path.exists(path):
@@ -357,30 +362,24 @@ class CameraMapper(dafPersist.Mapper):
         Defects are also added to the Exposure based on the detector object.
         @param[in,out] item (lsst.afw.image.Exposure)
         @param dataId (dict) Dataset identifier"""
+
         ccdId = self._extractDetectorName(dataId)
         detector = cameraGeomUtils.findCcd(self.camera, afwCameraGeom.Id(ccdId))
         self._addDefects(dataId, ccd=detector)
         item.setDetector(detector)
 
     def _setFilter(self, mapping, item, dataId):
-        """Set the filter object in an Exposure.  Use the filter specified by
-        the FILTER keyword (and strip it out) or the filter obtained from the
-        registry.
+        """Set the filter object in an Exposure.  If the Exposure had a FILTER
+        keyword, this was already processed during load.  But if it didn't,
+        use the filter from the registry.
         @param mapping (lsst.daf.butlerUtils.Mapping)
         @param[in,out] item (lsst.afw.image.Exposure)
         @param dataId (dict) Dataset identifier"""
 
-        md = item.getMetadata()
-        filterName = None
-        if md.exists("FILTER"):
-            filterName = item.getMetadata().get("FILTER").strip()
-            if self.filterMap.has_key(filterName):
-                filterName = self.filterMap[filterName]
-        if filterName is None:
-            actualId = mapping.need(self, ['filter'], dataId)
-            filterName = actualId['filter']
-        filter = afwImage.Filter(filterName)
-        item.setFilter(filter)
+        if isinstance(item, afwImage.Exposure):
+            if item.getFilter().getId() == afwImage.Filter.UNKNOWN:
+                actualId = mapping.need(self, ['filter'], dataId)
+                item.setFilter(afwImage.Filter(actualId['filter']))
 
     def _setTimes(self, mapping, item, dataId):
         """Set the exposure time and exposure midpoint in the calib object in
@@ -434,6 +433,8 @@ class CameraMapper(dafPersist.Mapper):
 
         if self.defectRegistry is None:
             return None
+        if self.registry is None:
+            raise RuntimeError, "No registry for defect lookup"
 
         rows = self.registry.executeQuery(("taiObs",), ("raw_visit",),
                 {"visit": "?"}, None, (dataId['visit'],))
