@@ -4,7 +4,7 @@
 
 exposures: {
     x: {
-        template:    "foo%(sensor)d.pickle"
+        template:    "foo-%(sensor)s.pickle"
         python:      "lsst.afw.image.BBox"
         cpp:         "lsst::afw::image::BBox"
         storage:     "PickleStorage"
@@ -12,7 +12,7 @@ exposures: {
 	tables:      "x"
     }
     badSourceHist: {
-        template:    "badSourceHist%(sensor)d.pickle"
+        template:    "badSourceHist%(sensor)s.pickle"
         python:      "lsst.afw.image.BBox"
         cpp:         "lsst::afw::image::BBox"
         storage:     "PickleStorage"
