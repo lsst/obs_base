@@ -40,4 +40,9 @@ definitions: {
 		type: bool
 		description: "True if this exposure has a validity range"
 	}
+        reference: {
+                type: string
+                description: "Reference Mapping to use for calibration information before lookup in calibration registry"
+                default: "raw"
+        }
 }

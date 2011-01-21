@@ -42,7 +42,7 @@ class Mapping(object):
     consist of:
 
     template (string): a Python string providing the filename for that
-    particular data set type based on some data identifiers.  In the
+    particular dataset type based on some data identifiers.  In the
     case of redundancy in the path (e.g., file uniquely specified by
     the exposure number, but filter in the path), the
     redundant/dependent identifiers can be looked up in the registry.
@@ -57,31 +57,19 @@ class Mapping(object):
     level (string): the level in the camera hierarchy at which the
     data is stored (Amp, Ccd or skyTile)
 
-    In addition, the following optional entries are permitted:
-
-    map (string): the name of a function in the appropriate Mapper
-    subclass that will map a data identifier to a path.  The function
-    will receive: the Mapper, this Mapping, and the data identifier
-    dict.
-
-    standardize (string): the name of a function in the appropriate
-    Mapper subclass that will standardize the input data.  The
-    function will receive: the Mapper, this Mapping, the item to
-    standardize, and the data identifier dict.  The special value
-    "None" means no standardization is performed.
-
     tables (string): a whitespace-delimited list of tables in the
     registry that can be NATURAL JOIN-ed to look up additional
     information.
 
-    query (string): a Python string providing a SQL query to look up
-    the registry.  It should typically start as "SELECT *".
+    In addition, the following optional entries are permitted:
 
-    lookup (string): the name of a function in the appropriate Mapper
-    subclass that will lookup the desired properties.  The function
-    will receive: the Mapper, this Mapping, a list of the desired
-    properties, and the data identifier dict.    
-    """
+    reference (string): the name of the dataset type that is the basis for all
+    lookups in the exposure registry.
+
+    validRange (bool): the calibration dataset has a validity range specified
+    by column taiObs (in the reference dataset's tables in the exposure
+    registry) and columns validStart and validEnd (in the calibration
+    dataset's tables in the calibration registry).  """
 
     def __init__(self, mapper, policy, datasetType, registry=None, root=None):
         """Constructor for Mapping class.
@@ -116,10 +104,6 @@ class Mapping(object):
             self.tables = policy.getStringArray("tables")
         else:
             self.tables = None
-        if policy.exists("match"):
-            self.match = policy.getString("match")
-        else:
-            self.match = None
         self.range = None
         if not hasattr(mapper, "query_" + datasetType):
             setattr(mapper, "query_" + datasetType,
@@ -216,7 +200,7 @@ class CalibrationMapping(Mapping):
     """CalibrationMapping is a Mapping subclass for calibration-type products.
 
     The difference is that data properties in the query or template
-    can be looked up using the "raw" Mapping in addition to the calibration's.
+    can be looked up using a reference Mapping in addition to the calibration's.
     """
 
     def __init__(self, mapper, policy, datasetType, registry=None, root=None):
@@ -227,6 +211,7 @@ class CalibrationMapping(Mapping):
         @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
         @param root           (string) Path of root directory"""
         Mapping.__init__(self, mapper, policy, datasetType, registry, root)
+        self.reference = policy.getString("reference")
         if policy.exists("validRange") and policy.getBool("validRange"):
             self.range = ("DATE(?)", "DATE(validStart)", "DATE(validEnd)")
 
@@ -238,11 +223,9 @@ class CalibrationMapping(Mapping):
         @return (list of tuples) values of properties"""
 
         queryProps = ["taiObs"]
-        if self.where is not None:
-            queryProps.append(self.where)
         if dataId is None or not self.have(queryProps, dataId):
             # Try to get them from the mapping for the raw data
-            raw = mapper.getMapping("raw")
+            raw = mapper.getMapping(self.reference)
             dataId = raw.need(mapper, queryProps, dataId,
                     refresh=False, clobber=False)
         return Mapping.lookup(self, mapper, properties, dataId)

@@ -46,7 +46,8 @@ class MinMapper2(butlerUtils.CameraMapper):
     def __init__(self):
         policy = pexPolicy.Policy.createPolicy("tests/MinMapper2.paf")
         butlerUtils.CameraMapper.__init__(self,
-                policy=policy, repositoryDir="tests", root="tests")
+                policy=policy, repositoryDir="tests", root="tests",
+                registry="tests/cfhtls.sqlite3")
         return
 
     def _transformId(self, dataId):
@@ -72,12 +73,13 @@ class Mapper1TestCase(unittest.TestCase):
                 set(["x", "badSourceHist", "camera"]))
 
     def testMap(self):
-        loc = self.mapper.map("x", {"sensor": 27})
+        loc = self.mapper.map("x", {"sensor": "1,1"})
         self.assertEqual(loc.getPythonType(), "lsst.afw.image.BBox")
         self.assertEqual(loc.getCppType(), "lsst::afw::image::BBox")
         self.assertEqual(loc.getStorageName(), "PickleStorage")
-        self.assertEqual(loc.getLocations(), ["tests/foo27.pickle"])
-        self.assertEqual(loc.getAdditionalData().toString(), "sensor = 27\n")
+        self.assertEqual(loc.getLocations(), ["tests/foo-1,1.pickle"])
+        self.assertEqual(loc.getAdditionalData().toString(),
+                "sensor = \"1,1\"\n")
 
     def testQueryMetadata(self):
         self.assertEqual(
@@ -98,7 +100,7 @@ class Mapper1TestCase(unittest.TestCase):
         self.assertEqual(isinstance(result, float), True)
         self.assertEqual(result, 3.14)
 
-class Mapper2TestCase(Mapper1TestCase):
+class Mapper2TestCase(unittest.TestCase):
     """A test case for the mapper used by the data butler."""
 
     def setUp(self):
@@ -106,6 +108,37 @@ class Mapper2TestCase(Mapper1TestCase):
 
     def tearDown(self):
         del self.mapper
+
+    def testGetDatasetTypes(self):
+        self.assertEqual(set(self.mapper.getDatasetTypes()),
+                set(["flat", "raw", "camera"]))
+
+    def testMap(self):
+        loc = self.mapper.map("raw", {"ccd": 13})
+        self.assertEqual(loc.getPythonType(), "lsst.afw.image.Exposure")
+        self.assertEqual(loc.getCppType(), "lsst::afw::image::Exposure")
+        self.assertEqual(loc.getStorageName(), "FitsStorage")
+        self.assertEqual(loc.getLocations(), ["tests/foo-13.fits"])
+        self.assertEqual(loc.getAdditionalData().toString(),
+                "ccd = 13\n")
+
+    def testQueryMetadata(self):
+        self.assertEqual(
+                self.mapper.queryMetadata("raw", "ccd", ["ccd"], None),
+                [(x,) for x in xrange(36) if x != 3])
+
+    def testStandardize(self):
+        self.assertEqual(self.mapper.canStandardize("raw"), True)
+        self.assertEqual(self.mapper.canStandardize("notPresent"), False)
+
+    def testCalib(self):
+        loc = self.mapper.map("flat", {"visit": 787650})
+        self.assertEqual(loc.getPythonType(), "lsst.afw.image.Exposure")
+        self.assertEqual(loc.getCppType(), "lsst::afw::image::Exposure")
+        self.assertEqual(loc.getStorageName(), "FitsStorage")
+        self.assertEqual(loc.getLocations(), ["tests/flat-fr-c13-a1.fits"])
+        self.assertEqual(loc.getAdditionalData().toString(),
+                'filter = "r"\n')
 
 def suite():
     utilsTests.init()
