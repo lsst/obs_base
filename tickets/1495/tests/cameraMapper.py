@@ -27,6 +27,7 @@ import unittest
 import lsst.utils.tests as utilsTests
 
 import lsst.pex.policy as pexPolicy
+import lsst.daf.base as dafBase
 import lsst.daf.persistence as dafPersist
 import lsst.daf.butlerUtils as butlerUtils
 
@@ -75,8 +76,8 @@ class Mapper1TestCase(unittest.TestCase):
     def testMap(self):
         loc = self.mapper.map("x", {"sensor": "1,1"})
         self.assertEqual(loc.getPythonType(), "lsst.afw.image.BBox")
-        self.assertEqual(loc.getCppType(), "lsst::afw::image::BBox")
-        self.assertEqual(loc.getStorageName(), "PickleStorage")
+        self.assertEqual(loc.getCppType(), "BBox")
+        self.assertEqual(loc.getStorageName(), "FitsStorage")
         self.assertEqual(loc.getLocations(), ["tests/foo-1,1.pickle"])
         self.assertEqual(loc.getAdditionalData().toString(),
                 "sensor = \"1,1\"\n")
@@ -111,12 +112,12 @@ class Mapper2TestCase(unittest.TestCase):
 
     def testGetDatasetTypes(self):
         self.assertEqual(set(self.mapper.getDatasetTypes()),
-                set(["flat", "raw", "camera"]))
+                set(["flat", "raw", "camera", "src"]))
 
     def testMap(self):
         loc = self.mapper.map("raw", {"ccd": 13})
-        self.assertEqual(loc.getPythonType(), "lsst.afw.image.Exposure")
-        self.assertEqual(loc.getCppType(), "lsst::afw::image::Exposure")
+        self.assertEqual(loc.getPythonType(), "lsst.afw.image.ExposureU")
+        self.assertEqual(loc.getCppType(), "ImageU")
         self.assertEqual(loc.getStorageName(), "FitsStorage")
         self.assertEqual(loc.getLocations(), ["tests/foo-13.fits"])
         self.assertEqual(loc.getAdditionalData().toString(),
@@ -132,13 +133,13 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(self.mapper.canStandardize("notPresent"), False)
 
     def testCalib(self):
-        loc = self.mapper.map("flat", {"visit": 787650})
-        self.assertEqual(loc.getPythonType(), "lsst.afw.image.Exposure")
-        self.assertEqual(loc.getCppType(), "lsst::afw::image::Exposure")
+        loc = self.mapper.map("flat", {"visit": 787650, "ccd": 13})
+        self.assertEqual(loc.getPythonType(), "lsst.afw.image.ExposureF")
+        self.assertEqual(loc.getCppType(), "ExposureF")
         self.assertEqual(loc.getStorageName(), "FitsStorage")
-        self.assertEqual(loc.getLocations(), ["tests/flat-fr-c13-a1.fits"])
+        self.assertEqual(loc.getLocations(), ["tests/flat-05Am03-fi.fits"])
         self.assertEqual(loc.getAdditionalData().toString(),
-                'filter = "r"\n')
+                'ccd = 13\nderivedRunId = "05Am03"\nfilter = "i"\nvisit = 787650\n')
 
 def suite():
     utilsTests.init()
