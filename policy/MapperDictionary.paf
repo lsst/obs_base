@@ -23,11 +23,6 @@ definitions: {
         description: "The pathname to the calibration registry.  Can be absolute, relative to the root, or relative to the current directory."
         maxOccurs: 1
     }
-    skypixPolicy: {
-        type: policy
-        # description: "Subpolicy for configuring the sky pixelization."
-        maxOccurs: 1
-    }
     camera: {
         type: string
         description: "The pathname to the camera description (in PAF form).  Can be absolute or relative to the repository containing this dictionary."
@@ -45,15 +40,20 @@ definitions: {
     }
 
     exposures: {
-        type: Policy
+        type: policy
+        # dictionary: @ExposureMappingDictionary.paf
         description: "Data sets that are exposures"
     }
 
     calibrations: {
-        type: Policy
+        type: policy
+        # dictionary: @CalibrationMappingDictionary.paf
         description: "Data sets that are calibrations"
     }                
+
+    datasets: {
+        type: policy
+        # dictionary: @DatasetMappingDictionary.paf
+        description: "Datasets that are not Exposures"
+    }
 }
-
-
-

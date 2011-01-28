@@ -1,0 +1,71 @@
+#<?cfg paf dictionary ?>
+
+target: CalibrationMapping
+
+definitions: {
+    template: {
+        type: string
+        description: "Python substitution template for the path"
+        minOccurs: 1
+        maxOccurs: 1
+    }
+    python: {
+        type: string
+        description: "The Python type for this dataset type"
+        minOccurs: 1
+        maxOccurs: 1
+    }
+    persistable: {
+        type: string
+        description: "The Persistable registration for this dataset type"
+        minOccurs: 1
+        maxOccurs: 1
+    }
+    storage: {
+        type: string
+        description: "The Persistable registration for this dataset type"
+        default: "FitsStorage"
+        maxOccurs: 1
+    }
+    level: {
+        type: string
+        description: "The camera hierarchy level for this dataset type"
+        minOccurs: 1
+        maxOccurs: 1
+    }
+    tables: {
+        type: string
+        description: "List of tables to use for queries of the (calibration) registry"
+        minOccurs: 1
+    }
+    validRange: {
+        type: bool
+        description: "True if this exposure has a validity range"
+    }
+    reference: {
+        type: string
+        description: "List of tables in the exposure registry to be used as a reference for needed dataset properties"
+    }
+    refCols: {
+        type: string
+        description: "List of dataset properties required from the reference tables for lookups in the calibration registry"
+    }
+    obsTimeName: {
+        type: string
+        description: "Name of observation time column in reference table"
+        default: "taiObs"
+        maxOccurs: 1
+    }
+    validStartName: {
+        type: string
+        description: "Name of validity range start time column in calibration registry table"
+        default: "validStart"
+        maxOccurs: 1
+    }
+    validEndName: {
+        type: string
+        description: "Name of validity range end time column in calibration registry table"
+        default: "validEnd"
+        maxOccurs: 1
+    }
+}

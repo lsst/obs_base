@@ -36,7 +36,9 @@ class Mapping(object):
     format or type) data, and to query the associated registry to see
     what data is available.
 
-    Public methods: lookup, have, need
+    Subclasses must specify self.storage or else override self.map().
+
+    Public methods: lookup, have, need, getKeys, map
 
     Mappings are specified mainly by policy.  A Mapping policy should
     consist of:
@@ -47,40 +49,29 @@ class Mapping(object):
     the exposure number, but filter in the path), the
     redundant/dependent identifiers can be looked up in the registry.
 
-    python (string): the Python type for the data (e.g.,
+    python (string): the Python type for the retrieved data (e.g.
     lsst.afw.image.ExposureF)
 
-    cpp (string): the C++ type for the data (e.g., ExposureF)
+    persistable (string): the Persistable registration for the on-disk data
+    (e.g. ImageU)
 
-    storage (string): the storage type for the data (e.g., FitsStorage)
+    storage (string, optional): Storage type for this dataset type (e.g.
+    "BoostStorage")
 
-    level (string): the level in the camera hierarchy at which the
-    data is stored (Amp, Ccd or skyTile)
+    level (string, optional): the level in the camera hierarchy at which the
+    data is stored (Amp, Ccd or skyTile), if relevant
 
-    tables (string): a whitespace-delimited list of tables in the
+    tables (string, optional): a whitespace-delimited list of tables in the
     registry that can be NATURAL JOIN-ed to look up additional
-    information.
+    information.  """
 
-    In addition, the following optional entries are permitted:
-
-    reference (string): the name of the dataset type that is the basis for all
-    lookups in the exposure registry.
-
-    validRange (bool): the calibration dataset has a validity range specified
-    by column taiObs (in the reference dataset's tables in the exposure
-    registry) and columns validStart and validEnd (in the calibration
-    dataset's tables in the calibration registry).  """
-
-    def __init__(self, mapper, policy, datasetType, registry=None, root=None):
+    def __init__(self, datasetType, policy, registry, root):
         """Constructor for Mapping class.
-        @param[in,out] mapper (lsst.daf.persistence.Mapper) Mapper object
-        @param policy         (lsst.pex.policy.Policy) Mapping policy
         @param datasetType    (string)
+        @param policy         (lsst.pex.policy.Policy) Mapping policy
         @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
         @param root           (string) Path of root directory"""
 
-        if mapper is None:
-            raise RuntimeError, "No mapper provided for mapping"
         if policy is None:
             raise RuntimeError, "No policy provided for mapping"
 
@@ -89,44 +80,39 @@ class Mapping(object):
         self.root = root
 
         self.template = policy.getString("template") # Template path
+        self.keySet = set(re.findall(r'\%\((\w+)\)', self.template))
         self.python = policy.getString("python") # Python type
-        self.cpp = policy.getString("cpp") # C++ type
-        self.storage = policy.getString("storage") # Storage type
-        self.level = policy.getString("level") # Level in camera hierarchy
-        if not hasattr(mapper, "map_" + datasetType):
-            setattr(mapper, "map_" + datasetType,
-                    lambda dataId: self._map(mapper, dataId))
-        if not hasattr(mapper, "std_" + datasetType):
-            setattr(mapper, "std_" + datasetType,
-                    lambda item, dataId: mapper._standardize(
-                        self, item, dataId))
+        self.persistable = policy.getString("persistable") # Persistable type
+        self.storage = policy.getString("storage")
+        if policy.exists("level"):
+            self.level = policy.getString("level") # Level in camera hierarchy
         if policy.exists("tables"):
             self.tables = policy.getStringArray("tables")
         else:
             self.tables = None
         self.range = None
-        if not hasattr(mapper, "query_" + datasetType):
-            setattr(mapper, "query_" + datasetType,
-                    lambda key, format, dataId: self.lookup(
-                        mapper, format, dataId))
+        self.obsTimeName = policy.getString("obsTimeName") \
+                if policy.exists("obsTimeName") else None
 
-    def _map(self, mapper, dataId):
+    def keys(self):
+        """Return the set of keys required for this mapping."""
+        return self.keySet
+
+    def map(self, mapper, dataId):
         """Standard implementation of map function.
         @param mapper (lsst.daf.persistence.Mapper)
         @param dataId (dict) Dataset identifier
         @return (lsst.daf.persistence.ButlerLocation)"""
 
-        properties = re.findall(r'\%\((\w+)\)', self.template)
-        actualId = self.need(mapper, properties, dataId)
+        actualId = self.need(self.keySet, dataId)
         path = os.path.join(self.root,
                 mapper._mapActualToPath(self.template, actualId))
-        return ButlerLocation(self.python, self.cpp, self.storage,
+        return ButlerLocation(self.python, self.persistable, self.storage,
                 path, actualId)
 
-    def lookup(self, mapper, properties, dataId):
+    def lookup(self, properties, dataId):
         """Look up properties for in a metadata registry given a partial
         dataset identifier.
-        @param mapper     (lsst.daf.persistence.Mapper) needed for subclasses
         @param properties (list of strings)
         @param dataId     (dict) Dataset identifier
         @return (list of tuples) values of properties"""
@@ -138,14 +124,14 @@ class Mapping(object):
         values = []
         if dataId is not None:
             for k, v in dataId.iteritems():
-                if k == 'taiObs':
+                if k == self.obsTimeName:
                     continue
                 where[k] = '?'
                 values.append(v)
-            if self.range is not None:
-                values.append(dataId['taiObs'])
-        return self.registry.executeQuery(properties, self.tables, where,
-                self.range, values)
+        if self.range is not None:
+            values.append(dataId[self.obsTimeName])
+        return self.registry.executeQuery(properties, self.tables,
+                where, self.range, values)
 
     def have(self, properties, dataId):
         """Returns whether the provided data identifier has all
@@ -158,90 +144,143 @@ class Mapping(object):
                 return False
         return True
 
-    def need(self, mapper, properties, dataId, refresh=False, clobber=False):
+    def need(self, properties, dataId):
         """Ensures all properties in the provided list are present in
         the data identifier, looking them up as needed.  This is only
         possible for the case where the data identifies a single
         exposure.
-        @param mapper     (lsst.daf.persistence.Mapper)
         @param properties (list of strings) Properties required
         @param dataId     (dict) Partial dataset identifier
-        @param refresh    (bool) Refresh values if present?
-        @param clobber    (bool) Clobber existing values?
         @return (dict) copy of dataset identifier with enhanced values
         """
         
-        if dataId is None:
-            newId = dict()
-        else:
-            newId = dataId.copy()
-        if self.have(properties, newId):
+        newId = dataId.copy()
+        newProps = []                    # Properties we don't already have
+        for prop in properties:
+            if not newId.has_key(prop):
+                newProps.append(prop)
+        if len(newProps) == 0:
             return newId
-        if not refresh:
-            newProps = []                    # Properties we don't already have
-            for prop in properties:
-                if not newId.has_key(prop):
-                    newProps.append(prop)
-            if len(newProps) == 0:
-                return newId
         else:
             newProps = properties
 
-        lookups = self.lookup(mapper, newProps, newId)
+        lookups = self.lookup(newProps, newId)
         if len(lookups) != 1:
             raise RuntimeError, "No unique lookup for %s from %s: %d matches" % (newProps, newId, len(lookups))
         for i, prop in enumerate(newProps):
-            if clobber or not dataId.has_key(prop):
-                newId[prop] = lookups[0][i]
+            newId[prop] = lookups[0][i]
         return newId
 
+class ExposureMapping(Mapping):
+    """ExposureMapping is a Mapping subclass for normal exposures."""
+
+    def __init__(self, datasetType, policy, registry, root):
+        """Constructor for Mapping class.
+        @param datasetType    (string)
+        @param policy         (lsst.pex.policy.Policy) Mapping policy
+        @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
+        @param root           (string) Path of root directory"""
+        Mapping.__init__(self, datasetType, policy, registry, root)
+
+    def standardize(self, mapper, item, dataId):
+        return mapper._standardizeExposure(self, item, dataId)
 
 class CalibrationMapping(Mapping):
     """CalibrationMapping is a Mapping subclass for calibration-type products.
 
     The difference is that data properties in the query or template
-    can be looked up using a reference Mapping in addition to the calibration's.
-    """
+    can be looked up using a reference Mapping in addition to this one.
 
-    def __init__(self, mapper, policy, datasetType, registry=None, root=None):
+    CalibrationMapping Policies can contain the following:
+
+    reference (string, optional): a list of tables for finding missing dataset
+    identifier components (including the observation time, if a validity range
+    is required) in the exposure registry; note that the "tables" entry refers
+    to the calibration registry
+
+    refCols (string, optional): a list of dataset properties required from the
+    reference tables for lookups in the calibration registry
+
+    validRange (bool): true if the calibration dataset has a validity range
+    specified by a column in the tables of the reference dataset in the
+    exposure registry) and two columns in the tables of this calibration
+    dataset in the calibration registry)
+    
+    obsTimeName (string, optional): the name of the column in the reference
+    dataset tables containing the observation time (default "taiObs")
+    
+    validStartName (string, optional): the name of the column in the
+    calibration dataset tables containing the start of the validity range
+    (default "validStart")
+
+    validEndName (string, optional): the name of the column in the
+    calibration dataset tables containing the end of the validity range
+    (default "validEnd") """
+
+    def __init__(self, datasetType, policy, registry, calibRegistry, calibRoot):
         """Constructor for Mapping class.
-        @param[in,out] mapper (lsst.daf.persistence.Mapper) Mapper object
-        @param policy         (lsst.pex.policy.Policy) Mapping policy
         @param datasetType    (string)
+        @param policy         (lsst.pex.policy.Policy) Mapping policy
         @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
-        @param root           (string) Path of root directory"""
-        Mapping.__init__(self, mapper, policy, datasetType, registry, root)
-        self.reference = policy.getString("reference")
-        if policy.exists("validRange") and policy.getBool("validRange"):
-            self.range = ("DATE(?)", "DATE(validStart)", "DATE(validEnd)")
+        @param calibRegistry  (lsst.daf.butlerUtils.Registry) Registry for calibration metadata lookups
+        @param calibRoot      (string) Path of calibration root directory"""
 
-    def lookup(self, mapper, properties, dataId):
+        Mapping.__init__(self, datasetType, policy, calibRegistry, calibRoot)
+        self.reference = policy.getStringArray("reference") \
+                if policy.exists("reference") else None
+        self.refCols = policy.getStringArray("refCols") \
+                if policy.exists("refCols") else None
+        self.refRegistry = registry
+        if policy.exists("validRange") and policy.getBool("validRange"):
+            self.range = ("?", policy.getString("validStartName"),
+                policy.getString("validEndName"))
+
+    def lookup(self, properties, dataId):
         """Look up properties for in a metadata registry given a partial
         dataset identifier.
         @param properties (list of strings)
         @param dataId     (dict) Dataset identifier
         @return (list of tuples) values of properties"""
 
-        queryProps = ["taiObs"]
-        if dataId is None or not self.have(queryProps, dataId):
-            # Try to get them from the mapping for the raw data
-            raw = mapper.getMapping(self.reference)
-            dataId = raw.need(mapper, queryProps, dataId,
-                    refresh=False, clobber=False)
-        return Mapping.lookup(self, mapper, properties, dataId)
+# Either look up taiObs in reference and then all in calibRegistry
+# Or look up all in registry
 
-    def need(self, mapper, properties, dataId, refresh=False, clobber=False):
-        """Ensures all properties in the provided list are present in
-        the data identifier, looking them up as needed.  This is only
-        possible for the case where the data identifies a single
-        exposure.
-        @param mapper     (lsst.daf.persistence.Mapper)
-        @param properties (list of strings) Properties required
-        @param dataId     (dict) Partial dataset identifier
-        @param refresh    (bool) Refresh values if present?
-        @param clobber    (bool) Clobber existing values?
-        @return (dict) copy of dataset identifier with enhanced values
-        """
-        # Always want to clobber anything extant, because it's a property of
-        # the input data, not the calibration data.
-        return Mapping.need(self, mapper, properties, dataId, refresh=False, clobber=True)
+        if self.reference is not None:
+            where = {}
+            values = []
+            for k, v in dataId.iteritems():
+                where[k] = '?'
+                values.append(v)
+            lookups = self.refRegistry.executeQuery(self.refCols,
+                    self.reference, where, None, values)
+            if len(lookups) != 1:
+                raise RuntimeError, "No unique lookup for %s from %s: %d matches" % (self.obsTimeName, dataId, len(lookups))
+            newId = dict()
+            for i, prop in enumerate(self.refCols):
+                newId[prop] = lookups[0][i]
+        else:
+            newId = dataId.copy()
+        return Mapping.lookup(self, properties, newId)
+
+    def standardize(self, mapper, item, dataId):
+        return mapper._standardizeExposure(self, item, dataId)
+
+class DatasetMapping(Mapping):
+    """DatasetMapping is a Mapping subclass for non-Exposure datasets that can
+    be retrieved by the standard daf_persistence mechanism.
+
+    The differences are that the Storage type must be specified and no
+    Exposure standardization is performed.
+
+    The "storage" entry in the Policy is mandatory; the "tables" entry is
+    optional; no "level" entry is allowed.  """
+
+    def __init__(self, datasetType, policy, registry, root):
+        """Constructor for DatasetMapping class.
+        @param[in,out] mapper (lsst.daf.persistence.Mapper) Mapper object
+        @param policy         (lsst.pex.policy.Policy) Mapping policy
+        @param datasetType    (string)
+        @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
+        @param root           (string) Path of root directory"""
+        Mapping.__init__(self, datasetType, policy, registry, root)
+        self.storage = policy.getString("storage") # Storage type
