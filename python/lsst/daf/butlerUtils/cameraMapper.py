@@ -473,10 +473,9 @@ class CameraMapper(dafPersist.Mapper):
         elif mapping.level.lower() == "ccd":
             self._setCcdDetector(item, dataId)
 
+        self._setFilter(mapping, item, dataId)
         if not isinstance(mapping, CalibrationMapping):
             self._setTimes(mapping, item, dataId)
-        if needsFilter:
-            self._setFilter(mapping, item, dataId)
 
         return item
 
