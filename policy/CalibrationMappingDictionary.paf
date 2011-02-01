@@ -38,6 +38,10 @@ definitions: {
         description: "List of tables to use for queries of the (calibration) registry"
         minOccurs: 1
     }
+    columns: {
+        type: string
+        description: "List of columns that may be used for queries of the (calibration) registry"
+    }
     validRange: {
         type: bool
         description: "True if this exposure has a validity range"
