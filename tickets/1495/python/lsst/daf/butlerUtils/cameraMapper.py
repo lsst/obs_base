@@ -220,6 +220,8 @@ class CameraMapper(dafPersist.Mapper):
         for name, defPolicy, cls in mappingList:
             if policy.exists(name):
                 datasets = policy.getPolicy(name)
+                mappings = dict()
+                setattr(self, name, mappings)
                 for datasetType in datasets.names(True):
                     subPolicy = datasets.getPolicy(datasetType)
                     subPolicy.mergeDefaults(defPolicy)
@@ -230,6 +232,7 @@ class CameraMapper(dafPersist.Mapper):
                         mapping = cls(datasetType, subPolicy,
                                 self.registry, root)
                     self.keySet.update(mapping.keys())
+                    mappings[datasetType] = mapping
                     if not hasattr(self, "map_" + datasetType):
                         def mapClosure(dataId, mapper=self, mapping=mapping):
                             return mapping.map(mapper, dataId)
@@ -251,11 +254,8 @@ class CameraMapper(dafPersist.Mapper):
             cameraPolicyLocation = policy.getString('camera')
 
             # must be explicit for ButlerLocation later
-            self.cameraPolicyLocation = os.path.join(
-                    repositoryDir, cameraPolicyLocation)
-
-            cameraPolicy = pexPolicy.Policy.createPolicy(cameraPolicyLocation,
-                    repositoryDir)
+            self.cameraPolicyLocation = os.path.join(repositoryDir, cameraPolicyLocation)
+            cameraPolicy = pexPolicy.Policy.createPolicy(self.cameraPolicyLocation)
             cameraPolicy = cameraGeomUtils.getGeomPolicy(cameraPolicy)
             self.camera = cameraGeomUtils.makeCamera(cameraPolicy)
 
@@ -267,14 +267,16 @@ class CameraMapper(dafPersist.Mapper):
             defectRegistryLocation = os.path.join(
                     self.defectPath, "defectRegistry.sqlite3")
             self.defectRegistry = \
-                    butlerUtils.Registry.create(defectRegistryLocation)
+                    Registry.create(defectRegistryLocation)
 
         # Filters
         if policy.exists('filters'):
-            filterPolicyLocation = policy.getString('filters')
-            filterPolicy = pexPolicy.Policy.createPolicy(
-                    filterPolicyLocation, repositoryDir)
+            filterPolicyLocation = os.path.join(repositoryDir, policy.getString('filters'))
+            filterPolicy = pexPolicy.Policy.createPolicy(filterPolicyLocation)
             imageUtils.defineFiltersFromPolicy(filterPolicy, reset=True)
+
+        # Filter translation table
+        self.filters = None
 
     def keys(self):
         """Return supported keys.
@@ -293,6 +295,11 @@ class CameraMapper(dafPersist.Mapper):
         """Standardize a camera dataset by converting it to a camera
         object."""
         return cameraGeomUtils.makeCamera(cameraGeomUtils.getGeomPolicy(item))
+
+    def std_raw(self, item, dataId):
+        """Standardize a raw dataset by converting it to an Exposure instead of an Image"""
+        item = exposureFromImage(item)
+        return self._standardizeExposure(self.exposures['raw'], item, dataId)
 
 ###############################################################################
 #
@@ -420,10 +427,17 @@ class CameraMapper(dafPersist.Mapper):
         @param[in,out] item (lsst.afw.image.Exposure)
         @param dataId (dict) Dataset identifier"""
 
-        if isinstance(item, afwImage.Exposure):
-            if item.getFilter().getId() == afwImage.Filter.UNKNOWN:
-                actualId = mapping.need(self, ['filter'], dataId)
-                item.setFilter(afwImage.Filter(actualId['filter']))
+        if not (isinstance(item, afwImage.ExposureU) or isinstance(item, afwImage.ExposureI) or
+                isinstance(item, afwImage.ExposureF) or isinstance(item, afwImage.ExposureD)):
+            return
+        if item.getFilter().getId() != afwImage.Filter.UNKNOWN:
+            return
+
+        actualId = mapping.need(['filter'], dataId)
+        filterName = actualId['filter']
+        if self.filters is not None and self.filters.has_key(filterName):
+            filterName = self.filters[filterName]
+        item.setFilter(afwImage.Filter(filterName))
 
     def _setTimes(self, mapping, item, dataId):
         """Set the exposure time and exposure midpoint in the calib object in
@@ -447,6 +461,7 @@ class CameraMapper(dafPersist.Mapper):
             obsMidpoint = obsStart.nsecs() + long(expTime * 1000000000L / 2)
             calib.setMidTime(dafBase.DateTime(obsMidpoint))
 
+
     # Default standardization function
     def _standardizeExposure(self, mapping, item, dataId):
         """Default standardization function for images.
@@ -455,18 +470,8 @@ class CameraMapper(dafPersist.Mapper):
         @param dataId (dict) Dataset identifier
         @return (lsst.afw.image.Exposure) the standardized Exposure"""
 
-        if re.search(r'Exposure', mapping.python) and re.search(r'Image',
-                mapping.persistable):
-            exposure = afwImage.makeExposure(
-                    afwImage.makeMaskedImage(item.getImage()))
-            md = item.getMetadata()
-            exposure.setMetadata(md)
-            wcs = afwImage.makeWcs(md)
-            exposure.setWcs(wcs)
-            wcsMetadata = wcs.getFitsMetadata()
-            for kw in wcsMetadata.paramNames():
-                md.remove(kw)
-            item = exposure
+        if (re.search(r'Exposure', mapping.python) and re.search(r'Image',mapping.persistable)):
+            item = exposureFromImage(item)
 
         if mapping.level.lower() == "amp":
             self._setAmpDetector(item, dataId)
@@ -533,3 +538,24 @@ class CameraMapper(dafPersist.Mapper):
                 raise RuntimeError, "No defects for ccd %s in %s" % \
                         (str(ccd.getId()), defectFits)
             ccd.setDefects(ccdDefects)
+
+
+def exposureFromImage(image):
+    """Generate an exposure from a DecoratedImage or similar
+    @param[in] image Image of interest
+    @return (lsst.afw.image.Exposure) Exposure containing input image
+    """
+    if isinstance(image, afwImage.DecoratedImageU) or isinstance(image, afwImage.DecoratedImageI) or \
+        isinstance(image, afwImage.DecoratedImageF) or isinstance(image, afwImage.DecoratedImageD):
+        exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image.getImage()))
+    else:
+        exposure = image
+    md = image.getMetadata()
+    exposure.setMetadata(md)
+    wcs = afwImage.makeWcs(md)
+    exposure.setWcs(wcs)
+    wcsMetadata = wcs.getFitsMetadata()
+    for kw in wcsMetadata.paramNames():
+        md.remove(kw)
+
+    return exposure
