@@ -91,6 +91,7 @@ class Mapping(object):
         else:
             self.tables = None
         self.range = None
+        self.columns = None
         self.obsTimeName = policy.getString("obsTimeName") \
                 if policy.exists("obsTimeName") else None
 
@@ -124,6 +125,8 @@ class Mapping(object):
         values = []
         if dataId is not None:
             for k, v in dataId.iteritems():
+                if self.columns and not k in self.columns:
+                    continue
                 if k == self.obsTimeName:
                     continue
                 where[k] = '?'
@@ -234,7 +237,9 @@ class CalibrationMapping(Mapping):
         if policy.exists("validRange") and policy.getBool("validRange"):
             self.range = ("?", policy.getString("validStartName"),
                 policy.getString("validEndName"))
-
+        if policy.exists("columns"):
+            self.columns = policy.getStringArray("columns")
+            
     def lookup(self, properties, dataId):
         """Look up properties for in a metadata registry given a partial
         dataset identifier.
@@ -245,21 +250,27 @@ class CalibrationMapping(Mapping):
 # Either look up taiObs in reference and then all in calibRegistry
 # Or look up all in registry
 
+        newId = dataId.copy()
         if self.reference is not None:
             where = {}
             values = []
             for k, v in dataId.iteritems():
+                if self.refCols and k not in self.refCols:
+                    continue
                 where[k] = '?'
                 values.append(v)
-            lookups = self.refRegistry.executeQuery(self.refCols,
-                    self.reference, where, None, values)
+
+            # Columns we need from the regular registry
+            columns = set(self.columns)
+            for k in dataId.iterkeys():
+                columns.discard(k)
+                
+            lookups = self.refRegistry.executeQuery(columns, self.reference, where, None, values)
             if len(lookups) != 1:
-                raise RuntimeError, "No unique lookup for %s from %s: %d matches" % (self.obsTimeName, dataId, len(lookups))
-            newId = dict()
-            for i, prop in enumerate(self.refCols):
+                raise RuntimeError("No unique lookup for %s from %s: %d matches" %
+                                   (columns, dataId, len(lookups)))
+            for i, prop in enumerate(columns):
                 newId[prop] = lookups[0][i]
-        else:
-            newId = dataId.copy()
         return Mapping.lookup(self, properties, newId)
 
     def standardize(self, mapper, item, dataId):
