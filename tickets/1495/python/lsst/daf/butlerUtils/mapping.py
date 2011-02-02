@@ -108,8 +108,16 @@ class Mapping(object):
         actualId = self.need(self.keySet, dataId)
         path = os.path.join(self.root,
                 mapper._mapActualToPath(self.template, actualId))
-        return ButlerLocation(self.python, self.persistable, self.storage,
-                path, actualId)
+
+        addFunc = "add_" + self.datasetType # Name of method for additionalData
+        if hasattr(mapper, addFunc):
+            addFunc = getattr(mapper, addFunc)
+            additionalData = addFunc(mapper, actualId)
+            assert isinstance(additionalData, dict), "Bad type for returned data"
+        else:
+            additionalData = actualId.copy()
+        
+        return ButlerLocation(self.python, self.persistable, self.storage, path, additionalData)
 
     def lookup(self, properties, dataId):
         """Look up properties for in a metadata registry given a partial
