@@ -36,7 +36,6 @@ definitions: {
     tables: {
         type: string
         description: "List of tables to use for queries of the (calibration) registry"
-        minOccurs: 1
     }
     columns: {
         type: string

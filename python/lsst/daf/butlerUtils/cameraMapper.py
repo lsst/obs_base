@@ -247,6 +247,18 @@ class CameraMapper(dafPersist.Mapper):
                             return mapping.standardize(mapper, item, dataId)
                         setattr(self, "std_" + datasetType, stdClosure)
 
+                    # Set up metadata versions
+                    if name == "exposures":
+                        expFunc = "map_" + datasetType # Function name to map exposure
+                        mdFunc = expFunc + "_md"       # Function name to map metadata
+                        bypassFunc = "bypass_" + datasetType + "_md" # Function name to bypass daf_persistence
+                        if not hasattr(self, mdFunc):
+                            setattr(self, mdFunc, getattr(self, expFunc))
+                        if not hasattr(self, bypassFunc):
+                            setattr(self, bypassFunc,
+                                    lambda datasetType, pythonType, location, dataId:
+                                    afwImage.readMetadata(location.getLocations()[0]))
+
         # Camera geometry
         self.cameraPolicyLocation = None
         self.camera = None
@@ -373,7 +385,7 @@ class CameraMapper(dafPersist.Mapper):
         @param actualId (dict) Dataset identifier
         @return (string) Pathname"""
 
-        return template % actualId
+        return template % self._transformId(actualId)
 
     def _extractDetectorName(self, dataId):
         """Extract the detector (CCD) name (used with the afw camera geometry
@@ -462,7 +474,7 @@ class CameraMapper(dafPersist.Mapper):
             calib.setMidTime(dafBase.DateTime(obsMidpoint))
 
 
-    # Default standardization function
+    # Default standardization function for exposures
     def _standardizeExposure(self, mapping, item, dataId):
         """Default standardization function for images.
         @param mapping (lsst.daf.butlerUtils.Mapping)
