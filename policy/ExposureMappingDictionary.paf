@@ -37,4 +37,8 @@ definitions: {
         description: "Tables to use for queries of the registry"
         minOccurs: 1
     }
+    columns: {
+        type: string
+        description: "Columns to use for queries of the registry"
+    }
 }

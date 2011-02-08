@@ -172,8 +172,6 @@ class Mapping(object):
                 newProps.append(prop)
         if len(newProps) == 0:
             return newId
-        else:
-            newProps = properties
 
         lookups = self.lookup(newProps, newId)
         if len(lookups) != 1:
@@ -192,6 +190,7 @@ class ExposureMapping(Mapping):
         @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
         @param root           (string) Path of root directory"""
         Mapping.__init__(self, datasetType, policy, registry, root)
+        self.columns = policy.getStringArray("columns") if policy.exists("columns") else None
 
     def standardize(self, mapper, item, dataId):
         return mapper._standardizeExposure(self, item, dataId)
