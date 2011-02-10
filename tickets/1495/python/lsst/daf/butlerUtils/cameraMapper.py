@@ -475,11 +475,12 @@ class CameraMapper(dafPersist.Mapper):
 
 
     # Default standardization function for exposures
-    def _standardizeExposure(self, mapping, item, dataId):
+    def _standardizeExposure(self, mapping, item, dataId, filter=True):
         """Default standardization function for images.
         @param mapping (lsst.daf.butlerUtils.Mapping)
         @param[in,out] item (lsst.afw.image.Exposure)
         @param dataId (dict) Dataset identifier
+        @param filter (bool) Set filter?
         @return (lsst.afw.image.Exposure) the standardized Exposure"""
 
         if (re.search(r'Exposure', mapping.python) and re.search(r'Image',mapping.persistable)):
@@ -490,7 +491,8 @@ class CameraMapper(dafPersist.Mapper):
         elif mapping.level.lower() == "ccd":
             self._setCcdDetector(item, dataId)
 
-        self._setFilter(mapping, item, dataId)
+        if filter:
+            self._setFilter(mapping, item, dataId)
         if not isinstance(mapping, CalibrationMapping):
             self._setTimes(mapping, item, dataId)
 
