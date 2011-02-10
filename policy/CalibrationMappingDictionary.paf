@@ -71,4 +71,10 @@ definitions: {
         default: "validEnd"
         maxOccurs: 1
     }
+    filter: {
+        type: bool
+        description: "Set filter?"
+        default: false
+        maxOccurs: 1
+    }
 }

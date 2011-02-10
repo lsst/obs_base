@@ -164,7 +164,7 @@ class Mapping(object):
         @param dataId     (dict) Partial dataset identifier
         @return (dict) copy of dataset identifier with enhanced values
         """
-        
+
         newId = dataId.copy()
         newProps = []                    # Properties we don't already have
         for prop in properties:
@@ -246,6 +246,8 @@ class CalibrationMapping(Mapping):
                 policy.getString("validEndName"))
         if policy.exists("columns"):
             self.columns = policy.getStringArray("columns")
+        if policy.exists("filter"):
+            self.setFilter = policy.getBool("filter")
             
     def lookup(self, properties, dataId):
         """Look up properties for in a metadata registry given a partial
@@ -276,12 +278,15 @@ class CalibrationMapping(Mapping):
             if len(lookups) != 1:
                 raise RuntimeError("No unique lookup for %s from %s: %d matches" %
                                    (columns, dataId, len(lookups)))
+            if columns == set(properties):
+                # Have everything we need
+                return lookups
             for i, prop in enumerate(columns):
                 newId[prop] = lookups[0][i]
         return Mapping.lookup(self, properties, newId)
 
     def standardize(self, mapper, item, dataId):
-        return mapper._standardizeExposure(self, item, dataId)
+        return mapper._standardizeExposure(self, item, dataId, filter=self.setFilter)
 
 class DatasetMapping(Mapping):
     """DatasetMapping is a Mapping subclass for non-Exposure datasets that can
