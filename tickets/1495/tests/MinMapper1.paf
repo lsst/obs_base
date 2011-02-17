@@ -2,19 +2,19 @@
 
 # Minimal mapper configuration policy
 
-exposures: {
+datasets: {
     x: {
         template:    "foo-%(sensor)s.pickle"
         python:      "lsst.afw.image.BBox"
         persistable: "BBox"
-        level:       "Ccd"
 	tables:      "x"
+        storage:     "PickleStorage"
     }
     badSourceHist: {
         template:    "badSourceHist%(sensor)s.pickle"
         python:      "lsst.afw.image.BBox"
         persistable: "BBox"
-        level:       "Ccd"
 	tables:      "x"
+        storage:     "PickleStorage"
     }
 }

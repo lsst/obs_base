@@ -22,7 +22,10 @@ calibrations: {
         tables:      "flat"
         validRange:  true
         reference:   "raw"
-        refCols:     "taiObs" "filter"
+        refCols:     "ccd"
+        refCols:     "visit"
+        columns:     "filter"
+        columns:     "taiObs"
     }
 }
 datasets: {
