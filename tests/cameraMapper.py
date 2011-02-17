@@ -77,7 +77,7 @@ class Mapper1TestCase(unittest.TestCase):
         loc = self.mapper.map("x", {"sensor": "1,1"})
         self.assertEqual(loc.getPythonType(), "lsst.afw.image.BBox")
         self.assertEqual(loc.getCppType(), "BBox")
-        self.assertEqual(loc.getStorageName(), "FitsStorage")
+        self.assertEqual(loc.getStorageName(), "PickleStorage")
         self.assertEqual(loc.getLocations(), ["tests/foo-1,1.pickle"])
         self.assertEqual(loc.getAdditionalData().toString(),
                 "sensor = \"1,1\"\n")
@@ -89,7 +89,7 @@ class Mapper1TestCase(unittest.TestCase):
 
     def testStandardize(self):
         self.assertEqual(self.mapper.canStandardize("x"), True)
-        self.assertEqual(self.mapper.canStandardize("badSourceHist"), True)
+        self.assertEqual(self.mapper.canStandardize("badSourceHist"), False)
         self.assertEqual(self.mapper.canStandardize("notPresent"), False)
         result = self.mapper.standardize("x", 3, None)
         self.assertEqual(isinstance(result, float), True)
@@ -112,7 +112,7 @@ class Mapper2TestCase(unittest.TestCase):
 
     def testGetDatasetTypes(self):
         self.assertEqual(set(self.mapper.getDatasetTypes()),
-                set(["flat", "raw", "camera", "src"]))
+                set(["flat", "raw", "raw_md", "camera", "src"]))
 
     def testMap(self):
         loc = self.mapper.map("raw", {"ccd": 13})

@@ -270,10 +270,13 @@ class CalibrationMapping(Mapping):
                 values.append(v)
 
             # Columns we need from the regular registry
-            columns = set(self.columns)
-            for k in dataId.iterkeys():
-                columns.discard(k)
-                
+            if self.columns is not None:
+                columns = set(self.columns)
+                for k in dataId.iterkeys():
+                    columns.discard(k)
+            else:
+                columns = set(properties)
+
             lookups = self.refRegistry.executeQuery(columns, self.reference, where, None, values)
             if len(lookups) != 1:
                 raise RuntimeError("No unique lookup for %s from %s: %d matches" %
