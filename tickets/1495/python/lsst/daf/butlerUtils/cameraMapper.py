@@ -250,7 +250,7 @@ class CameraMapper(dafPersist.Mapper):
                     mapFunc = "map_" + datasetType + "_filename"
                     bypassFunc = "bypass_" + datasetType + "_filename"
                     if not hasattr(self, mapFunc):
-                        setattr(self, mapFunc, "map_" + datasetType)
+                        setattr(self, mapFunc, getattr(self, "map_" + datasetType))
                     if not hasattr(self, bypassFunc):
                         setattr(self, bypassFunc,
                                 lambda datasetType, pythonType, location, dataId: location.getLocations())
