@@ -247,6 +247,14 @@ class CameraMapper(dafPersist.Mapper):
                             return mapping.standardize(mapper, item, dataId)
                         setattr(self, "std_" + datasetType, stdClosure)
 
+                    mapFunc = "map_" + datasetType + "_filename"
+                    bypassFunc = "bypass_" + datasetType + "_filename"
+                    if not hasattr(self, mapFunc):
+                        setattr(self, mapFunc, "map_" + datasetType)
+                    if not hasattr(self, bypassFunc):
+                        setattr(self, bypassFunc,
+                                lambda datasetType, pythonType, location, dataId: location.getLocations())
+
                     # Set up metadata versions
                     if name == "exposures":
                         expFunc = "map_" + datasetType # Function name to map exposure
