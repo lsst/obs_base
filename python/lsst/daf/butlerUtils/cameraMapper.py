@@ -141,7 +141,8 @@ class CameraMapper(dafPersist.Mapper):
     """
 
     def __init__(self, policy, repositoryDir,
-            root=None, registry=None, calibRoot=None, calibRegistry=None):
+                 root=None, registry=None, calibRoot=None, calibRegistry=None,
+                 provided=None):
         """Initialize the CameraMapper.
         @param policy        (pexPolicy.Policy) Policy with per-camera defaults
                              already merged
@@ -152,7 +153,9 @@ class CameraMapper(dafPersist.Mapper):
         @param registry      (string) Path to registry with data's metadata
         @param calibRoot     (string) Root directory for calibrations
         @param calibRegistry (string) Path to registry with calibrations'
-                             metadata"""
+                             metadata
+        @param provided      (list of strings) Keys provided by the mapper
+        """
 
         dafPersist.Mapper.__init__(self)
 
@@ -227,10 +230,10 @@ class CameraMapper(dafPersist.Mapper):
                     subPolicy.mergeDefaults(defPolicy)
                     if name == "calibrations":
                         mapping = cls(datasetType, subPolicy,
-                                self.registry, calibRegistry, calibRoot)
+                                self.registry, calibRegistry, calibRoot, provided=provided)
                     else:
                         mapping = cls(datasetType, subPolicy,
-                                self.registry, root)
+                                self.registry, root, provided=provided)
                     self.keySet.update(mapping.keys())
                     mappings[datasetType] = mapping
                     if not hasattr(self, "map_" + datasetType):

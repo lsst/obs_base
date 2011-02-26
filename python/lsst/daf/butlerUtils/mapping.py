@@ -65,12 +65,14 @@ class Mapping(object):
     registry that can be NATURAL JOIN-ed to look up additional
     information.  """
 
-    def __init__(self, datasetType, policy, registry, root):
+    def __init__(self, datasetType, policy, registry, root, provided=None):
         """Constructor for Mapping class.
         @param datasetType    (string)
         @param policy         (lsst.pex.policy.Policy) Mapping policy
         @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
-        @param root           (string) Path of root directory"""
+        @param root           (string) Path of root directory
+        @param provided       (list of strings) Keys provided by the mapper
+        """
 
         if policy is None:
             raise RuntimeError, "No policy provided for mapping"
@@ -81,6 +83,9 @@ class Mapping(object):
 
         self.template = policy.getString("template") # Template path
         self.keySet = set(re.findall(r'\%\((\w+)\)', self.template))
+        if provided is not None:
+            for p in provided:
+                self.keySet.discard(p)
         self.python = policy.getString("python") # Python type
         self.persistable = policy.getString("persistable") # Persistable type
         self.storage = policy.getString("storage")
@@ -183,13 +188,13 @@ class Mapping(object):
 class ExposureMapping(Mapping):
     """ExposureMapping is a Mapping subclass for normal exposures."""
 
-    def __init__(self, datasetType, policy, registry, root):
+    def __init__(self, datasetType, policy, registry, root, **kwargs):
         """Constructor for Mapping class.
         @param datasetType    (string)
         @param policy         (lsst.pex.policy.Policy) Mapping policy
         @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
         @param root           (string) Path of root directory"""
-        Mapping.__init__(self, datasetType, policy, registry, root)
+        Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
         self.columns = policy.getStringArray("columns") if policy.exists("columns") else None
 
     def standardize(self, mapper, item, dataId):
@@ -227,7 +232,7 @@ class CalibrationMapping(Mapping):
     calibration dataset tables containing the end of the validity range
     (default "validEnd") """
 
-    def __init__(self, datasetType, policy, registry, calibRegistry, calibRoot):
+    def __init__(self, datasetType, policy, registry, calibRegistry, calibRoot, **kwargs):
         """Constructor for Mapping class.
         @param datasetType    (string)
         @param policy         (lsst.pex.policy.Policy) Mapping policy
@@ -235,7 +240,7 @@ class CalibrationMapping(Mapping):
         @param calibRegistry  (lsst.daf.butlerUtils.Registry) Registry for calibration metadata lookups
         @param calibRoot      (string) Path of calibration root directory"""
 
-        Mapping.__init__(self, datasetType, policy, calibRegistry, calibRoot)
+        Mapping.__init__(self, datasetType, policy, calibRegistry, calibRoot, **kwargs)
         self.reference = policy.getStringArray("reference") \
                 if policy.exists("reference") else None
         self.refCols = policy.getStringArray("refCols") \
@@ -301,12 +306,12 @@ class DatasetMapping(Mapping):
     The "storage" entry in the Policy is mandatory; the "tables" entry is
     optional; no "level" entry is allowed.  """
 
-    def __init__(self, datasetType, policy, registry, root):
+    def __init__(self, datasetType, policy, registry, root, **kwargs):
         """Constructor for DatasetMapping class.
         @param[in,out] mapper (lsst.daf.persistence.Mapper) Mapper object
         @param policy         (lsst.pex.policy.Policy) Mapping policy
         @param datasetType    (string)
         @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
         @param root           (string) Path of root directory"""
-        Mapping.__init__(self, datasetType, policy, registry, root)
+        Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
         self.storage = policy.getString("storage") # Storage type
