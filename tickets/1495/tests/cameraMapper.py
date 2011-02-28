@@ -71,7 +71,7 @@ class Mapper1TestCase(unittest.TestCase):
 
     def testGetDatasetTypes(self):
         self.assertEqual(set(self.mapper.getDatasetTypes()),
-                set(["x", "badSourceHist", "camera"]))
+                         set(["x", "x_filename", "badSourceHist", "badSourceHist_filename", "camera"]))
 
     def testMap(self):
         loc = self.mapper.map("x", {"sensor": "1,1"})
@@ -112,7 +112,8 @@ class Mapper2TestCase(unittest.TestCase):
 
     def testGetDatasetTypes(self):
         self.assertEqual(set(self.mapper.getDatasetTypes()),
-                set(["flat", "raw", "raw_md", "camera", "src"]))
+                         set(["flat", "flat_filename", "raw", "raw_md", "raw_filename",
+                              "camera", "src", "src_filename"]))
 
     def testMap(self):
         loc = self.mapper.map("raw", {"ccd": 13})
