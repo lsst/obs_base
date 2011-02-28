@@ -1,0 +1,20 @@
+#<?cfg paf policy ?>
+
+# Minimal mapper configuration policy
+
+datasets: {
+    x: {
+        template:    "foo-%(sensor)s.pickle"
+        python:      "lsst.afw.image.BBox"
+        persistable: "BBox"
+	tables:      "x"
+        storage:     "PickleStorage"
+    }
+    badSourceHist: {
+        template:    "badSourceHist%(sensor)s.pickle"
+        python:      "lsst.afw.image.BBox"
+        persistable: "BBox"
+	tables:      "x"
+        storage:     "PickleStorage"
+    }
+}
