@@ -277,7 +277,7 @@ class CameraMapper(dafPersist.Mapper):
                                 subId.remove('bbox')
                                 return mapping.map(mapper, subId)
                             setattr(self, subFunc, mapSubClosure)
-                            setattr(self, 'add_' + datasetType + '_sub', lambda: {'bbox': dataId['bbox']}
+                            setattr(self, 'add_' + datasetType + '_sub', lambda: {'bbox': dataId['bbox']})
 
         # Camera geometry
         self.cameraPolicyLocation = None
