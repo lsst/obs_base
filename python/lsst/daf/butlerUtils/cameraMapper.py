@@ -272,7 +272,7 @@ class CameraMapper(dafPersist.Mapper):
 
                         subFunc = expFunc + "_sub" # Function name to map subimage
                         if not hasattr(self, subFunc):
-                            def mapSubClosure: (dataId, mapper=self, mapping=mapping):
+                            def mapSubClosure(dataId, mapper=self, mapping=mapping):
                                 subId = dataId.copy()
                                 subId.remove('bbox')
                                 return mapping.map(mapper, subId)
