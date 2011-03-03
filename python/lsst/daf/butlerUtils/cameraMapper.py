@@ -277,7 +277,7 @@ class CameraMapper(dafPersist.Mapper):
                         if not hasattr(self, subFunc):
                             def mapSubClosure(dataId, mapper=self, mapping=mapping):
                                 subId = dataId.copy()
-                                subId.remove('bbox')
+                                subId.remove('bbox')query_
                                 return mapping.map(mapper, subId)
                             setattr(self, subFunc, mapSubClosure)
                             setattr(self, 'add_' + datasetType + '_sub', lambda: {'bbox': dataId['bbox']})
@@ -286,7 +286,7 @@ class CameraMapper(dafPersist.Mapper):
                                 subId = dataId.copy()
                                 subId.remove('bbox')
                                 return mapping.lookup(format, subId)
-                            setattr(self, "query_" + datasetType + "_sub")
+                            setattr(self, "query_" + datasetType + "_sub", querySubClosure)
 
         # Camera geometry
         self.cameraPolicyLocation = None
