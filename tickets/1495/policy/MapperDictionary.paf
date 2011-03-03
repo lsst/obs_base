@@ -39,6 +39,12 @@ definitions: {
         maxOccurs: 1
     }
 
+    skytiles: {
+        type: Policy
+        description: "Sky tile setup"
+        dictionary: @@skypix:policy:QuadSpherePixelizationDictionary.paf
+    }
+
     exposures: {
         type: policy
         # dictionary: @ExposureMappingDictionary.paf
