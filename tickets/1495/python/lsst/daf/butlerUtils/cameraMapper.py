@@ -269,6 +269,9 @@ class CameraMapper(dafPersist.Mapper):
                             setattr(self, bypassFunc,
                                     lambda datasetType, pythonType, location, dataId:
                                     afwImage.readMetadata(location.getLocations()[0]))
+                        if not hasattr(self, "query_" + datasetType + "_md"):
+                            setattr(self, "query_" + datasetType + "_md",
+                                    getattr(self, "query_" + datasetType))
 
                         subFunc = expFunc + "_sub" # Function name to map subimage
                         if not hasattr(self, subFunc):
@@ -278,6 +281,12 @@ class CameraMapper(dafPersist.Mapper):
                                 return mapping.map(mapper, subId)
                             setattr(self, subFunc, mapSubClosure)
                             setattr(self, 'add_' + datasetType + '_sub', lambda: {'bbox': dataId['bbox']})
+                        if not hasattr(self, "query_" + datasetType + "_sub"):
+                            def querySubClosure(key, format, dataId, mapping=mapping):
+                                subId = dataId.copy()
+                                subId.remove('bbox')
+                                return mapping.lookup(format, subId)
+                            setattr(self, "query_" + datasetType + "_sub")
 
         # Camera geometry
         self.cameraPolicyLocation = None
