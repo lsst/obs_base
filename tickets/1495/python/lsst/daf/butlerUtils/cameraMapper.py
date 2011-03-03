@@ -270,6 +270,15 @@ class CameraMapper(dafPersist.Mapper):
                                     lambda datasetType, pythonType, location, dataId:
                                     afwImage.readMetadata(location.getLocations()[0]))
 
+                        subFunc = expFunc + "_sub" # Function name to map subimage
+                        if not hasattr(self, subFunc):
+                            def mapSubClosure: (dataId, mapper=self, mapping=mapping):
+                                subId = dataId.copy()
+                                subId.remove('bbox')
+                                return mapping.map(mapper, subId)
+                            setattr(self, subFunc, mapSubClosure)
+                            setattr(self, 'add_' + datasetType + '_sub', lambda: {'bbox': dataId['bbox']}
+
         # Camera geometry
         self.cameraPolicyLocation = None
         self.camera = None
