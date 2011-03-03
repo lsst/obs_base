@@ -319,6 +319,9 @@ class CameraMapper(dafPersist.Mapper):
         # Filter translation table
         self.filters = None
 
+        # Skytile policy
+        self.skypolicy = policy.getPolicy("skytiles")
+
     def keys(self):
         """Return supported keys.
         @return (iterable) List of keys usable in a dataset identifier"""
@@ -341,6 +344,15 @@ class CameraMapper(dafPersist.Mapper):
         """Standardize a raw dataset by converting it to an Exposure instead of an Image"""
         item = exposureFromImage(item)
         return self._standardizeExposure(self.exposures['raw'], item, dataId)
+
+    def map_skypolicy(self, datasetType, dataId):
+        """Map a sky policy."""
+        return ButlerLocation("lsst.pex.policy.Policy", "Policy",
+                "Internal", None, None)
+
+    def std_skypolicy(self, datasetType, item, dataId):
+        """Standardize a sky policy by returning the one we use."""
+        return self.skypolicy
 
 ###############################################################################
 #
