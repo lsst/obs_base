@@ -327,7 +327,7 @@ class CameraMapper(dafPersist.Mapper):
         @return (iterable) List of keys usable in a dataset identifier"""
         return self.keySet
 
-    def map_camera(self, datasetType, dataId):
+    def map_camera(self, dataId):
         """Map a camera dataset."""
         if self.cameraPolicyLocation is None:
             raise RuntimeError, "No camera dataset available."
@@ -335,7 +335,7 @@ class CameraMapper(dafPersist.Mapper):
         return ButlerLocation("lsst.afw.cameraGeom.Camera", "Camera",
                 "PafStorage", self.cameraPolicyLocation, actualId)
 
-    def std_camera(self, datasetType, item, dataId):
+    def std_camera(self, item, dataId):
         """Standardize a camera dataset by converting it to a camera
         object."""
         return cameraGeomUtils.makeCamera(cameraGeomUtils.getGeomPolicy(item))
@@ -345,12 +345,12 @@ class CameraMapper(dafPersist.Mapper):
         item = exposureFromImage(item)
         return self._standardizeExposure(self.exposures['raw'], item, dataId)
 
-    def map_skypolicy(self, datasetType, dataId):
+    def map_skypolicy(self, dataId):
         """Map a sky policy."""
         return ButlerLocation("lsst.pex.policy.Policy", "Policy",
                 "Internal", None, None)
 
-    def std_skypolicy(self, datasetType, item, dataId):
+    def std_skypolicy(self, item, dataId):
         """Standardize a sky policy by returning the one we use."""
         return self.skypolicy
 
