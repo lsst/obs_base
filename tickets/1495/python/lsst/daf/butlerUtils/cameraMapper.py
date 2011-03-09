@@ -27,6 +27,7 @@ import re
 import lsst.daf.persistence as dafPersist
 from lsst.daf.butlerUtils import ExposureMapping, CalibrationMapping, DatasetMapping, Registry
 import lsst.daf.base as dafBase
+import lsst.afw.geom as afwGeom
 import lsst.afw.image as afwImage
 import lsst.afw.cameraGeom as afwCameraGeom
 import lsst.afw.cameraGeom.utils as cameraGeomUtils
@@ -280,7 +281,21 @@ class CameraMapper(dafPersist.Mapper):
                                 del subId['bbox']
                                 return mapping.map(mapper, subId)
                             setattr(self, subFunc, mapSubClosure)
-                            setattr(self, 'add_' + datasetType + '_sub', lambda: {'bbox': dataId['bbox']})
+                            bbox = dataId['bbox']
+                            if isinstance(bbox, afwGeom.BoxI):
+                                llcX = bbox.getMinX()
+                                llcY = bbox.getMinY()
+                                width = bbox.getWidth()
+                                height = bbox.getHeight()
+                            else:
+                                assert isinstance(bbox, afwImage.BBox)
+                                llcX = bbox.getX0()
+                                llcY = bbox.getY0()
+                                width = bbox.getWidth()
+                                height = bbox.getHeight()
+                            setattr(self, 'add_' + datasetType + '_sub',
+                                    lambda: {'llcX': llcX, 'llcY': llcY,
+                                    'width': width, 'height': height})
                         if not hasattr(self, "query_" + datasetType + "_sub"):
                             def querySubClosure(key, format, dataId, mapping=mapping):
                                 subId = dataId.copy()
