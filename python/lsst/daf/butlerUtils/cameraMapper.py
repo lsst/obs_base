@@ -279,23 +279,24 @@ class CameraMapper(dafPersist.Mapper):
                             def mapSubClosure(dataId, mapper=self, mapping=mapping):
                                 subId = dataId.copy()
                                 del subId['bbox']
-                                return mapping.map(mapper, subId)
+                                loc = mapping.map(mapper, subId)
+                                bbox = dataId['bbox']
+                                if isinstance(bbox, afwGeom.BoxI):
+                                    llcX = bbox.getMinX()
+                                    llcY = bbox.getMinY()
+                                    width = bbox.getWidth()
+                                    height = bbox.getHeight()
+                                else:
+                                    assert isinstance(bbox, afwImage.BBox)
+                                    llcX = bbox.getX0()
+                                    llcY = bbox.getY0()
+                                    width = bbox.getWidth()
+                                    height = bbox.getHeight()
+                                loc.additionalData['llcX'] = llcX
+                                loc.additionalData['llcY'] = llcY
+                                loc.additionalData['width'] = width
+                                loc.additionalData['height'] = height
                             setattr(self, subFunc, mapSubClosure)
-                            bbox = dataId['bbox']
-                            if isinstance(bbox, afwGeom.BoxI):
-                                llcX = bbox.getMinX()
-                                llcY = bbox.getMinY()
-                                width = bbox.getWidth()
-                                height = bbox.getHeight()
-                            else:
-                                assert isinstance(bbox, afwImage.BBox)
-                                llcX = bbox.getX0()
-                                llcY = bbox.getY0()
-                                width = bbox.getWidth()
-                                height = bbox.getHeight()
-                            setattr(self, 'add_' + datasetType + '_sub',
-                                    lambda: {'llcX': llcX, 'llcY': llcY,
-                                    'width': width, 'height': height})
                         if not hasattr(self, "query_" + datasetType + "_sub"):
                             def querySubClosure(key, format, dataId, mapping=mapping):
                                 subId = dataId.copy()
