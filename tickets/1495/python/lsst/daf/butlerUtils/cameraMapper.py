@@ -292,10 +292,11 @@ class CameraMapper(dafPersist.Mapper):
                                     llcY = bbox.getY0()
                                     width = bbox.getWidth()
                                     height = bbox.getHeight()
-                                loc.additionalData['llcX'] = llcX
-                                loc.additionalData['llcY'] = llcY
-                                loc.additionalData['width'] = width
-                                loc.additionalData['height'] = height
+                                loc.additionalData.set('llcX', llcX)
+                                loc.additionalData.set('llcY', llcY)
+                                loc.additionalData.set('width', width)
+                                loc.additionalData.set('height', height)
+                                return loc
                             setattr(self, subFunc, mapSubClosure)
                         if not hasattr(self, "query_" + datasetType + "_sub"):
                             def querySubClosure(key, format, dataId, mapping=mapping):
