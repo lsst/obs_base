@@ -26,6 +26,7 @@
 import unittest
 import lsst.utils.tests as utilsTests
 
+import lsst.afw.geom as afwGeom
 import lsst.pex.policy as pexPolicy
 import lsst.daf.base as dafBase
 import lsst.daf.persistence as dafPersist
@@ -125,6 +126,17 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getLocations(), ["tests/foo-13.fits"])
         self.assertEqual(loc.getAdditionalData().toString(),
                 "ccd = 13\n")
+
+    def testSubMap(self):
+        bbox = afwGeom.BoxI(afwGeom.makePointI(200, 100),
+                afwGeom.makeExtentI(300, 400))
+        loc = self.mapper.map("raw_sub", {"ccd": 13, "bbox": bbox})
+        self.assertEqual(loc.getPythonType(), "lsst.afw.image.ExposureU")
+        self.assertEqual(loc.getCppType(), "ImageU")
+        self.assertEqual(loc.getStorageName(), "FitsStorage")
+        self.assertEqual(loc.getLocations(), ["tests/foo-13.fits"])
+        self.assertEqual(loc.getAdditionalData().toString(),
+                'ccd = 13\nheight = 400\nllcX = 200\nllcY = 100\nwidth = 300\n')
 
     def testQueryMetadata(self):
         self.assertEqual(
