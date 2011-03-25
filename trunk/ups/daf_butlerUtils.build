@@ -1,4 +1,4 @@
-svn co @SVNROOT@/DMS/daf/persistence/tags/@VERSION@ @PRODUCT@-@VERSION@ &&
+svn co @SVNROOT@/DMS/daf/butlerUtils/tags/@VERSION@ @PRODUCT@-@VERSION@ &&
 cd @PRODUCT@-@VERSION@ &&
 setup -r . &&
 scons opt=3 &&
