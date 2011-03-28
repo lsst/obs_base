@@ -4,5 +4,6 @@ setupRequired(pex_policy >= 3.5)
 setupRequired(daf_persistence >= 3.3.12)
 setupRequired(pysqlite >= 2.6.0)
 setupRequired(afw >= 4.1.2.1)
+setupRequired(skypix >= 3.0.3)
 
 envAppend(PYTHONPATH, ${PRODUCT_DIR}/python)
