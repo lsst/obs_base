@@ -117,7 +117,7 @@ class Mapping(object):
         addFunc = "add_" + self.datasetType # Name of method for additionalData
         if hasattr(mapper, addFunc):
             addFunc = getattr(mapper, addFunc)
-            additionalData = addFunc(mapper, actualId)
+            additionalData = addFunc(actualId)
             assert isinstance(additionalData, dict), "Bad type for returned data"
         else:
             additionalData = actualId.copy()
