@@ -111,8 +111,9 @@ class Mapping(object):
         @return (lsst.daf.persistence.ButlerLocation)"""
 
         actualId = self.need(self.keySet, dataId)
-        path = os.path.join(self.root,
-                mapper._mapActualToPath(self.template, actualId))
+        path = mapper._mapActualToPath(self.template, actualId)
+        if not os.path.isabs(path):
+            path = os.path.join(self.root, path)
 
         addFunc = "add_" + self.datasetType # Name of method for additionalData
         if hasattr(mapper, addFunc):
