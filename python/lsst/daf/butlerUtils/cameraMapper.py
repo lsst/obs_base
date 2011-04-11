@@ -281,17 +281,10 @@ class CameraMapper(dafPersist.Mapper):
                                 del subId['bbox']
                                 loc = mapping.map(mapper, subId)
                                 bbox = dataId['bbox']
-                                if isinstance(bbox, afwGeom.BoxI):
-                                    llcX = bbox.getMinX()
-                                    llcY = bbox.getMinY()
-                                    width = bbox.getWidth()
-                                    height = bbox.getHeight()
-                                else:
-                                    assert isinstance(bbox, afwImage.BBox)
-                                    llcX = bbox.getX0()
-                                    llcY = bbox.getY0()
-                                    width = bbox.getWidth()
-                                    height = bbox.getHeight()
+                                llcX = bbox.getMinX()
+                                llcY = bbox.getMinY()
+                                width = bbox.getWidth()
+                                height = bbox.getHeight()
                                 loc.additionalData.set('llcX', llcX)
                                 loc.additionalData.set('llcY', llcY)
                                 loc.additionalData.set('width', width)
