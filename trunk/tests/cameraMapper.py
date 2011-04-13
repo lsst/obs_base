@@ -77,8 +77,8 @@ class Mapper1TestCase(unittest.TestCase):
 
     def testMap(self):
         loc = self.mapper.map("x", {"sensor": "1,1"})
-        self.assertEqual(loc.getPythonType(), "lsst.afw.image.BBox")
-        self.assertEqual(loc.getCppType(), "BBox")
+        self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
+        self.assertEqual(loc.getCppType(), "BoxI")
         self.assertEqual(loc.getStorageName(), "PickleStorage")
         self.assertEqual(loc.getLocations(), ["tests/foo-1,1.pickle"])
         self.assertEqual(loc.getAdditionalData().toString(),
@@ -128,8 +128,14 @@ class Mapper2TestCase(unittest.TestCase):
                 "ccd = 13\n")
 
     def testSubMap(self):
-        bbox = afwGeom.BoxI(afwGeom.makePointI(200, 100),
-                afwGeom.makeExtentI(300, 400))
+        if hasattr(afwGeom, 'makePointI'):
+            # old afw (pre-#1556) interface
+            bbox = afwGeom.BoxI(afwGeom.makePointI(200, 100),
+                    afwGeom.makeExtentI(300, 400))
+        else:
+            # new afw (post-#1556) interface
+            bbox = afwGeom.BoxI(afwGeom.Point2I(200, 100),
+                    afwGeom.Extent2I(300, 400))
         loc = self.mapper.map("raw_sub", {"ccd": 13, "bbox": bbox})
         self.assertEqual(loc.getPythonType(), "lsst.afw.image.ExposureU")
         self.assertEqual(loc.getCppType(), "ImageU")
