@@ -128,8 +128,7 @@ class Mapper2TestCase(unittest.TestCase):
                 "ccd = 13\n")
 
     def testSubMap(self):
-        bbox = afwGeom.BoxI(afwGeom.makePointI(200, 100),
-                afwGeom.makeExtentI(300, 400))
+        bbox = afwGeom.Box2I(afwGeom.Point2I(200, 100), afwGeom.Extent2I(300, 400))
         loc = self.mapper.map("raw_sub", {"ccd": 13, "bbox": bbox})
         self.assertEqual(loc.getPythonType(), "lsst.afw.image.ExposureU")
         self.assertEqual(loc.getCppType(), "ImageU")
