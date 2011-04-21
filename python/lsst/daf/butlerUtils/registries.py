@@ -93,8 +93,9 @@ class SqliteRegistry(Registry):
         @param returnFields (list of strings) Metadata fields to be extracted.
         @param joinClause   (list of strings) Tables in which metadata fields
                             are located.
-        @param whereFields  (dict) Keys are metadata fields to query; values
-                            are values those fields must have.
+        @param whereFields  (list of tuples) First tuple element is metadata
+                            field to query; second is the value that field
+                            must have (often '?').
         @param range        (tuple) Value, lower limit, and upper limit for a
                             range condition on the metadata.  Any of these can
                             be metadata fields.
@@ -111,7 +112,7 @@ class SqliteRegistry(Registry):
         cmd += " FROM " + " NATURAL JOIN ".join(joinClause)
         whereList = []
         if whereFields: 
-            for k, v in whereFields.iteritems():
+            for k, v in whereFields:
                 whereList.append("(%s = %s)" % (k, v))
         if range is not None:
             whereList.append("(%s BETWEEN %s AND %s)" % range)
