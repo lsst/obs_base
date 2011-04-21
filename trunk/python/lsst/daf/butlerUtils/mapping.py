@@ -135,7 +135,7 @@ class Mapping(object):
         if self.registry is None:
             raise RuntimeError, "No registry for lookup"
 
-        where = {}
+        where = []
         values = []
         if dataId is not None:
             for k, v in dataId.iteritems():
@@ -143,7 +143,7 @@ class Mapping(object):
                     continue
                 if k == self.obsTimeName:
                     continue
-                where[k] = '?'
+                where.append((k, '?'))
                 values.append(v)
         if self.range is not None:
             values.append(dataId[self.obsTimeName])
@@ -267,12 +267,12 @@ class CalibrationMapping(Mapping):
 
         newId = dataId.copy()
         if self.reference is not None:
-            where = {}
+            where = []
             values = []
             for k, v in dataId.iteritems():
                 if self.refCols and k not in self.refCols:
                     continue
-                where[k] = '?'
+                where.append((k, '?'))
                 values.append(v)
 
             # Columns we need from the regular registry
@@ -283,7 +283,8 @@ class CalibrationMapping(Mapping):
             else:
                 columns = set(properties)
 
-            lookups = self.refRegistry.executeQuery(columns, self.reference, where, None, values)
+            lookups = self.refRegistry.executeQuery(columns, self.reference,
+                    where, None, values)
             if len(lookups) != 1:
                 raise RuntimeError("No unique lookup for %s from %s: %d matches" %
                                    (columns, dataId, len(lookups)))

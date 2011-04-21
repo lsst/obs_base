@@ -559,7 +559,7 @@ class CameraMapper(dafPersist.Mapper):
             raise RuntimeError, "No registry for defect lookup"
 
         rows = self.registry.executeQuery(("taiObs",), ("raw_visit",),
-                {"visit": "?"}, None, (dataId['visit'],))
+                [("visit", "?")], None, (dataId['visit'],))
         if len(rows) == 0:
             return None
         assert len(rows) == 1
@@ -568,7 +568,7 @@ class CameraMapper(dafPersist.Mapper):
         # Lookup the defects for this CCD serial number that are valid at the
         # exposure midpoint.
         rows = self.defectRegistry.executeQuery(("path",), ("defect",),
-                {"ccdSerial": "?"},
+                [("ccdSerial", "?")],
                 ("DATETIME(?)", "DATETIME(validStart)", "DATETIME(validEnd)"),
                 (ccdSerial, taiObs))
         if not rows or len(rows) == 0:
