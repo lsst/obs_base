@@ -1,0 +1,34 @@
+#<?cfg paf dictionary ?>
+
+target: datatype
+
+definitions: {
+    metadataPolicy: {
+        type: Policy
+        maxOccurs: 1
+    }
+    convertDateobsToTai: {
+        type: bool
+        description: "Set true to convert the dateObs flexible metadata keyword value from MJD UTC to MJD TAI."
+        maxOccurs: 1
+        default: true
+    }
+    convertDateobsToMidExposure: {
+        type: bool
+        description: "Set true to convert the dateObs flexible metadata keyword value from the start of the exposure to the midpoint of the exposure using the expTime flexible metadata keyword value (assumed to be in seconds)."
+        maxOccurs: 1
+        default: true
+    }
+    trimFilterName: {
+        type: bool
+        description: "Set true to trim characters including and after the first dot ('.') from the filter flexible metadata keyword value."
+        maxOccurs: 1
+        default: true
+    }
+    convertVisitIdToInt: {
+        type: bool
+        description: "Set true to convert the visitId flexible metadata keyword value to an integer from a string."
+        maxOccurs: 1
+        default: true
+    }
+}
