@@ -342,7 +342,7 @@ class CameraMapper(dafPersist.Mapper):
         if self.cameraPolicyLocation is None:
             raise RuntimeError, "No camera dataset available."
         actualId = self._transformId(dataId)
-        return ButlerLocation("lsst.afw.cameraGeom.Camera", "Camera",
+        return dafPersist.ButlerLocation("lsst.afw.cameraGeom.Camera", "Camera",
                 "PafStorage", self.cameraPolicyLocation, actualId)
 
     def std_camera(self, item, dataId):
@@ -357,7 +357,7 @@ class CameraMapper(dafPersist.Mapper):
 
     def map_skypolicy(self, dataId):
         """Map a sky policy."""
-        return ButlerLocation("lsst.pex.policy.Policy", "Policy",
+        return dafPersist.ButlerLocation("lsst.pex.policy.Policy", "Policy",
                 "Internal", None, None)
 
     def std_skypolicy(self, item, dataId):
