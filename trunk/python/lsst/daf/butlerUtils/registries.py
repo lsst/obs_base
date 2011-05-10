@@ -77,15 +77,9 @@ class SqliteRegistry(Registry):
         @param location (string) Path to SQLite3 file"""
 
         Registry.__init__(self)
-        if os.path.exists(location):
-            self.conn = sqlite3.connect(location)
-            self.conn.text_factory = str
-        else:
-            self.conn = None
-
-    def __del__(self):
-        if self.conn:
-            self.conn.close()
+        self.location = location
+        if not os.path.exists(location):
+            raise RuntimeError, "Missing registry: %s" % (location,)
 
     def executeQuery(self, returnFields, joinClause, whereFields, range,
             values):
@@ -105,8 +99,9 @@ class SqliteRegistry(Registry):
         @return (list of tuples) All sets of field values that meet the
                 criteria"""
 
-        if not self.conn:
-            return None
+        conn = sqlite3.connect(self.location)
+        conn.text_factory = str
+
         cmd = "SELECT DISTINCT "
         cmd += ", ".join(returnFields)
         cmd += " FROM " + " NATURAL JOIN ".join(joinClause)
@@ -118,8 +113,9 @@ class SqliteRegistry(Registry):
             whereList.append("(%s BETWEEN %s AND %s)" % range)
         if len(whereList) > 0:
             cmd += " WHERE " + " AND ".join(whereList)
-        c = self.conn.execute(cmd, values)
+        c = conn.execute(cmd, values)
         result = []
         for row in c:
             result.append(row)
+        conn.close()
         return result
