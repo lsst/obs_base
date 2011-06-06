@@ -1,0 +1,39 @@
+#<?cfg paf policy ?>
+
+# Minimal mapper configuration policy
+
+needCalibRegistry: true
+calibRegistryPath: "tests/calibRegistry.sqlite3"
+exposures: {
+    raw: {
+        template:    "foo-%(ccd)02d.fits"
+        python:      "lsst.afw.image.ExposureU"
+        persistable: "ImageU"
+        level:       "Ccd"
+        tables:      "raw"
+    }
+}
+calibrations: {
+    flat: {
+        template:    "flat-%(derivedRunId)s-f%(filter)s.fits"
+        python:      "lsst.afw.image.ExposureF"
+        persistable: "ExposureF"
+        level:       "Amp"
+        tables:      "flat"
+        validRange:  true
+        reference:   "raw"
+        refCols:     "ccd"
+        refCols:     "visit"
+        columns:     "filter"
+        columns:     "taiObs"
+    }
+}
+datasets: {
+    src: {
+        template:    "src-v%(visit)d-c%(ccd)02d.boost"
+        python:      "lsst.afw.detection.PersistableSourceVector"
+        persistable: "PersistableSourceVector"
+        storage:     "BoostStorage"
+        tables:      "raw"
+    }
+}
