@@ -139,10 +139,10 @@ class Mapping(object):
         values = []
         fastPath = True
         for p in properties:
-            if p not in ('filter', 'taiObs', 'expTime'):
+            if p not in ('filter', 'expTime', 'taiObs'):
                 fastPath = False
                 break
-        if fastPath and dataId.has_key('visit'):
+        if fastPath and dataId.has_key('visit') and "raw" in self.tables:
             return self.registry.executeQuery(properties, ('raw_visit',),
                     [('visit', '?')], None, (dataId['visit'],))
         if dataId is not None:
