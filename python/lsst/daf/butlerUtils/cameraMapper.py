@@ -353,7 +353,8 @@ class CameraMapper(dafPersist.Mapper):
     def std_raw(self, item, dataId):
         """Standardize a raw dataset by converting it to an Exposure instead of an Image"""
         item = exposureFromImage(item)
-        return self._standardizeExposure(self.exposures['raw'], item, dataId)
+        return self._standardizeExposure(self.exposures['raw'], item, dataId,
+                trimmed=False)
 
     def map_skypolicy(self, dataId):
         """Map a sky policy."""
@@ -459,26 +460,30 @@ class CameraMapper(dafPersist.Mapper):
         return (self._extractDetectorName(dataId),
                 int(dataId['amp']), 0)
 
-    def _setAmpDetector(self, item, dataId):
+    def _setAmpDetector(self, item, dataId, trimmed=True):
         """Set the detector object in an Exposure for an amplifier.
         Defects are also added to the Exposure based on the detector object.
         @param[in,out] item (lsst.afw.image.Exposure)
-        @param dataId (dict) Dataset identifier"""
+        @param dataId (dict) Dataset identifier
+        @param trimmed (bool) Should detector be marked as trimmed?"""
 
         ampId = self._extractAmpId(dataId)
         detector = cameraGeomUtils.findAmp(
                 self.camera, afwCameraGeom.Id(ampId[0]), ampId[1], ampId[2])
+        detector.setTrimmed(trimmed)
         self._addDefects(dataId, amp=detector)
         item.setDetector(detector)
 
-    def _setCcdDetector(self, item, dataId):
+    def _setCcdDetector(self, item, dataId, trimmed=True):
         """Set the detector object in an Exposure for a CCD.
         Defects are also added to the Exposure based on the detector object.
         @param[in,out] item (lsst.afw.image.Exposure)
-        @param dataId (dict) Dataset identifier"""
+        @param dataId (dict) Dataset identifier
+        @param trimmed (bool) Should detector be marked as trimmed?"""
 
         ccdId = self._extractDetectorName(dataId)
         detector = cameraGeomUtils.findCcd(self.camera, afwCameraGeom.Id(ccdId))
+        detector.setTrimmed(trimmed)
         self._addDefects(dataId, ccd=detector)
         item.setDetector(detector)
 
@@ -524,21 +529,23 @@ class CameraMapper(dafPersist.Mapper):
 
 
     # Default standardization function for exposures
-    def _standardizeExposure(self, mapping, item, dataId, filter=True):
+    def _standardizeExposure(self, mapping, item, dataId, filter=True,
+            trimmed=True):
         """Default standardization function for images.
         @param mapping (lsst.daf.butlerUtils.Mapping)
         @param[in,out] item (lsst.afw.image.Exposure)
         @param dataId (dict) Dataset identifier
         @param filter (bool) Set filter?
+        @param trimmed (bool) Should detector be marked as trimmed?
         @return (lsst.afw.image.Exposure) the standardized Exposure"""
 
         if (re.search(r'Exposure', mapping.python) and re.search(r'Image',mapping.persistable)):
             item = exposureFromImage(item)
 
         if mapping.level.lower() == "amp":
-            self._setAmpDetector(item, dataId)
+            self._setAmpDetector(item, dataId, trimmed)
         elif mapping.level.lower() == "ccd":
-            self._setCcdDetector(item, dataId)
+            self._setCcdDetector(item, dataId, trimmed)
 
         if filter:
             self._setFilter(mapping, item, dataId)
