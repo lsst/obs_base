@@ -1,6 +1,0 @@
-setupRequired(daf_base >= 3.2.12)
-setupRequired(pex_logging >= 3.4.1)
-setupRequired(pex_policy >= 3.5)
-setupRequired(daf_persistence >= 3.3.12)
-
-envAppend(PYTHONPATH, ${PRODUCT_DIR}/python)
