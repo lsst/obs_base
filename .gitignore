@@ -1,0 +1,10 @@
+
+# /
+/.scon*
+/config.log
+
+# /doc/
+/doc/htmlDir
+
+# /tests/
+/tests/.tests
