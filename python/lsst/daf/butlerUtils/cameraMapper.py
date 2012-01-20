@@ -107,7 +107,7 @@ class CameraMapper(dafPersist.Mapper):
     defects (string): Path to defects directory from subclassing module's
     repository
 
-    filters (string): Path to filters policy file from subclassing module's
+    filters (string): Path to filters config file from subclassing module's
     repository
 
     exposures (policy): Exposure mappings (e.g., "raw", "postISR")
@@ -322,9 +322,9 @@ class CameraMapper(dafPersist.Mapper):
 
         # Filters
         if policy.exists('filters'):
-            filterPolicyLocation = os.path.join(repositoryDir, policy.getString('filters'))
-            filterPolicy = pexPolicy.Policy.createPolicy(filterPolicyLocation)
-            imageUtils.defineFiltersFromPolicy(filterPolicy, reset=True)
+            filterConfigLocation = os.path.join(repositoryDir, policy.getString('filters'))
+            filterConfig = pexConfig.Config.load(filterConfigLocation)
+            imageUtils.defineFilters(filterConfig)
 
         # Filter translation table
         self.filters = None
