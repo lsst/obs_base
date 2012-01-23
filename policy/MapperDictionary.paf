@@ -33,12 +33,6 @@ definitions: {
         description: "The pathname to the directory containing the defect policies and registry.  Relative to the repository containing this dictionary."
         maxOccurs: 1
     }
-    filters: {
-        type: string
-        description: "The pathname to the filter description (in PAF form).  Can be absolute or relative to the repository containing this dictionary."
-        maxOccurs: 1
-    }
-
     skytiles: {
         type: Policy
         description: "Sky tile setup"

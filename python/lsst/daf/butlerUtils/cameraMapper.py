@@ -320,12 +320,6 @@ class CameraMapper(dafPersist.Mapper):
             self.defectRegistry = \
                     Registry.create(defectRegistryLocation)
 
-        # Filters
-        if policy.exists('filters'):
-            filterConfigLocation = os.path.join(repositoryDir, policy.getString('filters'))
-            filterConfig = pexConfig.Config.load(filterConfigLocation)
-            imageUtils.defineFilters(filterConfig)
-
         # Filter translation table
         self.filters = None
 
