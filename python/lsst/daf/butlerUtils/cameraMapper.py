@@ -107,9 +107,6 @@ class CameraMapper(dafPersist.Mapper):
     defects (string): Path to defects directory from subclassing module's
     repository
 
-    filters (string): Path to filters config file from subclassing module's
-    repository
-
     exposures (policy): Exposure mappings (e.g., "raw", "postISR")
 
     needCalibRegistry (bool): True if a calibration registry is used
@@ -168,6 +165,19 @@ class CameraMapper(dafPersist.Mapper):
         dictPolicy = pexPolicy.Policy.createPolicy(dictFile,
                 dictFile.getRepositoryPath())
         policy.mergeDefaults(dictPolicy)
+
+        # Levels
+        self.levels = dict()
+        if policy.exists("levels"):
+            levelsPolicy = policy.getPolicy("levels")
+            for key in levelsPolicy.names(True):
+                self.levels[key] = set(levelsPolicy.getStringArray(key))
+        self.defaultLevel = policy.getString("defaultLevel")
+        self.defaultSubLevels = dict()
+        if policy.exists("defaultSubLevels"):
+            defaultSubLevelsPolicy = policy.getPolicy("defaultSubLevels")
+            for key in defaultSubLevelsPolicy.names(True):
+                self.defaultSubLevels[key] = defaultSubLevelsPolicy.getString(key)
 
         # Root directories
         if root is None:
@@ -330,6 +340,29 @@ class CameraMapper(dafPersist.Mapper):
         """Return supported keys.
         @return (iterable) List of keys usable in a dataset identifier"""
         return self.keySet
+
+    def getKeys(self, datasetType, level):
+        """Return supported keys for a given dataset type at a given level of
+        the key hierarchy.
+        @param datasetType (str) dataset type or None for all keys
+        @param level (str) level or None for all levels
+        @return (iterable) Set of keys usable in a dataset identifier"""
+        if datasetType is None:
+            keySet = self.keySet
+        else:
+            keySet = set(mappings[datasetType].keys())
+        if level is not None:
+            if self.levels.has_key(level):
+                keySet -= self.levels[level]
+        return keySet
+
+    def getDefaultLevel(self):
+        return self.defaultLevel
+
+    def getDefaultSubLevel(self, level):
+        if self.defaultSubLevels.has_key(level):
+            return self.defaultSubLevels[level]
+        return self.defaultLevel
 
     def map_camera(self, dataId):
         """Map a camera dataset."""

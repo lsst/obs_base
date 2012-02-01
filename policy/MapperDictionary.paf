@@ -23,6 +23,22 @@ definitions: {
         description: "The pathname to the calibration registry.  Can be absolute, relative to the root, or relative to the current directory."
         maxOccurs: 1
     }
+    levels: {
+        type: policy
+        description: "A subpolicy.  Names are the levels of the data identifier key hierarchy, values are lists of keys that are not relevant at that level."
+        maxOccurs: 1
+    }
+    defaultLevel: {
+        type: string
+        description: "The default level of the data identifier key hierarchy to use for butler.subset()."
+        minOccurs: 1
+        maxOccurs: 1
+    }
+    defaultSubLevels: {
+        type: policy
+        description: "A subpolicy.  Names are the levels of the data identifier key hierarchy, values are the default sublevel for dataRef.subItems()."
+        maxOccurs: 1
+    }
     camera: {
         type: string
         description: "The pathname to the camera description (in PAF form).  Can be absolute or relative to the repository containing this dictionary."

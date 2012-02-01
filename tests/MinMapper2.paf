@@ -4,6 +4,13 @@
 
 needCalibRegistry: true
 calibRegistryPath: "tests/calibRegistry.sqlite3"
+levels: {
+    visit: "ccd"
+}
+defaultLevel: "ccd"
+defaultSubLevels: {
+    visit: "ccd"
+}
 exposures: {
     raw: {
         template:    "foo-%(ccd)02d.fits"
