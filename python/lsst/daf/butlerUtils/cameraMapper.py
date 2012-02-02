@@ -231,6 +231,7 @@ class CameraMapper(dafPersist.Mapper):
                 ("calibrations", calMappingPolicy, CalibrationMapping),
                 ("datasets", dsMappingPolicy, DatasetMapping)
                 )
+        self.mappings = dict()
         for name, defPolicy, cls in mappingList:
             if policy.exists(name):
                 datasets = policy.getPolicy(name)
@@ -247,6 +248,7 @@ class CameraMapper(dafPersist.Mapper):
                                 self.registry, root, provided=provided)
                     self.keySet.update(mapping.keys())
                     mappings[datasetType] = mapping
+                    self.mappings[datasetType] = mapping
                     if not hasattr(self, "map_" + datasetType):
                         def mapClosure(dataId, mapper=self, mapping=mapping):
                             return mapping.map(mapper, dataId)
@@ -350,7 +352,7 @@ class CameraMapper(dafPersist.Mapper):
         if datasetType is None:
             keySet = self.keySet
         else:
-            keySet = set(mappings[datasetType].keys())
+            keySet = set(self.mappings[datasetType].keys())
         if level is not None:
             if self.levels.has_key(level):
                 keySet -= self.levels[level]
