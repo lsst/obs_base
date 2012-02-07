@@ -140,7 +140,7 @@ class CameraMapper(dafPersist.Mapper):
 
     def __init__(self, policy, repositoryDir,
                  root=None, registry=None, calibRoot=None, calibRegistry=None,
-                 provided=None):
+                 provided=None, outputRoot=None):
         """Initialize the CameraMapper.
         @param policy        (pexPolicy.Policy) Policy with per-camera defaults
                              already merged
@@ -153,6 +153,8 @@ class CameraMapper(dafPersist.Mapper):
         @param calibRegistry (string) Path to registry with calibrations'
                              metadata
         @param provided      (list of strings) Keys provided by the mapper
+        @param outputRoot    (string) Root directory for output data; all
+                             subdirectories of "root" are linked in here
         """
 
         dafPersist.Mapper.__init__(self)
@@ -182,6 +184,15 @@ class CameraMapper(dafPersist.Mapper):
         # Root directories
         if root is None:
             root = "."
+        if outputRoot is not None:
+            rootAbsolutePath = os.path.abspath(root)
+            if not os.path.exists(outputRoot):
+                os.mkdir(outputRoot)
+            for d in glob.iglob(os.path.join(root, "*")):
+                d = os.path.basename(d)
+                os.symlink(os.path.join(rootAbsolutePath, d),
+                        os.path.join(outputRoot, d))
+            root = outputRoot
         if calibRoot is None:
             if policy.exists('calibRoot'):
                 calibRoot = policy.getString('calibRoot')
