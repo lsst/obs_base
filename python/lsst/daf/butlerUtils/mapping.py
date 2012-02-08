@@ -82,10 +82,14 @@ class Mapping(object):
         self.root = root
 
         self.template = policy.getString("template") # Template path
-        self.keySet = set(re.findall(r'\%\((\w+)\)', self.template))
+        self.keyDict = dict([
+            (k, _formatMap(v, k, datasetType))
+            for k, v in
+            re.findall(r'\%\((\w+)\).*?([diouxXeEfFgGcrs])', self.template)
+            ])
         if provided is not None:
             for p in provided:
-                self.keySet.discard(p)
+                del self.keyDict[p]
         self.python = policy.getString("python") # Python type
         self.persistable = policy.getString("persistable") # Persistable type
         self.storage = policy.getString("storage")
@@ -101,8 +105,8 @@ class Mapping(object):
                 if policy.exists("obsTimeName") else None
 
     def keys(self):
-        """Return the set of keys required for this mapping."""
-        return self.keySet
+        """Return the dict of keys and value types required for this mapping."""
+        return self.keyDict
 
     def map(self, mapper, dataId):
         """Standard implementation of map function.
@@ -110,7 +114,7 @@ class Mapping(object):
         @param dataId (dict) Dataset identifier
         @return (lsst.daf.persistence.ButlerLocation)"""
 
-        actualId = self.need(self.keySet, dataId)
+        actualId = self.need(self.keyDict.iterkeys(), dataId)
         path = mapper._mapActualToPath(self.template, actualId)
         if not os.path.isabs(path):
             path = os.path.join(self.root, path)
@@ -193,6 +197,20 @@ class Mapping(object):
         for i, prop in enumerate(newProps):
             newId[prop] = lookups[0][i]
         return newId
+
+def _formatMap(ch, k, datasetType):
+    """Convert a format character into a Python type."""
+    if ch in "diouxX":
+        return int
+    elif ch in "eEfFgG":
+        return float
+    elif ch in "crs":
+        return str
+    else:
+        raise RuntimeError("Unexpected format specifier %s"
+                " for field %s in template for dataset %s" %
+                (ch, k, datasetType))
+
 
 class ExposureMapping(Mapping):
     """ExposureMapping is a Mapping subclass for normal exposures."""

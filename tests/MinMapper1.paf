@@ -2,6 +2,7 @@
 
 # Minimal mapper configuration policy
 
+defaultLevel: "sensor"
 datasets: {
     x: {
         template:    "foo-%(sensor)s.pickle"
