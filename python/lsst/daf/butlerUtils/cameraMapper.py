@@ -90,39 +90,11 @@ class CameraMapper(dafPersist.Mapper):
     for the amplifier within the CCD.  The default implementation just uses
     the amplifier number, which is assumed to be the same as the x coordinate.
 
-    The mapper's behaviors are largely specified by the policy file,
-    which consists of:
+    The mapper's behaviors are largely specified by the policy file.
+    See the MapperDictionary.paf for descriptions of the available items.
 
-    calibRoot (string, optional): Path to calibration files; must be provided
-    to the mapper if none is specified and calibration files exist
-
-    registryPath (string, optional): Path to the image registry -- absolute,
-    relative to the root path provided to the mapper, or relative to the
-    current directory if no root path is provided; must be provided to the
-    mapper if none is specified
-
-    camera (string): Path to camera geometry policy file from subclassing
-    module's repository
-
-    defects (string): Path to defects directory from subclassing module's
-    repository
-
-    exposures (policy): Exposure mappings (e.g., "raw", "postISR")
-
-    needCalibRegistry (bool): True if a calibration registry is used
-
-    If needCalibRegistry is true, the following is used:
-
-    calibRegistryPath (string, optional): Path to calibration registry --
-    absolute or relative to the calibration root path; must be provided to the
-    mapper if none is specified
-
-    calibrations (policy): Calibration mappings (e.g., "bias", "flat")
-
-    datasets (policy): Other, non-Exposure mappings
-
-    The 'exposures' and 'calibrations' policies consist of mappings
-    (see Mappings class).
+    The 'exposures', 'calibrations', and 'datasets' subpolicies configure
+    mappings (see Mappings class).
 
     Functions to map (provide a path to the data given a dataset
     identifier dictionary) and standardize (convert data into some standard
@@ -184,23 +156,27 @@ class CameraMapper(dafPersist.Mapper):
         # Root directories
         if root is None:
             root = "."
+        root = dafPersist.LogicalLocation(root).locString()
+
         if outputRoot is not None:
-            rootAbsolutePath = os.path.abspath(root)
             if not os.path.exists(outputRoot):
                 os.mkdir(outputRoot)
-            for d in glob.iglob(os.path.join(root, "*")):
-                d = os.path.basename(d)
-                os.symlink(os.path.join(rootAbsolutePath, d),
-                        os.path.join(outputRoot, d))
+            if os.path.exists(root):
+                rootAbsolutePath = os.path.abspath(root)
+                for src in glob.iglob(os.path.join(root, "*")):
+                    src = os.path.basename(src)
+                    dst = os.path.join(outputRoot, src)
+                    if not os.path.exists(dst):
+                        os.symlink(os.path.join(rootAbsolutePath, src), dst)
             root = outputRoot
+
         if calibRoot is None:
             if policy.exists('calibRoot'):
                 calibRoot = policy.getString('calibRoot')
+                calibRoot = dafPersist.LogicalLocation(calibRoot).locString()
             else:
                 calibRoot = root
-        # Do any location substitutions
-        root = dafPersist.LogicalLocation(root).locString()
-        calibRoot = dafPersist.LogicalLocation(calibRoot).locString()
+
         if not os.path.exists(root):
             self.log.log(pexLog.Log.WARN,
                     "Root directory not found: %s" % (root,))
@@ -233,8 +209,8 @@ class CameraMapper(dafPersist.Mapper):
         dsMappingPolicy = pexPolicy.Policy.createPolicy(dsMappingFile,
                 dsMappingFile.getRepositoryPath())
 
-        # Set of valid keys
-        self.keySet = set()
+        # Dict of valid keys and their value types
+        self.keyDict = dict()
 
         # Mappings
         mappingList = (
@@ -257,7 +233,7 @@ class CameraMapper(dafPersist.Mapper):
                     else:
                         mapping = cls(datasetType, subPolicy,
                                 self.registry, root, provided=provided)
-                    self.keySet.update(mapping.keys())
+                    self.keyDict.update(mapping.keys())
                     mappings[datasetType] = mapping
                     self.mappings[datasetType] = mapping
                     if not hasattr(self, "map_" + datasetType):
@@ -352,22 +328,24 @@ class CameraMapper(dafPersist.Mapper):
     def keys(self):
         """Return supported keys.
         @return (iterable) List of keys usable in a dataset identifier"""
-        return self.keySet
+        return self.keyDict.iterkeys()
 
     def getKeys(self, datasetType, level):
-        """Return supported keys for a given dataset type at a given level of
-        the key hierarchy.
+        """Return supported keys and their value types for a given dataset
+        type at a given level of the key hierarchy.
+
         @param datasetType (str) dataset type or None for all keys
         @param level (str) level or None for all levels
         @return (iterable) Set of keys usable in a dataset identifier"""
         if datasetType is None:
-            keySet = self.keySet
+            keyDict = self.keyDict
         else:
-            keySet = set(self.mappings[datasetType].keys())
-        if level is not None:
-            if self.levels.has_key(level):
-                keySet -= self.levels[level]
-        return keySet
+            keyDict = self.mappings[datasetType].keys()
+        if level is not None and level in self.levels:
+            for l in self.levels[level]:
+                if l in keyDict:
+                    del keyDict[l]
+        return keyDict
 
     def getDefaultLevel(self):
         return self.defaultLevel
