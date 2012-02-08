@@ -89,7 +89,7 @@ class Mapping(object):
             ])
         if provided is not None:
             for p in provided:
-                if self.keyDict.has_key(p):
+                if p in self.keyDict:
                     del self.keyDict[p]
         self.python = policy.getString("python") # Python type
         self.persistable = policy.getString("persistable") # Persistable type
