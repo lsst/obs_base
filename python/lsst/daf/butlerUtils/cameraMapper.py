@@ -167,8 +167,14 @@ class CameraMapper(dafPersist.Mapper):
                 for src in glob.iglob(os.path.join(root, "*")):
                     src = os.path.basename(src)
                     dst = os.path.join(outputRoot, src)
-                    if not os.path.exists(dst):
-                        os.symlink(os.path.join(rootAbsolutePath, src), dst)
+                    src = os.path.join(rootAbsolutePath, src)
+                    if os.path.exists(dst):
+                        if os.path.realpath(dst) != os.path.realpath(src):
+                            raise RuntimeError, "Output repository path " \
+                                    "'%s' already exists and differs from " \
+                                    "input repository path '%s'" % (dst, src)
+                    else:
+                        os.symlink(src, dst)
             root = outputRoot
 
         if calibRoot is None:
