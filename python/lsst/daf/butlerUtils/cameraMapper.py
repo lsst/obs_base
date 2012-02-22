@@ -161,20 +161,32 @@ class CameraMapper(dafPersist.Mapper):
 
         if outputRoot is not None:
             if not os.path.exists(outputRoot):
-                os.mkdir(outputRoot)
+                try:
+                    os.mkdir(outputRoot)
+                except:
+                    pass
+                if not os.path.exists(outputRoot):
+                    raise RuntimeError, "Unable to create output " \
+                            "repository '%s'" % (outputRoot,)
             if os.path.exists(root):
                 rootAbsolutePath = os.path.abspath(root)
                 for src in glob.iglob(os.path.join(root, "*")):
                     src = os.path.basename(src)
                     dst = os.path.join(outputRoot, src)
                     src = os.path.join(rootAbsolutePath, src)
+                    try:
+                        os.symlink(src, dst)
+                    except:
+                        pass
                     if os.path.exists(dst):
                         if os.path.realpath(dst) != os.path.realpath(src):
                             raise RuntimeError, "Output repository path " \
                                     "'%s' already exists and differs from " \
                                     "input repository path '%s'" % (dst, src)
                     else:
-                        os.symlink(src, dst)
+                        raise RuntimeError, "Unable to symlink from input " \
+                                "repository path '%s' to output repository " \
+                                "path '%s'" % (src, dst)
             root = outputRoot
 
         if calibRoot is None:
