@@ -373,7 +373,7 @@ class CameraMapper(dafPersist.Mapper):
     def getDefaultSubLevel(self, level):
         if self.defaultSubLevels.has_key(level):
             return self.defaultSubLevels[level]
-        return self.defaultLevel
+        return None
 
     def map_camera(self, dataId):
         """Map a camera dataset."""
