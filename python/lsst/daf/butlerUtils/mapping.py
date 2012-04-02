@@ -313,7 +313,7 @@ class CalibrationMapping(Mapping):
             if not columns:
                 # Nothing to lookup in reference registry; continue with calib
                 # registry
-                break
+                return Mapping.lookup(self, properties, newId)
 
             lookups = self.refRegistry.executeQuery(columns, self.reference,
                     where, None, values)
