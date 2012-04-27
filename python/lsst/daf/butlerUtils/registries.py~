@@ -162,7 +162,7 @@ class PgSQLRegistry(Registry):
             port = '5432'
 #        self.db = psycopg2.connect(host=host, port=port, database=db, user="kensaku", password="hsc_naoj")
 
-        self.db = DBAPI.connect(host=host, port=int(port), database=db, user="kensaku", password="hsc_naoj")
+        self.db = DBAPI.connect(host=host, port=port, database=db, user="kensaku", password="hsc_naoj")
         self.conn = self.db.cursor()
 
     def __del__(self):
@@ -190,7 +190,6 @@ class PgSQLRegistry(Registry):
 
         if not self.conn:
             return None
-
         cmd = "SELECT DISTINCT "
         cmd += ", ".join(returnFields)
         cmd += " FROM " + " NATURAL JOIN ".join(joinClause)
@@ -218,16 +217,7 @@ class PgSQLRegistry(Registry):
         c = self.conn.fetchall()
         result = []
         for row in c:
-            new_row=[]
-            for val in row:
-                new_val=''
-                if isinstance(val,unicode):
-                    new_val = str(val)
-                else:
-                    new_val = val
-
-                new_row.append(new_val)
-            result.append(new_row)
+            result.append(row)
 #            print result
         return result
 #####################################################################
