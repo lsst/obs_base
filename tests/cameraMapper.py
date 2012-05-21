@@ -144,6 +144,15 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getAdditionalData().toString(),
                 'ccd = 13\nheight = 400\nllcX = 200\nllcY = 100\nwidth = 300\n')
 
+        loc = self.mapper.map("raw_sub", {"ccd": 13, "bbox": bbox,
+            "imageOrigin": "PARENT"})
+        self.assertEqual(loc.getPythonType(), "lsst.afw.image.ExposureU")
+        self.assertEqual(loc.getCppType(), "ImageU")
+        self.assertEqual(loc.getStorageName(), "FitsStorage")
+        self.assertEqual(loc.getLocations(), ["tests/foo-13.fits"])
+        self.assertEqual(loc.getAdditionalData().toString(),
+                'ccd = 13\nheight = 400\nimageOrigin = "PARENT"\nllcX = 200\nllcY = 100\nwidth = 300\n')
+
     def testQueryMetadata(self):
         self.assertEqual(
                 self.mapper.queryMetadata("raw", "ccd", ["ccd"], None),

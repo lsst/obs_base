@@ -307,6 +307,9 @@ class CameraMapper(dafPersist.Mapper):
                                 loc.additionalData.set('llcY', llcY)
                                 loc.additionalData.set('width', width)
                                 loc.additionalData.set('height', height)
+                                if 'imageOrigin' in dataId:
+                                    loc.additionalData.set('imageOrigin',
+                                            dataId['imageOrigin'])
                                 return loc
                             setattr(self, subFunc, mapSubClosure)
                         if not hasattr(self, "query_" + datasetType + "_sub"):
