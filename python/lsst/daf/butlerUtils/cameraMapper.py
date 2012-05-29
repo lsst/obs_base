@@ -23,6 +23,7 @@
 
 import glob
 import os
+import errno
 import re
 
 import lsst.daf.persistence as dafPersist
@@ -159,9 +160,15 @@ class CameraMapper(dafPersist.Mapper):
             root = "."
         root = dafPersist.LogicalLocation(root).locString()
 
+        # Path manipulations are subject to race condition
         if outputRoot is not None:
             if not os.path.exists(outputRoot):
-                os.mkdir(outputRoot)
+                # Creation is subject to race condition; attempt to catch it
+                try:
+                    os.mkdir(outputRoot)
+                except OSError, e:
+                    if not e.errno == errno.EEXIST:
+                        raise
             if os.path.exists(root):
                 rootAbsolutePath = os.path.abspath(root)
                 for src in glob.iglob(os.path.join(root, "*")):
@@ -174,7 +181,13 @@ class CameraMapper(dafPersist.Mapper):
                                     "'%s' already exists and differs from " \
                                     "input repository path '%s'" % (dst, src)
                     else:
-                        os.symlink(src, dst)
+                        # Creation is subject to race condition; attempt to catch it
+                        try:
+                            os.symlink(src, dst)
+                        except OSError, e:
+                            if not e.errno == errno.EEXIST:
+                                raise
+                            
             root = outputRoot
 
         if calibRoot is None:
