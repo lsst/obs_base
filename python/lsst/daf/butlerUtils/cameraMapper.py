@@ -170,7 +170,7 @@ class CameraMapper(dafPersist.Mapper):
                             "repository '%s'" % (outputRoot,)
             if os.path.exists(root):
                 src = os.path.abspath(root)
-                dst = os.path.join(outputRoot, "parent")
+                dst = os.path.join(outputRoot, "_parent")
                 try:
                     os.symlink(src, dst)
                 except:
@@ -361,7 +361,7 @@ class CameraMapper(dafPersist.Mapper):
             return None
         path = path[len(dir)+1:]
         while not os.path.exists(os.path.join(dir, path)):
-            dir = os.path.join(dir, "parent")
+            dir = os.path.join(dir, "_parent")
             if not os.path.exists(dir):
                 return None
         return os.path.join(dir, path)
