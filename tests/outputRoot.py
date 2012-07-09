@@ -53,6 +53,7 @@ class OutputRootTestCase(unittest.TestCase):
     def setUp(self):
         try:
             subprocess.call(["rm", "-rf", "testOutput"])
+            subprocess.call(["rm", "-rf", "testOutput2"])
             subprocess.call(["rm", "-rf", "testInput1"])
             subprocess.call(["rm", "-rf", "testInput2"])
         except:
@@ -60,6 +61,7 @@ class OutputRootTestCase(unittest.TestCase):
 
     def tearDown(self):
         subprocess.call(["rm", "-rf", "testOutput"])
+        subprocess.call(["rm", "-rf", "testOutput2"])
         subprocess.call(["rm", "-rf", "testInput1"])
         subprocess.call(["rm", "-rf", "testInput2"])
 
@@ -67,21 +69,27 @@ class OutputRootTestCase(unittest.TestCase):
         mapper = MinMapper1(outputRoot="testOutput")
         self.assert_(os.path.exists("testOutput"))
         self.assert_(os.path.isdir("testOutput"))
-        self.assert_(os.path.islink("testOutput/MinMapper1.paf"))
-        self.assert_(os.path.islink("testOutput/outputRoot.py"))
+        self.assert_(os.path.islink("testOutput/parent"))
+        self.assert_(os.path.exists("testOutput/parent/MinMapper1.paf"))
+        self.assert_(os.path.exists("testOutput/parent/outputRoot.py"))
 
     def testReuseOutputRoot(self):
         mapper = MinMapper1(outputRoot="testOutput")
         self.assert_(os.path.exists("testOutput"))
         self.assert_(os.path.isdir("testOutput"))
-        self.assert_(os.path.islink("testOutput/MinMapper1.paf"))
-        self.assert_(os.path.islink("testOutput/outputRoot.py"))
+        self.assert_(os.path.islink("testOutput/parent"))
+        self.assert_(os.path.exists("testOutput/parent/MinMapper1.paf"))
+        self.assert_(os.path.exists("testOutput/parent/outputRoot.py"))
 
-        mapper = MinMapper1(root="testOutput", outputRoot="testOutput")
-        self.assert_(os.path.exists("testOutput"))
-        self.assert_(os.path.isdir("testOutput"))
-        self.assert_(os.path.islink("testOutput/MinMapper1.paf"))
-        self.assert_(os.path.islink("testOutput/outputRoot.py"))
+        self.assertRaises(RuntimeError, MinMapper1,
+                root="testOutput", outputRoot="testOutput")
+
+        mapper = MinMapper1(root="testOutput", outputRoot="testOutput2")
+        self.assert_(os.path.exists("testOutput2"))
+        self.assert_(os.path.isdir("testOutput2"))
+        self.assert_(os.path.islink("testOutput2/parent"))
+        self.assert_(os.path.exists("testOutput2/parent/parent/MinMapper1.paf"))
+        self.assert_(os.path.exists("testOutput2/parent/parent/outputRoot.py"))
 
     def testDiffInput(self):
         os.mkdir("testInput1")
@@ -93,7 +101,8 @@ class OutputRootTestCase(unittest.TestCase):
         mapper = MinMapper1(root="testInput1", outputRoot="testOutput")
         self.assert_(os.path.exists("testOutput"))
         self.assert_(os.path.isdir("testOutput"))
-        self.assert_(os.path.islink("testOutput/foo"))
+        self.assert_(os.path.islink("testOutput/parent"))
+        self.assert_(os.path.exists("testOutput/parent/foo"))
         self.assertRaises(RuntimeError, MinMapper1,
                 root="testInput2", outputRoot="testOutput")
         os.unlink("testInput1/foo")
