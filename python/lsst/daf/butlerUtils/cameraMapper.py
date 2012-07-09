@@ -258,6 +258,7 @@ class CameraMapper(dafPersist.Mapper):
                                 mapper=self, mapping=mapping):
                             return mapping.map(mapper, dataId, write)
                         setattr(self, "map_" + datasetType, mapClosure)
+                    if not hasattr(self, "query_" + datasetType):
                         def queryClosure(key, format, dataId, mapping=mapping):
                             return mapping.lookup(format, dataId)
                         setattr(self, "query_" + datasetType, queryClosure)
