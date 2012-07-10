@@ -169,24 +169,21 @@ class CameraMapper(dafPersist.Mapper):
                     raise RuntimeError, "Unable to create output " \
                             "repository '%s'" % (outputRoot,)
             if os.path.exists(root):
-                rootAbsolutePath = os.path.abspath(root)
-                for src in glob.iglob(os.path.join(root, "*")):
-                    src = os.path.basename(src)
-                    dst = os.path.join(outputRoot, src)
-                    src = os.path.join(rootAbsolutePath, src)
-                    try:
-                        os.symlink(src, dst)
-                    except:
-                        pass
-                    if os.path.exists(dst):
-                        if os.path.realpath(dst) != os.path.realpath(src):
-                            raise RuntimeError, "Output repository path " \
-                                    "'%s' already exists and differs from " \
-                                    "input repository path '%s'" % (dst, src)
-                    else:
-                        raise RuntimeError, "Unable to symlink from input " \
-                                "repository path '%s' to output repository " \
-                                "path '%s'" % (src, dst)
+                src = os.path.abspath(root)
+                dst = os.path.join(outputRoot, "_parent")
+                try:
+                    os.symlink(src, dst)
+                except:
+                    pass
+                if os.path.exists(dst):
+                    if os.path.realpath(dst) != os.path.realpath(src):
+                        raise RuntimeError, "Output repository path " \
+                                "'%s' already exists and differs from " \
+                                "input repository path '%s'" % (dst, src)
+                else:
+                    raise RuntimeError, "Unable to symlink from input " \
+                            "repository path '%s' to output repository " \
+                            "path '%s'" % (src, dst)
             root = outputRoot
 
         if calibRoot is None:
@@ -202,6 +199,7 @@ class CameraMapper(dafPersist.Mapper):
         if not os.path.exists(calibRoot):
             self.log.log(pexLog.Log.WARN,
                     "Calibration root directory not found: %s" % (calibRoot,))
+        self.root = root
 
         # Registries
         self.registry = self._setupRegistry(
@@ -256,9 +254,11 @@ class CameraMapper(dafPersist.Mapper):
                     mappings[datasetType] = mapping
                     self.mappings[datasetType] = mapping
                     if not hasattr(self, "map_" + datasetType):
-                        def mapClosure(dataId, mapper=self, mapping=mapping):
-                            return mapping.map(mapper, dataId)
+                        def mapClosure(dataId, write=False,
+                                mapper=self, mapping=mapping):
+                            return mapping.map(mapper, dataId, write)
                         setattr(self, "map_" + datasetType, mapClosure)
+                    if not hasattr(self, "query_" + datasetType):
                         def queryClosure(key, format, dataId, mapping=mapping):
                             return mapping.lookup(format, dataId)
                         setattr(self, "query_" + datasetType, queryClosure)
@@ -294,10 +294,10 @@ class CameraMapper(dafPersist.Mapper):
 
                         subFunc = expFunc + "_sub" # Function name to map subimage
                         if not hasattr(self, subFunc):
-                            def mapSubClosure(dataId, mapper=self, mapping=mapping):
+                            def mapSubClosure(dataId, write=False, mapper=self, mapping=mapping):
                                 subId = dataId.copy()
                                 del subId['bbox']
-                                loc = mapping.map(mapper, subId)
+                                loc = mapping.map(mapper, subId, write)
                                 bbox = dataId['bbox']
                                 llcX = bbox.getMinX()
                                 llcY = bbox.getMinY()
@@ -346,6 +346,26 @@ class CameraMapper(dafPersist.Mapper):
 
         # Skytile policy
         self.skypolicy = policy.getPolicy("skytiles")
+
+    def _parentSearch(self, path):
+        dir = self.root
+        if not path.startswith(dir):
+            # Search for prefix that is the same as root
+            dir, _ = os.path.split(path)
+            while dir != "" and dir != "/":
+                if os.path.abspath(dir) == os.path.abspath(self.root):
+                    break
+                dir, _ = os.path.split(dir)
+            # No prefix matching root
+            if os.path.exists(path):
+                return path
+            return None
+        path = path[len(dir)+1:]
+        while not os.path.exists(os.path.join(dir, path)):
+            dir = os.path.join(dir, "_parent")
+            if not os.path.exists(dir):
+                return None
+        return os.path.join(dir, path)
 
     def keys(self):
         """Return supported keys.
@@ -426,29 +446,29 @@ class CameraMapper(dafPersist.Mapper):
                     policy.getString(policyKey)).locString()
             if not os.path.exists(path):
                 if not os.path.isabs(path) and root is not None:
-                    rootedPath = os.path.join(root, path)
-                    if not os.path.exists(rootedPath):
+                    newPath = self._parentSearch(os.path.join(root, path))
+                    if newPath is None:
                         self.log.log(pexLog.Log.WARN,
                                 "Unable to locate registry at policy path (also looked in root): %s" % path)
-                        path = None
-                    else:
-                        path = rootedPath
+                    path = newPath
                 else:
                     self.log.log(pexLog.Log.WARN,
                             "Unable to locate registry at policy path: %s" % path)
                     path = None
         if path is None and root is not None:
             path = os.path.join(root, "%s.sqlite3" % name)
-            if not os.path.exists(path):
+            newPath = self._parentSearch(path)
+            if newPath is None:
                 self.log.log(pexLog.Log.WARN,
                         "Unable to locate %s registry in root: %s" % (name, path))
-                path = None
+            path = newPath
         if path is None:
-            path = "%s.sqlite3" % name
-            if not os.path.exists(path):
+            path = os.path.join(".", "%s.sqlite3" % name)
+            newPath = self._parentSearch(path)
+            if newPath is None:
                 self.log.log(pexLog.Log.WARN,
                         "Unable to locate %s registry in current dir: %s" % (name, path))
-                path = None
+            path = newPath
         if path is not None:
             if not os.path.exists(path):
                 newPath = self._parentSearch(path)

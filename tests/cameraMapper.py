@@ -76,7 +76,7 @@ class Mapper1TestCase(unittest.TestCase):
                              "badSourceHist_filename", "camera", "skypolicy"]))
 
     def testMap(self):
-        loc = self.mapper.map("x", {"sensor": "1,1"})
+        loc = self.mapper.map("x", {"sensor": "1,1"}, write=True)
         self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
         self.assertEqual(loc.getCppType(), "BoxI")
         self.assertEqual(loc.getStorageName(), "PickleStorage")
@@ -119,7 +119,7 @@ class Mapper2TestCase(unittest.TestCase):
                               "camera", "src", "src_filename", "skypolicy"]))
 
     def testMap(self):
-        loc = self.mapper.map("raw", {"ccd": 13})
+        loc = self.mapper.map("raw", {"ccd": 13}, write=True)
         self.assertEqual(loc.getPythonType(), "lsst.afw.image.ExposureU")
         self.assertEqual(loc.getCppType(), "ImageU")
         self.assertEqual(loc.getStorageName(), "FitsStorage")
@@ -136,7 +136,7 @@ class Mapper2TestCase(unittest.TestCase):
             # new afw (post-#1556) interface
             bbox = afwGeom.BoxI(afwGeom.Point2I(200, 100),
                     afwGeom.Extent2I(300, 400))
-        loc = self.mapper.map("raw_sub", {"ccd": 13, "bbox": bbox})
+        loc = self.mapper.map("raw_sub", {"ccd": 13, "bbox": bbox}, write=True)
         self.assertEqual(loc.getPythonType(), "lsst.afw.image.ExposureU")
         self.assertEqual(loc.getCppType(), "ImageU")
         self.assertEqual(loc.getStorageName(), "FitsStorage")
@@ -145,7 +145,7 @@ class Mapper2TestCase(unittest.TestCase):
                 'ccd = 13\nheight = 400\nllcX = 200\nllcY = 100\nwidth = 300\n')
 
         loc = self.mapper.map("raw_sub", {"ccd": 13, "bbox": bbox,
-            "imageOrigin": "PARENT"})
+            "imageOrigin": "PARENT"}, write=True)
         self.assertEqual(loc.getPythonType(), "lsst.afw.image.ExposureU")
         self.assertEqual(loc.getCppType(), "ImageU")
         self.assertEqual(loc.getStorageName(), "FitsStorage")
@@ -163,7 +163,7 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(self.mapper.canStandardize("notPresent"), False)
 
     def testCalib(self):
-        loc = self.mapper.map("flat", {"visit": 787650, "ccd": 13})
+        loc = self.mapper.map("flat", {"visit": 787650, "ccd": 13}, write=True)
         self.assertEqual(loc.getPythonType(), "lsst.afw.image.ExposureF")
         self.assertEqual(loc.getCppType(), "ExposureF")
         self.assertEqual(loc.getStorageName(), "FitsStorage")
