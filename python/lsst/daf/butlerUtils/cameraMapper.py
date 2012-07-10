@@ -450,6 +450,10 @@ class CameraMapper(dafPersist.Mapper):
                         "Unable to locate %s registry in current dir: %s" % (name, path))
                 path = None
         if path is not None:
+            if not os.path.exists(path):
+                newPath = self._parentSearch(path)
+                if newPath is not None:
+                    path = newPath
             self.log.log(pexLog.Log.INFO,
                     "Loading %s registry from %s" % (name, path))
             registry = Registry.create(path)

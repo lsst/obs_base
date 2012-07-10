@@ -59,7 +59,10 @@ class Registry(object):
         # if re.match(r'.*\.paf', location):
         #     return CalibRegistry(location)
         if haveSqlite3 and re.match(r'.*\.sqlite3', location):
-            return SqliteRegistry(location)
+            registry = SqliteRegistry(location)
+            if registry.conn is None:
+                return None
+            return registry
         # if re.match(r'mysql:', location):
         #     return DbRegistry(location)
         # return FsRegistry(location)
