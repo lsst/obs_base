@@ -41,10 +41,15 @@ except:
     except:
         haveSqlite3 = False
 
-##### Added by Takata #####
-#import psycopg2
-from pg8000 import DBAPI
-###########################
+try:
+    import psycopg2 as pgsql
+    havePgSql = True
+except ImportError:
+    try:
+        from pg8000 import DBAPI as pgsql
+        havePgSql = True
+    except ImportError:
+        havePgSql = False
 
 import lsst.pex.exceptions as pexExcept
 
@@ -69,10 +74,8 @@ class Registry(object):
         # if re.match(r'mysql:', location):
         #     return DbRegistry(location)
         # return FsRegistry(location)
-##########   Added by Takata  ############
         if re.match(r'pgsql:', location):
             return PgSQLRegistry(location)
-##########################################
         raise RuntimeError, \
                 "Unable to create registry using location: " + location
 
@@ -140,16 +143,16 @@ class SqliteRegistry(Registry):
 #            print result
         return result
 
-################################
-######   Added by Takata  ######
-################################
 class PgSQLRegistry(Registry):
     """A PostgreSQL-based registry."""
 
     def __init__(self, location):
         """Constructor.
-        @param location (string) Path to SQLite3 file"""
-
+        @param location (string) URL containing the PostgreSQL host, port, and database, of the form
+                                 'pgsql://<host>:<port>/<database>'
+        """
+        if not havePostgreSQL:
+            raise RuntimeError("Cannot use PgSQLRegistry: could not import pg8000")
         Registry.__init__(self)
         m = re.search("pgsql://(([A-Za-z0-9.-]+)(:([0-9]+))?)?/([A-Za-z0-9.-]+)", location)
         host = m.group(2)
@@ -160,9 +163,8 @@ class PgSQLRegistry(Registry):
             host = '133.40.210.104'
         if port is None:
             port = '5432'
-#        self.db = psycopg2.connect(host=host, port=port, database=db, user="kensaku", password="hsc_naoj")
-
-        self.db = DBAPI.connect(host=host, port=int(port), database=db, user="kensaku", password="hsc_naoj")
+        self.db = pgsql.connect(host=host, port=int(port), database=db,
+                                user="kensaku", password="hsc_naoj")
         self.conn = self.db.cursor()
 
     def __del__(self):
@@ -204,7 +206,8 @@ class PgSQLRegistry(Registry):
         if range is not None:
             range_pgsql = (values[i], 'validStart', 'validEnd')
 #            print range[0],range[1],range[2]
-            whereList.append("(select cast('%s' as date) BETWEEN cast(%s as date) AND cast(%s as date))" % range_pgsql)
+            whereList.append("(select cast('%s' as date) BETWEEN cast(%s as date) AND cast(%s as date))" 
+                             % range_pgsql)
         if len(whereList) > 0:
             cmd += " WHERE " + " AND ".join(whereList)
 
@@ -230,4 +233,4 @@ class PgSQLRegistry(Registry):
             result.append(new_row)
 #            print result
         return result
-#####################################################################
+

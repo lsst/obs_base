@@ -423,17 +423,9 @@ class CameraMapper(dafPersist.Mapper):
             path = dafPersist.LogicalLocation(
                     policy.getString(policyKey)).locString()
 
-            ####  Added by Takata ####
             if path.find('pgsql') != -1:
                 path = path + "/" + name
-            ##########################
-###############  Commented out by Takata  #############
-##            if not os.path.exists(path):
-#######################################################
-#######################################################
-            #### Added by Takata #####
             elif not os.path.exists(path):
-#######################################################
                 if not os.path.isabs(path) and root is not None:
                     rootedPath = os.path.join(root, path)
                     if not os.path.exists(rootedPath):
