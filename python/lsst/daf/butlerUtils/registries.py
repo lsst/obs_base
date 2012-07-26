@@ -75,7 +75,7 @@ class Registry(object):
         #     return DbRegistry(location)
         # return FsRegistry(location)
         if re.match(r'pgsql:', location):
-            return PgSQLRegistry(location)
+            return PgSqlRegistry(location)
         raise RuntimeError, \
                 "Unable to create registry using location: " + location
 
@@ -143,28 +143,26 @@ class SqliteRegistry(Registry):
 #            print result
         return result
 
-class PgSQLRegistry(Registry):
+class PgSqlConfig(Config):
+    host = Field(dtype=str, default="localhost", doc="hostname or IP address for database")
+    port = Field(dtype=int, default=5432, doc="port for database")
+    db = Field(dtype=str, doc="name of database for registry")
+    user = Field(dtype=str, doc="username for database")
+    password = Field(dtype=str, optional=True, doc="password for database")
+
+class PgSqlRegistry(Registry):
     """A PostgreSQL-based registry."""
 
-    def __init__(self, location):
+    def __init__(self, pgsqlConf):
         """Constructor.
         @param location (string) URL containing the PostgreSQL host, port, and database, of the form
                                  'pgsql://<host>:<port>/<database>'
         """
-        if not havePostgreSQL:
-            raise RuntimeError("Cannot use PgSQLRegistry: could not import pg8000")
+        if not havePgSql:
+            raise RuntimeError("Cannot use PgSqlRegistry: could not import psycopg2 or pg8000")
         Registry.__init__(self)
-        m = re.search("pgsql://(([A-Za-z0-9.-]+)(:([0-9]+))?)?/([A-Za-z0-9.-]+)", location)
-        host = m.group(2)
-        port = m.group(4)
-        db = m.group(5)
-#        print host, port, db
-        if host is None:
-            host = '133.40.210.104'
-        if port is None:
-            port = '5432'
-        self.db = pgsql.connect(host=host, port=int(port), database=db,
-                                user="kensaku", password="hsc_naoj")
+        self.db = pgsql.connect(host=pgsqlConf.host, port=pgsqlConf.port, database=pgsqlConf.db,
+                                user=pgsqlConf.user, password=pgsqlConf.password)
         self.conn = self.db.cursor()
 
     def __del__(self):

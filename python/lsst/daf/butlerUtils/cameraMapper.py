@@ -423,21 +423,11 @@ class CameraMapper(dafPersist.Mapper):
             path = dafPersist.LogicalLocation(
                     policy.getString(policyKey)).locString()
 
-            if path.find('pgsql') != -1:
-                path = path + "/" + name
-            elif not os.path.exists(path):
-                if not os.path.isabs(path) and root is not None:
-                    rootedPath = os.path.join(root, path)
-                    if not os.path.exists(rootedPath):
-                        self.log.log(pexLog.Log.WARN,
-                                "Unable to locate registry at policy path (also looked in root): %s" % path)
-                        path = None
-                    else:
-                        path = rootedPath
-                else:
-                    self.log.log(pexLog.Log.WARN,
-                            "Unable to locate registry at policy path: %s" % path)
-                    path = None
+        if path is None and root is not None:
+            path = os.path.join(root, "%s_pgsql.py" % name)
+            pgsqlConf = PgSqlConfig()
+            pgsqlConf.load(path)
+            return PgSqlRegistry(pgsqlConfig)
         if path is None and root is not None:
             path = os.path.join(root, "%s.sqlite3" % name)
             if not os.path.exists(path):
