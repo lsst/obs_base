@@ -166,7 +166,7 @@ class CameraMapper(dafPersist.Mapper):
         if outputRoot is not None:
             if not os.path.exists(outputRoot):
                 try:
-                    os.mkdir(outputRoot)
+                    os.makedirs(outputRoot)
                 except:
                     pass
                 if not os.path.exists(outputRoot):
