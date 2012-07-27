@@ -23,6 +23,7 @@
 
 import glob
 import os
+import errno
 import re
 
 import lsst.daf.persistence as dafPersist
@@ -35,6 +36,8 @@ import lsst.afw.cameraGeom.utils as cameraGeomUtils
 import lsst.afw.image.utils as imageUtils
 import lsst.pex.logging as pexLog
 import lsst.pex.policy as pexPolicy
+
+from .registries import PgSqlConfig, PgSqlRegistry
 
 """This module defines the CameraMapper base class."""
 
@@ -159,6 +162,7 @@ class CameraMapper(dafPersist.Mapper):
             root = "."
         root = dafPersist.LogicalLocation(root).locString()
 
+        # Path manipulations are subject to race condition
         if outputRoot is not None:
             if not os.path.exists(outputRoot):
                 try:
@@ -455,6 +459,11 @@ class CameraMapper(dafPersist.Mapper):
                     self.log.log(pexLog.Log.WARN,
                             "Unable to locate registry at policy path: %s" % path)
                     path = None
+        if path is None and root is not None:
+            path = os.path.join(root, "%s_pgsql.py" % name)
+            pgsqlConf = PgSqlConfig()
+            pgsqlConf.load(path)
+            return PgSqlRegistry(pgsqlConfig)
         if path is None and root is not None:
             path = os.path.join(root, "%s.sqlite3" % name)
             newPath = self._parentSearch(path)
