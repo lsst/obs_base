@@ -460,10 +460,11 @@ class CameraMapper(dafPersist.Mapper):
                             "Unable to locate registry at policy path: %s" % path)
                     path = None
         if path is None and root is not None:
-            path = os.path.join(root, "%s_pgsql.py" % name)
-            pgsqlConf = PgSqlConfig()
-            pgsqlConf.load(path)
-            return PgSqlRegistry(pgsqlConfig)
+            newPath = self._parentSearch(os.path.join(root, "%s_pgsql.py" % name))
+            if newPath is not None:
+                pgsqlConf = PgSqlConfig()
+                pgsqlConf.load(newPath)
+                return PgSqlRegistry(pgsqlConfig)
         if path is None and root is not None:
             path = os.path.join(root, "%s.sqlite3" % name)
             newPath = self._parentSearch(path)
