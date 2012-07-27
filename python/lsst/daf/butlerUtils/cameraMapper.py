@@ -37,6 +37,8 @@ import lsst.afw.image.utils as imageUtils
 import lsst.pex.logging as pexLog
 import lsst.pex.policy as pexPolicy
 
+from .registries import PgSqlConfig, PgSqlRegistry
+
 """This module defines the CameraMapper base class."""
 
 class CameraMapper(dafPersist.Mapper):
