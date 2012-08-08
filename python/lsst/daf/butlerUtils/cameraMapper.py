@@ -464,7 +464,7 @@ class CameraMapper(dafPersist.Mapper):
             if newPath is not None:
                 pgsqlConf = PgSqlConfig()
                 pgsqlConf.load(newPath)
-                return PgSqlRegistry(pgsqlConfig)
+                return PgSqlRegistry(pgsqlConf)
         if path is None and root is not None:
             path = os.path.join(root, "%s.sqlite3" % name)
             newPath = self._parentSearch(path)
