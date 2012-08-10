@@ -27,7 +27,8 @@ import errno
 import re
 
 import lsst.daf.persistence as dafPersist
-from lsst.daf.butlerUtils import ExposureMapping, CalibrationMapping, DatasetMapping, Registry
+from lsst.daf.butlerUtils import ExposureMapping, CalibrationMapping, DatasetMapping, Registry, \
+    PgSqlConfig, PgSqlRegistry
 import lsst.daf.base as dafBase
 import lsst.afw.geom as afwGeom
 import lsst.afw.image as afwImage
