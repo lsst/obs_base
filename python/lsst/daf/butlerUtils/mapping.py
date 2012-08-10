@@ -109,7 +109,7 @@ class Mapping(object):
         """Return the dict of keys and value types required for this mapping."""
         return self.keyDict
 
-    def map(self, mapper, dataId):
+    def map(self, mapper, dataId, write=False):
         """Standard implementation of map function.
         @param mapper (lsst.daf.persistence.Mapper)
         @param dataId (dict) Dataset identifier
@@ -119,6 +119,10 @@ class Mapping(object):
         path = mapper._mapActualToPath(self.template, actualId)
         if not os.path.isabs(path):
             path = os.path.join(self.root, path)
+        if not write:
+            newPath = mapper._parentSearch(path)
+            if newPath is not None:
+                path = newPath
 
         addFunc = "add_" + self.datasetType # Name of method for additionalData
         if hasattr(mapper, addFunc):
@@ -309,6 +313,11 @@ class CalibrationMapping(Mapping):
                     columns.discard(k)
             else:
                 columns = set(properties)
+
+            if not columns:
+                # Nothing to lookup in reference registry; continue with calib
+                # registry
+                return Mapping.lookup(self, properties, newId)
 
             lookups = self.refRegistry.executeQuery(columns, self.reference,
                     where, None, values)
