@@ -166,7 +166,7 @@ class CameraMapper(dafPersist.Mapper):
             if not os.path.exists(outputRoot):
                 # Creation is subject to race condition; attempt to catch it
                 try:
-                    os.mkdir(outputRoot)
+                    os.makedirs(outputRoot)
                 except OSError, e:
                     if not e.errno == errno.EEXIST:
                         raise
