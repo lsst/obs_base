@@ -51,6 +51,7 @@ except ImportError:
     except ImportError:
         havePgSql = False
 
+from lsst.pex.config import Config, Field
 import lsst.pex.exceptions as pexExcept
 
 class Registry(object):
