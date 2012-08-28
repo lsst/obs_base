@@ -23,6 +23,7 @@
 
 import glob
 import os
+import errno
 import re
 
 import lsst.daf.persistence as dafPersist
@@ -159,12 +160,14 @@ class CameraMapper(dafPersist.Mapper):
             root = "."
         root = dafPersist.LogicalLocation(root).locString()
 
+        # Path manipulations are subject to race condition
         if outputRoot is not None:
             if not os.path.exists(outputRoot):
                 try:
-                    os.mkdir(outputRoot)
-                except:
-                    pass
+                    os.makedirs(outputRoot)
+                except OSError, e:
+                    if not e.errno == errno.EEXIST:
+                        raise
                 if not os.path.exists(outputRoot):
                     raise RuntimeError, "Unable to create output " \
                             "repository '%s'" % (outputRoot,)
