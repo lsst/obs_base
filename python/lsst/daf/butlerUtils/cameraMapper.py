@@ -174,10 +174,11 @@ class CameraMapper(dafPersist.Mapper):
             if os.path.exists(root):
                 src = os.path.abspath(root)
                 dst = os.path.join(outputRoot, "_parent")
-                try:
-                    os.symlink(src, dst)
-                except:
-                    pass
+                if not os.path.exists(dst):
+                    try:
+                        os.symlink(src, dst)
+                    except:
+                        pass
                 if os.path.exists(dst):
                     if os.path.realpath(dst) != os.path.realpath(src):
                         raise RuntimeError, "Output repository path " \
@@ -187,6 +188,14 @@ class CameraMapper(dafPersist.Mapper):
                     raise RuntimeError, "Unable to symlink from input " \
                             "repository path '%s' to output repository " \
                             "path '%s'" % (src, dst)
+            src = os.path.join(outputRoot, "_parent", "_mapper.py")
+            if os.path.exists(src):
+                dst = os.path.join(outputRoot, "_mapper.py")
+                if not os.path.exists(dst):
+                    try:
+                        os.symlink(src, dst)
+                    except:
+                        pass
             root = outputRoot
 
         if calibRoot is None:
@@ -400,6 +409,15 @@ class CameraMapper(dafPersist.Mapper):
         if self.defaultSubLevels.has_key(level):
             return self.defaultSubLevels[level]
         return None
+
+    def getCameraName(self):
+        """Return the name of the camera that this CameraMapper is for."""
+        cls = str(self.__class__)
+        m = re.search(r'(\w+)Mapper', cls)
+        if m is None:
+            m = re.search(r"class '[\w.]*?(\w+)'", cls)
+        return m.group(1)
+
 
     def map_camera(self, dataId):
         """Map a camera dataset."""
