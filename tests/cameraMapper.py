@@ -103,6 +103,10 @@ class Mapper1TestCase(unittest.TestCase):
         self.assertEqual(isinstance(result, float), True)
         self.assertEqual(result, 3.14)
 
+    def testNames(self):
+        self.assertEqual(self.mapper.getCameraName(), "Min")
+        self.assertEqual(self.mapper.getEupsProductName(), "daf_butlerUtils")
+
 class Mapper2TestCase(unittest.TestCase):
     """A test case for the mapper used by the data butler."""
 
@@ -170,6 +174,10 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getLocations(), ["tests/flat-05Am03-fi.fits"])
         self.assertEqual(loc.getAdditionalData().toString(),
                 'ccd = 13\nderivedRunId = "05Am03"\nfilter = "i"\nvisit = 787650\n')
+
+    def testNames(self):
+        self.assertEqual(self.mapper.getCameraName(), "Min")
+        self.assertEqual(self.mapper.getEupsProductName(), "daf_butlerUtils")
 
 def suite():
     utilsTests.init()

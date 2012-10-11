@@ -22,6 +22,7 @@
 #
 
 import glob
+import importlib
 import os
 import errno
 import re
@@ -414,8 +415,9 @@ class CameraMapper(dafPersist.Mapper):
     def getEupsProductName(self):
         """Return the name of the EUPS product containing this CameraMapper."""
         modPath = importlib.import_module(self.__module__).__file__
-        for prod in eups.Eups().findProducts(tag=["setup"]):
-            if modPath.startswith(prod.dir):
+        modPath = os.path.realpath(modPath)
+        for prod in eups.Eups().findProducts(tags=["setup"]):
+            if modPath.startswith(os.path.realpath(prod.dir)):
                 return prod.name
         raise NotImplementedError(
                 "%s did not provide an eups product name, and one could not be discovered." %
