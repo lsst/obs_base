@@ -188,14 +188,6 @@ class CameraMapper(dafPersist.Mapper):
                     raise RuntimeError, "Unable to symlink from input " \
                             "repository path '%s' to output repository " \
                             "path '%s'" % (src, dst)
-            src = os.path.join(outputRoot, "_parent", "_mapper.py")
-            if os.path.exists(src):
-                dst = os.path.join(outputRoot, "_mapper.py")
-                if not os.path.exists(dst):
-                    try:
-                        os.symlink(src, dst)
-                    except:
-                        pass
             root = outputRoot
 
         if calibRoot is None:
