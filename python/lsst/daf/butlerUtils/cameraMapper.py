@@ -26,6 +26,7 @@ import os
 import errno
 import re
 
+import eups
 import lsst.daf.persistence as dafPersist
 from lsst.daf.butlerUtils import ExposureMapping, CalibrationMapping, DatasetMapping, Registry
 import lsst.daf.base as dafBase
@@ -410,6 +411,15 @@ class CameraMapper(dafPersist.Mapper):
             m = re.search(r"class '[\w.]*?(\w+)'", cls)
         return m.group(1)
 
+    def getEupsProductName(self):
+        """Return the name of the EUPS product containing this CameraMapper."""
+        modPath = importlib.import_module(self.__module__).__file__
+        for prod in eups.Eups().findProducts(tag=["setup"]):
+            if modPath.startswith(prod.dir):
+                return prod.name
+        raise NotImplementedError(
+                "%s did not provide an eups product name, and one could not be discovered." %
+                (str(self.__class__),))
 
     def map_camera(self, dataId):
         """Map a camera dataset."""
