@@ -410,7 +410,8 @@ class CameraMapper(dafPersist.Mapper):
         m = re.search(r'(\w+)Mapper', cls)
         if m is None:
             m = re.search(r"class '[\w.]*?(\w+)'", cls)
-        return m.group(1)
+        name = m.group(1)
+        return name[:1].lower() + name[1:] if name else ''
 
     def getEupsProductName(self):
         """Return the name of the EUPS product containing this CameraMapper."""
