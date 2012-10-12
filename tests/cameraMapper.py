@@ -104,7 +104,7 @@ class Mapper1TestCase(unittest.TestCase):
         self.assertEqual(result, 3.14)
 
     def testNames(self):
-        self.assertEqual(self.mapper.getCameraName(), "Min")
+        self.assertEqual(self.mapper.getCameraName(), "min")
         self.assertEqual(self.mapper.getEupsProductName(), "daf_butlerUtils")
 
 class Mapper2TestCase(unittest.TestCase):
@@ -176,7 +176,7 @@ class Mapper2TestCase(unittest.TestCase):
                 'ccd = 13\nderivedRunId = "05Am03"\nfilter = "i"\nvisit = 787650\n')
 
     def testNames(self):
-        self.assertEqual(self.mapper.getCameraName(), "Min")
+        self.assertEqual(self.mapper.getCameraName(), "min")
         self.assertEqual(self.mapper.getEupsProductName(), "daf_butlerUtils")
 
 def suite():
