@@ -22,10 +22,10 @@
 #
 
 import glob
-import importlib
 import os
 import errno
 import re
+import sys
 
 import eups
 import lsst.daf.persistence as dafPersist
@@ -415,8 +415,7 @@ class CameraMapper(dafPersist.Mapper):
 
     def getEupsProductName(self):
         """Return the name of the EUPS product containing this CameraMapper."""
-        modPath = importlib.import_module(self.__module__).__file__
-        modPath = os.path.realpath(modPath)
+        modPath = os.path.realpath(sys.modules[self.__module__].__file__)
         for prod in eups.Eups().findProducts(tags=["setup"]):
             if modPath.startswith(os.path.realpath(prod.dir)):
                 return prod.name
