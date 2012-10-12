@@ -404,24 +404,26 @@ class CameraMapper(dafPersist.Mapper):
             return self.defaultSubLevels[level]
         return None
 
-    def getCameraName(self):
+    @classmethod
+    def getCameraName(cls):
         """Return the name of the camera that this CameraMapper is for."""
-        cls = str(self.__class__)
-        m = re.search(r'(\w+)Mapper', cls)
+        className = str(cls)
+        m = re.search(r'(\w+)Mapper', className)
         if m is None:
-            m = re.search(r"class '[\w.]*?(\w+)'", cls)
+            m = re.search(r"class '[\w.]*?(\w+)'", className)
         name = m.group(1)
         return name[:1].lower() + name[1:] if name else ''
 
-    def getEupsProductName(self):
+    @classmethod
+    def getEupsProductName(cls):
         """Return the name of the EUPS product containing this CameraMapper."""
-        modPath = os.path.realpath(sys.modules[self.__module__].__file__)
+        modPath = os.path.realpath(sys.modules[cls.__module__].__file__)
         for prod in eups.Eups().findProducts(tags=["setup"]):
             if modPath.startswith(os.path.realpath(prod.dir)):
                 return prod.name
         raise NotImplementedError(
                 "%s did not provide an eups product name, and one could not be discovered." %
-                (str(self.__class__),))
+                (str(cls),))
 
     def map_camera(self, dataId):
         """Map a camera dataset."""
