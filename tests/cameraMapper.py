@@ -120,6 +120,7 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(set(self.mapper.getDatasetTypes()),
                          set(["flat", "flat_filename", "raw", "raw_md",
                              "raw_filename", "raw_sub",
+                             "some", "some_filename", "some_md", "some_sub",
                               "camera", "src", "src_filename", "skypolicy"]))
 
     def testMap(self):
