@@ -23,8 +23,8 @@ exposures: {
 images: {
     some: {
         template:    "bar-%(ccd)02d.fits"
-        python:      "lsst.afw.image.ImageF"
-        persistable: "ImageF"
+        python:      "lsst.afw.image.ExposureF"
+        persistable: "ExposureF"
         tables:      raw
     }
 }
