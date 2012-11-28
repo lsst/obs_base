@@ -120,6 +120,7 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(set(self.mapper.getDatasetTypes()),
                          set(["flat", "flat_filename", "raw", "raw_md",
                              "raw_filename", "raw_sub",
+                             "some", "some_filename", "some_md", "some_sub",
                               "camera", "src", "src_filename", "skypolicy"]))
 
     def testMap(self):
@@ -156,6 +157,20 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getLocations(), ["tests/foo-13.fits"])
         self.assertEqual(loc.getAdditionalData().toString(),
                 'ccd = 13\nheight = 400\nimageOrigin = "PARENT"\nllcX = 200\nllcY = 100\nwidth = 300\n')
+
+    def testImage(self):
+        loc = self.mapper.map("some", dict(ccd=35))
+        self.assertEqual(loc.getLocations(), ["tests/bar-35.fits"])
+
+        butler = dafPersist.ButlerFactory(mapper=self.mapper).create()
+        image = butler.get("some", ccd=35)
+        self.assertEqual(image.getFilter().getName(), "r")
+
+        bbox = afwGeom.BoxI(afwGeom.Point2I(200, 100),
+                    afwGeom.Extent2I(300, 400))
+        image = butler.get("some_sub", ccd=35, bbox=bbox)
+        self.assertEqual(image.getHeight(), 400)
+        self.assertEqual(image.getWidth(), 300)
 
     def testQueryMetadata(self):
         self.assertEqual(

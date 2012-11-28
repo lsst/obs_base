@@ -29,7 +29,7 @@ import sys
 
 import eups
 import lsst.daf.persistence as dafPersist
-from lsst.daf.butlerUtils import ExposureMapping, CalibrationMapping, DatasetMapping, Registry
+from lsst.daf.butlerUtils import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping, Registry
 import lsst.daf.base as dafBase
 import lsst.afw.geom as afwGeom
 import lsst.afw.image as afwImage
@@ -219,6 +219,10 @@ class CameraMapper(dafPersist.Mapper):
             calibRegistry = None
 
         # Sub-dictionaries (for exposure/calibration/dataset types)
+        imgMappingFile = pexPolicy.DefaultPolicyFile("daf_butlerUtils",
+                "ImageMappingDictionary.paf", "policy")
+        imgMappingPolicy = pexPolicy.Policy.createPolicy(imgMappingFile,
+                imgMappingFile.getRepositoryPath())
         expMappingFile = pexPolicy.DefaultPolicyFile("daf_butlerUtils",
                 "ExposureMappingDictionary.paf", "policy")
         expMappingPolicy = pexPolicy.Policy.createPolicy(expMappingFile,
@@ -237,6 +241,7 @@ class CameraMapper(dafPersist.Mapper):
 
         # Mappings
         mappingList = (
+                ("images", imgMappingPolicy, ImageMapping),
                 ("exposures", expMappingPolicy, ExposureMapping),
                 ("calibrations", calMappingPolicy, CalibrationMapping),
                 ("datasets", dsMappingPolicy, DatasetMapping)
@@ -284,7 +289,7 @@ class CameraMapper(dafPersist.Mapper):
                                 lambda datasetType, pythonType, location, dataId: location.getLocations())
 
                     # Set up metadata versions
-                    if name == "exposures":
+                    if name == "exposures" or name == "images":
                         expFunc = "map_" + datasetType # Function name to map exposure
                         mdFunc = expFunc + "_md"       # Function name to map metadata
                         bypassFunc = "bypass_" + datasetType + "_md" # Function name to bypass daf_persistence

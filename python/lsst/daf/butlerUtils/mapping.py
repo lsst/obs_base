@@ -217,6 +217,19 @@ def _formatMap(ch, k, datasetType):
                 (ch, k, datasetType))
 
 
+class ImageMapping(Mapping):
+    """ImageMapping is a Mapping subclass for non-camera images."""
+
+    def __init__(self, datasetType, policy, registry, root, **kwargs):
+        """Constructor for Mapping class.
+        @param datasetType    (string)
+        @param policy         (lsst.pex.policy.Policy) Mapping policy
+        @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
+        @param root           (string) Path of root directory"""
+        Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
+        self.columns = policy.getStringArray("columns") if policy.exists("columns") else None
+
+
 class ExposureMapping(Mapping):
     """ExposureMapping is a Mapping subclass for normal exposures."""
 

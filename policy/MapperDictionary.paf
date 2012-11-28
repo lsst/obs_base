@@ -58,18 +58,32 @@ definitions: {
     exposures: {
         type: policy
         # dictionary: @ExposureMappingDictionary.paf
-        description: "Data sets that are exposures"
+        description: "Data sets that are exposures (with Detectors)"
+	minOccurs: 0
+	maxOccurs: 1
+    }
+
+    images: {
+        type: policy
+        # dictionary: @ImageMappingDictionary.paf
+        description: "Data sets that are images (without Detectors)"
+	minOccurs: 0
+	maxOccurs: 1
     }
 
     calibrations: {
         type: policy
         # dictionary: @CalibrationMappingDictionary.paf
         description: "Data sets that are calibrations"
+	minOccurs: 0
+	maxOccurs: 1
     }                
 
     datasets: {
         type: policy
         # dictionary: @DatasetMappingDictionary.paf
         description: "Datasets that are not Exposures"
+	minOccurs: 0
+	maxOccurs: 1
     }
 }
