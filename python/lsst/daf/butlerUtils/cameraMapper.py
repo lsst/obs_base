@@ -359,19 +359,41 @@ class CameraMapper(dafPersist.Mapper):
         self.skypolicy = policy.getPolicy("skytiles")
 
     def _parentSearch(self, path):
+        """Look for the given path in the current root or any of its
+        parents; return None if it can't be found.  A little tricky because
+        the path may be in an alias of the root (e.g. ".") and because the
+        parent links go between the root and the rest of the path.
+        """
+
+        # Separate path into a root-equivalent prefix (in dir) and the rest
+        # (left in path)
         dir = self.root
-        if not path.startswith(dir):
+        while len(dir) > 1 and dir[-1] == '/':
+            dir = dir[:-1]
+        if path.startswith(dir + "/"):
+            # Common case; we have the same root prefix string
+            path = path[len(dir)+1:]
+        elif dir == "/" and path.startswith("/"):
+            path = path[1:]
+        else:
             # Search for prefix that is the same as root
-            dir, _ = os.path.split(path)
+            dir = os.path.dirname(path)
             while dir != "" and dir != "/":
-                if os.path.abspath(dir) == os.path.abspath(self.root):
+                if os.path.realpath(dir) == os.path.realpath(self.root):
                     break
-                dir, _ = os.path.split(dir)
-            # No prefix matching root
-            if os.path.exists(path):
-                return path
-            return None
-        path = path[len(dir)+1:]
+                dir = os.path.dirname(dir)
+            if os.path.realpath(dir) != os.path.realpath(self.root):
+                # No prefix matching root, don't search for parents
+                if os.path.exists(path):
+                    return path
+                return None
+            if dir == "/":
+                path = path[1:]
+            elif dir != "":
+                path = path[len(dir)+1:]
+            # If dir == "", then the current directory is the root
+
+        # Now search for the path in the root or its parents
         while not os.path.exists(os.path.join(dir, path)):
             dir = os.path.join(dir, "_parent")
             if not os.path.exists(dir):
