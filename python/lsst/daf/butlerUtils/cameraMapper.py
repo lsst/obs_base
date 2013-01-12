@@ -53,6 +53,15 @@ class CameraMapper(dafPersist.Mapper):
     Mappers for specific data sources (e.g., CFHT Megacam, LSST
     simulations, etc.) should inherit this class.
 
+    The CameraMapper manages datasets within a "root" directory.  It can also
+    be given an "outputRoot".  If so, the input root is linked into the
+    outputRoot directory using a symlink named "_parent"; writes go into the
+    outputRoot while reads can come from either the root or outputRoot.  As
+    outputRoots are used as inputs for further processing, the chain of
+    _parent links allows any dataset to be retrieved.  Note that writing to a
+    dataset present in the input root will hide the existing dataset but not
+    overwrite it.  See #2160 for design discussion.
+
     A camera is assumed to consist of one or more rafts, each composed of
     multiple CCDs.  Each CCD is in turn composed of one or more amplifiers
     (amps).  A camera is also assumed to have a camera geometry description
@@ -129,11 +138,7 @@ class CameraMapper(dafPersist.Mapper):
         @param calibRegistry (string) Path to registry with calibrations'
                              metadata
         @param provided      (list of strings) Keys provided by the mapper
-        @param outputRoot    (string) Root directory for output data; the
-                             input root is linked into this directory using
-                             a symlink named "_parent"; writes go into the
-                             outputRoot while reads can come from either the
-                             root or outputRoot
+        @param outputRoot    (string) Root directory for output data
         """
 
         dafPersist.Mapper.__init__(self)
