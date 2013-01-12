@@ -129,8 +129,11 @@ class CameraMapper(dafPersist.Mapper):
         @param calibRegistry (string) Path to registry with calibrations'
                              metadata
         @param provided      (list of strings) Keys provided by the mapper
-        @param outputRoot    (string) Root directory for output data; all
-                             subdirectories of "root" are linked in here
+        @param outputRoot    (string) Root directory for output data; the
+                             input root is linked into this directory using
+                             a symlink named "_parent"; writes go into the
+                             outputRoot while reads can come from either the
+                             root or outputRoot
         """
 
         dafPersist.Mapper.__init__(self)
@@ -359,10 +362,11 @@ class CameraMapper(dafPersist.Mapper):
         self.skypolicy = policy.getPolicy("skytiles")
 
     def _parentSearch(self, path):
-        """Look for the given path in the current root or any of its
-        parents; return None if it can't be found.  A little tricky because
-        the path may be in an alias of the root (e.g. ".") and because the
-        parent links go between the root and the rest of the path.
+        """Look for the given path in the current root or any of its parents
+        by following "_parent" symlinks; return None if it can't be found.  A
+        little tricky because the path may be in an alias of the root (e.g.
+        ".") and because the "_parent" links go between the root and the rest
+        of the path.
         """
 
         # Separate path into a root-equivalent prefix (in dir) and the rest
