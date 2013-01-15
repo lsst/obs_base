@@ -379,26 +379,28 @@ class CameraMapper(dafPersist.Mapper):
         dir = self.root
         while len(dir) > 1 and dir[-1] == '/':
             dir = dir[:-1]
-        if path.startswith(dir + "/"):
+        if path.startswith(dir + "/"): ### dir is a prefix of path, strip prefix and make it a relative path.
             # Common case; we have the same root prefix string
             path = path[len(dir)+1:]
-        elif dir == "/" and path.startswith("/"):
-            path = path[1:]
+        elif dir == "/" and path.startswith("/"): ### root is / and path is absolute
+            path = path[1:] ### make path -> relative
         else:
             # Search for prefix that is the same as root
-            dir = os.path.dirname(path)
-            while dir != "" and dir != "/":
+            dir = os.path.dirname(path) ### start with path's dirname
+            while dir != "" and dir != "/": ### until dir is empty
+                ### check to see if dir is the same as root (really)
                 if os.path.realpath(dir) == os.path.realpath(self.root):
                     break
-                dir = os.path.dirname(dir)
+                dir = os.path.dirname(dir) # otherwise, pop up dir
+
             if os.path.realpath(dir) != os.path.realpath(self.root):
                 # No prefix matching root, don't search for parents
                 if os.path.exists(path):
                     return path
                 return None
-            if dir == "/":
+            if dir == "/": ### match(after termination), root is / (covered earlier)
                 path = path[1:]
-            elif dir != "":
+            elif dir != "": ### If we found a match.
                 path = path[len(dir)+1:]
             # If dir == "", then the current directory is the root
 
