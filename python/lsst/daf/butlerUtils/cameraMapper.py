@@ -430,7 +430,7 @@ class CameraMapper(dafPersist.Mapper):
                 "%s did not provide an eups product name, and one could not be discovered." %
                 (str(cls),))
 
-    def map_camera(self, dataId):
+    def map_camera(self, dataId, write=False):
         """Map a camera dataset."""
         if self.cameraPolicyLocation is None:
             raise RuntimeError, "No camera dataset available."
