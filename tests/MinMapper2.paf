@@ -20,6 +20,14 @@ exposures: {
         tables:      "raw"
     }
 }
+images: {
+    some: {
+        template:    "bar-%(ccd)02d.fits"
+        python:      "lsst.afw.image.ExposureF"
+        persistable: "ExposureF"
+        tables:      raw
+    }
+}
 calibrations: {
     flat: {
         template:    "flat-%(derivedRunId)s-f%(filter)s.fits"

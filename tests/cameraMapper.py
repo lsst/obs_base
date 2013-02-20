@@ -103,6 +103,10 @@ class Mapper1TestCase(unittest.TestCase):
         self.assertEqual(isinstance(result, float), True)
         self.assertEqual(result, 3.14)
 
+    def testNames(self):
+        self.assertEqual(MinMapper1.getCameraName(), "min")
+        self.assertEqual(MinMapper1.getEupsProductName(), "daf_butlerUtils")
+
 class Mapper2TestCase(unittest.TestCase):
     """A test case for the mapper used by the data butler."""
 
@@ -116,6 +120,7 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(set(self.mapper.getDatasetTypes()),
                          set(["flat", "flat_filename", "raw", "raw_md",
                              "raw_filename", "raw_sub",
+                             "some", "some_filename", "some_md", "some_sub",
                               "camera", "src", "src_filename", "skypolicy"]))
 
     def testMap(self):
@@ -153,6 +158,20 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getAdditionalData().toString(),
                 'ccd = 13\nheight = 400\nimageOrigin = "PARENT"\nllcX = 200\nllcY = 100\nwidth = 300\n')
 
+    def testImage(self):
+        loc = self.mapper.map("some", dict(ccd=35))
+        self.assertEqual(loc.getLocations(), ["tests/bar-35.fits"])
+
+        butler = dafPersist.ButlerFactory(mapper=self.mapper).create()
+        image = butler.get("some", ccd=35)
+        self.assertEqual(image.getFilter().getName(), "r")
+
+        bbox = afwGeom.BoxI(afwGeom.Point2I(200, 100),
+                    afwGeom.Extent2I(300, 400))
+        image = butler.get("some_sub", ccd=35, bbox=bbox)
+        self.assertEqual(image.getHeight(), 400)
+        self.assertEqual(image.getWidth(), 300)
+
     def testQueryMetadata(self):
         self.assertEqual(
                 self.mapper.queryMetadata("raw", "ccd", ["ccd"], None),
@@ -170,6 +189,10 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getLocations(), ["tests/flat-05Am03-fi.fits"])
         self.assertEqual(loc.getAdditionalData().toString(),
                 'ccd = 13\nderivedRunId = "05Am03"\nfilter = "i"\nvisit = 787650\n')
+
+    def testNames(self):
+        self.assertEqual(MinMapper2.getCameraName(), "min")
+        self.assertEqual(MinMapper2.getEupsProductName(), "daf_butlerUtils")
 
 def suite():
     utilsTests.init()

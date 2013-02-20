@@ -25,9 +25,11 @@ import glob
 import os
 import errno
 import re
+import sys
 
+import eups
 import lsst.daf.persistence as dafPersist
-from lsst.daf.butlerUtils import ExposureMapping, CalibrationMapping, DatasetMapping, Registry, \
+from lsst.daf.butlerUtils import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping, Registry,\
     PgSqlConfig, PgSqlRegistry
 import lsst.daf.base as dafBase
 import lsst.afw.geom as afwGeom
@@ -177,10 +179,11 @@ class CameraMapper(dafPersist.Mapper):
             if os.path.exists(root):
                 src = os.path.abspath(root)
                 dst = os.path.join(outputRoot, "_parent")
-                try:
-                    os.symlink(src, dst)
-                except:
-                    pass
+                if not os.path.exists(dst):
+                    try:
+                        os.symlink(src, dst)
+                    except:
+                        pass
                 if os.path.exists(dst):
                     if os.path.realpath(dst) != os.path.realpath(src):
                         raise RuntimeError, "Output repository path " \
@@ -219,6 +222,10 @@ class CameraMapper(dafPersist.Mapper):
             calibRegistry = None
 
         # Sub-dictionaries (for exposure/calibration/dataset types)
+        imgMappingFile = pexPolicy.DefaultPolicyFile("daf_butlerUtils",
+                "ImageMappingDictionary.paf", "policy")
+        imgMappingPolicy = pexPolicy.Policy.createPolicy(imgMappingFile,
+                imgMappingFile.getRepositoryPath())
         expMappingFile = pexPolicy.DefaultPolicyFile("daf_butlerUtils",
                 "ExposureMappingDictionary.paf", "policy")
         expMappingPolicy = pexPolicy.Policy.createPolicy(expMappingFile,
@@ -237,6 +244,7 @@ class CameraMapper(dafPersist.Mapper):
 
         # Mappings
         mappingList = (
+                ("images", imgMappingPolicy, ImageMapping),
                 ("exposures", expMappingPolicy, ExposureMapping),
                 ("calibrations", calMappingPolicy, CalibrationMapping),
                 ("datasets", dsMappingPolicy, DatasetMapping)
@@ -284,7 +292,7 @@ class CameraMapper(dafPersist.Mapper):
                                 lambda datasetType, pythonType, location, dataId: location.getLocations())
 
                     # Set up metadata versions
-                    if name == "exposures":
+                    if name == "exposures" or name == "images":
                         expFunc = "map_" + datasetType # Function name to map exposure
                         mdFunc = expFunc + "_md"       # Function name to map metadata
                         bypassFunc = "bypass_" + datasetType + "_md" # Function name to bypass daf_persistence
