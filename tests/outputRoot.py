@@ -51,13 +51,11 @@ class OutputRootTestCase(unittest.TestCase):
     """A test case for output roots."""
 
     def setUp(self):
-        try:
-            subprocess.call(["rm", "-rf", "testOutput"])
-            subprocess.call(["rm", "-rf", "testOutput2"])
-            subprocess.call(["rm", "-rf", "testInput1"])
-            subprocess.call(["rm", "-rf", "testInput2"])
-        except:
-            pass
+        # Note: these will succeed even if the directories don't exist.
+        subprocess.call(["rm", "-rf", "testOutput"])
+        subprocess.call(["rm", "-rf", "testOutput2"])
+        subprocess.call(["rm", "-rf", "testInput1"])
+        subprocess.call(["rm", "-rf", "testInput2"])
 
     def tearDown(self):
         subprocess.call(["rm", "-rf", "testOutput"])

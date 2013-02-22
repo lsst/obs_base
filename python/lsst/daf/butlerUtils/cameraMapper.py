@@ -179,7 +179,7 @@ class CameraMapper(dafPersist.Mapper):
                 if not os.path.exists(dst):
                     try:
                         os.symlink(src, dst)
-                    except:
+                    except OSError:
                         pass
                 if os.path.exists(dst):
                     if os.path.realpath(dst) != os.path.realpath(src):

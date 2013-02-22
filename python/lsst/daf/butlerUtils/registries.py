@@ -34,11 +34,11 @@ import re
 try:
     import sqlite as sqlite3
     haveSqlite3 = True
-except:
+except ImportError:
     try:
         import sqlite3
         haveSqlite3 = True
-    except:
+    except ImportError:
         haveSqlite3 = False
 import lsst.pex.exceptions as pexExcept
 
