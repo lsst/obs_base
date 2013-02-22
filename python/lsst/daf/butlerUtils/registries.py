@@ -86,10 +86,6 @@ class SqliteRegistry(Registry):
         else:
             self.conn = None
 
-    def __del__(self):
-        if self.conn:
-            self.conn.close()
-
     def executeQuery(self, returnFields, joinClause, whereFields, range,
             values):
         """Extract metadata from the registry.
