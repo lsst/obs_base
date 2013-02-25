@@ -729,9 +729,10 @@ def exposureFromImage(image):
     md = image.getMetadata()
     exposure.setMetadata(md)
     wcs = afwImage.makeWcs(md)
-    exposure.setWcs(wcs)
-    wcsMetadata = wcs.getFitsMetadata()
-    for kw in wcsMetadata.paramNames():
-        md.remove(kw)
+    if wcs is not None:
+        exposure.setWcs(wcs)
+        wcsMetadata = wcs.getFitsMetadata()
+        for kw in wcsMetadata.paramNames():
+            md.remove(kw)
 
     return exposure
