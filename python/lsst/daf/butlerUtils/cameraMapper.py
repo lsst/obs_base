@@ -677,8 +677,11 @@ class CameraMapper(dafPersist.Mapper):
                 (ccdSerial, taiObs))
         if not rows or len(rows) == 0:
             return None
-        assert len(rows) == 1
-        return os.path.join(self.defectPath, rows[0][0])
+        if len(rows) == 1:
+            return os.path.join(self.defectPath, rows[0][0])
+        else:
+            raise RuntimeError("Querying for defects (%s, %s) returns %d files: %s" %
+                               (ccdSerial, taiObs, len(rows), ", ".join([_[0] for _ in rows])))
 
     def _addDefects(self, dataId, amp=None, ccd=None):
         """Add the defects for an amplifier or a CCD to the detector object
