@@ -945,6 +945,7 @@ def exposureFromImage(image):
     md = image.getMetadata()
     exposure.setMetadata(md)
     wcs = afwImage.makeWcs(md, True)
-    exposure.setWcs(wcs)
+    if wcs is not None:
+        exposure.setWcs(wcs)
 
     return exposure
