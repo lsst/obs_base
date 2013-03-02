@@ -53,6 +53,15 @@ class CameraMapper(dafPersist.Mapper):
     Mappers for specific data sources (e.g., CFHT Megacam, LSST
     simulations, etc.) should inherit this class.
 
+    The CameraMapper manages datasets within a "root" directory.  It can also
+    be given an "outputRoot".  If so, the input root is linked into the
+    outputRoot directory using a symlink named "_parent"; writes go into the
+    outputRoot while reads can come from either the root or outputRoot.  As
+    outputRoots are used as inputs for further processing, the chain of
+    _parent links allows any dataset to be retrieved.  Note that writing to a
+    dataset present in the input root will hide the existing dataset but not
+    overwrite it.  See #2160 for design discussion.
+
     A camera is assumed to consist of one or more rafts, each composed of
     multiple CCDs.  Each CCD is in turn composed of one or more amplifiers
     (amps).  A camera is also assumed to have a camera geometry description
@@ -129,8 +138,7 @@ class CameraMapper(dafPersist.Mapper):
         @param calibRegistry (string) Path to registry with calibrations'
                              metadata
         @param provided      (list of strings) Keys provided by the mapper
-        @param outputRoot    (string) Root directory for output data; all
-                             subdirectories of "root" are linked in here
+        @param outputRoot    (string) Root directory for output data
         """
 
         dafPersist.Mapper.__init__(self)
@@ -162,8 +170,8 @@ class CameraMapper(dafPersist.Mapper):
             root = "."
         root = dafPersist.LogicalLocation(root).locString()
 
-        # Path manipulations are subject to race condition
         if outputRoot is not None:
+            # Path manipulations are subject to race condition
             if not os.path.exists(outputRoot):
                 try:
                     os.makedirs(outputRoot)
@@ -174,6 +182,7 @@ class CameraMapper(dafPersist.Mapper):
                     raise RuntimeError, "Unable to create output " \
                             "repository '%s'" % (outputRoot,)
             if os.path.exists(root):
+                # Symlink existing input root to "_parent" in outputRoot.
                 src = os.path.abspath(root)
                 dst = os.path.join(outputRoot, "_parent")
                 if not os.path.exists(dst):
@@ -190,6 +199,8 @@ class CameraMapper(dafPersist.Mapper):
                     raise RuntimeError, "Unable to symlink from input " \
                             "repository path '%s' to output repository " \
                             "path '%s'" % (src, dst)
+            # We now use the outputRoot as the main root with access to the
+            # input via "_parent".
             root = outputRoot
 
         if calibRoot is None:
@@ -359,19 +370,48 @@ class CameraMapper(dafPersist.Mapper):
         self.skypolicy = policy.getPolicy("skytiles")
 
     def _parentSearch(self, path):
-        dir = self.root
-        if not path.startswith(dir):
+        """Look for the given path in the current root or any of its parents
+        by following "_parent" symlinks; return None if it can't be found.  A
+        little tricky because the path may be in an alias of the root (e.g.
+        ".") and because the "_parent" links go between the root and the rest
+        of the path.
+        """
+
+        # Separate path into a root-equivalent prefix (in dir) and the rest
+        # (left in path)
+        rootDir = self.root
+
+        # First remove trailing slashes (#2527)
+        while len(rootDir) > 1 and rootDir[-1] == '/':
+            rootDir = rootDir[:-1]
+
+        if path.startswith(rootDir + "/"):
+            # Common case; we have the same root prefix string
+            path = path[len(rootDir)+1:]
+            dir = rootDir
+        elif rootDir == "/" and path.startswith("/"):
+            path = path[1:]
+            dir = rootDir
+        else:
             # Search for prefix that is the same as root
-            dir, _ = os.path.split(path)
-            while dir != "" and dir != "/":
-                if os.path.abspath(dir) == os.path.abspath(self.root):
+            pathPrefix = os.path.dirname(path)
+            while pathPrefix != "" and pathPrefix != "/":
+                if os.path.realpath(pathPrefix) == os.path.realpath(self.root):
                     break
-                dir, _ = os.path.split(dir)
-            # No prefix matching root
-            if os.path.exists(path):
-                return path
-            return None
-        path = path[len(dir)+1:]
+                pathPrefix = os.path.dirname(pathPrefix)
+            if os.path.realpath(pathPrefix) != os.path.realpath(self.root):
+                # No prefix matching root, don't search for parents
+                if os.path.exists(path):
+                    return path
+                return None
+            if pathPrefix == "/":
+                path = path[1:]
+            elif pathPrefix != "":
+                path = path[len(pathPrefix)+1:]
+            # If pathPrefix == "", then the current directory is the root
+            dir = pathPrefix
+
+        # Now search for the path in the root or its parents
         while not os.path.exists(os.path.join(dir, path)):
             dir = os.path.join(dir, "_parent")
             if not os.path.exists(dir):
