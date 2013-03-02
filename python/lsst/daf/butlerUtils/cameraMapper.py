@@ -170,8 +170,8 @@ class CameraMapper(dafPersist.Mapper):
             root = "."
         root = dafPersist.LogicalLocation(root).locString()
 
-        # Path manipulations are subject to race condition
         if outputRoot is not None:
+            # Path manipulations are subject to race condition
             if not os.path.exists(outputRoot):
                 try:
                     os.makedirs(outputRoot)
@@ -182,6 +182,7 @@ class CameraMapper(dafPersist.Mapper):
                     raise RuntimeError, "Unable to create output " \
                             "repository '%s'" % (outputRoot,)
             if os.path.exists(root):
+                # Symlink existing input root to "_parent" in outputRoot.
                 src = os.path.abspath(root)
                 dst = os.path.join(outputRoot, "_parent")
                 if not os.path.exists(dst):
@@ -198,6 +199,8 @@ class CameraMapper(dafPersist.Mapper):
                     raise RuntimeError, "Unable to symlink from input " \
                             "repository path '%s' to output repository " \
                             "path '%s'" % (src, dst)
+            # We now use the outputRoot as the main root with access to the
+            # input via "_parent".
             root = outputRoot
 
         if calibRoot is None:
@@ -376,31 +379,37 @@ class CameraMapper(dafPersist.Mapper):
 
         # Separate path into a root-equivalent prefix (in dir) and the rest
         # (left in path)
-        dir = self.root
-        while len(dir) > 1 and dir[-1] == '/':
-            dir = dir[:-1]
-        if path.startswith(dir + "/"):
+        rootDir = self.root
+
+        # First remove trailing slashes (#2527)
+        while len(rootDir) > 1 and rootDir[-1] == '/':
+            rootDir = rootDir[:-1]
+
+        if path.startswith(rootDir + "/"):
             # Common case; we have the same root prefix string
-            path = path[len(dir)+1:]
-        elif dir == "/" and path.startswith("/"):
+            path = path[len(rootDir)+1:]
+            dir = rootDir
+        elif rootDir == "/" and path.startswith("/"):
             path = path[1:]
+            dir = rootDir
         else:
             # Search for prefix that is the same as root
-            dir = os.path.dirname(path)
-            while dir != "" and dir != "/":
-                if os.path.realpath(dir) == os.path.realpath(self.root):
+            pathPrefix = os.path.dirname(path)
+            while pathPrefix != "" and pathPrefix != "/":
+                if os.path.realpath(pathPrefix) == os.path.realpath(self.root):
                     break
-                dir = os.path.dirname(dir)
-            if os.path.realpath(dir) != os.path.realpath(self.root):
+                pathPrefix = os.path.dirname(pathPrefix)
+            if os.path.realpath(pathPrefix) != os.path.realpath(self.root):
                 # No prefix matching root, don't search for parents
                 if os.path.exists(path):
                     return path
                 return None
-            if dir == "/":
+            if pathPrefix == "/":
                 path = path[1:]
-            elif dir != "":
-                path = path[len(dir)+1:]
-            # If dir == "", then the current directory is the root
+            elif pathPrefix != "":
+                path = path[len(pathPrefix)+1:]
+            # If pathPrefix == "", then the current directory is the root
+            dir = pathPrefix
 
         # Now search for the path in the root or its parents
         while not os.path.exists(os.path.join(dir, path)):
