@@ -401,7 +401,6 @@ class CameraMapper(dafPersist.Mapper):
             n += 1
             oldPaths.append((n, path))
             path = self._parentSearch("%s~%d" % (newPath, n))
-        print "BACKUP PATHS:", oldPaths
         for n, oldPath in reversed(oldPaths):
             shutil.copy(oldPath, "%s~%d" % (newPath, n))
 
