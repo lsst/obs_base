@@ -34,11 +34,11 @@ import re
 try:
     import sqlite as sqlite3
     haveSqlite3 = True
-except:
+except ImportError:
     try:
         import sqlite3
         haveSqlite3 = True
-    except:
+    except ImportError:
         haveSqlite3 = False
 
 try:
@@ -100,10 +100,6 @@ class SqliteRegistry(Registry):
             self.conn.text_factory = str
         else:
             self.conn = None
-
-    def __del__(self):
-        if self.conn:
-            self.conn.close()
 
     def executeQuery(self, returnFields, joinClause, whereFields, range,
             values):
