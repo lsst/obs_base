@@ -30,6 +30,7 @@ import cPickle
 import glob
 import os
 import subprocess
+import pickle
 
 import lsst.afw.geom as afwGeom
 import lsst.pex.policy as pexPolicy
@@ -152,6 +153,31 @@ class OutputRootTestCase(unittest.TestCase):
         os.rmdir("testInput1")
         os.rmdir("testInput2")
 
+    def testBackup(self):
+        mapper1 = MinMapper1(outputRoot="testOutput")
+        butler1 = dafPersist.Butler(root=None, mapper=mapper1)
+        b1 = afwGeom.Box2I(afwGeom.Point2I(3,4), afwGeom.Point2I(7,6))
+        butler1.put(b1, "x")
+        self.assert_(os.path.exists("testOutput/foo-1,1.pickle"))
+        b2 = afwGeom.Box2I(b1)
+        b2.grow(1)
+        butler1.put(b2, "x", doBackup=True)
+        self.assert_(os.path.exists("testOutput/foo-1,1.pickle"))
+        self.assert_(os.path.exists("testOutput/foo-1,1.pickle~1"))
+        mapper2 = MinMapper1(root="testOutput", outputRoot="testOutput2")
+        butler2 = dafPersist.Butler(root=None, mapper=mapper2)
+        b3 = afwGeom.Box2I(b2)
+        b3.grow(1)
+        butler2.put(b3, "x", doBackup=True)
+        self.assert_(os.path.exists("testOutput2/foo-1,1.pickle"))
+        self.assert_(os.path.exists("testOutput2/foo-1,1.pickle~1"))
+        self.assert_(os.path.exists("testOutput2/foo-1,1.pickle~2"))
+        b1Check = pickle.load(open("testOutput2/foo-1,1.pickle~2"))
+        b2Check = pickle.load(open("testOutput2/foo-1,1.pickle~1"))
+        b3Check = pickle.load(open("testOutput2/foo-1,1.pickle"))
+        self.assertEqual(b1Check, b1)
+        self.assertEqual(b2Check, b2)
+        self.assertEqual(b3Check, b3)
 
 def suite():
     utilsTests.init()

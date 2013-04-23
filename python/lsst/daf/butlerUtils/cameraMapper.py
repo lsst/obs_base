@@ -26,6 +26,7 @@ import os
 import errno
 import re
 import sys
+import shutil
 
 import eups
 import lsst.daf.persistence as dafPersist
@@ -418,6 +419,31 @@ class CameraMapper(dafPersist.Mapper):
                 return None
         return os.path.join(dir, path)
 
+    def backup(self, datasetType, dataId):
+        """Rename any existing object with the given type and dataId.
+
+        The CameraMapper implementation saves objects in a sequence of e.g.:
+          foo.fits
+          foo.fits~1
+          foo.fits~2
+        All of the backups will be placed in the output repo, however, and will
+        not be removed if they are found elsewhere in the _parent chain.  This
+        means that the same file to be stored twice if the previous version was
+        found in an input repo.
+        """
+        n = 0
+        suffix = ""
+        newLocation = self.map(datasetType, dataId, write=True)
+        newPath = newLocation.getLocations()[0]
+        path = self._parentSearch(newPath)
+        oldPaths = []
+        while path is not None:
+            n += 1
+            oldPaths.append((n, path))
+            path = self._parentSearch("%s~%d" % (newPath, n))
+        for n, oldPath in reversed(oldPaths):
+            shutil.copy(oldPath, "%s~%d" % (newPath, n))
+
     def keys(self):
         """Return supported keys.
         @return (iterable) List of keys usable in a dataset identifier"""
@@ -717,8 +743,11 @@ class CameraMapper(dafPersist.Mapper):
                 (ccdSerial, taiObs))
         if not rows or len(rows) == 0:
             return None
-        assert len(rows) == 1
-        return os.path.join(self.defectPath, rows[0][0])
+        if len(rows) == 1:
+            return os.path.join(self.defectPath, rows[0][0])
+        else:
+            raise RuntimeError("Querying for defects (%s, %s) returns %d files: %s" %
+                               (ccdSerial, taiObs, len(rows), ", ".join([_[0] for _ in rows])))
 
     def _addDefects(self, dataId, amp=None, ccd=None):
         """Add the defects for an amplifier or a CCD to the detector object
