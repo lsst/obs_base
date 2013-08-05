@@ -189,6 +189,9 @@ class Mapping(object):
         """
 
         newId = dataId.copy()
+        for prop in newId.keys():
+            if not prop in self.keyDict:
+                del newId[prop]
         newProps = []                    # Properties we don't already have
         for prop in properties:
             if not newId.has_key(prop):
