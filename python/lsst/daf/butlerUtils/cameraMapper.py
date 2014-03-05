@@ -21,7 +21,6 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-import glob
 import os
 import errno
 import re
@@ -32,11 +31,9 @@ import eups
 import lsst.daf.persistence as dafPersist
 from lsst.daf.butlerUtils import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping, Registry
 import lsst.daf.base as dafBase
-import lsst.afw.geom as afwGeom
 import lsst.afw.image as afwImage
 import lsst.afw.cameraGeom as afwCameraGeom
 import lsst.afw.cameraGeom.utils as cameraGeomUtils
-import lsst.afw.image.utils as imageUtils
 import lsst.pex.logging as pexLog
 import lsst.pex.policy as pexPolicy
 
@@ -82,27 +79,28 @@ class CameraMapper(dafPersist.Mapper):
     data.  This should contain validity start and end entries for each
     calibration dataset in the same timescale as the observation time.
 
-    The following method must be provided by the subclass:
-
-    _extractDetectorName(self, dataId): returns the detector name for a CCD
-    (e.g., "CFHT 21", "R:1,2 S:3,4") as used in the AFW CameraGeom class given
-    a dataset identifier referring to that CCD or a subcomponent of it.
-
-    Other methods that the subclass may wish to override include:
+    Methods that the subclass may wish to override include:
 
     _transformId(self, dataId): transformation of a data identifier
-    from colloquial usage (e.g., "ccdname") to proper/actual usage
-    (e.g., "ccd").  The default implementation does nothing.  Note that this
+    from colloquial usage (e.g., "ccdName") to proper/actual usage
+    (e.g., "ccd").  It should make sure that "ccd" and "amp" are both set.
+    The default implementation does nothing.  Note that this
     method should not modify its input parameter.
+
+    _getShortCcdName(self, ccdName): a static method that return a shortened name
+    suitable for use as a filename. The default version converts spaces to underscores.
+
+    _extractDetectorName(self, dataId): deprecated: returns the detector name for a CCD
+    (e.g., "CFHT 21", "R:1,2 S:3,4") as used in lsst.afw.cameraGeom.Camera,
+    given a dataset identifier referring to that CCD or a subcomponent of it.
+    The preferred technique is to use dataId["ccd"], as set by _transformId.
+
+    _getCcdSerial(self, dataId): returns the value of the "ccdSerial" key
+    used to look up defects in the defect registry. The default implementation
+    returns "ccd".
 
     _mapActualToPath(self, template, actualId): convert a template path to an
     actual path, using the actual dataset identifier.
-
-    _extractAmpId(self, dataId): extract the amplifier identifer from a
-    dataset identifier.  The amplifier identifier has three parts: the
-    detector name for the CCD containing the amplifier and x and y coordinates
-    for the amplifier within the CCD.  The default implementation just uses
-    the amplifier number, which is assumed to be the same as the x coordinate.
 
     The mapper's behaviors are largely specified by the policy file.
     See the MapperDictionary.paf for descriptions of the available items.
@@ -343,16 +341,15 @@ class CameraMapper(dafPersist.Mapper):
                             setattr(self, "query_" + datasetType + "_sub", querySubClosure)
 
         # Camera geometry
-        self.cameraPolicyLocation = None
+        self.cameraDataLocation = None
         self.camera = None
         if policy.exists('camera'):
-            cameraPolicyLocation = policy.getString('camera')
+            cameraDataLocation = policy.getString('camera')
 
             # must be explicit for ButlerLocation later
-            self.cameraPolicyLocation = os.path.join(repositoryDir, cameraPolicyLocation)
-            cameraPolicy = pexPolicy.Policy.createPolicy(self.cameraPolicyLocation)
-            cameraPolicy = cameraGeomUtils.getGeomPolicy(cameraPolicy)
-            self.camera = cameraGeomUtils.makeCamera(cameraPolicy)
+            self.cameraDataLocation = os.path.join(repositoryDir, cameraDataLocation)
+            cameraConfig = self.map_camera(dataId=dict())
+            self.camera = self.std_camera(cameraConfig, dataId=dict())
 
         # Defect registry and root
         self.defectRegistry = None
@@ -432,7 +429,6 @@ class CameraMapper(dafPersist.Mapper):
         found in an input repo.
         """
         n = 0
-        suffix = ""
         newLocation = self.map(datasetType, dataId, write=True)
         newPath = newLocation.getLocations()[0]
         path = self._parentSearch(newPath)
@@ -507,16 +503,47 @@ class CameraMapper(dafPersist.Mapper):
 
     def map_camera(self, dataId, write=False):
         """Map a camera dataset."""
-        if self.cameraPolicyLocation is None:
+        if self.cameraDataLocation is None:
             raise RuntimeError, "No camera dataset available."
         actualId = self._transformId(dataId)
-        return dafPersist.ButlerLocation("lsst.afw.cameraGeom.Camera", "Camera",
-                "PafStorage", self.cameraPolicyLocation, actualId)
+        cameraConfig = dafPersist.ButlerLocation(
+            pythonType = "lsst.afw.cameraGeom.CameraConfig",
+            cppType = "Config",
+            storageName = "Config",
+            locationList = self.cameraDataLocation,
+            dataId = actualId,
+        )
+        cameraConfig.validate()
+        return cameraConfig
 
     def std_camera(self, item, dataId):
-        """Standardize a camera dataset by converting it to a camera
-        object."""
-        return cameraGeomUtils.makeCamera(cameraGeomUtils.getGeomPolicy(item))
+        """Standardize a camera dataset by converting it to a camera object.
+
+        @param[in] item: camera info (an lsst.afw.cameraGeom.CameraConfig)
+        @param[in] dataId: data ID dict
+        """
+        if self.cameraDataLocation is None:
+            raise RuntimeError, "No camera dataset available."
+        return afwCameraGeom.CameraFactoryTask()(cameraConfig=item, ampInfoDir=self.cameraDataLocation)
+
+    def map_defects(self, dataId, write=False):
+        """Map defects dataset."""
+
+        detectorName = dataId["ccd"]
+        defectFits = self._defectLookup(dataId=dataId)
+        if defectFits is None:
+            return None
+
+        defectDict = cameraGeomUtils.makeDefectsFromFits(defectFits)
+        ccdDefects = None
+        for k in defectDict.keys():
+            if k == detectorName:
+                ccdDefects = defectDict[k]
+                break
+        if ccdDefects is None:
+            raise RuntimeError, "No defects for ccd %s in %s" % \
+                    (detectorName, defectFits)
+        return ccdDefects
 
     def std_raw(self, item, dataId):
         """Standardize a raw dataset by converting it to an Exposure instead of an Image"""
@@ -538,6 +565,13 @@ class CameraMapper(dafPersist.Mapper):
 # Utility functions
 #
 ###############################################################################
+
+    def _getCcdSerial(self, dataId):
+        """Return value of ccdSerial field in defects registry based on data ID
+
+        The default implementation simply returns "ccd"
+        """
+        return dataId["ccd"]
 
     def _setupRegistry(self, name, path, policy, policyKey, root):
         """Set up a registry (usually SQLite3), trying a number of possible
@@ -594,9 +628,14 @@ class CameraMapper(dafPersist.Mapper):
             return None
 
     def _transformId(self, dataId):
-        """Transform an id from camera-specific usage to standard form (e.g,.
-        ccdname --> ccd).  The default implementation merely copies its input.
-        @param dataId[in] (dict) Dataset identifier
+        """Generate a standard ID dict from a camera-specific ID dict.
+
+        Canonical keys include:
+        - amp: amplifier name
+        - ccd: CCD name (in LSST this is a combination of raft and sensor)
+        The default implementation returns a copy of its input.
+
+        @param dataId[in] (dict) Dataset identifier; this must not be modified
         @return (dict) Transformed dataset identifier"""
 
         return dataId.copy()
@@ -611,52 +650,58 @@ class CameraMapper(dafPersist.Mapper):
 
         return template % self._transformId(actualId)
 
-    def _extractDetectorName(self, dataId):
-        """Extract the detector (CCD) name (used with the afw camera geometry
-        class) from the dataset identifier.  This function must be provided by
-        the subclass.
-        @param dataId (dict) Dataset identifier
-        @return (string) Detector name"""
+    @staticmethod
+    def getShortCcdName(self, ccdName):
+        """Convert a CCD name to a form useful as a filename
 
-        raise RuntimeError, "No _extractDetectorName() function specified"
+        The default implementation simply converts spaces to underscores.
+        """
+        return ccdName.replace(" ", "_")
+
+    def _extractDetectorName(self, dataId):
+        """Extract the detector (CCD) name from the dataset identifier.
+
+        The name in question is the detector name used by lsst.afw.cameraGeom.
+
+        This method is deprecated; the preferred technique is to make sure
+        _transformId sets the "ccd" field in dataId to the detector name.
+
+        The default implementation returns the key "ccd".
+
+        @param dataId (dict) Dataset identifier
+        @return (string) Detector name
+        """
+        dataId["ccd"]
 
     def _extractAmpId(self, dataId):
-        """Extract the amplifier identifer from a dataset identifier.  The
-        amplifier identifier has three parts: the detector name for the CCD
-        containing the amplifier and x and y coordinates for the amplifier
-        within the CCD.  The default implementation just uses the amplifier
-        number, which is assumed to be the same as the x coordinate.
+        """Extract the amplifier identifer from a dataset identifier.
+
+        @warning this is deprecated; DO NOT USE IT
+
+        amplifier identifier has two parts: the detector name for the CCD
+        containing the amplifier and index of the amplifier in the detector.
         @param dataId (dict) Dataset identifer
         @return (tuple) Amplifier identifier"""
 
-        return (self._extractDetectorName(dataId),
-                int(dataId['amp']), 0)
+        return (dataId["ccd"], int(dataId['amp']))
 
     def _setAmpDetector(self, item, dataId, trimmed=True):
         """Set the detector object in an Exposure for an amplifier.
         Defects are also added to the Exposure based on the detector object.
         @param[in,out] item (lsst.afw.image.Exposure)
         @param dataId (dict) Dataset identifier
-        @param trimmed (bool) Should detector be marked as trimmed?"""
+        @param trimmed (bool) Should detector be marked as trimmed? (ignored)"""
 
-        ampId = self._extractAmpId(dataId)
-        detector = cameraGeomUtils.findAmp(
-                self.camera, afwCameraGeom.Id(ampId[0]), ampId[1], ampId[2])
-        detector.setTrimmed(trimmed)
-        self._addDefects(dataId, amp=detector)
-        item.setDetector(detector)
+        return self._setCcdDetector(item=item, dataId=dataId, trimmed=trimmed)
 
     def _setCcdDetector(self, item, dataId, trimmed=True):
         """Set the detector object in an Exposure for a CCD.
-        Defects are also added to the Exposure based on the detector object.
         @param[in,out] item (lsst.afw.image.Exposure)
         @param dataId (dict) Dataset identifier
-        @param trimmed (bool) Should detector be marked as trimmed?"""
+        @param trimmed (bool) Should detector be marked as trimmed? (ignored)"""
 
-        ccdId = self._extractDetectorName(dataId)
-        detector = cameraGeomUtils.findCcd(self.camera, afwCameraGeom.Id(ccdId))
-        detector.setTrimmed(trimmed)
-        self._addDefects(dataId, ccd=detector)
+        detectorName = dataId["ccd"]
+        detector = self.camera[detectorName]
         item.setDetector(detector)
 
     def _setFilter(self, mapping, item, dataId):
@@ -726,16 +771,17 @@ class CameraMapper(dafPersist.Mapper):
 
         return item
 
-    def _defectLookup(self, dataId, ccdSerial):
+    def _defectLookup(self, dataId):
         """Find the defects for a given CCD.
         @param dataId (dict) Dataset identifier
-        @param ccdSerial (string) CCD serial number
         @return (string) path to the defects file or None if not available"""
 
         if self.defectRegistry is None:
             return None
         if self.registry is None:
             raise RuntimeError, "No registry for defect lookup"
+
+        ccdSerial = self._getCcdSerial(dataId)
 
         rows = self.registry.executeQuery(("taiObs",), ("raw_visit",),
                 [("visit", "?")], None, (dataId['visit'],))
@@ -757,32 +803,6 @@ class CameraMapper(dafPersist.Mapper):
         else:
             raise RuntimeError("Querying for defects (%s, %s) returns %d files: %s" %
                                (ccdSerial, taiObs, len(rows), ", ".join([_[0] for _ in rows])))
-
-    def _addDefects(self, dataId, amp=None, ccd=None):
-        """Add the defects for an amplifier or a CCD to the detector object
-        for that amplifier/CCD.
-        @param dataId (dict) Dataset identifier
-        @param[in,out] amp (lsst.afw.cameraGeom.Detector)
-        @param[in,out] ccd (lsst.afw.cameraGeom.Detector)
-        Exactly one of amp or ccd should be specified."""
-
-        if ccd is None:
-            ccd = afwCameraGeom.cast_Ccd(amp.getParent())
-        if len(ccd.getDefects()) > 0:
-            # Assume we have loaded them properly already
-            return
-        defectFits = self._defectLookup(dataId, ccd.getId().getSerial())
-        if defectFits is not None:
-            defectDict = cameraGeomUtils.makeDefectsFromFits(defectFits)
-            ccdDefects = None
-            for k in defectDict.keys():
-                if k == ccd.getId():
-                    ccdDefects = defectDict[k]
-                    break
-            if ccdDefects is None:
-                raise RuntimeError, "No defects for ccd %s in %s" % \
-                        (str(ccd.getId()), defectFits)
-            ccd.setDefects(ccdDefects)
 
 
 def exposureFromImage(image):
