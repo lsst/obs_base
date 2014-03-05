@@ -26,14 +26,14 @@ import errno
 import re
 import sys
 import shutil
-
+import pyfits # required by _makeDefectsDict until defects are written as AFW tables
 import eups
 import lsst.daf.persistence as dafPersist
 from lsst.daf.butlerUtils import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping, Registry
 import lsst.daf.base as dafBase
+import lsst.afw.geom as afwGeom
 import lsst.afw.image as afwImage
 import lsst.afw.cameraGeom as afwCameraGeom
-import lsst.ip.isr as isr
 import lsst.pex.logging as pexLog
 import lsst.pex.policy as pexPolicy
 
@@ -120,6 +120,12 @@ class CameraMapper(dafPersist.Mapper):
 
     Implementations of map_camera and std_camera that should typically be
     sufficient are provided in this base class.
+
+    @todo
+    * Handle defects the same was as all other calibration products, using the calibration registry
+    * Instead of auto-loading the camera at construction time, load it from the calibration registry
+    * Rewrite defects as AFW tables so we don't need pyfits to unpersist them; then remove all mention
+      of pyfits from this package.
     """
 
     def __init__(self, policy, repositoryDir,
@@ -341,14 +347,12 @@ class CameraMapper(dafPersist.Mapper):
                             setattr(self, "query_" + datasetType + "_sub", querySubClosure)
 
         # Camera geometry
-        self.cameraDataLocation = None
+        self.cameraDataLocation = None # path to camera geometry config file
         self.camera = None
         if policy.exists('camera'):
-            cameraDataLocation = policy.getString('camera')
-
-            # must be explicit for ButlerLocation later
-            self.cameraDataLocation = os.path.join(repositoryDir, cameraDataLocation)
-            cameraConfig = self.map_camera(dataId=dict())
+            cameraDataSubdir = policy.getString('camera')
+            self.cameraDataLocation = os.path.join(repositoryDir, cameraDataSubdir, "camera.py")
+            cameraConfig = afwCameraGeom.CameraConfig.load(self.cameraDataLocation)
             self.camera = self.std_camera(cameraConfig, dataId=dict())
 
         # Defect registry and root
@@ -504,7 +508,7 @@ class CameraMapper(dafPersist.Mapper):
     def map_camera(self, dataId, write=False):
         """Map a camera dataset."""
         if self.cameraDataLocation is None:
-            raise RuntimeError, "No camera dataset available."
+            raise RuntimeError("No camera dataset available.")
         actualId = self._transformId(dataId)
         return dafPersist.ButlerLocation(
             pythonType = "lsst.afw.cameraGeom.CameraConfig",
@@ -513,8 +517,6 @@ class CameraMapper(dafPersist.Mapper):
             locationList = self.cameraDataLocation,
             dataId = actualId,
         )
-        #cameraConfig.validate()
-        return cameraConfig
 
     def std_camera(self, item, dataId):
         """Standardize a camera dataset by converting it to a camera object.
@@ -523,27 +525,51 @@ class CameraMapper(dafPersist.Mapper):
         @param[in] dataId: data ID dict
         """
         if self.cameraDataLocation is None:
-            raise RuntimeError, "No camera dataset available."
-        return afwCameraGeom.CameraFactoryTask().run(cameraConfig=item, ampInfoPath=self.cameraDataLocation)
+            raise RuntimeError("No camera dataset available.")
+        item.validate()
+        ampInfoPath = os.path.dirname(self.cameraDataLocation)
+        return afwCameraGeom.CameraFactoryTask().run(cameraConfig=item, ampInfoPath=ampInfoPath)
 
     def map_defects(self, dataId, write=False):
-        """Map defects dataset."""
+        """Map defects dataset.
 
+        @return a very minimal ButlerLocation containing just the locationList field
+            (just enough information that bypass_defects can use it).
+        """
+        defectFitsPath = self._defectLookup(dataId=dataId)
+        if defectFitsPath is None:
+            raise RuntimeError("No defects available for dataId=%s" % (dataId,))
+
+        return dafPersist.ButlerLocation(
+            locationList = defectFitsPath,
+        )
+
+    def bypass_defects(self, butlerLocation, dataId):
+        """Return a defect based on the butler location returned by map_defects
+
+        @param[in] butlerLocation: a ButlerLocation with locationList = path to defects FITS file
+        @param[in] dataId: the usual data ID; "ccd" must be set
+
+        Note: the name "bypass_XXX" means the butler makes no attempt to convert the ButlerLocation
+        into an object, which is what we want for now, since that conversion is a bit tricky.
+        """
         detectorName = dataId["ccd"]
-        defectFits = self._defectLookup(dataId=dataId)
-        if defectFits is None:
-            return None
+        defectsFitsPath = butlerLocation.locationList
+        with pyfits.open(defectsFitsPath) as hduList:
+            for hdu in hduList[1:]:
+                if hdu.header["name"] != detectorName:
+                    continue
 
-        defectDict = isr.makeDefectsFromFits(defectFits)
-        ccdDefects = None
-        for k in defectDict.keys():
-            if k == detectorName:
-                ccdDefects = defectDict[k]
-                break
-        if ccdDefects is None:
-            raise RuntimeError, "No defects for ccd %s in %s" % \
-                    (detectorName, defectFits)
-        return ccdDefects
+                defectList = []
+                for data in hdu.data:
+                    bbox = afwGeom.Box2I(
+                        afwGeom.Point2I(int(data['x0']), int(data['y0'])),
+                        afwGeom.Extent2I(int(data['width']), int(data['height'])),
+                    )
+                    defectList.append(afwImage.DefectBase(bbox))
+                return defectList
+
+        raise RuntimeError("No defects for ccd %s in %s" % (detectorName, defectsFitsPath))
 
     def std_raw(self, item, dataId):
         """Standardize a raw dataset by converting it to an Exposure instead of an Image"""
