@@ -33,7 +33,7 @@ from lsst.daf.butlerUtils import ImageMapping, ExposureMapping, CalibrationMappi
 import lsst.daf.base as dafBase
 import lsst.afw.image as afwImage
 import lsst.afw.cameraGeom as afwCameraGeom
-import lsst.afw.cameraGeom.utils as cameraGeomUtils
+import lsst.ip.isr as isr
 import lsst.pex.logging as pexLog
 import lsst.pex.policy as pexPolicy
 
@@ -506,14 +506,14 @@ class CameraMapper(dafPersist.Mapper):
         if self.cameraDataLocation is None:
             raise RuntimeError, "No camera dataset available."
         actualId = self._transformId(dataId)
-        cameraConfig = dafPersist.ButlerLocation(
+        return dafPersist.ButlerLocation(
             pythonType = "lsst.afw.cameraGeom.CameraConfig",
             cppType = "Config",
             storageName = "Config",
             locationList = self.cameraDataLocation,
             dataId = actualId,
         )
-        cameraConfig.validate()
+        #cameraConfig.validate()
         return cameraConfig
 
     def std_camera(self, item, dataId):
@@ -524,7 +524,7 @@ class CameraMapper(dafPersist.Mapper):
         """
         if self.cameraDataLocation is None:
             raise RuntimeError, "No camera dataset available."
-        return afwCameraGeom.CameraFactoryTask()(cameraConfig=item, ampInfoDir=self.cameraDataLocation)
+        return afwCameraGeom.CameraFactoryTask().run(cameraConfig=item, ampInfoPath=self.cameraDataLocation)
 
     def map_defects(self, dataId, write=False):
         """Map defects dataset."""
@@ -534,7 +534,7 @@ class CameraMapper(dafPersist.Mapper):
         if defectFits is None:
             return None
 
-        defectDict = cameraGeomUtils.makeDefectsFromFits(defectFits)
+        defectDict = isr.makeDefectsFromFits(defectFits)
         ccdDefects = None
         for k in defectDict.keys():
             if k == detectorName:
