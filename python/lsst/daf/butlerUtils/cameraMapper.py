@@ -545,11 +545,9 @@ class CameraMapper(dafPersist.Mapper):
         if defectFitsPath is None:
             raise RuntimeError("No defects available for dataId=%s" % (dataId,))
 
-        return dafPersist.ButlerLocation(
-            locationList = defectFitsPath,
-        )
+        return dafPersist.ButlerLocation(None, None, None, defectFitsPath, dataId)
 
-    def bypass_defects(self, butlerLocation, dataId):
+    def bypass_defects(self, datasetType, pythonType, butlerLocation, dataId):
         """Return a defect based on the butler location returned by map_defects
 
         @param[in] butlerLocation: a ButlerLocation with locationList = path to defects FITS file
@@ -559,7 +557,7 @@ class CameraMapper(dafPersist.Mapper):
         into an object, which is what we want for now, since that conversion is a bit tricky.
         """
         detectorName = self._extractDetectorName(dataId)
-        defectsFitsPath = butlerLocation.locationList
+        defectsFitsPath = butlerLocation.locationList[0]
         with pyfits.open(defectsFitsPath) as hduList:
             for hdu in hduList[1:]:
                 if hdu.header["name"] != detectorName:
@@ -602,7 +600,7 @@ class CameraMapper(dafPersist.Mapper):
 
         The default implementation simply returns "ccd"
         """
-        return dataId["ccd"]
+        return self._extractDetectorName(dataId)
 
     def _setupRegistry(self, name, path, policy, policyKey, root):
         """Set up a registry (usually SQLite3), trying a number of possible
@@ -807,7 +805,6 @@ class CameraMapper(dafPersist.Mapper):
         """Find the defects for a given CCD.
         @param dataId (dict) Dataset identifier
         @return (string) path to the defects file or None if not available"""
-
         if self.defectRegistry is None:
             return None
         if self.registry is None:
@@ -825,7 +822,7 @@ class CameraMapper(dafPersist.Mapper):
         # Lookup the defects for this CCD serial number that are valid at the
         # exposure midpoint.
         rows = self.defectRegistry.executeQuery(("path",), ("defect",),
-                [("ccdSerial", "?")],
+                [("ccd", "?")],
                 ("DATETIME(?)", "DATETIME(validStart)", "DATETIME(validEnd)"),
                 (ccdSerial, taiObs))
         if not rows or len(rows) == 0:
