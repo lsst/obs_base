@@ -351,8 +351,10 @@ class CameraMapper(dafPersist.Mapper):
         self.camera = None
         if policy.exists('camera'):
             cameraDataSubdir = policy.getString('camera')
-            self.cameraDataLocation = os.path.join(repositoryDir, cameraDataSubdir, "camera.py")
-            cameraConfig = afwCameraGeom.CameraConfig.load(self.cameraDataLocation)
+            self.cameraDataLocation = os.path.normpath(
+                os.path.join(repositoryDir, cameraDataSubdir, "camera.py"))
+            cameraConfig = afwCameraGeom.CameraConfig()
+            cameraConfig.load(self.cameraDataLocation)
             self.camera = self.std_camera(cameraConfig, dataId=dict())
 
         # Defect registry and root
@@ -526,9 +528,12 @@ class CameraMapper(dafPersist.Mapper):
         """
         if self.cameraDataLocation is None:
             raise RuntimeError("No camera dataset available.")
-        item.validate()
         ampInfoPath = os.path.dirname(self.cameraDataLocation)
-        return afwCameraGeom.CameraFactoryTask().run(cameraConfig=item, ampInfoPath=ampInfoPath)
+        return afwCameraGeom.CameraFactoryTask().run(
+            cameraConfig = item,
+            ampInfoPath = ampInfoPath,
+            shortNameFunc = self.getShortCcdName,
+        )
 
     def map_defects(self, dataId, write=False):
         """Map defects dataset.
