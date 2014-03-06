@@ -90,10 +90,10 @@ class CameraMapper(dafPersist.Mapper):
     _getShortCcdName(self, ccdName): a static method that return a shortened name
     suitable for use as a filename. The default version converts spaces to underscores.
 
-    _extractDetectorName(self, dataId): deprecated: returns the detector name for a CCD
+    _extractDetectorName(self, dataId): obtain the detector name for a CCD
     (e.g., "CFHT 21", "R:1,2 S:3,4") as used in lsst.afw.cameraGeom.Camera,
     given a dataset identifier referring to that CCD or a subcomponent of it.
-    The preferred technique is to use dataId["ccd"], as set by _transformId.
+    The default implementation should usually suffice (so long as _transformId sets "ccd")
 
     _getCcdSerial(self, dataId): returns the value of the "ccdSerial" key
     used to look up defects in the defect registry. The default implementation
@@ -558,7 +558,7 @@ class CameraMapper(dafPersist.Mapper):
         Note: the name "bypass_XXX" means the butler makes no attempt to convert the ButlerLocation
         into an object, which is what we want for now, since that conversion is a bit tricky.
         """
-        detectorName = dataId["ccd"]
+        detectorName = self._extractDetectorName(dataId)
         defectsFitsPath = butlerLocation.locationList
         with pyfits.open(defectsFitsPath) as hduList:
             for hdu in hduList[1:]:
@@ -702,7 +702,7 @@ class CameraMapper(dafPersist.Mapper):
         @param dataId (dict) Dataset identifier
         @return (string) Detector name
         """
-        dataId["ccd"]
+        return self._transformId(dataId)["ccd"]
 
     def _extractAmpId(self, dataId):
         """Extract the amplifier identifer from a dataset identifier.
@@ -714,7 +714,8 @@ class CameraMapper(dafPersist.Mapper):
         @param dataId (dict) Dataset identifer
         @return (tuple) Amplifier identifier"""
 
-        return (dataId["ccd"], int(dataId['amp']))
+        trDataId = self._transformId(dataId)
+        return (trDataId["ccd"], int(trDataId['amp']))
 
     def _setAmpDetector(self, item, dataId, trimmed=True):
         """Set the detector object in an Exposure for an amplifier.
@@ -731,7 +732,7 @@ class CameraMapper(dafPersist.Mapper):
         @param dataId (dict) Dataset identifier
         @param trimmed (bool) Should detector be marked as trimmed? (ignored)"""
 
-        detectorName = dataId["ccd"]
+        detectorName = self._extractDetectorName(dataId)
         detector = self.camera[detectorName]
         item.setDetector(detector)
 
