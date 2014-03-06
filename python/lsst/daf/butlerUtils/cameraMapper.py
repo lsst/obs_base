@@ -694,10 +694,7 @@ class CameraMapper(dafPersist.Mapper):
 
         The name in question is the detector name used by lsst.afw.cameraGeom.
 
-        This method is deprecated; the preferred technique is to make sure
-        _transformId sets the "ccd" field in dataId to the detector name.
-
-        The default implementation returns the key "ccd".
+        The default implementation transforms the dict and returns the key "ccd".
 
         @param dataId (dict) Dataset identifier
         @return (string) Detector name
