@@ -79,25 +79,25 @@ class CameraMapper(dafPersist.Mapper):
     data.  This should contain validity start and end entries for each
     calibration dataset in the same timescale as the observation time.
 
-    Methods that the subclass may wish to override include:
+    The following method must be provided by the subclass:
+
+    _extractDetectorName(self, dataId): returns the detector name for a CCD
+    (e.g., "CFHT 21", "R:1,2 S:3,4") as used in the AFW CameraGeom class given
+    a dataset identifier referring to that CCD or a subcomponent of it.
+
+    Other methods that the subclass may wish to override include:
 
     _transformId(self, dataId): transformation of a data identifier
-    from colloquial usage (e.g., "ccdName") to proper/actual usage
-    (e.g., "ccd").  It should make sure that "ccd" and "amp" are both set.
-    The default implementation does nothing.  Note that this
+    from colloquial usage (e.g., "ccdname") to proper/actual usage
+    (e.g., "ccd").  The default implementation does nothing.  Note that this
     method should not modify its input parameter.
 
-    _getShortCcdName(self, ccdName): a static method that return a shortened name
+    getShortCcdName(self, ccdName): a static method that returns a shortened name
     suitable for use as a filename. The default version converts spaces to underscores.
 
-    _extractDetectorName(self, dataId): obtain the detector name for a CCD
-    (e.g., "CFHT 21", "R:1,2 S:3,4") as used in lsst.afw.cameraGeom.Camera,
-    given a dataset identifier referring to that CCD or a subcomponent of it.
-    The default implementation should usually suffice (so long as _transformId sets "ccd")
-
-    _getCcdSerial(self, dataId): returns the value of the "ccdSerial" key
-    used to look up defects in the defect registry. The default implementation
-    returns "ccd".
+    _getCcdKeyVal(self, dataId): return a CCD key and value
+    by which to look up defects in the defects registry.
+    The default value returns ("ccd", detector name)
 
     _mapActualToPath(self, template, actualId): convert a template path to an
     actual path, using the actual dataset identifier.
@@ -595,12 +595,12 @@ class CameraMapper(dafPersist.Mapper):
 #
 ###############################################################################
 
-    def _getCcdSerial(self, dataId):
-        """Return value of ccdSerial field in defects registry based on data ID
+    def _getCcdKeyVal(self, dataId):
+        """Return CCD key and value used to look a defect in the defect registry
 
-        The default implementation simply returns "ccd"
+        The default implementation simply returns ("ccd", full detector name)
         """
-        return self._extractDetectorName(dataId)
+        return ("ccd", self._extractDetectorName(dataId))
 
     def _setupRegistry(self, name, path, policy, policyKey, root):
         """Set up a registry (usually SQLite3), trying a number of possible
@@ -683,7 +683,7 @@ class CameraMapper(dafPersist.Mapper):
     def getShortCcdName(self, ccdName):
         """Convert a CCD name to a form useful as a filename
 
-        The default implementation simply converts spaces to underscores.
+        The default implementation converts spaces to underscores.
         """
         return ccdName.replace(" ", "_")
 
@@ -807,7 +807,7 @@ class CameraMapper(dafPersist.Mapper):
         if self.registry is None:
             raise RuntimeError, "No registry for defect lookup"
 
-        ccdSerial = self._getCcdSerial(dataId)
+        ccdKey, ccdVal = self._getCcdKeyVal(dataId)
 
         rows = self.registry.executeQuery(("taiObs",), ("raw_visit",),
                 [("visit", "?")], None, (dataId['visit'],))
@@ -819,9 +819,9 @@ class CameraMapper(dafPersist.Mapper):
         # Lookup the defects for this CCD serial number that are valid at the
         # exposure midpoint.
         rows = self.defectRegistry.executeQuery(("path",), ("defect",),
-                [("ccd", "?")],
+                [(ccdKey, "?")],
                 ("DATETIME(?)", "DATETIME(validStart)", "DATETIME(validEnd)"),
-                (ccdSerial, taiObs))
+                (ccdVal, taiObs))
         if not rows or len(rows) == 0:
             return None
         if len(rows) == 1:
