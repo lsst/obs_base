@@ -88,8 +88,9 @@ class CameraMapper(dafPersist.Mapper):
     Other methods that the subclass may wish to override include:
 
     _transformId(self, dataId): transformation of a data identifier
-    from colloquial usage (e.g., "ccdname") to proper/actual usage
-    (e.g., "ccd").  The default implementation does nothing.  Note that this
+    from colloquial usage (e.g., "ccdname") to proper/actual usage (e.g., "ccd"),
+    including making suitable for path expansion (e.g. removing commas).
+    The default implementation does nothing.  Note that this
     method should not modify its input parameter.
 
     getShortCcdName(self, ccdName): a static method that returns a shortened name
@@ -692,12 +693,10 @@ class CameraMapper(dafPersist.Mapper):
 
         The name in question is the detector name used by lsst.afw.cameraGeom.
 
-        The default implementation transforms the dict and returns the key "ccd".
-
         @param dataId (dict) Dataset identifier
         @return (string) Detector name
         """
-        return self._transformId(dataId)["ccd"]
+        raise NotImplementedError("No _extractDetectorName() function specified")
 
     def _extractAmpId(self, dataId):
         """Extract the amplifier identifer from a dataset identifier.
