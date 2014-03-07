@@ -680,7 +680,7 @@ class CameraMapper(dafPersist.Mapper):
         return template % self._transformId(actualId)
 
     @staticmethod
-    def getShortCcdName(self, ccdName):
+    def getShortCcdName(ccdName):
         """Convert a CCD name to a form useful as a filename
 
         The default implementation simply converts spaces to underscores.
