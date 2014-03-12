@@ -516,7 +516,7 @@ class CameraMapper(dafPersist.Mapper):
         return dafPersist.ButlerLocation(
             pythonType = "lsst.afw.cameraGeom.CameraConfig",
             cppType = "Config",
-            storageName = "Config",
+            storageName = "ConfigStorage",
             locationList = self.cameraDataLocation,
             dataId = actualId,
         )
