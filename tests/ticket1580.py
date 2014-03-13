@@ -44,14 +44,15 @@ class Ticket1580TestCase(unittest.TestCase):
     def setUp(self):
         self.dataRoot = os.path.join(eups.productDir("afwdata"), "ImSim")
 
-    def testTicket1580(self):
+    def testTrimmedCalexp(self):
+        #This was originally written with ticket/1580 in mind, but there is no
+        #isTrimmed method any more.  We can still check that the image is the
+        #trimmed size (getBBox())
         butler = dafPersist.ButlerFactory(
                 mapper=LsstSimMapper(root=self.dataRoot)).create()
         kwargs = {'visit': 85408556, 'sensor': '1,1', 'raft': '2,3'}
-        raw = butler.get("raw", snap=0, channel='0,2', **kwargs)
-        self.assertEqual(raw.getDetector().isTrimmed(), False)
         calexp = butler.get("calexp", **kwargs)
-        self.assertEqual(calexp.getDetector().isTrimmed(), True)
+        self.assertEqual(calexp.getDetector().getBBox(), calexp.getBBox())
 
 def suite():
     utilsTests.init()
