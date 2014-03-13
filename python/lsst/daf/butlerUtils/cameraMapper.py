@@ -530,7 +530,7 @@ class CameraMapper(dafPersist.Mapper):
         if self.cameraDataLocation is None:
             raise RuntimeError("No camera dataset available.")
         ampInfoPath = os.path.dirname(self.cameraDataLocation)
-        return afwCameraGeom.CameraFactoryTask().run(
+        return afwCameraGeom.makeCameraFromPath(
             cameraConfig = item,
             ampInfoPath = ampInfoPath,
             shortNameFunc = self.getShortCcdName,
@@ -755,7 +755,7 @@ class CameraMapper(dafPersist.Mapper):
         @param mapping (lsst.daf.butlerUtils.Mapping)
         @param[in,out] item (lsst.afw.image.Exposure)
         @param dataId (dict) Dataset identifier"""
-
+        
         md = item.getMetadata()
         calib = item.getCalib()
         if md.exists("EXPTIME"):
