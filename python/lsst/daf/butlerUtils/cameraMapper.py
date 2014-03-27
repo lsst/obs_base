@@ -417,7 +417,12 @@ class CameraMapper(dafPersist.Mapper):
             dir = pathPrefix
 
         # Now search for the path in the root or its parents
-        while not os.path.exists(os.path.join(dir, path)):
+        # Strip off any cfitsio bracketed extension if present
+        strippedPath = path
+        firstBracket = path.find("[")
+        if firstBracket != -1:
+            strippedPath = path[:firstBracket]
+        while not os.path.exists(os.path.join(dir, strippedPath)):
             dir = os.path.join(dir, "_parent")
             if not os.path.exists(dir):
                 return None
