@@ -50,10 +50,10 @@ class DM329TestCase(unittest.TestCase):
     def testHdu(self):
         mapper = MinMapper2()
         # Load just the mask plane into an ImageF
-        loc = mapper.map("other", dict(ccd=35, hdu=3))
-        self.assertEqual(loc.getLocations(), ["tests/bar-35.fits[3]"])
+        loc = mapper.map("other", dict(ccd=35, hdu=2))
+        self.assertEqual(loc.getLocations(), ["tests/bar-35.fits[2]"])
         butler = dafPersist.ButlerFactory(mapper=mapper).create()
-        image = butler.get("other", ccd=35, hdu=3, immediate=True)
+        image = butler.get("other", ccd=35, hdu=2, immediate=True)
         self.assertEqual(type(image), lsst.afw.image.ImageF)
         self.assertEqual(image.getHeight(), 2024)
         self.assertEqual(image.getWidth(), 2248)
