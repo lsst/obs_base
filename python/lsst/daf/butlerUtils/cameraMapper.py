@@ -504,6 +504,7 @@ class CameraMapper(dafPersist.Mapper):
             if not os.path.exists(newDir):
                 os.makedirs(newDir)
             shutil.copy(oldPath, "%s~%d" % (newPath, n))
+            shutil.copystat(oldPath, "%s~%d" % (newPath, n))
 
     def keys(self):
         """Return supported keys.
