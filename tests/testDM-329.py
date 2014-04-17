@@ -50,11 +50,12 @@ class DM329TestCase(unittest.TestCase):
     def testHdu(self):
         mapper = MinMapper2()
         butler = dafPersist.ButlerFactory(mapper=mapper).create()
-        # HDU 0 returns first image plane
-        # HDU 1 also returns first image plane
+        # HDU 0 returns (header-only) primary array
+        # Note difference from afw Image constructor with hdu=0
+        # HDU 1 returns first image plane
         # HDU 2 returns mask plane
         # HDU 3 returns variance plane
-        for i in (0, 1, 2, 3):
+        for i in (1, 2, 3):
             loc = mapper.map("other", dict(ccd=35, hdu=i))
             self.assertEqual(loc.getLocations(),
                     ["tests/bar-35.fits[%d]" % (i,)])
@@ -62,9 +63,9 @@ class DM329TestCase(unittest.TestCase):
             self.assertEqual(type(image), lsst.afw.image.ImageF)
             self.assertEqual(image.getHeight(), 2024)
             self.assertEqual(image.getWidth(), 2248)
-            self.assertEqual(image.get(200, 25), (0.0, 0.0, 20.0, 0.0)[i])
-            self.assertAlmostEqual(image.get(200, 26), (1.20544, 1.20544, 0.0,
-                5.82185)[i], places=5)
+            self.assertEqual(image.get(200, 25), (0.0, 20.0, 0.0)[i-1])
+            self.assertAlmostEqual(image.get(200, 26),
+                    (1.20544, 0.0, 5.82185)[i-1], places=5)
 
 def suite():
     utilsTests.init()

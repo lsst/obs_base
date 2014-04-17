@@ -121,7 +121,9 @@ class Mapper2TestCase(unittest.TestCase):
                          set(["flat", "flat_filename", "raw", "raw_md",
                              "raw_filename", "raw_sub", "defects",
                              "some", "some_filename", "some_md", "some_sub",
-                              "camera", "src", "src_filename", "skypolicy"]))
+                              "camera", "src", "src_filename", "skypolicy",
+                              "other_sub", "other_filename", "other_md",
+                              "other"]))
 
     def testMap(self):
         loc = self.mapper.map("raw", {"ccd": 13}, write=True)
