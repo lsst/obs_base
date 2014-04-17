@@ -27,6 +27,12 @@ images: {
         persistable: "ExposureF"
         tables:      raw
     }
+    other: {
+        template:    "bar-%(ccd)02d.fits[%(hdu)d]"
+        python:      "lsst.afw.image.ImageF"
+        persistable: "ImageF"
+        tables:      raw
+    }
 }
 calibrations: {
     flat: {
