@@ -397,8 +397,21 @@ class CameraMapper(dafPersist.Mapper):
         will match filenames without the HDU indicator, e.g. 'foo.fits'. The
         path returned WILL contain the indicator though, e.g. ['foo.fits[1]'].
         """
+        def normalize(path):
+            """Normalize path names
+
+            Removes leading double-slash, which is significant in POSIX but
+            not in Linux and not in the below code either.
+            """
+            path = os.path.normpath(path)
+            if path.startswith("//"):
+                path = path[1:]
+            return path
+
         # Separate path into a root-equivalent prefix (in dir) and the rest
         # (left in path)
+        rootDir = normalize(root)
+        path = normalize(path)
 
         rootDir = root
         # First remove trailing slashes (#2527)
