@@ -28,7 +28,6 @@ import lsst.utils.tests as utilsTests
 
 import lsst.afw.geom as afwGeom
 import lsst.pex.policy as pexPolicy
-import lsst.daf.base as dafBase
 import lsst.daf.persistence as dafPersist
 import lsst.daf.butlerUtils as butlerUtils
 
@@ -170,7 +169,7 @@ class Mapper2TestCase(unittest.TestCase):
 
         bbox = afwGeom.BoxI(afwGeom.Point2I(200, 100),
                     afwGeom.Extent2I(300, 400))
-        image = butler.get("some_sub", ccd=35, bbox=bbox)
+        image = butler.get("some_sub", ccd=35, bbox=bbox, imageOrigin="LOCAL", immediate=True)
         self.assertEqual(image.getHeight(), 400)
         self.assertEqual(image.getWidth(), 300)
 
