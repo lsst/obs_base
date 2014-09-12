@@ -25,7 +25,6 @@
 
 import unittest
 import lsst.utils.tests as utilsTests
-from lsst.afw.image import PARENT
 
 import os
 import sys
@@ -53,7 +52,7 @@ class Ticket1580TestCase(unittest.TestCase):
                 mapper=LsstSimMapper(root=self.dataRoot)).create()
         kwargs = {'visit': 85408556, 'sensor': '1,1', 'raft': '2,3'}
         calexp = butler.get("calexp", **kwargs)
-        self.assertEqual(calexp.getDetector().getBBox(), calexp.getBBox(PARENT))
+        self.assertEqual(calexp.getDetector().getBBox(), calexp.getBBox())
 
 def suite():
     utilsTests.init()
