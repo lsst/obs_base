@@ -357,6 +357,7 @@ class CameraMapper(dafPersist.Mapper):
 
         # Filter translation table
         self.filters = None
+        self.defaultFilterName = None
 
         # Skytile policy
         self.skypolicy = policy['skytiles']
@@ -794,8 +795,13 @@ class CameraMapper(dafPersist.Mapper):
 
         actualId = mapping.need(['filter'], dataId)
         filterName = actualId['filter']
-        if self.filters is not None and filterName in self.filters:
-            filterName = self.filters[filterName]
+        if self.filters is not None:
+            if filterName in self.filters:
+                filterName = self.filters[filterName]
+            elif self.defaultFilterName and self.defaultFilterName in self.filters:
+                self.log.warn("Unrecognised filter (%s): setting to default filter name (%s)" %
+                              (filterName, self.defaultFilterName))
+                filterName = self.defaultFilterName
         item.setFilter(afwImage.Filter(filterName))
 
     def _setTimes(self, mapping, item, dataId):
