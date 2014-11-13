@@ -176,7 +176,7 @@ class CameraMapper(dafPersist.Mapper):
             root = "."
         root = dafPersist.LogicalLocation(root).locString()
 
-        if outputRoot is not None:
+        if outputRoot is not None and os.path.abspath(outputRoot) != os.path.abspath(root):
             # Path manipulations are subject to race condition
             if not os.path.exists(outputRoot):
                 try:
