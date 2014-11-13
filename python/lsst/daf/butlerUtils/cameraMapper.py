@@ -832,7 +832,7 @@ class CameraMapper(dafPersist.Mapper):
             return os.path.join(self.defectPath, rows[0][0])
         else:
             raise RuntimeError("Querying for defects (%s, %s) returns %d files: %s" %
-                               (ccdSerial, taiObs, len(rows), ", ".join([_[0] for _ in rows])))
+                               (ccdVal, taiObs, len(rows), ", ".join([_[0] for _ in rows])))
 
 
 def exposureFromImage(image):
