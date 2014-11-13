@@ -27,14 +27,12 @@ import unittest
 import lsst.utils.tests as utilsTests
 
 import cPickle
-import glob
 import os
 import subprocess
 import pickle
 
 import lsst.afw.geom as afwGeom
 import lsst.pex.policy as pexPolicy
-import lsst.daf.base as dafBase
 import lsst.daf.persistence as dafPersist
 import lsst.daf.butlerUtils as butlerUtils
 
@@ -123,9 +121,6 @@ class OutputRootTestCase(unittest.TestCase):
         self.assert_(os.path.islink("testOutput/_parent"))
         self.assert_(os.path.exists("testOutput/_parent/MinMapper1.paf"))
         self.assert_(os.path.exists("testOutput/_parent/outputRoot.py"))
-
-        self.assertRaises(RuntimeError, MinMapper1,
-                root="testOutput", outputRoot="testOutput")
 
         mapper = MinMapper1(root="testOutput", outputRoot="testOutput2")
         self.assert_(os.path.exists("testOutput2"))
