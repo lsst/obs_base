@@ -37,6 +37,8 @@ import lsst.daf.persistence as dafPersist
 import lsst.daf.butlerUtils as butlerUtils
 
 class MinMapper1(butlerUtils.CameraMapper):
+    packageName = 'larry'
+
     def __init__(self, root="tests", outputRoot=None):
         policy = pexPolicy.Policy.createPolicy("tests/MinMapper1.paf")
         butlerUtils.CameraMapper.__init__(self,

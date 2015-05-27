@@ -27,7 +27,6 @@ import re
 import sys
 import shutil
 import pyfits # required by _makeDefectsDict until defects are written as AFW tables
-import eups
 import lsst.daf.persistence as dafPersist
 from lsst.daf.butlerUtils import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping, Registry
 import lsst.daf.base as dafBase
@@ -128,6 +127,7 @@ class CameraMapper(dafPersist.Mapper):
     * Rewrite defects as AFW tables so we don't need pyfits to unpersist them; then remove all mention
       of pyfits from this package.
     """
+    packageName = None
 
     def __init__(self, policy, repositoryDir,
                  root=None, registry=None, calibRoot=None, calibRegistry=None,
@@ -374,6 +374,11 @@ class CameraMapper(dafPersist.Mapper):
         # Skytile policy
         self.skypolicy = policy.getPolicy("skytiles")
 
+        # verify that the class variable packageName is set before attempting
+        # to instantiate an instance
+        if self.packageName is None:
+            raise ValueError('class variable packageName must not be None')
+
     def _parentSearch(self, path):
         """Look for the given path in the current root or any of its parents
         by following "_parent" symlinks; return None if it can't be found.  A
@@ -497,21 +502,11 @@ class CameraMapper(dafPersist.Mapper):
         return name[:1].lower() + name[1:] if name else ''
 
     @classmethod
-    def getEupsProductName(cls):
-        """Return the name of the EUPS product containing this CameraMapper."""
-        modPath = os.path.realpath(sys.modules[cls.__module__].__file__)
-        bestPathLen = 0
-        bestName = None
-        for prod in eups.Eups().findProducts(tags=["setup"]):
-            path = os.path.realpath(prod.dir)
-            if modPath.startswith(path) and len(path) > bestPathLen:
-                bestName = prod.name
-                bestPathLen = len(path)
-        if bestName is None:
-            raise NotImplementedError(
-                "%s did not provide an eups product name, and one could not be discovered." %
-                (str(cls),))
-        return bestName
+    def getPackageName(cls):
+        """Return the name of the package containing this CameraMapper."""
+        if cls.packageName is None:
+            raise ValueError('class variable packageName must not be None')
+        return cls.packageName
 
     def map_camera(self, dataId, write=False):
         """Map a camera dataset."""

@@ -32,6 +32,8 @@ import lsst.pex.policy as pexPolicy
 import lsst.afw.image
 
 class MinMapper2(butlerUtils.CameraMapper):
+    packageName = 'larry'
+
     def __init__(self):
         policy = pexPolicy.Policy.createPolicy("tests/MinMapper2.paf")
         butlerUtils.CameraMapper.__init__(self, policy=policy,

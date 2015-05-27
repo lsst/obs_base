@@ -32,6 +32,8 @@ import lsst.daf.persistence as dafPersist
 import lsst.daf.butlerUtils as butlerUtils
 
 class MinMapper1(butlerUtils.CameraMapper):
+    packageName = 'larry'
+
     def __init__(self):
         policy = pexPolicy.Policy.createPolicy("tests/MinMapper1.paf")
         butlerUtils.CameraMapper.__init__(self,
@@ -42,6 +44,8 @@ class MinMapper1(butlerUtils.CameraMapper):
         return float(item)
 
 class MinMapper2(butlerUtils.CameraMapper):
+    packageName = 'moe'
+
     # CalibRoot in policy
     # needCalibRegistry
     def __init__(self):
@@ -59,6 +63,14 @@ class MinMapper2(butlerUtils.CameraMapper):
 
     def std_x(self, item, dataId):
         return float(item)
+
+# does not assign packageName
+class MinMapper3(butlerUtils.CameraMapper):
+    def __init__(self):
+        policy = pexPolicy.Policy.createPolicy("tests/MinMapper1.paf")
+        butlerUtils.CameraMapper.__init__(self,
+                policy=policy, repositoryDir="tests", root="tests")
+        return
 
 class Mapper1TestCase(unittest.TestCase):
     """A test case for the mapper used by the data butler."""
@@ -104,7 +116,7 @@ class Mapper1TestCase(unittest.TestCase):
 
     def testNames(self):
         self.assertEqual(MinMapper1.getCameraName(), "min")
-        self.assertEqual(MinMapper1.getEupsProductName(), "daf_butlerUtils")
+        self.assertEqual(MinMapper1.getPackageName(), "larry")
 
 class Mapper2TestCase(unittest.TestCase):
     """A test case for the mapper used by the data butler."""
@@ -193,7 +205,15 @@ class Mapper2TestCase(unittest.TestCase):
 
     def testNames(self):
         self.assertEqual(MinMapper2.getCameraName(), "min")
-        self.assertEqual(MinMapper2.getEupsProductName(), "daf_butlerUtils")
+        self.assertEqual(MinMapper2.getPackageName(), "moe")
+
+class Mapper3TestCase(unittest.TestCase):
+    """A test case for a mapper subclass which does not assign packageName."""
+    def testPackageName(self):
+        with self.assertRaises(ValueError):
+            MinMapper3()
+        with self.assertRaises(ValueError):
+            MinMapper3.getPackageName()
 
 def suite():
     utilsTests.init()
@@ -201,6 +221,7 @@ def suite():
     suites = []
     suites += unittest.makeSuite(Mapper1TestCase)
     suites += unittest.makeSuite(Mapper2TestCase)
+    suites += unittest.makeSuite(Mapper3TestCase)
     suites += unittest.makeSuite(utilsTests.MemoryTestCase)
     return unittest.TestSuite(suites)
 
