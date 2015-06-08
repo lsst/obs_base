@@ -185,6 +185,20 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(image.getHeight(), 400)
         self.assertEqual(image.getWidth(), 300)
 
+    def testButlerQueryMetadata(self):
+        butler = dafPersist.ButlerFactory(mapper=self.mapper).create()
+        kwargs = { "ccd": 35, "filter": "r", "visit": 787731,
+                   "taiObs": "2005-04-02T09:24:49.933440000"}
+        self.assertEqual(butler.queryMetadata("other", "visit", **kwargs),
+                         [787731])
+        self.assertEqual(butler.queryMetadata("other", "visit",
+                                              visit=kwargs["visit"], ccd=kwargs["ccd"],
+                                              taiObs=kwargs["taiObs"], filter=kwargs["filter"]),
+                         [787731])
+        # now test we get no matches if ccd is out of range
+        self.assertEqual(butler.queryMetadata("raw", "ccd", ccd=36, filter="r", visit=787731),
+                         [])
+
     def testQueryMetadata(self):
         self.assertEqual(
                 self.mapper.queryMetadata("raw", "ccd", ["ccd"], None),
