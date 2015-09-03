@@ -24,7 +24,6 @@
 import os
 import errno
 import re
-import sys
 import shutil
 import pyfits # required by _makeDefectsDict until defects are written as AFW tables
 import lsst.daf.persistence as dafPersist
