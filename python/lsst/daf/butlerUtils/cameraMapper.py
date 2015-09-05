@@ -24,7 +24,6 @@
 import os
 import errno
 import re
-import sys
 import shutil
 import pyfits # required by _makeDefectsDict until defects are written as AFW tables
 import lsst.daf.persistence as dafPersist
@@ -118,7 +117,7 @@ class CameraMapper(dafPersist.Mapper):
     provided in the subclass to return the dataset instead of using the
     "datasets" subpolicy.
 
-    Implementations of map_camera and std_camera that should typically be
+    Implementations of map_camera and bypass_camera that should typically be
     sufficient are provided in this base class.
 
     @todo
@@ -349,14 +348,7 @@ class CameraMapper(dafPersist.Mapper):
 
         # Camera geometry
         self.cameraDataLocation = None # path to camera geometry config file
-        self.camera = None
-        if policy.exists('camera'):
-            cameraDataSubdir = policy.getString('camera')
-            self.cameraDataLocation = os.path.normpath(
-                os.path.join(repositoryDir, cameraDataSubdir, "camera.py"))
-            cameraConfig = afwCameraGeom.CameraConfig()
-            cameraConfig.load(self.cameraDataLocation)
-            self.camera = self.std_camera(cameraConfig, dataId=dict())
+        self.camera = self._makeCamera(policy=policy, repositoryDir=repositoryDir)
 
         # Defect registry and root
         self.defectRegistry = None
@@ -510,31 +502,23 @@ class CameraMapper(dafPersist.Mapper):
 
     def map_camera(self, dataId, write=False):
         """Map a camera dataset."""
-        if self.cameraDataLocation is None:
+        if self.camera is None:
             raise RuntimeError("No camera dataset available.")
         actualId = self._transformId(dataId)
         return dafPersist.ButlerLocation(
             pythonType = "lsst.afw.cameraGeom.CameraConfig",
             cppType = "Config",
             storageName = "ConfigStorage",
-            locationList = self.cameraDataLocation,
+            locationList = self.cameraDataLocation or "ignored",
             dataId = actualId,
         )
 
-    def std_camera(self, item, dataId):
-        """Standardize a camera dataset by converting it to a camera object.
-
-        @param[in] item: camera info (an lsst.afw.cameraGeom.CameraConfig)
-        @param[in] dataId: data ID dict
+    def bypass_camera(self, datasetType, pythonType, butlerLocation, dataId):
+        """Return the (preloaded) camera object.
         """
-        if self.cameraDataLocation is None:
+        if self.camera is None:
             raise RuntimeError("No camera dataset available.")
-        ampInfoPath = os.path.dirname(self.cameraDataLocation)
-        return afwCameraGeom.makeCameraFromPath(
-            cameraConfig = item,
-            ampInfoPath = ampInfoPath,
-            shortNameFunc = self.getShortCcdName,
-        )
+        return self.camera
 
     def map_defects(self, dataId, write=False):
         """Map defects dataset.
@@ -828,6 +812,37 @@ class CameraMapper(dafPersist.Mapper):
         else:
             raise RuntimeError("Querying for defects (%s, %s) returns %d files: %s" %
                                (ccdVal, taiObs, len(rows), ", ".join([_[0] for _ in rows])))
+
+    def _makeCamera(self, policy, repositoryDir):
+        """Make a camera (instance of lsst.afw.cameraGeom.Camera) describing the camera geometry
+
+        Also set self.cameraDataLocation, if relevant (else it can be left None).
+
+        This implementation assumes that policy contains an entry "camera" that points to the
+        subdirectory in this package of camera data; specifically, that subdirectory must contain:
+        - a file named `camera.py` that contains persisted camera config
+        - ampInfo table FITS files, as required by lsst.afw.cameraGeom.makeCameraFromPath
+
+        @param policy        (pexPolicy.Policy) Policy with per-camera defaults
+                             already merged
+        @param repositoryDir (string) Policy repository for the subclassing
+                             module (obtained with getRepositoryPath() on the
+                             per-camera default dictionary)
+        """
+        if not policy.exists('camera'):
+            raise RuntimeError("Cannot find 'camera' in policy; cannot construct a camera")
+
+        cameraDataSubdir = policy.getString('camera')
+        self.cameraDataLocation = os.path.normpath(
+            os.path.join(repositoryDir, cameraDataSubdir, "camera.py"))
+        cameraConfig = afwCameraGeom.CameraConfig()
+        cameraConfig.load(self.cameraDataLocation)
+        ampInfoPath = os.path.dirname(self.cameraDataLocation)
+        return afwCameraGeom.makeCameraFromPath(
+            cameraConfig = cameraConfig,
+            ampInfoPath = ampInfoPath,
+            shortNameFunc = self.getShortCcdName
+        )
 
 
 def exposureFromImage(image):

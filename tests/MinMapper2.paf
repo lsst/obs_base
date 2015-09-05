@@ -2,6 +2,8 @@
 
 # Minimal mapper configuration policy
 
+camera: "camera"
+
 needCalibRegistry: true
 calibRegistryPath: "tests/calibRegistry.sqlite3"
 levels: {

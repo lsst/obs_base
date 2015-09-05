@@ -2,6 +2,8 @@
 
 # Minimal mapper configuration policy
 
+camera: "camera"
+
 defaultLevel: "sensor"
 datasets: {
     x: {
