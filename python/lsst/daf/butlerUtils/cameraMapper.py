@@ -726,6 +726,9 @@ class CameraMapper(dafPersist.Mapper):
                 isinstance(item, afwImage.ExposureF) or isinstance(item, afwImage.ExposureD)):
             return
 
+        if item.getFilter() and item.getFilter().getName() != "_unknown_":
+            return
+
         actualId = mapping.need(['filter'], dataId)
         filterName = actualId['filter']
         if self.filters is not None and self.filters.has_key(filterName):
