@@ -23,6 +23,7 @@
 
 import os
 import re
+from lsst.daf.butlerUtils import fsScanner, SqliteRegistry, PosixRegistry
 from lsst.daf.persistence import ButlerLocation
 import lsst.pex.policy as pexPolicy
 
@@ -116,6 +117,7 @@ class Mapping(object):
         @return (lsst.daf.persistence.ButlerLocation)"""
 
         actualId = self.need(self.keyDict.iterkeys(), dataId)
+        # import pdb; pdb.set_trace()
         path = mapper._mapActualToPath(self.template, actualId)
         if not os.path.isabs(path):
             path = os.path.join(self.root, path)
@@ -144,28 +146,39 @@ class Mapping(object):
         if self.registry is None:
             raise RuntimeError, "No registry for lookup"
 
-        where = []
-        values = []
-        fastPath = True
-        for p in properties:
-            if p not in ('filter', 'expTime', 'taiObs'):
-                fastPath = False
-                break
-        if fastPath and dataId.has_key('visit') and "raw" in self.tables:
-            return self.registry.executeQuery(properties, ('raw_visit',),
-                    [('visit', '?')], None, (dataId['visit'],))
-        if dataId is not None:
-            for k, v in dataId.iteritems():
-                if self.columns and not k in self.columns:
-                    continue
-                if k == self.obsTimeName:
-                    continue
-                where.append((k, '?'))
-                values.append(v)
-        if self.range is not None:
-            values.append(dataId[self.obsTimeName])
-        return self.registry.executeQuery(properties, self.tables,
-                where, self.range, values)
+        # Peform lookup/query based on registry type:
+        if type(self.registry) is PosixRegistry:
+            lookupResults = self.registry.lookup(template=self.template, lookupProperties=properties,
+                                              dataId=dataId, storage=self.storage)
+            return lookupResults
+
+
+        elif type(self.registry) is SqliteRegistry:
+            where = []
+            values = []
+            fastPath = True
+            for p in properties:
+                if p not in ('filter', 'expTime', 'taiObs'):
+                    fastPath = False
+                    break
+            if fastPath and dataId.has_key('visit') and "raw" in self.tables:
+                return self.registry.executeQuery(properties, ('raw_visit',),
+                        [('visit', '?')], None, (dataId['visit'],))
+            if dataId is not None:
+                for k, v in dataId.iteritems():
+                    if self.columns and not k in self.columns:
+                        continue
+                    if k == self.obsTimeName:
+                        continue
+                    where.append((k, '?'))
+                    values.append(v)
+            if self.range is not None:
+                values.append(dataId[self.obsTimeName])
+            return self.registry.executeQuery(properties, self.tables,
+                    where, self.range, values)
+        else:
+            raise RuntimeError, "Unhandled registry type:" + str(type(self.registry))
+
 
     def have(self, properties, dataId):
         """Returns whether the provided data identifier has all
@@ -187,7 +200,6 @@ class Mapping(object):
         @param dataId     (dict) Partial dataset identifier
         @return (dict) copy of dataset identifier with enhanced values
         """
-
         newId = dataId.copy()
         newProps = []                    # Properties we don't already have
         for prop in properties:
@@ -198,7 +210,8 @@ class Mapping(object):
 
         lookups = self.lookup(newProps, newId)
         if len(lookups) != 1:
-            raise RuntimeError, "No unique lookup for %s from %s: %d matches" % (newProps, newId, len(lookups))
+            raise RuntimeError, "No unique lookup for %s from %s: %d matches" % \
+                                (newProps, newId, len(lookups))
         for i, prop in enumerate(newProps):
             newId[prop] = lookups[0][i]
         return newId

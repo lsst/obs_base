@@ -29,6 +29,7 @@ other) relational database, and data gathered from scanning a filesystem are
 all anticipated."""
 
 # import glob
+import fsScanner
 import os
 import re
 try:
@@ -69,8 +70,138 @@ class Registry(object):
         raise RuntimeError, \
                 "Unable to create registry using location: " + location
 
-    # TODO - flesh out the generic interface as more registry types are
-    # defined.
+class PosixRegistry(Registry):
+    """A glob-based filesystem registry"""
+
+    def __init__(self, root):
+        Registry.__init__(self)
+        self.root = root
+
+    @staticmethod
+    def getHduNumber(template, dataId):
+        """Looks up the HDU number for a given template+dataId.
+        :param template: template with HDU specifier (ends with brackets and an
+        identifier that can be populated by a key-value pair in dataId.
+        e.g. "%(visit)07d/instcal%(visit)07d.fits.fz[%(ccdnum)d]"
+        :param dataId: dictionary that hopefully has a key-value pair whose key
+        matches (has the same name) as the key specifier in the template.
+        :return: the HDU specified by the template+dataId pair, or None if the
+        HDU can not be determined.
+        """
+        #sanity check that the template at least ends with a brace.
+        if not template.endswith(']'):
+            return None
+
+        # get the key (with formatting) out of the brances
+        hduKey = template[template.rfind('[')+1:template.rfind(']')]
+        # extract the key name from the formatting
+        hduKey = hduKey[hduKey.rfind('(')+1:hduKey.rfind(')')]
+
+        if hduKey in dataId:
+            return dataId[hduKey]
+        return None
+
+
+    def lookup(self, template, lookupProperties, dataId, storage=None):
+        """Looks for files in self.root (file system path) that match the
+        described template. Return values are refined by the values in dataId.
+        Returns a list of values that match keys in lookupProperties.
+        e.g. if the template is 'raw/raw_v%(visit)d_f%(filter)s.fits.gz', and
+        dataId={'visit':1}, and lookupProperties is ['filter'], and the
+        filesystem under self.root has exactly one file 'raw/raw_v1_fg.fits.gz'
+        then the return value will be [('g',)]
+        :param template: template parameter (typically from a policy paf) that
+        can be used to look for files
+        :param lookupProperties: property keys to look up
+        :param dataId: property keys and values to match
+        :param storage: optional. If specified, partial file name matches will
+        look in metadata for more values.
+        :return: list of tuples of metadata values that match the list of keys
+        in lookupProperties.
+        """
+        def commonKeysMatch(dict1, dict2):
+            """Compare 2 dictionaries. Check all keys in common; if they match
+            return true, else return false. Keys that are not common to both
+            dictionaries will not be considered."""
+            matchingKeys = set(dict1.keys()) & set(dict2.keys())
+            for key in matchingKeys:
+                if dict1[key] != dict2[key]:
+                    return False
+            return True
+
+        scanner = fsScanner.FsScanner(template)
+        allPaths = scanner.processPath(self.root)
+        retItems = [] # one of these for each found file that matches
+        foundPropertyList = []
+        for path, foundProperties in allPaths.items():
+            if commonKeysMatch(dataId, foundProperties):
+                if not all(k in foundProperties for k in lookupProperties):
+                    mdProperties = self.lookupMetadata(path, template, lookupProperties, dataId, storage)
+                    mdProperties.update(foundProperties)
+                    foundProperties = mdProperties
+                if not all(k in foundProperties for k in lookupProperties):
+                    break # incomplete lookup, can't use it.
+                for property in lookupProperties:
+                    foundPropertyList.append(foundProperties[property])
+                retItems.append(tuple(foundPropertyList))
+        return retItems
+
+
+    def lookupMetadata(self, filepath, template, lookupProperties, dataId, storage):
+        """
+        Dispatcher for looking up metadata in a file of a given storage type
+        :param template: template parameter (typically from a policy paf) that
+        can be used to look for files
+        :param lookupProperties: property keys to look up
+        :param dataId: property keys and values to match
+        :param storage: optional. If specified, partial file name matches will
+        look in metadata for more values.
+        :return: list of tuples of metadata values that match the list of keys
+        in lookupProperties. e.g.:
+        """
+        ret = []
+        if storage == 'FitsStorage':
+            ret = self.lookupFitsMetadata(filepath, template, lookupProperties, dataId)
+        return ret
+
+
+    def lookupFitsMetadata(self, filepath, template, lookupProperties, dataId):
+        """Lookup metadata in a fits file.
+        Will try to discover the correct HDU to look in by testing if the
+        template has a value in brackets at the end.
+        If the HDU is specified but the metadata key is not discovered in
+        that HDU, will look in the primary HDU before giving up.
+        :param filepath: path to the file
+        :param template: template that was used to discover the file. This can
+        be used to look up the correct HDU as needed.
+        :param lookupProperties: a list keys to metadata to be looked up in the
+        file.
+        :param dataId: key+value pairs to look up the HDU number.
+        :return: list of metadata values that matches the list of metadata keys
+        in lookupProperties
+        """
+        from astropy.io import fits
+        hdulist = fits.open(filepath, memmap=True)
+        hduNumber = PosixRegistry.getHduNumber(template=template, dataId=dataId)
+        if hduNumber != None and hduNumber < len(hdulist):
+            hdu = hdulist[hduNumber]
+        else:
+            hdu = None
+        if len(hdulist) > 0:
+            primaryHdu = hdulist[0]
+        else:
+            primaryHdu = None
+        foundProperties = {}
+        for property in lookupProperties:
+            propertyValue = None
+            if hdu is not None and property in hdu.header:
+                propertyValue = hdu.header[property]
+            # if the value is not in the indicated HDU, try the primary HDU:
+            elif primaryHdu is not None and property in primaryHdu.header:
+                propertyValue = primaryHdu.header[property]
+            foundProperties[property] = propertyValue
+        return foundProperties
+
 
 class SqliteRegistry(Registry):
     """A SQLite3-based registry."""
