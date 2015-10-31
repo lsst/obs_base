@@ -50,10 +50,18 @@ class FsScanner(object):
         appearances of such fields will have "_{number}" appended to them to
         disambiguate, although it is typically assumed that they will all be
         identical.
+
+        Trailing brackets (and their contents) can be used to indicate which HDU from a file should
+        be used. They will not be included in the filename search.
         """
+
+        # Trim any trailing braces off the end of the path template.
+        if pathTemplate.endswith(']'):
+            pathTemplate = pathTemplate[0:pathTemplate.rfind('[')]
 
         # Change template into a globbable path specification.
         fmt = re.compile(r'%\((\w+)\).*?([dioueEfFgGcrs])')
+
         self.globString = fmt.sub('*', pathTemplate)
 
         # Change template into a regular expression.
@@ -111,9 +119,15 @@ class FsScanner(object):
 
         return self.fields[name]['fieldType'] == float
 
-    def processPath(self, location, callback):
-        """Scan a given path location with the given callback function."""
+    def processPath(self, location):
+        """
+        Scan a given path location. Return info about paths that conform to the path template:
+        :param location:
+        :return: Path info: {path: {key:value ...}, ...} e.g.:
+            {'0239622/instcal0239622.fits.fz': {'visit_0': 239622, 'visit': 239622}
+        """
 
+        ret = {}
         curdir = os.getcwd()
         os.chdir(location)
         pathList = glob.glob(self.globString)
@@ -126,7 +140,8 @@ class FsScanner(object):
                         dataId[f] = int(dataId[f])
                     elif self.isFloat(f):
                         dataId[f] = float(dataId[f])
-                callback(path, dataId)
+                ret[path] = dataId
             else:
                 print >> sys.stderr, "Warning: unmatched path: %s" % (path,)
         os.chdir(curdir)
+        return ret

@@ -27,7 +27,8 @@ import re
 import shutil
 import pyfits # required by _makeDefectsDict until defects are written as AFW tables
 import lsst.daf.persistence as dafPersist
-from lsst.daf.butlerUtils import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping, Registry
+from lsst.daf.butlerUtils import (ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping, Registry,
+                                  PosixRegistry)
 import lsst.daf.base as dafBase
 import lsst.afw.geom as afwGeom
 import lsst.afw.image as afwImage
@@ -610,18 +611,23 @@ class CameraMapper(dafPersist.Mapper):
                     self.log.log(pexLog.Log.WARN,
                             "Unable to locate registry at policy path: %s" % path)
                     path = None
+
+
+        # determine if there is an sqlite registry and if not, try the posix registry.
+        registry = None
+
         if path is None and root is not None:
             path = os.path.join(root, "%s.sqlite3" % name)
             newPath = self._parentSearch(path)
             if newPath is None:
-                self.log.log(pexLog.Log.WARN,
+                self.log.log(pexLog.Log.INFO,
                         "Unable to locate %s registry in root: %s" % (name, path))
             path = newPath
         if path is None:
             path = os.path.join(".", "%s.sqlite3" % name)
             newPath = self._parentSearch(path)
             if newPath is None:
-                self.log.log(pexLog.Log.WARN,
+                self.log.log(pexLog.Log.INFO,
                         "Unable to locate %s registry in current dir: %s" % (name, path))
             path = newPath
         if path is not None:
@@ -632,14 +638,13 @@ class CameraMapper(dafPersist.Mapper):
             self.log.log(pexLog.Log.INFO,
                     "Loading %s registry from %s" % (name, path))
             registry = Registry.create(path)
-            if registry is None:
-                raise RuntimeError, "Unable to load %s registry from %s" % (name, path)
-            return registry
-        else:
-            # TODO Try a FsRegistry(root)
-            self.log.log(pexLog.Log.WARN,
-                         "No registry loaded; proceeding without one")
-            return None
+        elif not registry and os.path.exists(root):
+            self.log.log(pexLog.Log.INFO,
+                    "Loading Posix registry from %s" % (root))
+            registry = PosixRegistry(root)
+
+        return registry
+
 
     def _transformId(self, dataId):
         """Generate a standard ID dict from a camera-specific ID dict.
