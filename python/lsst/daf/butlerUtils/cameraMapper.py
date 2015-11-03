@@ -151,7 +151,19 @@ class CameraMapper(dafPersist.Mapper):
 
         self.log = pexLog.Log(pexLog.getDefaultLog(), "CameraMapper")
 
-        # Dictionary
+        self.root = root
+
+        # Load additional policy files:
+        # First, look for a policy file in the repository. If found: use it as the policy file, and merge
+        # the other policy info from the passed-in policy.
+        if self.root != None:
+            path = os.path.join(self.root, '_policy')
+            repoPolicyPath = self._parentSearch(path)
+            if repoPolicyPath is not None and os.path.exists(repoPolicyPath):
+                repoPolicy = pexPolicy.Policy_createPolicy(repoPolicyPath)
+                repoPolicy.mergeDefaults(policy)
+                policy = repoPolicy
+        # Apply any names & values that are in the MapperDictionary but are not yet in the policy:
         dictFile = pexPolicy.DefaultPolicyFile("daf_butlerUtils",
                 "MapperDictionary.paf", "policy")
         dictPolicy = pexPolicy.Policy.createPolicy(dictFile,
@@ -222,6 +234,7 @@ class CameraMapper(dafPersist.Mapper):
         if not os.path.exists(calibRoot):
             self.log.log(pexLog.Log.WARN,
                     "Calibration root directory not found: %s" % (calibRoot,))
+
         self.root = root
 
         # Registries
@@ -379,7 +392,6 @@ class CameraMapper(dafPersist.Mapper):
         ".") and because the "_parent" links go between the root and the rest
         of the path.
         """
-
         # Separate path into a root-equivalent prefix (in dir) and the rest
         # (left in path)
         rootDir = self.root
