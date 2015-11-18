@@ -107,7 +107,7 @@ class OutputRootTestCase(unittest.TestCase):
             cPickle.dump(box, f)
 
         parent = mapper2._parentSearch("testOutput3/foo-1,1.pickle")
-        self.assertEqual(parent, "testOutput3/_parent/foo-1,1.pickle")
+        self.assertEqual(parent, ["testOutput3/_parent/foo-1,1.pickle"])
 
         loc = mapper2.map("x", dict(sensor="1,1"))
         self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")

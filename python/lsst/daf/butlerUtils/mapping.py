@@ -25,6 +25,7 @@ import os
 import re
 from lsst.daf.butlerUtils import fsScanner, SqliteRegistry, PosixRegistry
 from lsst.daf.persistence import ButlerLocation
+from lsst.daf.persistence.policy import Policy
 import lsst.pex.policy as pexPolicy
 
 """This module defines the Mapping base class."""
@@ -69,7 +70,8 @@ class Mapping(object):
     def __init__(self, datasetType, policy, registry, root, provided=None):
         """Constructor for Mapping class.
         @param datasetType    (string)
-        @param policy         (lsst.pex.policy.Policy) Mapping policy
+        @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
+                              Mapping Policy
         @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
         @param root           (string) Path of root directory
         @param provided       (list of strings) Keys provided by the mapper
@@ -77,6 +79,9 @@ class Mapping(object):
 
         if policy is None:
             raise RuntimeError, "No policy provided for mapping"
+
+        if isinstance(policy, pexPolicy.Policy):
+            policy = Policy(policy)
 
         self.datasetType = datasetType
         self.registry = registry
@@ -236,9 +241,12 @@ class ImageMapping(Mapping):
     def __init__(self, datasetType, policy, registry, root, **kwargs):
         """Constructor for Mapping class.
         @param datasetType    (string)
-        @param policy         (lsst.pex.policy.Policy) Mapping policy
+        @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
+                              Mapping Policy
         @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
         @param root           (string) Path of root directory"""
+        if isinstance(policy, pexPolicy.Policy):
+            policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
         self.columns = policy.getStringArray("columns") if policy.exists("columns") else None
 
@@ -249,9 +257,12 @@ class ExposureMapping(Mapping):
     def __init__(self, datasetType, policy, registry, root, **kwargs):
         """Constructor for Mapping class.
         @param datasetType    (string)
-        @param policy         (lsst.pex.policy.Policy) Mapping policy
+        @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
+                              Mapping Policy
         @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
         @param root           (string) Path of root directory"""
+        if isinstance(policy, pexPolicy.Policy):
+            policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
         self.columns = policy.getStringArray("columns") if policy.exists("columns") else None
 
@@ -293,11 +304,13 @@ class CalibrationMapping(Mapping):
     def __init__(self, datasetType, policy, registry, calibRegistry, calibRoot, **kwargs):
         """Constructor for Mapping class.
         @param datasetType    (string)
-        @param policy         (lsst.pex.policy.Policy) Mapping policy
+        @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
+                              Mapping Policy
         @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
         @param calibRegistry  (lsst.daf.butlerUtils.Registry) Registry for calibration metadata lookups
         @param calibRoot      (string) Path of calibration root directory"""
-
+        if isinstance(policy, pexPolicy.Policy):
+            policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, calibRegistry, calibRoot, **kwargs)
         self.reference = policy.getStringArray("reference") \
                 if policy.exists("reference") else None
@@ -373,9 +386,12 @@ class DatasetMapping(Mapping):
     def __init__(self, datasetType, policy, registry, root, **kwargs):
         """Constructor for DatasetMapping class.
         @param[in,out] mapper (lsst.daf.persistence.Mapper) Mapper object
-        @param policy         (lsst.pex.policy.Policy) Mapping policy
+        @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
+                              Mapping Policy
         @param datasetType    (string)
         @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
         @param root           (string) Path of root directory"""
+        if isinstance(policy, pexPolicy.Policy):
+            policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
         self.storage = policy.getString("storage") # Storage type

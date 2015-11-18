@@ -221,6 +221,20 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(MinMapper2.getCameraName(), "min")
         self.assertEqual(MinMapper2.getPackageName(), "moe")
 
+    def testGetRepoPolicy(self):
+        testDataType = collections.namedtuple('testData', 'folder extension key value')
+        testData = (testDataType('onlyPaf', 'paf', 'exposures.raw.template', 'onlyPaf.fits.gz'),
+                testDataType('onlyYaml', 'yaml', 'myKey', 'onlyYamlInHere'),
+                testDataType('yamlAndPaf', 'yaml', 'myKey', 'yamlHereWithPaf'))
+
+        basePath = os.path.join('tests', 'testGetRepoPolicy')
+        for data in testData:
+            path = os.path.join('tests', 'testGetRepoPolicy', data.folder)
+            policy = butlerUtils.CameraMapper.getRepoPolicy(os.environ['DAF_BUTLERUTILS_DIR'], path)
+            self.assertTrue(policy is not None)
+            self.assertEqual(policy[data.key], data.value)
+
+
 class Mapper3TestCase(unittest.TestCase):
     """A test case for a mapper subclass which does not assign packageName."""
     def testPackageName(self):
