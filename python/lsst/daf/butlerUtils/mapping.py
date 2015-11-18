@@ -87,7 +87,7 @@ class Mapping(object):
         self.registry = registry
         self.root = root
 
-        self.template = policy.getString("template") # Template path
+        self.template = policy['template'] # Template path
         self.keyDict = dict([
             (k, _formatMap(v, k, datasetType))
             for k, v in
@@ -97,19 +97,18 @@ class Mapping(object):
             for p in provided:
                 if p in self.keyDict:
                     del self.keyDict[p]
-        self.python = policy.getString("python") # Python type
-        self.persistable = policy.getString("persistable") # Persistable type
-        self.storage = policy.getString("storage")
-        if policy.exists("level"):
-            self.level = policy.getString("level") # Level in camera hierarchy
-        if policy.exists("tables"):
-            self.tables = policy.getStringArray("tables")
+        self.python = policy['python'] # Python type
+        self.persistable = policy['persistable'] # Persistable type
+        self.storage = policy['storage']
+        if 'level' in policy:
+            self.level = policy['level'] # Level in camera hierarchy
+        if 'tables' in policy:
+            self.tables = policy.asArray('tables')
         else:
             self.tables = None
         self.range = None
         self.columns = None
-        self.obsTimeName = policy.getString("obsTimeName") \
-                if policy.exists("obsTimeName") else None
+        self.obsTimeName = policy['obsTimeName'] if 'obsTimeName' in policy else None
 
     def keys(self):
         """Return the dict of keys and value types required for this mapping."""
@@ -248,7 +247,7 @@ class ImageMapping(Mapping):
         if isinstance(policy, pexPolicy.Policy):
             policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
-        self.columns = policy.getStringArray("columns") if policy.exists("columns") else None
+        self.columns = policy.asArray('columns') if 'columns' in policy else None
 
 
 class ExposureMapping(Mapping):
@@ -264,7 +263,7 @@ class ExposureMapping(Mapping):
         if isinstance(policy, pexPolicy.Policy):
             policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
-        self.columns = policy.getStringArray("columns") if policy.exists("columns") else None
+        self.columns = policy.asArray('columns') if 'columns' in policy else None
 
     def standardize(self, mapper, item, dataId):
         return mapper._standardizeExposure(self, item, dataId)
@@ -312,19 +311,19 @@ class CalibrationMapping(Mapping):
         if isinstance(policy, pexPolicy.Policy):
             policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, calibRegistry, calibRoot, **kwargs)
-        self.reference = policy.getStringArray("reference") \
-                if policy.exists("reference") else None
-        self.refCols = policy.getStringArray("refCols") \
-                if policy.exists("refCols") else None
+        self.reference = policy.asArray("reference") if "reference" in policy else None
+        self.refCols = policy.asArray("refCols") if "refCols" in policy else None
         self.refRegistry = registry
-        if policy.exists("validRange") and policy.getBool("validRange"):
-            self.range = ("?", policy.getString("validStartName"),
-                policy.getString("validEndName"))
-        if policy.exists("columns"):
-            self.columns = policy.getStringArray("columns")
-        if policy.exists("filter"):
-            self.setFilter = policy.getBool("filter")
-            
+        if "validRange" in policy and policy["validRange"]:
+            self.range = ("?", policy["validStartName"], policy["validEndName"])
+        if "columns" in policy:
+            self.columns = policy.asArray("columns")
+        if "filter" in policy:
+            self.setFilter = policy["filter"]
+        self.metadataKeys = None
+        if "metadataKey" in policy:
+            self.metadataKeys = policy.asArray("metadataKey")
+
     def lookup(self, properties, dataId):
         """Look up properties for in a metadata registry given a partial
         dataset identifier.
@@ -394,4 +393,4 @@ class DatasetMapping(Mapping):
         if isinstance(policy, pexPolicy.Policy):
             policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
-        self.storage = policy.getString("storage") # Storage type
+        self.storage = policy["storage"] # Storage type

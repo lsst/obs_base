@@ -166,16 +166,14 @@ class CameraMapper(dafPersist.Mapper):
 
         # Levels
         self.levels = dict()
-        if policy.exists("levels"):
-            levelsPolicy = policy.getPolicy("levels")
+        if 'levels' in policy:
+            levelsPolicy = policy['levels']
             for key in levelsPolicy.names(True):
-                self.levels[key] = set(levelsPolicy.getStringArray(key))
-        self.defaultLevel = policy.getString("defaultLevel")
+                self.levels[key] = set(levelsPolicy.asArray(key))
+        self.defaultLevel = policy['defaultLevel']
         self.defaultSubLevels = dict()
-        if policy.exists("defaultSubLevels"):
-            defaultSubLevelsPolicy = policy.getPolicy("defaultSubLevels")
-            for key in defaultSubLevelsPolicy.names(True):
-                self.defaultSubLevels[key] = defaultSubLevelsPolicy.getString(key)
+        if 'defaultSubLevels' in policy:
+            self.defaultSubLevels = policy['defaultSubLevels']
 
         # Root directories
         if root is None:
@@ -216,8 +214,8 @@ class CameraMapper(dafPersist.Mapper):
             root = outputRoot
 
         if calibRoot is None:
-            if policy.exists('calibRoot'):
-                calibRoot = policy.getString('calibRoot')
+            if 'calibRoot' in policy:
+                calibRoot = policy['calibRoot']
                 calibRoot = dafPersist.LogicalLocation(calibRoot).locString()
             else:
                 calibRoot = root
@@ -234,11 +232,9 @@ class CameraMapper(dafPersist.Mapper):
         # Registries
         self.registry = self._setupRegistry(
                 "registry", registry, policy, "registryPath", root)
-        if policy.exists('needCalibRegistry') and \
-                policy.getBool('needCalibRegistry'):
-            calibRegistry = self._setupRegistry(
-                    "calibRegistry", calibRegistry,
-                    policy, "calibRegistryPath", calibRoot)
+        if 'needCalibRegistry' in policy and policy['needCalibRegistry']:
+            calibRegistry = self._setupRegistry("calibRegistry", calibRegistry, policy,
+                                                "calibRegistryPath", calibRoot)
         else:
             calibRegistry = None
 
@@ -264,19 +260,18 @@ class CameraMapper(dafPersist.Mapper):
                 )
         self.mappings = dict()
         for name, defPolicy, cls in mappingList:
-            if policy.exists(name):
-                datasets = policy.getPolicy(name)
+            if name in policy:
+                datasets = policy[name]
                 mappings = dict()
                 setattr(self, name, mappings)
                 for datasetType in datasets.names(True):
-                    subPolicy = datasets.getPolicy(datasetType)
-                    subPolicy.mergeDefaults(defPolicy)
+                    subPolicy = datasets[datasetType]
+                    subPolicy.merge(defPolicy)
                     if name == "calibrations":
-                        mapping = cls(datasetType, subPolicy,
-                                self.registry, calibRegistry, calibRoot, provided=provided)
+                        mapping = cls(datasetType, subPolicy, self.registry, calibRegistry, calibRoot,
+                                      provided=provided)
                     else:
-                        mapping = cls(datasetType, subPolicy,
-                                self.registry, root, provided=provided)
+                        mapping = cls(datasetType, subPolicy, self.registry, root, provided=provided)
                     self.keyDict.update(mapping.keys())
                     mappings[datasetType] = mapping
                     self.mappings[datasetType] = mapping
@@ -352,9 +347,9 @@ class CameraMapper(dafPersist.Mapper):
 
         # Defect registry and root
         self.defectRegistry = None
-        if policy.exists('defects'):
+        if 'defects' in policy:
             self.defectPath = os.path.join(
-                    repositoryDir, policy.getString('defects'))
+                    repositoryDir, policy['defects'])
             defectRegistryLocation = os.path.join(
                     self.defectPath, "defectRegistry.sqlite3")
             self.defectRegistry = \
@@ -364,7 +359,7 @@ class CameraMapper(dafPersist.Mapper):
         self.filters = None
 
         # Skytile policy
-        self.skypolicy = policy.getPolicy("skytiles")
+        self.skypolicy = policy['skytiles']
 
         # verify that the class variable packageName is set before attempting
         # to instantiate an instance
@@ -382,7 +377,7 @@ class CameraMapper(dafPersist.Mapper):
                     if len(matches) > 1:
                         raise RuntimeError("More than 1 policy possibility for root:%s" %root)
                     elif len(matches) == 1:
-                        policy = Policy(path)
+                        policy = Policy(matches[0])
                         break
         return policy
 
@@ -868,8 +863,7 @@ class CameraMapper(dafPersist.Mapper):
             policy = Policy(policy)
         if not 'camera' in policy:
             raise RuntimeError("Cannot find 'camera' in policy; cannot construct a camera")
-
-        cameraDataSubdir = policy.getString('camera')
+        cameraDataSubdir = policy['camera']
         self.cameraDataLocation = os.path.normpath(
             os.path.join(repositoryDir, cameraDataSubdir, "camera.py"))
         cameraConfig = afwCameraGeom.CameraConfig()

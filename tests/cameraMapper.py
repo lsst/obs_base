@@ -22,10 +22,11 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-
+import collections
+import os
 import unittest
-import lsst.utils.tests as utilsTests
 
+import lsst.utils.tests as utilsTests
 import lsst.afw.geom as afwGeom
 import lsst.pex.policy as pexPolicy
 import lsst.daf.persistence as dafPersist
@@ -35,7 +36,7 @@ class MinMapper1(butlerUtils.CameraMapper):
     packageName = 'larry'
 
     def __init__(self):
-        policy = pexPolicy.Policy.createPolicy("tests/MinMapper1.paf")
+        policy = dafPersist.Policy("tests/MinMapper1.paf")
         butlerUtils.CameraMapper.__init__(self,
                 policy=policy, repositoryDir="tests", root="tests")
         return
@@ -49,7 +50,7 @@ class MinMapper2(butlerUtils.CameraMapper):
     # CalibRoot in policy
     # needCalibRegistry
     def __init__(self):
-        policy = pexPolicy.Policy.createPolicy("tests/MinMapper2.paf")
+        policy = dafPersist.Policy("tests/MinMapper2.paf")
         butlerUtils.CameraMapper.__init__(self,
                 policy=policy, repositoryDir="tests", root="tests",
                 registry="tests/cfhtls.sqlite3")
@@ -67,7 +68,7 @@ class MinMapper2(butlerUtils.CameraMapper):
 # does not assign packageName
 class MinMapper3(butlerUtils.CameraMapper):
     def __init__(self):
-        policy = pexPolicy.Policy.createPolicy("tests/MinMapper1.paf")
+        policy = dafPersist.Policy("tests/MinMapper1.paf")
         butlerUtils.CameraMapper.__init__(self,
                 policy=policy, repositoryDir="tests", root="tests")
         return
