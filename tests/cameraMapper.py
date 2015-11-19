@@ -235,6 +235,17 @@ class Mapper2TestCase(unittest.TestCase):
             self.assertTrue(policy is not None)
             self.assertEqual(policy[data.key], data.value)
 
+    def testParentSearch(self):
+        paths = self.mapper.parentSearch('tests/testParentSearch', 'tests/testParentSearch/bar.fits')
+        self.assertEqual(paths, ['tests/testParentSearch/bar.fits'])
+        paths = self.mapper.parentSearch('tests/testParentSearch', 'tests/testParentSearch/bar.fits[1]')
+        self.assertEqual(paths, ['tests/testParentSearch/bar.fits[1]'])
+
+        paths = self.mapper.parentSearch('tests/testParentSearch', 'tests/testParentSearch/baz.fits')
+        self.assertEqual(paths, ['tests/testParentSearch/_parent/baz.fits'])
+        paths = self.mapper.parentSearch('tests/testParentSearch', 'tests/testParentSearch/baz.fits[1]')
+        self.assertEqual(paths, ['tests/testParentSearch/_parent/baz.fits[1]'])
+
 
 class Mapper3TestCase(unittest.TestCase):
     """A test case for a mapper subclass which does not assign packageName."""

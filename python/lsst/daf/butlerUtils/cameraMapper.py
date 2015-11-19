@@ -391,12 +391,15 @@ class CameraMapper(dafPersist.Mapper):
         little tricky because the path may be in an alias of the root (e.g.
         ".") and because the "_parent" links go between the root and the rest
         of the path.
+        If the path contains an HDU indicator (a number in brackets before the
+        dot, e.g. 'foo[1].fits', this will be stripped when searching and so
+        will match filenames without the HDU indicator, e.g. 'foo.fits'. The
+        path returned WILL contain the indicator though, e.g. ['foo[1].fits'].
         """
         # Separate path into a root-equivalent prefix (in dir) and the rest
         # (left in path)
 
         rootDir = root
-
         # First remove trailing slashes (#2527)
         while len(rootDir) > 1 and rootDir[-1] == '/':
             rootDir = rootDir[:-1]
@@ -431,13 +434,17 @@ class CameraMapper(dafPersist.Mapper):
         # Now search for the path in the root or its parents
         # Strip off any cfitsio bracketed extension if present
         strippedPath = path
+        pathStripped = None
         firstBracket = path.find("[")
         if firstBracket != -1:
             strippedPath = path[:firstBracket]
+            pathStripped = path[firstBracket:]
 
         while True:
             paths = glob.glob(os.path.join(dir, strippedPath))
             if len(paths) > 0:
+                if pathStripped is not None:
+                    paths = [p + pathStripped for p in paths]
                 return paths
             dir = os.path.join(dir, "_parent")
             if not os.path.exists(dir):
