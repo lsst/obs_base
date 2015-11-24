@@ -829,15 +829,15 @@ class CameraMapper(dafPersist.Mapper):
 
         ccdKey, ccdVal = self._getCcdKeyVal(dataId)
 
-        rows = self.registry.executeQuery(("taiObs",), ("raw_visit",),
-                [("visit", "?")], None, (dataId['visit'],))
+        dataIdForLookup = {'visit': dataId['visit']}
+        # .lookup will fail in a posix registry because there is no template to provide.
+        rows = self.registry.lookup(('taiObs'), ('raw_visit'), dataIdForLookup)
         if len(rows) == 0:
             return None
         assert len(rows) == 1
         taiObs = rows[0][0]
 
-        # Lookup the defects for this CCD serial number that are valid at the
-        # exposure midpoint.
+        # Lookup the defects for this CCD serial number that are valid at the exposure midpoint.
         rows = self.defectRegistry.executeQuery(("path",), ("defect",),
                 [(ccdKey, "?")],
                 ("DATETIME(?)", "DATETIME(validStart)", "DATETIME(validEnd)"),

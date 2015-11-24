@@ -121,7 +121,6 @@ class Mapping(object):
         @return (lsst.daf.persistence.ButlerLocation)"""
 
         actualId = self.need(self.keyDict.iterkeys(), dataId)
-        # import pdb; pdb.set_trace()
         path = mapper._mapActualToPath(self.template, actualId)
         if not os.path.isabs(path):
             path = os.path.join(self.root, path)
@@ -150,39 +149,31 @@ class Mapping(object):
         if self.registry is None:
             raise RuntimeError, "No registry for lookup"
 
-        # Peform lookup/query based on registry type:
-        if type(self.registry) is PosixRegistry:
-            lookupResults = self.registry.lookup(template=self.template, lookupProperties=properties,
-                                              dataId=dataId, storage=self.storage)
-            return lookupResults
+        where = []
+        values = []
+        fastPath = True
+        for p in properties:
+            if p not in ('filter', 'expTime', 'taiObs'):
+                fastPath = False
+                break
+        if fastPath and 'visit' in dataId and "raw" in self.tables:
+            lookupDataId = {'visit': dataId['visit']}
+            self.registry.lookup(properties, 'raw_visit', lookupDataId)
+        if dataId is not None:
+            for k, v in dataId.iteritems():
+                if self.columns and not k in self.columns:
+                    continue
+                if k == self.obsTimeName:
+                    continue
+                where.append((k, '?'))
+                values.append(v)
 
-
-        elif type(self.registry) is SqliteRegistry:
-            where = []
-            values = []
-            fastPath = True
-            for p in properties:
-                if p not in ('filter', 'expTime', 'taiObs'):
-                    fastPath = False
-                    break
-            if fastPath and dataId.has_key('visit') and "raw" in self.tables:
-                return self.registry.executeQuery(properties, ('raw_visit',),
-                        [('visit', '?')], None, (dataId['visit'],))
-            if dataId is not None:
-                for k, v in dataId.iteritems():
-                    if self.columns and not k in self.columns:
-                        continue
-                    if k == self.obsTimeName:
-                        continue
-                    where.append((k, '?'))
-                    values.append(v)
-            if self.range is not None:
-                values.append(dataId[self.obsTimeName])
-            return self.registry.executeQuery(properties, self.tables,
-                    where, self.range, values)
-        else:
-            raise RuntimeError, "Unhandled registry type:" + str(type(self.registry))
-
+        lookupDataId = {k[0]: v for k, v in zip(where, values)}
+        if self.range:
+            # format of self.range is ('?', isBetween-lowKey, isBetween-highKey)
+            # here we transform that to {(lowKey, highKey): value}
+            lookupDataId[(self.range[1], self.range[2])] = dataId[self.obsTimeName]
+        return self.registry.lookup(properties, self.tables, lookupDataId)
 
     def have(self, properties, dataId):
         """Returns whether the provided data identifier has all
@@ -341,7 +332,7 @@ class CalibrationMapping(Mapping):
             for k, v in dataId.iteritems():
                 if self.refCols and k not in self.refCols:
                     continue
-                where.append((k, '?'))
+                where.append(k)
                 values.append(v)
 
             # Columns we need from the regular registry
@@ -353,12 +344,11 @@ class CalibrationMapping(Mapping):
                 columns = set(properties)
 
             if not columns:
-                # Nothing to lookup in reference registry; continue with calib
-                # registry
+                # Nothing to lookup in reference registry; continue with calib registry
                 return Mapping.lookup(self, properties, newId)
 
-            lookups = self.refRegistry.executeQuery(columns, self.reference,
-                    where, None, values)
+            lookupDataId = dict(zip(where, values))
+            lookups = self.refRegistry.lookup(columns, self.reference, lookupDataId)
             if len(lookups) != 1:
                 raise RuntimeError("No unique lookup for %s from %s: %d matches" %
                                    (columns, dataId, len(lookups)))

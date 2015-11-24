@@ -101,23 +101,27 @@ class PosixRegistry(Registry):
             return dataId[hduKey]
         return None
 
+    def lookup(self, lookupProperties, reference, dataId, **kwargs):
+        """Perform a lookup in the registry.
 
-    def lookup(self, template, lookupProperties, dataId, storage=None):
-        """Looks for files in self.root (file system path) that match the
-        described template. Return values are refined by the values in dataId.
+        Return values are refined by the values in dataId.
         Returns a list of values that match keys in lookupProperties.
         e.g. if the template is 'raw/raw_v%(visit)d_f%(filter)s.fits.gz', and
         dataId={'visit':1}, and lookupProperties is ['filter'], and the
         filesystem under self.root has exactly one file 'raw/raw_v1_fg.fits.gz'
         then the return value will be [('g',)]
-        :param template: template parameter (typically from a policy paf) that
-        can be used to look for files
-        :param lookupProperties: property keys to look up
-        :param dataId: property keys and values to match
-        :param storage: optional. If specified, partial file name matches will
-        look in metadata for more values.
-        :return: list of tuples of metadata values that match the list of keys
-        in lookupProperties.
+
+        :param lookupProperties:
+        :param dataId: must be an iterable. Keys must be string.
+        If value is a string then will look for elements in the repository that match value for key.
+        If value is a 2-item iterable then will look for elements in the repository are between (inclusive)
+        the first and second items in the value.
+        :param reference: other data types that may be used to search for values.
+        :param **kwargs: keys required for the posix registry to search for items. If required keys are not
+        provide will return an empty list.
+        'template': required. template parameter (typically from a policy) that can be used to look for files
+        'storage': optional. Needed to look for metadata in files. Currently supported values: 'FitsStorage'.
+        :return: a list of values that match keys in lookupProperties.
         """
         def commonKeysMatch(dict1, dict2):
             """Compare 2 dictionaries. Check all keys in common; if they match
@@ -129,13 +133,25 @@ class PosixRegistry(Registry):
                     return False
             return True
 
+        # required kwargs:
+        if 'template' in kwargs:
+            template = kwargs['template']
+        else:
+            return []
+        # optional kwargs:
+        storage = kwargs['storage'] if 'storage' in kwargs else None
+        # input variable sanitization:
+        if not hasattr(lookupProperties, '__iter__'):
+            lookupProperties = (lookupProperties,)
+
         scanner = fsScanner.FsScanner(template)
         allPaths = scanner.processPath(self.root)
         retItems = [] # one of these for each found file that matches
-        foundPropertyList = []
         for path, foundProperties in allPaths.items():
             if commonKeysMatch(dataId, foundProperties):
+                foundPropertyList = []
                 if not all(k in foundProperties for k in lookupProperties):
+                    import pdb; pdb.set_trace()
                     mdProperties = self.lookupMetadata(path, template, lookupProperties, dataId, storage)
                     mdProperties.update(foundProperties)
                     foundProperties = mdProperties
@@ -159,7 +175,7 @@ class PosixRegistry(Registry):
         :return: list of tuples of metadata values that match the list of keys
         in lookupProperties. e.g.:
         """
-        ret = []
+        ret = {}
         if storage == 'FitsStorage':
             ret = self.lookupFitsMetadata(filepath, template, lookupProperties, dataId)
         return ret
@@ -217,8 +233,57 @@ class SqliteRegistry(Registry):
         else:
             self.conn = None
 
-    def executeQuery(self, returnFields, joinClause, whereFields, range,
-            values):
+    def lookup(self, lookupProperties, reference, dataId, **kwargs):
+        """Perform a lookup in the registry.
+
+        Return values are refined by the values in dataId.
+        Returns a list of values that match keys in lookupProperties.
+        e.g. if the template is 'raw/raw_v%(visit)d_f%(filter)s.fits.gz', and
+        dataId={'visit':1}, and lookupProperties is ['filter'], and the
+        filesystem under self.root has exactly one file 'raw/raw_v1_fg.fits.gz'
+        then the return value will be [('g',)]
+
+        :param lookupProperties:
+        :param dataId: must be an iterable. Keys must be string.
+        If key is a string then will look for elements in the repository that match value for key.
+        If key is a 2-item iterable then will look for elements in the repository where the value is between
+        the values of key[0] and key[1].
+        :param reference: other data types that may be used to search for values.
+        :param **kwargs: nothing needed for sqlite lookup
+        :return: a list of values that match keys in lookupProperties.
+        """
+        if not self.conn:
+            return None
+
+        # input variable sanitization:
+        if not hasattr(reference, '__iter__'):
+            reference = (reference,)
+        if not hasattr(lookupProperties, '__iter__'):
+            lookupProperties = (lookupProperties,)
+
+        cmd = "SELECT DISTINCT "
+        cmd += ", ".join(lookupProperties)
+        cmd += " FROM " + " NATURAL JOIN ".join(reference)
+        valueList = []
+        if dataId is not None and len(dataId) > 0:
+            whereList = []
+            for k, v in dataId.items():
+                if hasattr(k, '__iter__'):
+                    if len(k) is not 2:
+                        raise RuntimeError("Wrong number of keys for range:%s" %k)
+                    whereList.append("(? BETWEEN %s AND %s)" %(k[0], k[1]))
+                    valueList.append(v)
+                else:
+                    whereList.append("%s = ?" %k)
+                    valueList.append(v)
+            cmd += " WHERE " + " AND ".join(whereList)
+        c = self.conn.execute(cmd, valueList)
+        result = []
+        for row in c:
+            result.append(row)
+        return result
+
+    def executeQuery(self, returnFields, joinClause, whereFields, range, values):
         """Extract metadata from the registry.
         @param returnFields (list of strings) Metadata fields to be extracted.
         @param joinClause   (list of strings) Tables in which metadata fields
@@ -234,7 +299,6 @@ class SqliteRegistry(Registry):
                             values.
         @return (list of tuples) All sets of field values that meet the
                 criteria"""
-
         if not self.conn:
             return None
         cmd = "SELECT DISTINCT "
