@@ -28,7 +28,7 @@ implemented, but registries based on a text file, a policy file, a MySQL (or
 other) relational database, and data gathered from scanning a filesystem are
 all anticipated."""
 
-# import glob
+import copy
 import fsScanner
 import os
 import re
@@ -101,6 +101,55 @@ class PosixRegistry(Registry):
             return dataId[hduKey]
         return None
 
+    class LookupData:
+        def __init__(self, lookupProperties, dataId):
+            self.dataId = copy.copy(dataId)
+            if not hasattr(lookupProperties, '__iter__'):
+                lookupProperties = (lookupProperties,)
+            self.lookupProperties = copy.copy(lookupProperties)
+            self.foundItems = {}
+            self.cachedStatus = None
+            self.neededKeys = set(lookupProperties).union(dataId.keys())
+
+        def __repr__(self):
+            return "LookupData lookupProperties:%s dataId:%s foundItems:%s cachedStatus:%s" % \
+                   (self.lookupProperties, self.dataId, self.foundItems, self.cachedStatus)
+
+        def status(self):
+            """Query the lookup status
+
+            :return: 'match' if the key+value pairs in dataId have been satisifed and keys in lookupProperties have
+            found and their key+value added to resolvedId
+            'incomplete' if the found data matches but there are still incomplete data matching in dataId or
+            lookupProperties
+            'not match' if data in foundId does not match data in dataId
+            """
+            if self.cachedStatus is not None:
+                return self.cachedStatus
+            self.cachedStatus = 'match'
+            for key in self.dataId:
+                if key not in self.foundItems:
+                    self.cachedStatus = 'incomplete'
+                elif self.dataId[key] != self.foundItems[key]:
+                    self.cachedStatus = 'incomplete'
+            if self.cachedStatus == 'match':
+                for key in self.lookupProperties:
+                    if key not in self.foundItems:
+                        self.cachedStatus = 'incomplete'
+                        break
+            return self.cachedStatus
+
+        def setFoundItems(self, items):
+            self.cachedStatus = None
+            self.foundItems = items
+
+        def addFoundItems(self, items):
+            self.cachedStatus = None
+            self.foundItems.update(items)
+
+        def getMissingKeys(self):
+            return self.neededKeys - set(self.foundItems.keys())
+
     def lookup(self, lookupProperties, reference, dataId, **kwargs):
         """Perform a lookup in the registry.
 
@@ -111,28 +160,18 @@ class PosixRegistry(Registry):
         filesystem under self.root has exactly one file 'raw/raw_v1_fg.fits.gz'
         then the return value will be [('g',)]
 
-        :param lookupProperties:
+        :param lookupProperties: keys whose values will be returned.
+        :param reference: other data types that may be used to search for values.
         :param dataId: must be an iterable. Keys must be string.
         If value is a string then will look for elements in the repository that match value for key.
         If value is a 2-item iterable then will look for elements in the repository are between (inclusive)
         the first and second items in the value.
-        :param reference: other data types that may be used to search for values.
         :param **kwargs: keys required for the posix registry to search for items. If required keys are not
         provide will return an empty list.
         'template': required. template parameter (typically from a policy) that can be used to look for files
         'storage': optional. Needed to look for metadata in files. Currently supported values: 'FitsStorage'.
         :return: a list of values that match keys in lookupProperties.
         """
-        def commonKeysMatch(dict1, dict2):
-            """Compare 2 dictionaries. Check all keys in common; if they match
-            return true, else return false. Keys that are not common to both
-            dictionaries will not be considered."""
-            matchingKeys = set(dict1.keys()) & set(dict2.keys())
-            for key in matchingKeys:
-                if dict1[key] != dict2[key]:
-                    return False
-            return True
-
         # required kwargs:
         if 'template' in kwargs:
             template = kwargs['template']
@@ -140,49 +179,34 @@ class PosixRegistry(Registry):
             return []
         # optional kwargs:
         storage = kwargs['storage'] if 'storage' in kwargs else None
-        # input variable sanitization:
-        if not hasattr(lookupProperties, '__iter__'):
-            lookupProperties = (lookupProperties,)
 
+        lookupData = PosixRegistry.LookupData(lookupProperties, dataId)
         scanner = fsScanner.FsScanner(template)
         allPaths = scanner.processPath(self.root)
-        retItems = [] # one of these for each found file that matches
+        retItems = [] # one item for each found file that matches
         for path, foundProperties in allPaths.items():
-            if commonKeysMatch(dataId, foundProperties):
-                foundPropertyList = []
-                if not all(k in foundProperties for k in lookupProperties):
-                    import pdb; pdb.set_trace()
-                    mdProperties = self.lookupMetadata(path, template, lookupProperties, dataId, storage)
-                    mdProperties.update(foundProperties)
-                    foundProperties = mdProperties
-                if not all(k in foundProperties for k in lookupProperties):
-                    break # incomplete lookup, can't use it.
-                for property in lookupProperties:
-                    foundPropertyList.append(foundProperties[property])
-                retItems.append(tuple(foundPropertyList))
+            # check for dataId keys that are not present in found properties
+            # search for those keys in metadata of file at path
+            # if present, check for matching values
+            # if not present, file can not match, do not use it.
+            lookupData.setFoundItems(foundProperties)
+            if 'incomplete' == lookupData.status():
+                PosixRegistry.lookupMetadata(os.path.join(self.root, path), template, lookupData, storage)
+            if 'match' == lookupData.status():
+                l = tuple(lookupData.foundItems[key] for key in lookupData.lookupProperties)
+                retItems.append(l)
         return retItems
 
-
-    def lookupMetadata(self, filepath, template, lookupProperties, dataId, storage):
+    @staticmethod
+    def lookupMetadata(filepath, template, lookupData, storage):
+        """Dispatcher for looking up metadata in a file of a given storage type
         """
-        Dispatcher for looking up metadata in a file of a given storage type
-        :param template: template parameter (typically from a policy paf) that
-        can be used to look for files
-        :param lookupProperties: property keys to look up
-        :param dataId: property keys and values to match
-        :param storage: optional. If specified, partial file name matches will
-        look in metadata for more values.
-        :return: list of tuples of metadata values that match the list of keys
-        in lookupProperties. e.g.:
-        """
-        ret = {}
         if storage == 'FitsStorage':
-            ret = self.lookupFitsMetadata(filepath, template, lookupProperties, dataId)
-        return ret
+            PosixRegistry.lookupFitsMetadata(filepath, template, lookupData, storage)
 
-
-    def lookupFitsMetadata(self, filepath, template, lookupProperties, dataId):
-        """Lookup metadata in a fits file.
+    @staticmethod
+    def lookupFitsMetadata(filepath, template, lookupData, dataId):
+        """Look up metadata in a fits file.
         Will try to discover the correct HDU to look in by testing if the
         template has a value in brackets at the end.
         If the HDU is specified but the metadata key is not discovered in
@@ -190,14 +214,17 @@ class PosixRegistry(Registry):
         :param filepath: path to the file
         :param template: template that was used to discover the file. This can
         be used to look up the correct HDU as needed.
-        :param lookupProperties: a list keys to metadata to be looked up in the
-        file.
-        :param dataId: key+value pairs to look up the HDU number.
-        :return: list of metadata values that matches the list of metadata keys
-        in lookupProperties
+        :param lookupData: an instance if LookupData that contains the
+        lookupProperties, the dataId, and the data that has been found so far.
+        Will be updated with new information as discovered.
+        :param dataId:
+        :return:
         """
         from astropy.io import fits
-        hdulist = fits.open(filepath, memmap=True)
+        try:
+            hdulist = fits.open(filepath, memmap=True)
+        except IOError:
+            return;
         hduNumber = PosixRegistry.getHduNumber(template=template, dataId=dataId)
         if hduNumber != None and hduNumber < len(hdulist):
             hdu = hdulist[hduNumber]
@@ -207,16 +234,15 @@ class PosixRegistry(Registry):
             primaryHdu = hdulist[0]
         else:
             primaryHdu = None
-        foundProperties = {}
-        for property in lookupProperties:
+
+        for property in lookupData.getMissingKeys():
             propertyValue = None
             if hdu is not None and property in hdu.header:
                 propertyValue = hdu.header[property]
             # if the value is not in the indicated HDU, try the primary HDU:
             elif primaryHdu is not None and property in primaryHdu.header:
                 propertyValue = primaryHdu.header[property]
-            foundProperties[property] = propertyValue
-        return foundProperties
+            lookupData.addFoundItems({property: propertyValue})
 
 
 class SqliteRegistry(Registry):

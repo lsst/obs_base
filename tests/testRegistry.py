@@ -50,7 +50,9 @@ class PosixRegistryTestCase(unittest.TestCase):
                        [(1, 'g'), (1, 'h'), (2, 'g'), (2, 'h'), (3, 'i'),]),
               testData('tests/posixRegistry/repo02',
                        'foo-%(ccd)02d-%(filter)s.fits',
-                       ('filter'), # intentionally no comma; it becomes a string not a tuple. This is handled.
+                       # intentionally no comma on 'filter'; it becomes a string not a tuple. This is handled,
+                       # and here is where it is tested.
+                       ('filter'),
                        {'ccd':1},
                        [('g',), ('h',),]),
               testData('tests/posixRegistry/repo02',
@@ -58,10 +60,15 @@ class PosixRegistryTestCase(unittest.TestCase):
                        ('ccd',),
                        {'filter':'i'},
                        [(3,),]),
+              testData('tests/posixRegistry/lookupMetadata',
+                       'raw_v%(visit)d_f%(filter)1s.fits.gz',
+                       ('visit',),
+                       {'MJD-OBS': 51195.2240820278},
+                       [(2,)]),
               )
 
         policyTables = None
-        storage = 'fits'
+        storage = 'FitsStorage'
         values = []
         for root, template, returnFields, dataId, expectedLookup in td:
             registry = butlerUtils.PosixRegistry(root)
@@ -69,6 +76,7 @@ class PosixRegistryTestCase(unittest.TestCase):
             lookups.sort()
             expectedLookup.sort()
             self.assertEqual(lookups, expectedLookup)
+
 
 def suite():
     utilsTests.init()

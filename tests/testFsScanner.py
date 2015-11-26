@@ -35,6 +35,12 @@ class FsScannerTestCase(unittest.TestCase):
         res = scanner.processPath('tests/testFsScanner')
         self.assertEqual(res, {'1038843o.fits.fz': {'state': 'o', 'visit': 1038843}})
 
+    def test2(self):
+        template = 'raw_v%(visit)d_f%(filter)1s.fits.gz'
+        scanner = FsScanner(template)
+        res = scanner.processPath('tests/testFsScanner')
+        self.assertEqual(res, {'raw_v1_fg.fits.gz': {'visit': 1, 'filter': 'g'}})
+
 def suite():
     utilsTests.init()
 
