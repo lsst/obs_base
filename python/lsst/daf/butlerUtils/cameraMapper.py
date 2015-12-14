@@ -155,13 +155,13 @@ class CameraMapper(dafPersist.Mapper):
 
         self.root = root
         if isinstance(policy, pexPolicy.Policy):
-            policy = Policy(policy)
+            policy = Policy(pexPolicy=policy)
 
         repoPolicy = CameraMapper.getRepoPolicy(self.root, self.root)
         if repoPolicy is not None:
             policy.update(repoPolicy)
 
-        dictPolicy = Policy(Policy.defaultPolicyInitData("daf_butlerUtils", "MapperDictionary.paf", "policy"))
+        dictPolicy = Policy(defaultInitData=("daf_butlerUtils", "MapperDictionary.paf", "policy"))
         policy.merge(dictPolicy)
 
         # Levels
@@ -239,14 +239,14 @@ class CameraMapper(dafPersist.Mapper):
             calibRegistry = None
 
         # Sub-dictionaries (for exposure/calibration/dataset types)
-        imgMappingPolicy = Policy(Policy.defaultPolicyInitData("daf_butlerUtils",
-                                                               "ImageMappingDictionary.paf", "policy"))
-        expMappingPolicy = Policy(Policy.defaultPolicyInitData("daf_butlerUtils",
-                                                               "ExposureMappingDictionary.paf", "policy"))
-        calMappingPolicy = Policy(Policy.defaultPolicyInitData("daf_butlerUtils",
-                                                               "CalibrationMappingDictionary.paf", "policy"))
-        dsMappingPolicy = Policy(Policy.defaultPolicyInitData("daf_butlerUtils",
-                                                              "DatasetMappingDictionary.paf", "policy"))
+        imgMappingPolicy = Policy(defaultInitData=("daf_butlerUtils", "ImageMappingDictionary.paf",
+                                                   "policy"))
+        expMappingPolicy = Policy(defaultInitData=("daf_butlerUtils", "ExposureMappingDictionary.paf",
+                                                   "policy"))
+        calMappingPolicy = Policy(defaultInitData=("daf_butlerUtils", "CalibrationMappingDictionary.paf",
+                                                   "policy"))
+        dsMappingPolicy = Policy(defaultInitData=("daf_butlerUtils", "DatasetMappingDictionary.paf",
+                                                  "policy"))
 
         # Dict of valid keys and their value types
         self.keyDict = dict()
@@ -377,7 +377,7 @@ class CameraMapper(dafPersist.Mapper):
                     if len(matches) > 1:
                         raise RuntimeError("More than 1 policy possibility for root:%s" %root)
                     elif len(matches) == 1:
-                        policy = Policy(matches[0])
+                        policy = Policy(filePath=matches[0])
                         break
         return policy
 
@@ -392,9 +392,9 @@ class CameraMapper(dafPersist.Mapper):
         ".") and because the "_parent" links go between the root and the rest
         of the path.
         If the path contains an HDU indicator (a number in brackets before the
-        dot, e.g. 'foo[1].fits', this will be stripped when searching and so
+        dot, e.g. 'foo.fits[1]', this will be stripped when searching and so
         will match filenames without the HDU indicator, e.g. 'foo.fits'. The
-        path returned WILL contain the indicator though, e.g. ['foo[1].fits'].
+        path returned WILL contain the indicator though, e.g. ['foo.fits[1]'].
         """
         # Separate path into a root-equivalent prefix (in dir) and the rest
         # (left in path)
@@ -867,7 +867,7 @@ class CameraMapper(dafPersist.Mapper):
                              per-camera default dictionary)
         """
         if isinstance(policy, pexPolicy.Policy):
-            policy = Policy(policy)
+            policy = Policy(pexPolicy=policy)
         if not 'camera' in policy:
             raise RuntimeError("Cannot find 'camera' in policy; cannot construct a camera")
         cameraDataSubdir = policy['camera']
