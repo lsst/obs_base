@@ -25,6 +25,7 @@ import os
 import re
 from lsst.daf.butlerUtils import fsScanner, SqliteRegistry, PosixRegistry
 from lsst.daf.persistence import ButlerLocation
+from lsst.daf.persistence.policy import Policy
 import lsst.pex.policy as pexPolicy
 
 """This module defines the Mapping base class."""
@@ -69,7 +70,8 @@ class Mapping(object):
     def __init__(self, datasetType, policy, registry, root, provided=None):
         """Constructor for Mapping class.
         @param datasetType    (string)
-        @param policy         (lsst.pex.policy.Policy) Mapping policy
+        @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
+                              Mapping Policy
         @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
         @param root           (string) Path of root directory
         @param provided       (list of strings) Keys provided by the mapper
@@ -78,11 +80,14 @@ class Mapping(object):
         if policy is None:
             raise RuntimeError, "No policy provided for mapping"
 
+        if isinstance(policy, pexPolicy.Policy):
+            policy = Policy(policy)
+
         self.datasetType = datasetType
         self.registry = registry
         self.root = root
 
-        self.template = policy.getString("template") # Template path
+        self.template = policy['template'] # Template path
         self.keyDict = dict([
             (k, _formatMap(v, k, datasetType))
             for k, v in
@@ -92,19 +97,18 @@ class Mapping(object):
             for p in provided:
                 if p in self.keyDict:
                     del self.keyDict[p]
-        self.python = policy.getString("python") # Python type
-        self.persistable = policy.getString("persistable") # Persistable type
-        self.storage = policy.getString("storage")
-        if policy.exists("level"):
-            self.level = policy.getString("level") # Level in camera hierarchy
-        if policy.exists("tables"):
-            self.tables = policy.getStringArray("tables")
+        self.python = policy['python'] # Python type
+        self.persistable = policy['persistable'] # Persistable type
+        self.storage = policy['storage']
+        if 'level' in policy:
+            self.level = policy['level'] # Level in camera hierarchy
+        if 'tables' in policy:
+            self.tables = policy.asArray('tables')
         else:
             self.tables = None
         self.range = None
         self.columns = None
-        self.obsTimeName = policy.getString("obsTimeName") \
-                if policy.exists("obsTimeName") else None
+        self.obsTimeName = policy['obsTimeName'] if 'obsTimeName' in policy else None
 
     def keys(self):
         """Return the dict of keys and value types required for this mapping."""
@@ -117,7 +121,6 @@ class Mapping(object):
         @return (lsst.daf.persistence.ButlerLocation)"""
 
         actualId = self.need(self.keyDict.iterkeys(), dataId)
-        # import pdb; pdb.set_trace()
         path = mapper._mapActualToPath(self.template, actualId)
         if not os.path.isabs(path):
             path = os.path.join(self.root, path)
@@ -146,39 +149,31 @@ class Mapping(object):
         if self.registry is None:
             raise RuntimeError, "No registry for lookup"
 
-        # Peform lookup/query based on registry type:
-        if type(self.registry) is PosixRegistry:
-            lookupResults = self.registry.lookup(template=self.template, lookupProperties=properties,
-                                              dataId=dataId, storage=self.storage)
-            return lookupResults
+        where = []
+        values = []
+        fastPath = True
+        for p in properties:
+            if p not in ('filter', 'expTime', 'taiObs'):
+                fastPath = False
+                break
+        if fastPath and 'visit' in dataId and "raw" in self.tables:
+            lookupDataId = {'visit': dataId['visit']}
+            self.registry.lookup(properties, 'raw_visit', lookupDataId)
+        if dataId is not None:
+            for k, v in dataId.iteritems():
+                if self.columns and not k in self.columns:
+                    continue
+                if k == self.obsTimeName:
+                    continue
+                where.append((k, '?'))
+                values.append(v)
 
-
-        elif type(self.registry) is SqliteRegistry:
-            where = []
-            values = []
-            fastPath = True
-            for p in properties:
-                if p not in ('filter', 'expTime', 'taiObs'):
-                    fastPath = False
-                    break
-            if fastPath and dataId.has_key('visit') and "raw" in self.tables:
-                return self.registry.executeQuery(properties, ('raw_visit',),
-                        [('visit', '?')], None, (dataId['visit'],))
-            if dataId is not None:
-                for k, v in dataId.iteritems():
-                    if self.columns and not k in self.columns:
-                        continue
-                    if k == self.obsTimeName:
-                        continue
-                    where.append((k, '?'))
-                    values.append(v)
-            if self.range is not None:
-                values.append(dataId[self.obsTimeName])
-            return self.registry.executeQuery(properties, self.tables,
-                    where, self.range, values)
-        else:
-            raise RuntimeError, "Unhandled registry type:" + str(type(self.registry))
-
+        lookupDataId = {k[0]: v for k, v in zip(where, values)}
+        if self.range:
+            # format of self.range is ('?', isBetween-lowKey, isBetween-highKey)
+            # here we transform that to {(lowKey, highKey): value}
+            lookupDataId[(self.range[1], self.range[2])] = dataId[self.obsTimeName]
+        return self.registry.lookup(properties, self.tables, lookupDataId)
 
     def have(self, properties, dataId):
         """Returns whether the provided data identifier has all
@@ -236,11 +231,14 @@ class ImageMapping(Mapping):
     def __init__(self, datasetType, policy, registry, root, **kwargs):
         """Constructor for Mapping class.
         @param datasetType    (string)
-        @param policy         (lsst.pex.policy.Policy) Mapping policy
+        @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
+                              Mapping Policy
         @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
         @param root           (string) Path of root directory"""
+        if isinstance(policy, pexPolicy.Policy):
+            policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
-        self.columns = policy.getStringArray("columns") if policy.exists("columns") else None
+        self.columns = policy.asArray('columns') if 'columns' in policy else None
 
 
 class ExposureMapping(Mapping):
@@ -249,11 +247,14 @@ class ExposureMapping(Mapping):
     def __init__(self, datasetType, policy, registry, root, **kwargs):
         """Constructor for Mapping class.
         @param datasetType    (string)
-        @param policy         (lsst.pex.policy.Policy) Mapping policy
+        @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
+                              Mapping Policy
         @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
         @param root           (string) Path of root directory"""
+        if isinstance(policy, pexPolicy.Policy):
+            policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
-        self.columns = policy.getStringArray("columns") if policy.exists("columns") else None
+        self.columns = policy.asArray('columns') if 'columns' in policy else None
 
     def standardize(self, mapper, item, dataId):
         return mapper._standardizeExposure(self, item, dataId)
@@ -293,25 +294,27 @@ class CalibrationMapping(Mapping):
     def __init__(self, datasetType, policy, registry, calibRegistry, calibRoot, **kwargs):
         """Constructor for Mapping class.
         @param datasetType    (string)
-        @param policy         (lsst.pex.policy.Policy) Mapping policy
+        @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
+                              Mapping Policy
         @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
         @param calibRegistry  (lsst.daf.butlerUtils.Registry) Registry for calibration metadata lookups
         @param calibRoot      (string) Path of calibration root directory"""
-
+        if isinstance(policy, pexPolicy.Policy):
+            policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, calibRegistry, calibRoot, **kwargs)
-        self.reference = policy.getStringArray("reference") \
-                if policy.exists("reference") else None
-        self.refCols = policy.getStringArray("refCols") \
-                if policy.exists("refCols") else None
+        self.reference = policy.asArray("reference") if "reference" in policy else None
+        self.refCols = policy.asArray("refCols") if "refCols" in policy else None
         self.refRegistry = registry
-        if policy.exists("validRange") and policy.getBool("validRange"):
-            self.range = ("?", policy.getString("validStartName"),
-                policy.getString("validEndName"))
-        if policy.exists("columns"):
-            self.columns = policy.getStringArray("columns")
-        if policy.exists("filter"):
-            self.setFilter = policy.getBool("filter")
-            
+        if "validRange" in policy and policy["validRange"]:
+            self.range = ("?", policy["validStartName"], policy["validEndName"])
+        if "columns" in policy:
+            self.columns = policy.asArray("columns")
+        if "filter" in policy:
+            self.setFilter = policy["filter"]
+        self.metadataKeys = None
+        if "metadataKey" in policy:
+            self.metadataKeys = policy.asArray("metadataKey")
+
     def lookup(self, properties, dataId):
         """Look up properties for in a metadata registry given a partial
         dataset identifier.
@@ -329,7 +332,7 @@ class CalibrationMapping(Mapping):
             for k, v in dataId.iteritems():
                 if self.refCols and k not in self.refCols:
                     continue
-                where.append((k, '?'))
+                where.append(k)
                 values.append(v)
 
             # Columns we need from the regular registry
@@ -341,12 +344,11 @@ class CalibrationMapping(Mapping):
                 columns = set(properties)
 
             if not columns:
-                # Nothing to lookup in reference registry; continue with calib
-                # registry
+                # Nothing to lookup in reference registry; continue with calib registry
                 return Mapping.lookup(self, properties, newId)
 
-            lookups = self.refRegistry.executeQuery(columns, self.reference,
-                    where, None, values)
+            lookupDataId = dict(zip(where, values))
+            lookups = self.refRegistry.lookup(columns, self.reference, lookupDataId)
             if len(lookups) != 1:
                 raise RuntimeError("No unique lookup for %s from %s: %d matches" %
                                    (columns, dataId, len(lookups)))
@@ -373,9 +375,12 @@ class DatasetMapping(Mapping):
     def __init__(self, datasetType, policy, registry, root, **kwargs):
         """Constructor for DatasetMapping class.
         @param[in,out] mapper (lsst.daf.persistence.Mapper) Mapper object
-        @param policy         (lsst.pex.policy.Policy) Mapping policy
+        @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
+                              Mapping Policy
         @param datasetType    (string)
         @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
         @param root           (string) Path of root directory"""
+        if isinstance(policy, pexPolicy.Policy):
+            policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
-        self.storage = policy.getString("storage") # Storage type
+        self.storage = policy["storage"] # Storage type

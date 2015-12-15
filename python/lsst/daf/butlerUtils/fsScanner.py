@@ -82,13 +82,13 @@ class FsScanner(object):
         
             if m.group(2) in 'crs':
                 fieldType = str
-                self.reString += r'(?P<' + fieldName + '>.+?)'
+                self.reString += r'(?P<' + fieldName + '>.+)'
             elif m.group(2) in 'eEfFgG':
                 fieldType = float
-                self.reString += r'(?P<' + fieldName + '>[\d.eE+-]+?)'
+                self.reString += r'(?P<' + fieldName + '>[\d.eE+-]+)'
             else:
                 fieldType = int
-                self.reString += r'(?P<' + fieldName + '>[\d+-]+?)'
+                self.reString += r'(?P<' + fieldName + '>[\d+-]+)'
 
             self.fields[fieldName] = dict(pos=pos, fieldType=fieldType)
             pos += 1
@@ -124,9 +124,8 @@ class FsScanner(object):
         Scan a given path location. Return info about paths that conform to the path template:
         :param location:
         :return: Path info: {path: {key:value ...}, ...} e.g.:
-            {'0239622/instcal0239622.fits.fz': {'visit_0': 239622, 'visit': 239622}
+            {'0239622/instcal0239622.fits.fz': {'visit_0': 239622, 'visit': 239622}}
         """
-
         ret = {}
         curdir = os.getcwd()
         os.chdir(location)

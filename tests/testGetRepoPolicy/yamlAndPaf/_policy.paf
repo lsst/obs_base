@@ -1,0 +1,7 @@
+#<?cfg paf policy ?>
+
+exposures: {
+    raw: {
+        template:    "pafHereWithYaml"
+    }
+}

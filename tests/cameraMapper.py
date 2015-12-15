@@ -22,10 +22,11 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-
+import collections
+import os
 import unittest
-import lsst.utils.tests as utilsTests
 
+import lsst.utils.tests as utilsTests
 import lsst.afw.geom as afwGeom
 import lsst.pex.policy as pexPolicy
 import lsst.daf.persistence as dafPersist
@@ -35,7 +36,7 @@ class MinMapper1(butlerUtils.CameraMapper):
     packageName = 'larry'
 
     def __init__(self):
-        policy = pexPolicy.Policy.createPolicy("tests/MinMapper1.paf")
+        policy = dafPersist.Policy(filePath="tests/MinMapper1.paf")
         butlerUtils.CameraMapper.__init__(self,
                 policy=policy, repositoryDir="tests", root="tests")
         return
@@ -49,7 +50,7 @@ class MinMapper2(butlerUtils.CameraMapper):
     # CalibRoot in policy
     # needCalibRegistry
     def __init__(self):
-        policy = pexPolicy.Policy.createPolicy("tests/MinMapper2.paf")
+        policy = dafPersist.Policy(filePath="tests/MinMapper2.paf")
         butlerUtils.CameraMapper.__init__(self,
                 policy=policy, repositoryDir="tests", root="tests",
                 registry="tests/cfhtls.sqlite3")
@@ -67,7 +68,7 @@ class MinMapper2(butlerUtils.CameraMapper):
 # does not assign packageName
 class MinMapper3(butlerUtils.CameraMapper):
     def __init__(self):
-        policy = pexPolicy.Policy.createPolicy("tests/MinMapper1.paf")
+        policy = dafPersist.Policy(filePath="tests/MinMapper1.paf")
         butlerUtils.CameraMapper.__init__(self,
                 policy=policy, repositoryDir="tests", root="tests")
         return
@@ -220,6 +221,31 @@ class Mapper2TestCase(unittest.TestCase):
     def testNames(self):
         self.assertEqual(MinMapper2.getCameraName(), "min")
         self.assertEqual(MinMapper2.getPackageName(), "moe")
+
+    def testGetRepoPolicy(self):
+        testDataType = collections.namedtuple('testData', 'folder extension key value')
+        testData = (testDataType('onlyPaf', 'paf', 'exposures.raw.template', 'onlyPaf.fits.gz'),
+                testDataType('onlyYaml', 'yaml', 'myKey', 'onlyYamlInHere'),
+                testDataType('yamlAndPaf', 'yaml', 'myKey', 'yamlHereWithPaf'))
+
+        basePath = os.path.join('tests', 'testGetRepoPolicy')
+        for data in testData:
+            path = os.path.join('tests', 'testGetRepoPolicy', data.folder)
+            policy = butlerUtils.CameraMapper.getRepoPolicy(os.environ['DAF_BUTLERUTILS_DIR'], path)
+            self.assertTrue(policy is not None)
+            self.assertEqual(policy[data.key], data.value)
+
+    def testParentSearch(self):
+        paths = self.mapper.parentSearch('tests/testParentSearch', 'tests/testParentSearch/bar.fits')
+        self.assertEqual(paths, ['tests/testParentSearch/bar.fits'])
+        paths = self.mapper.parentSearch('tests/testParentSearch', 'tests/testParentSearch/bar.fits[1]')
+        self.assertEqual(paths, ['tests/testParentSearch/bar.fits[1]'])
+
+        paths = self.mapper.parentSearch('tests/testParentSearch', 'tests/testParentSearch/baz.fits')
+        self.assertEqual(paths, ['tests/testParentSearch/_parent/baz.fits'])
+        paths = self.mapper.parentSearch('tests/testParentSearch', 'tests/testParentSearch/baz.fits[1]')
+        self.assertEqual(paths, ['tests/testParentSearch/_parent/baz.fits[1]'])
+
 
 class Mapper3TestCase(unittest.TestCase):
     """A test case for a mapper subclass which does not assign packageName."""
