@@ -126,8 +126,9 @@ class Mapping(object):
             path = os.path.join(self.root, path)
         if not write:
             newPath = mapper._parentSearch(path)
-            if newPath is not None:
+            if newPath:
                 path = newPath
+        assert path, "Fully-qualified filename is empty."
 
         addFunc = "add_" + self.datasetType # Name of method for additionalData
         if hasattr(mapper, addFunc):
