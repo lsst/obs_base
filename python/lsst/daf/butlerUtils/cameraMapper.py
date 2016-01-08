@@ -38,6 +38,7 @@ import lsst.afw.image as afwImage
 import lsst.afw.cameraGeom as afwCameraGeom
 import lsst.pex.logging as pexLog
 import lsst.pex.policy as pexPolicy
+from .exposureIdInfo import ExposureIdInfo
 
 """This module defines the CameraMapper base class."""
 
@@ -604,6 +605,22 @@ class CameraMapper(dafPersist.Mapper):
                 return defectList
 
         raise RuntimeError("No defects for ccd %s in %s" % (detectorName, defectsFitsPath))
+
+    def map_expIdInfo(self, dataId, write=False):
+        return dafPersist.ButlerLocation(
+            pythonType = "lsst.daf.butlerUtils.ExposureIdInfo",
+            cppType = None,
+            storageName = "Internal",
+            locationList = "ignored",
+            dataId = dataId,
+            mapper = self,
+        )
+
+    def bypass_expIdInfo(self, datasetType, pythonType, location, dataId):
+        """Hook to retrieve an lsst.daf.butlerUtils.ExposureIdInfo for an exposure"""
+        expId = self.bypass_ccdExposureId(datasetType, pythonType, location, dataId)
+        expBits = self.bypass_ccdExposureId_bits(datasetType, pythonType, location, dataId)
+        return ExposureIdInfo(expId=expId, expBits=expBits)
 
     def std_raw(self, item, dataId):
         """Standardize a raw dataset by converting it to an Exposure instead of an Image"""
