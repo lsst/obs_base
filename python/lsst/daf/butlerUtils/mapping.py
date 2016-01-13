@@ -137,8 +137,8 @@ class Mapping(object):
             assert isinstance(additionalData, dict), "Bad type for returned data"
         else:
             additionalData = actualId.copy()
-        
-        return ButlerLocation(self.python, self.persistable, self.storage, path, additionalData)
+
+        return ButlerLocation(self.python, self.persistable, self.storage, path, additionalData, mapper)
 
     def lookup(self, properties, dataId):
         """Look up properties for in a metadata registry given a partial

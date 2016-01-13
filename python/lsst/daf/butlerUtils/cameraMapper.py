@@ -21,6 +21,7 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
+import copy
 import errno
 import glob
 import os
@@ -421,6 +422,7 @@ class CameraMapper(dafPersist.Mapper):
             if os.path.realpath(pathPrefix) != os.path.realpath(root):
                 # No prefix matching root, don't search for parents
                 paths = glob.glob(path)
+
                 # The contract states that `None` will be returned
                 #   if no matches are found.
                 # Thus we explicitly set up this if/else to return `None` 
@@ -503,11 +505,11 @@ class CameraMapper(dafPersist.Mapper):
         @param level (str) level or None for all levels
         @return (iterable) Set of keys usable in a dataset identifier"""
         if datasetType is None:
-            keyDict = self.keyDict
+            keyDict = copy.copy(self.keyDict)
         else:
             keyDict = self.mappings[datasetType].keys()
         if level is not None and level in self.levels:
-            keyDict = dict(keyDict)
+            keyDict = copy.copy(keyDict)
             for l in self.levels[level]:
                 if l in keyDict:
                     del keyDict[l]
@@ -549,6 +551,7 @@ class CameraMapper(dafPersist.Mapper):
             storageName = "ConfigStorage",
             locationList = self.cameraDataLocation or "ignored",
             dataId = actualId,
+            mapper = self
         )
 
     def bypass_camera(self, datasetType, pythonType, butlerLocation, dataId):
@@ -568,7 +571,7 @@ class CameraMapper(dafPersist.Mapper):
         if defectFitsPath is None:
             raise RuntimeError("No defects available for dataId=%s" % (dataId,))
 
-        return dafPersist.ButlerLocation(None, None, None, defectFitsPath, dataId)
+        return dafPersist.ButlerLocation(None, None, None, defectFitsPath, dataId, self)
 
     def bypass_defects(self, datasetType, pythonType, butlerLocation, dataId):
         """Return a defect based on the butler location returned by map_defects
@@ -606,7 +609,7 @@ class CameraMapper(dafPersist.Mapper):
     def map_skypolicy(self, dataId):
         """Map a sky policy."""
         return dafPersist.ButlerLocation("lsst.pex.policy.Policy", "Policy",
-                "Internal", None, None)
+                "Internal", None, None, self)
 
     def std_skypolicy(self, item, dataId):
         """Standardize a sky policy by returning the one we use."""
