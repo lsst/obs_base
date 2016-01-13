@@ -421,9 +421,15 @@ class CameraMapper(dafPersist.Mapper):
             if os.path.realpath(pathPrefix) != os.path.realpath(root):
                 # No prefix matching root, don't search for parents
                 paths = glob.glob(path)
-                if len(paths) > 0:
+                # The contract states that `None` will be returned
+                #   if no matches are found.
+                # Thus we explicitly set up this if/else to return `None` 
+                #   if `not paths` instead of `[]`.
+                # An argument could be made that the contract should be changed
+                if paths:
                     return paths
-                return []
+                else:
+                    return None
             if pathPrefix == "/":
                 path = path[1:]
             elif pathPrefix != "":
