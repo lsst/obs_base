@@ -31,6 +31,7 @@ all anticipated."""
 import copy
 import fsScanner
 import os
+import pyfits
 import re
 try:
     import sqlite3
@@ -220,9 +221,8 @@ class PosixRegistry(Registry):
         :param dataId:
         :return:
         """
-        from astropy.io import fits
         try:
-            hdulist = fits.open(filepath, memmap=True)
+            hdulist = pyfits.open(filepath, memmap=True)
         except IOError:
             return;
         hduNumber = PosixRegistry.getHduNumber(template=template, dataId=dataId)
