@@ -544,7 +544,7 @@ class CameraMapper(dafPersist.Mapper):
             storageName = "ConfigStorage",
             locationList = self.cameraDataLocation or "ignored",
             dataId = actualId,
-            mapper=self
+            mapper = self
         )
 
     def bypass_camera(self, datasetType, pythonType, butlerLocation, dataId):
