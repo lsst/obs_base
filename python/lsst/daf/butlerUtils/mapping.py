@@ -120,7 +120,8 @@ class Mapping(object):
         @param dataId (dict) Dataset identifier
         @return (lsst.daf.persistence.ButlerLocation)"""
 
-        actualId = self.need(self.keyDict.iterkeys(), dataId)
+        transformedId = mapper._transformId(dataId)
+        actualId = self.need(self.keyDict.iterkeys(), transformedId)
         path = mapper._mapActualToPath(self.template, actualId)
         if not os.path.isabs(path):
             path = os.path.join(self.root, path)
