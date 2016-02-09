@@ -282,7 +282,7 @@ class CameraMapper(dafPersist.Mapper):
                             return mapping.map(mapper, dataId, write)
                         setattr(self, "map_" + datasetType, mapClosure)
                     if not hasattr(self, "query_" + datasetType):
-                        def queryClosure(key, format, dataId, mapping=mapping):
+                        def queryClosure(format, dataId, mapping=mapping):
                             return mapping.lookup(format, dataId)
                         setattr(self, "query_" + datasetType, queryClosure)
                     if hasattr(mapping, "standardize") and \
@@ -504,6 +504,11 @@ class CameraMapper(dafPersist.Mapper):
         @param datasetType (str) dataset type or None for all keys
         @param level (str) level or None for all levels
         @return (iterable) Set of keys usable in a dataset identifier"""
+
+        # not sure if this is how we want to do this. what if None was intended?
+        if level == '':
+            level = self.getDefaultLevel()
+
         if datasetType is None:
             keyDict = copy.copy(self.keyDict)
         else:
