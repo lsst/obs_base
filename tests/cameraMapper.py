@@ -28,7 +28,6 @@ import unittest
 
 import lsst.utils.tests as utilsTests
 import lsst.afw.geom as afwGeom
-import lsst.pex.policy as pexPolicy
 import lsst.daf.persistence as dafPersist
 import lsst.daf.butlerUtils as butlerUtils
 
@@ -228,7 +227,6 @@ class Mapper2TestCase(unittest.TestCase):
                 testDataType('onlyYaml', 'yaml', 'myKey', 'onlyYamlInHere'),
                 testDataType('yamlAndPaf', 'yaml', 'myKey', 'yamlHereWithPaf'))
 
-        basePath = os.path.join('tests', 'testGetRepoPolicy')
         for data in testData:
             path = os.path.join('tests', 'testGetRepoPolicy', data.folder)
             policy = butlerUtils.CameraMapper.getRepoPolicy(os.environ['DAF_BUTLERUTILS_DIR'], path)

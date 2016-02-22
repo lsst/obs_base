@@ -64,7 +64,7 @@ class OutputRootTestCase(unittest.TestCase):
             "testOutput3", "testInput1", "testInput2"])
 
     def testCreateOutputRoot(self):
-        mapper = MinMapper1(outputRoot="testOutput")
+        MinMapper1(outputRoot="testOutput")
         self.assert_(os.path.exists("testOutput"))
         self.assert_(os.path.isdir("testOutput"))
         self.assert_(os.path.islink("testOutput/_parent"))
@@ -117,14 +117,14 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
 
     def testReuseOutputRoot(self):
-        mapper = MinMapper1(outputRoot="testOutput")
+        MinMapper1(outputRoot="testOutput")
         self.assert_(os.path.exists("testOutput"))
         self.assert_(os.path.isdir("testOutput"))
         self.assert_(os.path.islink("testOutput/_parent"))
         self.assert_(os.path.exists("testOutput/_parent/MinMapper1.paf"))
         self.assert_(os.path.exists("testOutput/_parent/outputRoot.py"))
 
-        mapper = MinMapper1(root="testOutput", outputRoot="testOutput2")
+        MinMapper1(root="testOutput", outputRoot="testOutput2")
         self.assert_(os.path.exists("testOutput2"))
         self.assert_(os.path.isdir("testOutput2"))
         self.assert_(os.path.islink("testOutput2/_parent"))
@@ -133,12 +133,12 @@ class OutputRootTestCase(unittest.TestCase):
 
     def testDiffInput(self):
         os.mkdir("testInput1")
-        with open("testInput1/foo", "w") as f:
+        with open("testInput1/foo", "w"):
             pass
         os.mkdir("testInput2")
-        with open("testInput2/foo", "w") as f:
+        with open("testInput2/foo", "w"):
             pass
-        mapper = MinMapper1(root="testInput1", outputRoot="testOutput")
+        MinMapper1(root="testInput1", outputRoot="testOutput")
         self.assert_(os.path.exists("testOutput"))
         self.assert_(os.path.isdir("testOutput"))
         self.assert_(os.path.islink("testOutput/_parent"))
