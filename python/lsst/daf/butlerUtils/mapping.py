@@ -23,7 +23,6 @@
 
 import os
 import re
-from lsst.daf.butlerUtils import fsScanner, SqliteRegistry, PosixRegistry
 from lsst.daf.persistence import ButlerLocation
 from lsst.daf.persistence.policy import Policy
 import lsst.pex.policy as pexPolicy
