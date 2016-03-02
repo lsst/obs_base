@@ -524,7 +524,7 @@ class CameraMapper(dafPersist.Mapper):
         return self.defaultLevel
 
     def getDefaultSubLevel(self, level):
-        if self.defaultSubLevels.has_key(level):
+        if level in self.defaultSubLevels:
             return self.defaultSubLevels[level]
         return None
 
@@ -795,7 +795,7 @@ class CameraMapper(dafPersist.Mapper):
 
         actualId = mapping.need(['filter'], dataId)
         filterName = actualId['filter']
-        if self.filters is not None and self.filters.has_key(filterName):
+        if self.filters is not None and filterName in self.filters:
             filterName = self.filters[filterName]
         item.setFilter(afwImage.Filter(filterName))
 

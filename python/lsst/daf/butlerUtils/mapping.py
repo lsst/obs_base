@@ -182,7 +182,7 @@ class Mapping(object):
         @parm dataId      (dict) Dataset identifier
         @return (bool) True if all properties are present"""
         for prop in properties:
-            if not dataId.has_key(prop):
+            if prop not in dataId:
                 return False
         return True
 
@@ -198,7 +198,7 @@ class Mapping(object):
         newId = dataId.copy()
         newProps = []                    # Properties we don't already have
         for prop in properties:
-            if not newId.has_key(prop):
+            if prop not in newId:
                 newProps.append(prop)
         if len(newProps) == 0:
             return newId
