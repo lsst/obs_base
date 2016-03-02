@@ -78,7 +78,7 @@ class Mapping(object):
         """
 
         if policy is None:
-            raise RuntimeError, "No policy provided for mapping"
+            raise RuntimeError("No policy provided for mapping")
 
         if isinstance(policy, pexPolicy.Policy):
             policy = Policy(policy)
@@ -148,7 +148,7 @@ class Mapping(object):
         @return (list of tuples) values of properties"""
 
         if self.registry is None:
-            raise RuntimeError, "No registry for lookup"
+            raise RuntimeError("No registry for lookup")
 
         where = []
         values = []
@@ -206,8 +206,8 @@ class Mapping(object):
 
         lookups = self.lookup(newProps, newId)
         if len(lookups) != 1:
-            raise RuntimeError, "No unique lookup for %s from %s: %d matches" % \
-                                (newProps, newId, len(lookups))
+            raise RuntimeError("No unique lookup for %s from %s: %d matches" %
+                                (newProps, newId, len(lookups)))
         for i, prop in enumerate(newProps):
             newId[prop] = lookups[0][i]
         return newId

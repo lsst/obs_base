@@ -191,8 +191,7 @@ class CameraMapper(dafPersist.Mapper):
                     if not e.errno == errno.EEXIST:
                         raise
                 if not os.path.exists(outputRoot):
-                    raise RuntimeError, "Unable to create output " \
-                            "repository '%s'" % (outputRoot,)
+                    raise RuntimeError("Unable to create output repository '%s'" % (outputRoot,))
             if os.path.exists(root):
                 # Symlink existing input root to "_parent" in outputRoot.
                 src = os.path.abspath(root)
@@ -204,13 +203,13 @@ class CameraMapper(dafPersist.Mapper):
                         pass
                 if os.path.exists(dst):
                     if os.path.realpath(dst) != os.path.realpath(src):
-                        raise RuntimeError, "Output repository path " \
-                                "'%s' already exists and differs from " \
-                                "input repository path '%s'" % (dst, src)
+                        raise RuntimeError("Output repository path "
+                                "'%s' already exists and differs from "
+                                "input repository path '%s'" % (dst, src))
                 else:
-                    raise RuntimeError, "Unable to symlink from input " \
-                            "repository path '%s' to output repository " \
-                            "path '%s'" % (src, dst)
+                    raise RuntimeError("Unable to symlink from input "
+                            "repository path '%s' to output repository "
+                            "path '%s'" % (src, dst))
             # We now use the outputRoot as the main root with access to the
             # input via "_parent".
             root = outputRoot
@@ -856,7 +855,7 @@ class CameraMapper(dafPersist.Mapper):
         if self.defectRegistry is None:
             return None
         if self.registry is None:
-            raise RuntimeError, "No registry for defect lookup"
+            raise RuntimeError("No registry for defect lookup")
 
         ccdKey, ccdVal = self._getCcdKeyVal(dataId)
 
