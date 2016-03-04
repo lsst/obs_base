@@ -21,6 +21,7 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
+import copy
 import errno
 import glob
 import os
@@ -281,7 +282,7 @@ class CameraMapper(dafPersist.Mapper):
                             return mapping.map(mapper, dataId, write)
                         setattr(self, "map_" + datasetType, mapClosure)
                     if not hasattr(self, "query_" + datasetType):
-                        def queryClosure(key, format, dataId, mapping=mapping):
+                        def queryClosure(format, dataId, mapping=mapping):
                             return mapping.lookup(format, dataId)
                         setattr(self, "query_" + datasetType, queryClosure)
                     if hasattr(mapping, "standardize") and \
@@ -421,6 +422,7 @@ class CameraMapper(dafPersist.Mapper):
             if os.path.realpath(pathPrefix) != os.path.realpath(root):
                 # No prefix matching root, don't search for parents
                 paths = glob.glob(path)
+
                 # The contract states that `None` will be returned
                 #   if no matches are found.
                 # Thus we explicitly set up this if/else to return `None` 
@@ -502,12 +504,17 @@ class CameraMapper(dafPersist.Mapper):
         @param datasetType (str) dataset type or None for all keys
         @param level (str) level or None for all levels
         @return (iterable) Set of keys usable in a dataset identifier"""
+
+        # not sure if this is how we want to do this. what if None was intended?
+        if level == '':
+            level = self.getDefaultLevel()
+
         if datasetType is None:
-            keyDict = self.keyDict
+            keyDict = copy.copy(self.keyDict)
         else:
             keyDict = self.mappings[datasetType].keys()
         if level is not None and level in self.levels:
-            keyDict = dict(keyDict)
+            keyDict = copy.copy(keyDict)
             for l in self.levels[level]:
                 if l in keyDict:
                     del keyDict[l]
@@ -549,6 +556,7 @@ class CameraMapper(dafPersist.Mapper):
             storageName = "ConfigStorage",
             locationList = self.cameraDataLocation or "ignored",
             dataId = actualId,
+            mapper = self
         )
 
     def bypass_camera(self, datasetType, pythonType, butlerLocation, dataId):
@@ -568,7 +576,7 @@ class CameraMapper(dafPersist.Mapper):
         if defectFitsPath is None:
             raise RuntimeError("No defects available for dataId=%s" % (dataId,))
 
-        return dafPersist.ButlerLocation(None, None, None, defectFitsPath, dataId)
+        return dafPersist.ButlerLocation(None, None, None, defectFitsPath, dataId, self)
 
     def bypass_defects(self, datasetType, pythonType, butlerLocation, dataId):
         """Return a defect based on the butler location returned by map_defects
@@ -606,7 +614,7 @@ class CameraMapper(dafPersist.Mapper):
     def map_skypolicy(self, dataId):
         """Map a sky policy."""
         return dafPersist.ButlerLocation("lsst.pex.policy.Policy", "Policy",
-                "Internal", None, None)
+                "Internal", None, None, self)
 
     def std_skypolicy(self, item, dataId):
         """Standardize a sky policy by returning the one we use."""

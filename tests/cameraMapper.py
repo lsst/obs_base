@@ -98,7 +98,7 @@ class Mapper1TestCase(unittest.TestCase):
 
     def testQueryMetadata(self):
         self.assertEqual(
-                self.mapper.queryMetadata("x", "sensor", ["sensor"], None),
+                self.mapper.queryMetadata("x", ["sensor"], None),
                 [("1,1",)])
 
     def testStandardize(self):
@@ -202,7 +202,7 @@ class Mapper2TestCase(unittest.TestCase):
 
     def testQueryMetadata(self):
         self.assertEqual(
-                self.mapper.queryMetadata("raw", "ccd", ["ccd"], None),
+                self.mapper.queryMetadata("raw", ["ccd"], None),
                 [(x,) for x in xrange(36) if x != 3])
 
     def testStandardize(self):
