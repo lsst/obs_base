@@ -12,6 +12,7 @@ config.log
 doc/html
 doc/*.tag
 doc/*.inc
+doc/xml
 doc/doxygen.conf
 tests/.tests
 version.py

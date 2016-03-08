@@ -28,7 +28,6 @@ import unittest
 
 import lsst.utils.tests as utilsTests
 import lsst.afw.geom as afwGeom
-import lsst.pex.policy as pexPolicy
 import lsst.daf.persistence as dafPersist
 import lsst.daf.butlerUtils as butlerUtils
 
@@ -85,7 +84,7 @@ class Mapper1TestCase(unittest.TestCase):
     def testGetDatasetTypes(self):
         self.assertEqual(set(self.mapper.getDatasetTypes()),
                          set(["x", "x_filename", "badSourceHist", "defects",
-                             "badSourceHist_filename", "camera", "skypolicy"]))
+                             "badSourceHist_filename", "camera", "skypolicy", "expIdInfo"]))
 
     def testMap(self):
         loc = self.mapper.map("x", {"sensor": "1,1"}, write=True)
@@ -135,7 +134,7 @@ class Mapper2TestCase(unittest.TestCase):
                              "some", "some_filename", "some_md", "some_sub",
                               "camera", "src", "src_filename", "skypolicy",
                               "other_sub", "other_filename", "other_md",
-                              "other"]))
+                              "other", "expIdInfo"]))
 
     def testMap(self):
         loc = self.mapper.map("raw", {"ccd": 13}, write=True)
@@ -228,7 +227,6 @@ class Mapper2TestCase(unittest.TestCase):
                 testDataType('onlyYaml', 'yaml', 'myKey', 'onlyYamlInHere'),
                 testDataType('yamlAndPaf', 'yaml', 'myKey', 'yamlHereWithPaf'))
 
-        basePath = os.path.join('tests', 'testGetRepoPolicy')
         for data in testData:
             path = os.path.join('tests', 'testGetRepoPolicy', data.folder)
             policy = butlerUtils.CameraMapper.getRepoPolicy(os.environ['DAF_BUTLERUTILS_DIR'], path)

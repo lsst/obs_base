@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # 
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
@@ -68,8 +66,7 @@ class Registry(object):
         # if re.match(r'mysql:', location):
         #     return DbRegistry(location)
         # return FsRegistry(location)
-        raise RuntimeError, \
-                "Unable to create registry using location: " + location
+        raise RuntimeError("Unable to create registry using location: " + location)
 
 class PosixRegistry(Registry):
     """A glob-based filesystem registry"""
@@ -296,7 +293,7 @@ class SqliteRegistry(Registry):
             for k, v in dataId.items():
                 if hasattr(k, '__iter__'):
                     if len(k) is not 2:
-                        raise RuntimeError("Wrong number of keys for range:%s" %k)
+                        raise RuntimeError("Wrong number of keys for range:%s" % (k,))
                     whereList.append("(? BETWEEN %s AND %s)" %(k[0], k[1]))
                     valueList.append(v)
                 else:

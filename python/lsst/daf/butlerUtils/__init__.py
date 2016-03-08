@@ -25,3 +25,4 @@ from registries import *
 from fsScanner import *
 from mapping import *
 from cameraMapper import *
+from .exposureIdInfo import *

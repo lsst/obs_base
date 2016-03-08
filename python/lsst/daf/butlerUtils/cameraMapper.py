@@ -1,4 +1,3 @@
-#!/bin/env python
 # 
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
@@ -38,6 +37,7 @@ import lsst.afw.image as afwImage
 import lsst.afw.cameraGeom as afwCameraGeom
 import lsst.pex.logging as pexLog
 import lsst.pex.policy as pexPolicy
+from .exposureIdInfo import ExposureIdInfo
 
 """This module defines the CameraMapper base class."""
 
@@ -190,8 +190,7 @@ class CameraMapper(dafPersist.Mapper):
                     if not e.errno == errno.EEXIST:
                         raise
                 if not os.path.exists(outputRoot):
-                    raise RuntimeError, "Unable to create output " \
-                            "repository '%s'" % (outputRoot,)
+                    raise RuntimeError("Unable to create output repository '%s'" % (outputRoot,))
             if os.path.exists(root):
                 # Symlink existing input root to "_parent" in outputRoot.
                 src = os.path.abspath(root)
@@ -203,13 +202,13 @@ class CameraMapper(dafPersist.Mapper):
                         pass
                 if os.path.exists(dst):
                     if os.path.realpath(dst) != os.path.realpath(src):
-                        raise RuntimeError, "Output repository path " \
-                                "'%s' already exists and differs from " \
-                                "input repository path '%s'" % (dst, src)
+                        raise RuntimeError("Output repository path "
+                                "'%s' already exists and differs from "
+                                "input repository path '%s'" % (dst, src))
                 else:
-                    raise RuntimeError, "Unable to symlink from input " \
-                            "repository path '%s' to output repository " \
-                            "path '%s'" % (src, dst)
+                    raise RuntimeError("Unable to symlink from input "
+                            "repository path '%s' to output repository "
+                            "path '%s'" % (src, dst))
             # We now use the outputRoot as the main root with access to the
             # input via "_parent".
             root = outputRoot
@@ -524,7 +523,7 @@ class CameraMapper(dafPersist.Mapper):
         return self.defaultLevel
 
     def getDefaultSubLevel(self, level):
-        if self.defaultSubLevels.has_key(level):
+        if level in self.defaultSubLevels:
             return self.defaultSubLevels[level]
         return None
 
@@ -604,6 +603,22 @@ class CameraMapper(dafPersist.Mapper):
                 return defectList
 
         raise RuntimeError("No defects for ccd %s in %s" % (detectorName, defectsFitsPath))
+
+    def map_expIdInfo(self, dataId, write=False):
+        return dafPersist.ButlerLocation(
+            pythonType = "lsst.daf.butlerUtils.ExposureIdInfo",
+            cppType = None,
+            storageName = "Internal",
+            locationList = "ignored",
+            dataId = dataId,
+            mapper = self,
+        )
+
+    def bypass_expIdInfo(self, datasetType, pythonType, location, dataId):
+        """Hook to retrieve an lsst.daf.butlerUtils.ExposureIdInfo for an exposure"""
+        expId = self.bypass_ccdExposureId(datasetType, pythonType, location, dataId)
+        expBits = self.bypass_ccdExposureId_bits(datasetType, pythonType, location, dataId)
+        return ExposureIdInfo(expId=expId, expBits=expBits)
 
     def std_raw(self, item, dataId):
         """Standardize a raw dataset by converting it to an Exposure instead of an Image"""
@@ -779,7 +794,7 @@ class CameraMapper(dafPersist.Mapper):
 
         actualId = mapping.need(['filter'], dataId)
         filterName = actualId['filter']
-        if self.filters is not None and self.filters.has_key(filterName):
+        if self.filters is not None and filterName in self.filters:
             filterName = self.filters[filterName]
         item.setFilter(afwImage.Filter(filterName))
 
@@ -839,7 +854,7 @@ class CameraMapper(dafPersist.Mapper):
         if self.defectRegistry is None:
             return None
         if self.registry is None:
-            raise RuntimeError, "No registry for defect lookup"
+            raise RuntimeError("No registry for defect lookup")
 
         ccdKey, ccdVal = self._getCcdKeyVal(dataId)
 

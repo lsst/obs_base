@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # 
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
@@ -72,7 +70,7 @@ class FsScanner(object):
         pos = 0
         for m in fmt.finditer(pathTemplate):
             fieldName = m.group(1)
-            if self.fields.has_key(fieldName):
+            if fieldName in self.fields:
                 fieldName += "_%d" % (n,)
                 n += 1
 

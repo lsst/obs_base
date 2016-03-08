@@ -1,4 +1,3 @@
-#!/bin/env python
 # 
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
@@ -23,7 +22,6 @@
 
 import os
 import re
-from lsst.daf.butlerUtils import fsScanner, SqliteRegistry, PosixRegistry
 from lsst.daf.persistence import ButlerLocation
 from lsst.daf.persistence.policy import Policy
 import lsst.pex.policy as pexPolicy
@@ -78,7 +76,7 @@ class Mapping(object):
         """
 
         if policy is None:
-            raise RuntimeError, "No policy provided for mapping"
+            raise RuntimeError("No policy provided for mapping")
 
         if isinstance(policy, pexPolicy.Policy):
             policy = Policy(policy)
@@ -148,7 +146,7 @@ class Mapping(object):
         @return (list of tuples) values of properties"""
 
         if self.registry is None:
-            raise RuntimeError, "No registry for lookup"
+            raise RuntimeError("No registry for lookup")
 
         where = []
         values = []
@@ -183,7 +181,7 @@ class Mapping(object):
         @parm dataId      (dict) Dataset identifier
         @return (bool) True if all properties are present"""
         for prop in properties:
-            if not dataId.has_key(prop):
+            if prop not in dataId:
                 return False
         return True
 
@@ -199,15 +197,15 @@ class Mapping(object):
         newId = dataId.copy()
         newProps = []                    # Properties we don't already have
         for prop in properties:
-            if not newId.has_key(prop):
+            if prop not in newId:
                 newProps.append(prop)
         if len(newProps) == 0:
             return newId
 
         lookups = self.lookup(newProps, newId)
         if len(lookups) != 1:
-            raise RuntimeError, "No unique lookup for %s from %s: %d matches" % \
-                                (newProps, newId, len(lookups))
+            raise RuntimeError("No unique lookup for %s from %s: %d matches" %
+                                (newProps, newId, len(lookups)))
         for i, prop in enumerate(newProps):
             newId[prop] = lookups[0][i]
         return newId

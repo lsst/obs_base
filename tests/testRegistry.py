@@ -69,7 +69,6 @@ class PosixRegistryTestCase(unittest.TestCase):
 
         policyTables = None
         storage = 'FitsStorage'
-        values = []
         for root, template, returnFields, dataId, expectedLookup in td:
             registry = butlerUtils.PosixRegistry(root)
             lookups = registry.lookup(returnFields, policyTables, dataId, template=template, storage=storage)
