@@ -357,6 +357,7 @@ class CameraMapper(dafPersist.Mapper):
 
         # Filter translation table
         self.filters = None
+        self.defaultFilterName = None
 
         # Skytile policy
         self.skypolicy = policy['skytiles']
@@ -396,8 +397,21 @@ class CameraMapper(dafPersist.Mapper):
         will match filenames without the HDU indicator, e.g. 'foo.fits'. The
         path returned WILL contain the indicator though, e.g. ['foo.fits[1]'].
         """
+        def normalize(path):
+            """Normalize path names
+
+            Removes leading double-slash, which is significant in POSIX but
+            not in Linux and not in the below code either.
+            """
+            path = os.path.normpath(path)
+            if path.startswith("//"):
+                path = path[1:]
+            return path
+
         # Separate path into a root-equivalent prefix (in dir) and the rest
         # (left in path)
+        rootDir = normalize(root)
+        path = normalize(path)
 
         rootDir = root
         # First remove trailing slashes (#2527)
@@ -490,6 +504,7 @@ class CameraMapper(dafPersist.Mapper):
             if not os.path.exists(newDir):
                 os.makedirs(newDir)
             shutil.copy(oldPath, "%s~%d" % (newPath, n))
+            shutil.copystat(oldPath, "%s~%d" % (newPath, n))
 
     def keys(self):
         """Return supported keys.
@@ -794,8 +809,13 @@ class CameraMapper(dafPersist.Mapper):
 
         actualId = mapping.need(['filter'], dataId)
         filterName = actualId['filter']
-        if self.filters is not None and filterName in self.filters:
-            filterName = self.filters[filterName]
+        if self.filters is not None:
+            if filterName in self.filters:
+                filterName = self.filters[filterName]
+            elif self.defaultFilterName and self.defaultFilterName in self.filters:
+                self.log.warn("Unrecognised filter (%s): setting to default filter name (%s)" %
+                              (filterName, self.defaultFilterName))
+                filterName = self.defaultFilterName
         item.setFilter(afwImage.Filter(filterName))
 
     def _setTimes(self, mapping, item, dataId):
@@ -925,6 +945,7 @@ def exposureFromImage(image):
     md = image.getMetadata()
     exposure.setMetadata(md)
     wcs = afwImage.makeWcs(md, True)
-    exposure.setWcs(wcs)
+    if wcs is not None:
+        exposure.setWcs(wcs)
 
     return exposure
