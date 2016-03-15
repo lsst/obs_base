@@ -155,13 +155,13 @@ class CameraMapper(dafPersist.Mapper):
 
         self.root = root
         if isinstance(policy, pexPolicy.Policy):
-            policy = Policy(pexPolicy=policy)
+            policy = dafPersist.Policy(pexPolicy=policy)
 
         repoPolicy = CameraMapper.getRepoPolicy(self.root, self.root)
         if repoPolicy is not None:
             policy.update(repoPolicy)
 
-        dictPolicy = Policy(defaultInitData=("daf_butlerUtils", "MapperDictionary.paf", "policy"))
+        dictPolicy = dafPersist.Policy(defaultInitData=("daf_butlerUtils", "MapperDictionary.paf", "policy"))
         policy.merge(dictPolicy)
 
         # Levels
@@ -238,13 +238,13 @@ class CameraMapper(dafPersist.Mapper):
             calibRegistry = None
 
         # Sub-dictionaries (for exposure/calibration/dataset types)
-        imgMappingPolicy = Policy(defaultInitData=("daf_butlerUtils", "ImageMappingDictionary.paf",
+        imgMappingPolicy = dafPersist.Policy(defaultInitData=("daf_butlerUtils", "ImageMappingDictionary.paf",
                                                    "policy"))
-        expMappingPolicy = Policy(defaultInitData=("daf_butlerUtils", "ExposureMappingDictionary.paf",
+        expMappingPolicy = dafPersist.Policy(defaultInitData=("daf_butlerUtils", "ExposureMappingDictionary.paf",
                                                    "policy"))
-        calMappingPolicy = Policy(defaultInitData=("daf_butlerUtils", "CalibrationMappingDictionary.paf",
+        calMappingPolicy = dafPersist.Policy(defaultInitData=("daf_butlerUtils", "CalibrationMappingDictionary.paf",
                                                    "policy"))
-        dsMappingPolicy = Policy(defaultInitData=("daf_butlerUtils", "DatasetMappingDictionary.paf",
+        dsMappingPolicy = dafPersist.Policy(defaultInitData=("daf_butlerUtils", "DatasetMappingDictionary.paf",
                                                   "policy"))
 
         # Dict of valid keys and their value types
@@ -376,7 +376,7 @@ class CameraMapper(dafPersist.Mapper):
                     if len(matches) > 1:
                         raise RuntimeError("More than 1 policy possibility for root:%s" %root)
                     elif len(matches) == 1:
-                        policy = Policy(filePath=matches[0])
+                        policy = dafPersist.Policy(filePath=matches[0])
                         break
         return policy
 
@@ -697,11 +697,11 @@ class CameraMapper(dafPersist.Mapper):
                     path = newPath
             self.log.log(pexLog.Log.INFO,
                     "Loading %s registry from %s" % (name, path))
-            registry = Registry.create(path)
+            registry = dafPersist.Registry.create(path)
         elif not registry and os.path.exists(root):
             self.log.log(pexLog.Log.INFO,
                     "Loading Posix registry from %s" % (root))
-            registry = PosixRegistry(root)
+            registry = dafPersist.PosixRegistry(root)
 
         return registry
 
@@ -895,7 +895,7 @@ class CameraMapper(dafPersist.Mapper):
                              per-camera default dictionary)
         """
         if isinstance(policy, pexPolicy.Policy):
-            policy = Policy(pexPolicy=policy)
+            policy = dafPersist.Policy(pexPolicy=policy)
         if not 'camera' in policy:
             raise RuntimeError("Cannot find 'camera' in policy; cannot construct a camera")
         cameraDataSubdir = policy['camera']
