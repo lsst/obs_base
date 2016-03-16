@@ -1,7 +1,7 @@
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -9,14 +9,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.    See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -29,8 +29,7 @@ import re
 import shutil
 import lsst.daf.persistence as dafPersist
 from lsst.daf.persistence.policy import Policy
-from lsst.daf.butlerUtils import (ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping, Registry,
-                                  PosixRegistry)
+from lsst.daf.butlerUtils import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping
 import lsst.daf.base as dafBase
 import lsst.afw.geom as afwGeom
 import lsst.afw.image as afwImage
@@ -42,7 +41,7 @@ from .exposureIdInfo import ExposureIdInfo
 """This module defines the CameraMapper base class."""
 
 class CameraMapper(dafPersist.Mapper):
-    
+
     """CameraMapper is a base class for mappers that handle images from a
     camera and products derived from them.  This provides an abstraction layer
     between the data on disk and the code.
@@ -156,13 +155,13 @@ class CameraMapper(dafPersist.Mapper):
 
         self.root = root
         if isinstance(policy, pexPolicy.Policy):
-            policy = Policy(pexPolicy=policy)
+            policy = dafPersist.Policy(pexPolicy=policy)
 
         repoPolicy = CameraMapper.getRepoPolicy(self.root, self.root)
         if repoPolicy is not None:
             policy.update(repoPolicy)
 
-        dictPolicy = Policy(defaultInitData=("daf_butlerUtils", "MapperDictionary.paf", "policy"))
+        dictPolicy = dafPersist.Policy(defaultInitData=("daf_butlerUtils", "MapperDictionary.paf", "policy"))
         policy.merge(dictPolicy)
 
         # Levels
@@ -239,13 +238,13 @@ class CameraMapper(dafPersist.Mapper):
             calibRegistry = None
 
         # Sub-dictionaries (for exposure/calibration/dataset types)
-        imgMappingPolicy = Policy(defaultInitData=("daf_butlerUtils", "ImageMappingDictionary.paf",
+        imgMappingPolicy = dafPersist.Policy(defaultInitData=("daf_butlerUtils", "ImageMappingDictionary.paf",
                                                    "policy"))
-        expMappingPolicy = Policy(defaultInitData=("daf_butlerUtils", "ExposureMappingDictionary.paf",
+        expMappingPolicy = dafPersist.Policy(defaultInitData=("daf_butlerUtils", "ExposureMappingDictionary.paf",
                                                    "policy"))
-        calMappingPolicy = Policy(defaultInitData=("daf_butlerUtils", "CalibrationMappingDictionary.paf",
+        calMappingPolicy = dafPersist.Policy(defaultInitData=("daf_butlerUtils", "CalibrationMappingDictionary.paf",
                                                    "policy"))
-        dsMappingPolicy = Policy(defaultInitData=("daf_butlerUtils", "DatasetMappingDictionary.paf",
+        dsMappingPolicy = dafPersist.Policy(defaultInitData=("daf_butlerUtils", "DatasetMappingDictionary.paf",
                                                   "policy"))
 
         # Dict of valid keys and their value types
@@ -353,11 +352,10 @@ class CameraMapper(dafPersist.Mapper):
             defectRegistryLocation = os.path.join(
                     self.defectPath, "defectRegistry.sqlite3")
             self.defectRegistry = \
-                    Registry.create(defectRegistryLocation)
+                    dafPersist.Registry.create(defectRegistryLocation)
 
         # Filter translation table
         self.filters = None
-        self.defaultFilterName = None
 
         # Skytile policy
         self.skypolicy = policy['skytiles']
@@ -378,7 +376,7 @@ class CameraMapper(dafPersist.Mapper):
                     if len(matches) > 1:
                         raise RuntimeError("More than 1 policy possibility for root:%s" %root)
                     elif len(matches) == 1:
-                        policy = Policy(filePath=matches[0])
+                        policy = dafPersist.Policy(filePath=matches[0])
                         break
         return policy
 
@@ -397,21 +395,8 @@ class CameraMapper(dafPersist.Mapper):
         will match filenames without the HDU indicator, e.g. 'foo.fits'. The
         path returned WILL contain the indicator though, e.g. ['foo.fits[1]'].
         """
-        def normalize(path):
-            """Normalize path names
-
-            Removes leading double-slash, which is significant in POSIX but
-            not in Linux and not in the below code either.
-            """
-            path = os.path.normpath(path)
-            if path.startswith("//"):
-                path = path[1:]
-            return path
-
         # Separate path into a root-equivalent prefix (in dir) and the rest
         # (left in path)
-        rootDir = normalize(root)
-        path = normalize(path)
 
         rootDir = root
         # First remove trailing slashes (#2527)
@@ -438,7 +423,7 @@ class CameraMapper(dafPersist.Mapper):
 
                 # The contract states that `None` will be returned
                 #   if no matches are found.
-                # Thus we explicitly set up this if/else to return `None` 
+                # Thus we explicitly set up this if/else to return `None`
                 #   if `not paths` instead of `[]`.
                 # An argument could be made that the contract should be changed
                 if paths:
@@ -504,7 +489,6 @@ class CameraMapper(dafPersist.Mapper):
             if not os.path.exists(newDir):
                 os.makedirs(newDir)
             shutil.copy(oldPath, "%s~%d" % (newPath, n))
-            shutil.copystat(oldPath, "%s~%d" % (newPath, n))
 
     def keys(self):
         """Return supported keys.
@@ -670,7 +654,7 @@ class CameraMapper(dafPersist.Mapper):
         @param path       (string) Path for registry
         @param policyKey  (string) Key in policy for registry path
         @param root       (string) Root directory to look in
-        @return (lsst.daf.butlerUtils.Registry) Registry object"""
+        @return (lsst.daf.persistence.Registry) Registry object"""
 
         if path is None and policyKey in policy:
             path = dafPersist.LogicalLocation(policy[policyKey]).locString()
@@ -713,11 +697,11 @@ class CameraMapper(dafPersist.Mapper):
                     path = newPath
             self.log.log(pexLog.Log.INFO,
                     "Loading %s registry from %s" % (name, path))
-            registry = Registry.create(path)
+            registry = dafPersist.Registry.create(path)
         elif not registry and os.path.exists(root):
             self.log.log(pexLog.Log.INFO,
                     "Loading Posix registry from %s" % (root))
-            registry = PosixRegistry(root)
+            registry = dafPersist.PosixRegistry(root)
 
         return registry
 
@@ -809,13 +793,8 @@ class CameraMapper(dafPersist.Mapper):
 
         actualId = mapping.need(['filter'], dataId)
         filterName = actualId['filter']
-        if self.filters is not None:
-            if filterName in self.filters:
-                filterName = self.filters[filterName]
-            elif self.defaultFilterName and self.defaultFilterName in self.filters:
-                self.log.warn("Unrecognised filter (%s): setting to default filter name (%s)" %
-                              (filterName, self.defaultFilterName))
-                filterName = self.defaultFilterName
+        if self.filters is not None and filterName in self.filters:
+            filterName = self.filters[filterName]
         item.setFilter(afwImage.Filter(filterName))
 
     def _setTimes(self, mapping, item, dataId):
@@ -825,7 +804,7 @@ class CameraMapper(dafPersist.Mapper):
         @param mapping (lsst.daf.butlerUtils.Mapping)
         @param[in,out] item (lsst.afw.image.Exposure)
         @param dataId (dict) Dataset identifier"""
-        
+
         md = item.getMetadata()
         calib = item.getCalib()
         if md.exists("EXPTIME"):
@@ -916,7 +895,7 @@ class CameraMapper(dafPersist.Mapper):
                              per-camera default dictionary)
         """
         if isinstance(policy, pexPolicy.Policy):
-            policy = Policy(pexPolicy=policy)
+            policy = dafPersist.Policy(pexPolicy=policy)
         if not 'camera' in policy:
             raise RuntimeError("Cannot find 'camera' in policy; cannot construct a camera")
         cameraDataSubdir = policy['camera']
@@ -945,7 +924,6 @@ def exposureFromImage(image):
     md = image.getMetadata()
     exposure.setMetadata(md)
     wcs = afwImage.makeWcs(md, True)
-    if wcs is not None:
-        exposure.setWcs(wcs)
+    exposure.setWcs(wcs)
 
     return exposure
