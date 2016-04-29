@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 #
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
@@ -21,6 +22,6 @@
 #
 from .version import *
 
-from mapping import *
-from cameraMapper import *
+from .mapping import *
+from .cameraMapper import *
 from .exposureIdInfo import *
