@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -11,14 +11,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.    See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -31,17 +31,19 @@ import lsst.afw.geom as afwGeom
 import lsst.daf.persistence as dafPersist
 import lsst.daf.butlerUtils as butlerUtils
 
+
 class MinMapper1(butlerUtils.CameraMapper):
     packageName = 'larry'
 
     def __init__(self):
         policy = dafPersist.Policy(filePath="tests/MinMapper1.paf")
         butlerUtils.CameraMapper.__init__(self,
-                policy=policy, repositoryDir="tests", root="tests")
+                                          policy=policy, repositoryDir="tests", root="tests")
         return
 
     def std_x(self, item, dataId):
         return float(item)
+
 
 class MinMapper2(butlerUtils.CameraMapper):
     packageName = 'moe'
@@ -51,8 +53,8 @@ class MinMapper2(butlerUtils.CameraMapper):
     def __init__(self):
         policy = dafPersist.Policy(filePath="tests/MinMapper2.paf")
         butlerUtils.CameraMapper.__init__(self,
-                policy=policy, repositoryDir="tests", root="tests",
-                registry="tests/cfhtls.sqlite3")
+                                          policy=policy, repositoryDir="tests", root="tests",
+                                          registry="tests/cfhtls.sqlite3")
         return
 
     def _transformId(self, dataId):
@@ -64,13 +66,15 @@ class MinMapper2(butlerUtils.CameraMapper):
     def std_x(self, item, dataId):
         return float(item)
 
+
 # does not assign packageName
 class MinMapper3(butlerUtils.CameraMapper):
     def __init__(self):
         policy = dafPersist.Policy(filePath="tests/MinMapper1.paf")
         butlerUtils.CameraMapper.__init__(self,
-                policy=policy, repositoryDir="tests", root="tests")
+                                          policy=policy, repositoryDir="tests", root="tests")
         return
+
 
 class Mapper1TestCase(unittest.TestCase):
     """A test case for the mapper used by the data butler."""
@@ -93,12 +97,11 @@ class Mapper1TestCase(unittest.TestCase):
         self.assertEqual(loc.getStorageName(), "PickleStorage")
         self.assertEqual(loc.getLocations(), ["tests/foo-1,1.pickle"])
         self.assertEqual(loc.getAdditionalData().toString(),
-                "sensor = \"1,1\"\n")
+                         "sensor = \"1,1\"\n")
 
     def testQueryMetadata(self):
-        self.assertEqual(
-                self.mapper.queryMetadata("x", ["sensor"], None),
-                [("1,1",)])
+        self.assertEqual(self.mapper.queryMetadata("x", ["sensor"], None),
+                         [("1,1",)])
 
     def testStandardize(self):
         self.assertEqual(self.mapper.canStandardize("x"), True)
@@ -118,6 +121,7 @@ class Mapper1TestCase(unittest.TestCase):
         self.assertEqual(MinMapper1.getCameraName(), "min")
         self.assertEqual(MinMapper1.getPackageName(), "larry")
 
+
 class Mapper2TestCase(unittest.TestCase):
     """A test case for the mapper used by the data butler."""
 
@@ -130,8 +134,8 @@ class Mapper2TestCase(unittest.TestCase):
     def testGetDatasetTypes(self):
         self.assertEqual(set(self.mapper.getDatasetTypes()),
                          set(["flat", "flat_filename", "raw", "raw_md",
-                             "raw_filename", "raw_sub", "defects",
-                             "some", "some_filename", "some_md", "some_sub",
+                              "raw_filename", "raw_sub", "defects",
+                              "some", "some_filename", "some_md", "some_sub",
                               "camera", "src", "src_filename", "skypolicy",
                               "other_sub", "other_filename", "other_md",
                               "other", "expIdInfo"]))
@@ -143,33 +147,34 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getStorageName(), "FitsStorage")
         self.assertEqual(loc.getLocations(), ["tests/foo-13.fits"])
         self.assertEqual(loc.getAdditionalData().toString(),
-                "ccd = 13\n")
+                         "ccd = 13\n")
 
     def testSubMap(self):
         if hasattr(afwGeom, 'makePointI'):
             # old afw (pre-#1556) interface
             bbox = afwGeom.BoxI(afwGeom.makePointI(200, 100),
-                    afwGeom.makeExtentI(300, 400))
+                                afwGeom.makeExtentI(300, 400))
         else:
             # new afw (post-#1556) interface
             bbox = afwGeom.BoxI(afwGeom.Point2I(200, 100),
-                    afwGeom.Extent2I(300, 400))
+                                afwGeom.Extent2I(300, 400))
         loc = self.mapper.map("raw_sub", {"ccd": 13, "bbox": bbox}, write=True)
         self.assertEqual(loc.getPythonType(), "lsst.afw.image.ExposureU")
         self.assertEqual(loc.getCppType(), "ImageU")
         self.assertEqual(loc.getStorageName(), "FitsStorage")
         self.assertEqual(loc.getLocations(), ["tests/foo-13.fits"])
         self.assertEqual(loc.getAdditionalData().toString(),
-                'ccd = 13\nheight = 400\nllcX = 200\nllcY = 100\nwidth = 300\n')
+                         'ccd = 13\nheight = 400\nllcX = 200\nllcY = 100\nwidth = 300\n')
 
         loc = self.mapper.map("raw_sub", {"ccd": 13, "bbox": bbox,
-            "imageOrigin": "PARENT"}, write=True)
+                              "imageOrigin": "PARENT"}, write=True)
         self.assertEqual(loc.getPythonType(), "lsst.afw.image.ExposureU")
         self.assertEqual(loc.getCppType(), "ImageU")
         self.assertEqual(loc.getStorageName(), "FitsStorage")
         self.assertEqual(loc.getLocations(), ["tests/foo-13.fits"])
         self.assertEqual(loc.getAdditionalData().toString(),
-                'ccd = 13\nheight = 400\nimageOrigin = "PARENT"\nllcX = 200\nllcY = 100\nwidth = 300\n')
+                         'ccd = 13\nheight = 400\nimageOrigin = "PARENT"\n'
+                         'llcX = 200\nllcY = 100\nwidth = 300\n')
 
     def testImage(self):
         loc = self.mapper.map("some", dict(ccd=35))
@@ -180,15 +185,15 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(image.getFilter().getName(), "r")
 
         bbox = afwGeom.BoxI(afwGeom.Point2I(200, 100),
-                    afwGeom.Extent2I(300, 400))
+                            afwGeom.Extent2I(300, 400))
         image = butler.get("some_sub", ccd=35, bbox=bbox, imageOrigin="LOCAL", immediate=True)
         self.assertEqual(image.getHeight(), 400)
         self.assertEqual(image.getWidth(), 300)
 
     def testButlerQueryMetadata(self):
         butler = dafPersist.ButlerFactory(mapper=self.mapper).create()
-        kwargs = { "ccd": 35, "filter": "r", "visit": 787731,
-                   "taiObs": "2005-04-02T09:24:49.933440000"}
+        kwargs = {"ccd": 35, "filter": "r", "visit": 787731,
+                  "taiObs": "2005-04-02T09:24:49.933440000"}
         self.assertEqual(butler.queryMetadata("other", "visit", **kwargs),
                          [787731])
         self.assertEqual(butler.queryMetadata("other", "visit",
@@ -200,9 +205,8 @@ class Mapper2TestCase(unittest.TestCase):
                          [])
 
     def testQueryMetadata(self):
-        self.assertEqual(
-                self.mapper.queryMetadata("raw", ["ccd"], None),
-                [(x,) for x in xrange(36) if x != 3])
+        self.assertEqual(self.mapper.queryMetadata("raw", ["ccd"], None),
+                         [(x,) for x in xrange(36) if x != 3])
 
     def testStandardize(self):
         self.assertEqual(self.mapper.canStandardize("raw"), True)
@@ -215,7 +219,7 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getStorageName(), "FitsStorage")
         self.assertEqual(loc.getLocations(), ["tests/flat-05Am03-fi.fits"])
         self.assertEqual(loc.getAdditionalData().toString(),
-                'ccd = 13\nderivedRunId = "05Am03"\nfilter = "i"\nvisit = 787650\n')
+                         'ccd = 13\nderivedRunId = "05Am03"\nfilter = "i"\nvisit = 787650\n')
 
     def testNames(self):
         self.assertEqual(MinMapper2.getCameraName(), "min")
@@ -224,8 +228,8 @@ class Mapper2TestCase(unittest.TestCase):
     def testGetRepoPolicy(self):
         testDataType = collections.namedtuple('testData', 'folder extension key value')
         testData = (testDataType('onlyPaf', 'paf', 'exposures.raw.template', 'onlyPaf.fits.gz'),
-                testDataType('onlyYaml', 'yaml', 'myKey', 'onlyYamlInHere'),
-                testDataType('yamlAndPaf', 'yaml', 'myKey', 'yamlHereWithPaf'))
+                    testDataType('onlyYaml', 'yaml', 'myKey', 'onlyYamlInHere'),
+                    testDataType('yamlAndPaf', 'yaml', 'myKey', 'yamlHereWithPaf'))
 
         for data in testData:
             path = os.path.join('tests', 'testGetRepoPolicy', data.folder)
@@ -253,6 +257,7 @@ class Mapper3TestCase(unittest.TestCase):
         with self.assertRaises(ValueError):
             MinMapper3.getPackageName()
 
+
 def suite():
     utilsTests.init()
 
@@ -262,6 +267,7 @@ def suite():
     suites += unittest.makeSuite(Mapper3TestCase)
     suites += unittest.makeSuite(utilsTests.MemoryTestCase)
     return unittest.TestSuite(suites)
+
 
 def run(shouldExit = False):
     utilsTests.run(suite(), shouldExit)

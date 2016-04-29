@@ -24,7 +24,7 @@ import copy
 import errno
 import glob
 import os
-import pyfits # required by _makeDefectsDict until defects are written as AFW tables
+import pyfits  # required by _makeDefectsDict until defects are written as AFW tables
 import re
 import shutil
 import weakref
@@ -40,6 +40,7 @@ import lsst.pex.policy as pexPolicy
 from .exposureIdInfo import ExposureIdInfo
 
 """This module defines the CameraMapper base class."""
+
 
 class CameraMapper(dafPersist.Mapper):
 
@@ -203,12 +204,12 @@ class CameraMapper(dafPersist.Mapper):
                 if os.path.exists(dst):
                     if os.path.realpath(dst) != os.path.realpath(src):
                         raise RuntimeError("Output repository path "
-                                "'%s' already exists and differs from "
-                                "input repository path '%s'" % (dst, src))
+                                           "'%s' already exists and differs from "
+                                           "input repository path '%s'" % (dst, src))
                 else:
                     raise RuntimeError("Unable to symlink from input "
-                            "repository path '%s' to output repository "
-                            "path '%s'" % (src, dst))
+                                       "repository path '%s' to output repository "
+                                       "path '%s'" % (src, dst))
             # We now use the outputRoot as the main root with access to the
             # input via "_parent".
             root = outputRoot
@@ -222,16 +223,15 @@ class CameraMapper(dafPersist.Mapper):
 
         if not os.path.exists(root):
             self.log.log(pexLog.Log.WARN,
-                    "Root directory not found: %s" % (root,))
+                         "Root directory not found: %s" % (root,))
         if not os.path.exists(calibRoot):
             self.log.log(pexLog.Log.WARN,
-                    "Calibration root directory not found: %s" % (calibRoot,))
+                         "Calibration root directory not found: %s" % (calibRoot,))
 
         self.root = root
 
         # Registries
-        self.registry = self._setupRegistry(
-                "registry", registry, policy, "registryPath", root)
+        self.registry = self._setupRegistry("registry", registry, policy, "registryPath", root)
         if 'needCalibRegistry' in policy and policy['needCalibRegistry']:
             calibRegistry = self._setupRegistry("calibRegistry", calibRegistry, policy,
                                                 "calibRegistryPath", calibRoot)
@@ -240,24 +240,27 @@ class CameraMapper(dafPersist.Mapper):
 
         # Sub-dictionaries (for exposure/calibration/dataset types)
         imgMappingPolicy = dafPersist.Policy(defaultInitData=("daf_butlerUtils", "ImageMappingDictionary.paf",
-                                                   "policy"))
-        expMappingPolicy = dafPersist.Policy(defaultInitData=("daf_butlerUtils", "ExposureMappingDictionary.paf",
-                                                   "policy"))
-        calMappingPolicy = dafPersist.Policy(defaultInitData=("daf_butlerUtils", "CalibrationMappingDictionary.paf",
-                                                   "policy"))
-        dsMappingPolicy = dafPersist.Policy(defaultInitData=("daf_butlerUtils", "DatasetMappingDictionary.paf",
-                                                  "policy"))
+                                                              "policy"))
+        expMappingPolicy = dafPersist.Policy(defaultInitData=("daf_butlerUtils",
+                                                              "ExposureMappingDictionary.paf",
+                                                              "policy"))
+        calMappingPolicy = dafPersist.Policy(defaultInitData=("daf_butlerUtils",
+                                                              "CalibrationMappingDictionary.paf",
+                                                              "policy"))
+        dsMappingPolicy = dafPersist.Policy(defaultInitData=("daf_butlerUtils",
+                                                             "DatasetMappingDictionary.paf",
+                                                             "policy"))
 
         # Dict of valid keys and their value types
         self.keyDict = dict()
 
         # Mappings
         mappingList = (
-                ("images", imgMappingPolicy, ImageMapping),
-                ("exposures", expMappingPolicy, ExposureMapping),
-                ("calibrations", calMappingPolicy, CalibrationMapping),
-                ("datasets", dsMappingPolicy, DatasetMapping)
-                )
+            ("images", imgMappingPolicy, ImageMapping),
+            ("exposures", expMappingPolicy, ExposureMapping),
+            ("calibrations", calMappingPolicy, CalibrationMapping),
+            ("datasets", dsMappingPolicy, DatasetMapping)
+        )
         self.mappings = dict()
         for name, defPolicy, cls in mappingList:
             if name in policy:
@@ -277,7 +280,7 @@ class CameraMapper(dafPersist.Mapper):
                     self.mappings[datasetType] = mapping
                     if not hasattr(self, "map_" + datasetType):
                         def mapClosure(dataId, write=False,
-                                mapper=weakref.proxy(self), mapping=mapping):
+                                       mapper=weakref.proxy(self), mapping=mapping):
                             return mapping.map(mapper, dataId, write)
                         setattr(self, "map_" + datasetType, mapClosure)
                     if not hasattr(self, "query_" + datasetType):
@@ -287,7 +290,7 @@ class CameraMapper(dafPersist.Mapper):
                     if hasattr(mapping, "standardize") and \
                             not hasattr(self, "std_" + datasetType):
                         def stdClosure(item, dataId,
-                                mapper=weakref.proxy(self), mapping=mapping):
+                                       mapper=weakref.proxy(self), mapping=mapping):
                             return mapping.standardize(mapper, item, dataId)
                         setattr(self, "std_" + datasetType, stdClosure)
 
@@ -301,9 +304,9 @@ class CameraMapper(dafPersist.Mapper):
 
                     # Set up metadata versions
                     if name == "exposures" or name == "images":
-                        expFunc = "map_" + datasetType # Function name to map exposure
+                        expFunc = "map_" + datasetType  # Function name to map exposure
                         mdFunc = expFunc + "_md"       # Function name to map metadata
-                        bypassFunc = "bypass_" + datasetType + "_md" # Function name to bypass daf_persistence
+                        bypassFunc = "bypass_" + datasetType + "_md"  # Func name to bypass daf_persistence
                         if not hasattr(self, mdFunc):
                             setattr(self, mdFunc, getattr(self, expFunc))
                         if not hasattr(self, bypassFunc):
@@ -314,7 +317,7 @@ class CameraMapper(dafPersist.Mapper):
                             setattr(self, "query_" + datasetType + "_md",
                                     getattr(self, "query_" + datasetType))
 
-                        subFunc = expFunc + "_sub" # Function name to map subimage
+                        subFunc = expFunc + "_sub"  # Function name to map subimage
                         if not hasattr(self, subFunc):
                             def mapSubClosure(dataId, write=False, mapper=weakref.proxy(self),
                                               mapping=mapping):
@@ -332,7 +335,7 @@ class CameraMapper(dafPersist.Mapper):
                                 loc.additionalData.set('height', height)
                                 if 'imageOrigin' in dataId:
                                     loc.additionalData.set('imageOrigin',
-                                            dataId['imageOrigin'])
+                                                           dataId['imageOrigin'])
                                 return loc
                             setattr(self, subFunc, mapSubClosure)
                         if not hasattr(self, "query_" + datasetType + "_sub"):
@@ -343,18 +346,15 @@ class CameraMapper(dafPersist.Mapper):
                             setattr(self, "query_" + datasetType + "_sub", querySubClosure)
 
         # Camera geometry
-        self.cameraDataLocation = None # path to camera geometry config file
+        self.cameraDataLocation = None  # path to camera geometry config file
         self.camera = self._makeCamera(policy=policy, repositoryDir=repositoryDir)
 
         # Defect registry and root
         self.defectRegistry = None
         if 'defects' in policy:
-            self.defectPath = os.path.join(
-                    repositoryDir, policy['defects'])
-            defectRegistryLocation = os.path.join(
-                    self.defectPath, "defectRegistry.sqlite3")
-            self.defectRegistry = \
-                    dafPersist.Registry.create(defectRegistryLocation)
+            self.defectPath = os.path.join(repositoryDir, policy['defects'])
+            defectRegistryLocation = os.path.join(self.defectPath, "defectRegistry.sqlite3")
+            self.defectRegistry = dafPersist.Registry.create(defectRegistryLocation)
 
         # Filter translation table
         self.filters = None
@@ -376,7 +376,7 @@ class CameraMapper(dafPersist.Mapper):
                 for postfix in ('.yaml', '.paf'):
                     matches = [path for path in paths if (os.path.splitext(path))[1] == postfix]
                     if len(matches) > 1:
-                        raise RuntimeError("More than 1 policy possibility for root:%s" %root)
+                        raise RuntimeError("More than 1 policy possibility for root:%s" % root)
                     elif len(matches) == 1:
                         policy = dafPersist.Policy(filePath=matches[0])
                         break
@@ -625,12 +625,12 @@ class CameraMapper(dafPersist.Mapper):
         """Standardize a raw dataset by converting it to an Exposure instead of an Image"""
         item = exposureFromImage(item)
         return self._standardizeExposure(self.exposures['raw'], item, dataId,
-                trimmed=False)
+                                         trimmed=False)
 
     def map_skypolicy(self, dataId):
         """Map a sky policy."""
         return dafPersist.ButlerLocation("lsst.pex.policy.Policy", "Policy",
-                "Internal", None, None, self)
+                                         "Internal", None, None, self)
 
     def std_skypolicy(self, item, dataId):
         """Standardize a sky policy by returning the one we use."""
@@ -666,7 +666,8 @@ class CameraMapper(dafPersist.Mapper):
                     newPath = newPath[0] if newPath is not None and len(newPath) else None
                     if newPath is None:
                         self.log.log(pexLog.Log.WARN,
-                                "Unable to locate registry at policy path (also looked in root): %s" % path)
+                                     "Unable to locate registry at policy path (also looked in root): %s" %
+                                     path)
                     path = newPath
                 else:
                     self.log.log(pexLog.Log.WARN, "Unable to locate registry at policy path: %s" % path)
@@ -681,7 +682,7 @@ class CameraMapper(dafPersist.Mapper):
             newPath = newPath[0] if newPath is not None and len(newPath) else None
             if newPath is None:
                 self.log.log(pexLog.Log.INFO,
-                        "Unable to locate %s registry in root: %s" % (name, path))
+                             "Unable to locate %s registry in root: %s" % (name, path))
             path = newPath
         if path is None:
             path = os.path.join(".", "%s.sqlite3" % name)
@@ -689,7 +690,7 @@ class CameraMapper(dafPersist.Mapper):
             newPath = newPath[0] if newPath is not None and len(newPath) else None
             if newPath is None:
                 self.log.log(pexLog.Log.INFO,
-                        "Unable to locate %s registry in current dir: %s" % (name, path))
+                             "Unable to locate %s registry in current dir: %s" % (name, path))
             path = newPath
         if path is not None:
             if not os.path.exists(path):
@@ -698,15 +699,14 @@ class CameraMapper(dafPersist.Mapper):
                 if newPath is not None:
                     path = newPath
             self.log.log(pexLog.Log.INFO,
-                    "Loading %s registry from %s" % (name, path))
+                         "Loading %s registry from %s" % (name, path))
             registry = dafPersist.Registry.create(path)
         elif not registry and os.path.exists(root):
             self.log.log(pexLog.Log.INFO,
-                    "Loading Posix registry from %s" % (root))
+                         "Loading Posix registry from %s" % (root))
             registry = dafPersist.PosixRegistry(root)
 
         return registry
-
 
     def _transformId(self, dataId):
         """Generate a standard ID dict from a camera-specific ID dict.
@@ -817,14 +817,13 @@ class CameraMapper(dafPersist.Mapper):
             expTime = calib.getExptime()
         if md.exists("MJD-OBS"):
             obsStart = dafBase.DateTime(md.get("MJD-OBS"),
-                    dafBase.DateTime.MJD, dafBase.DateTime.UTC)
-            obsMidpoint = obsStart.nsecs() + long(expTime * 1000000000L / 2)
+                                        dafBase.DateTime.MJD, dafBase.DateTime.UTC)
+            obsMidpoint = obsStart.nsecs() + long(expTime * 1000000000 / 2)
             calib.setMidTime(dafBase.DateTime(obsMidpoint))
-
 
     # Default standardization function for exposures
     def _standardizeExposure(self, mapping, item, dataId, filter=True,
-            trimmed=True):
+                             trimmed=True):
         """Default standardization function for images.
         @param mapping (lsst.daf.butlerUtils.Mapping)
         @param[in,out] item (lsst.afw.image.Exposure)
@@ -833,7 +832,7 @@ class CameraMapper(dafPersist.Mapper):
         @param trimmed (bool) Should detector be marked as trimmed?
         @return (lsst.afw.image.Exposure) the standardized Exposure"""
 
-        if (re.search(r'Exposure', mapping.python) and re.search(r'Image',mapping.persistable)):
+        if (re.search(r'Exposure', mapping.python) and re.search(r'Image', mapping.persistable)):
             item = exposureFromImage(item)
 
         if mapping.level.lower() == "amp":
@@ -869,9 +868,9 @@ class CameraMapper(dafPersist.Mapper):
 
         # Lookup the defects for this CCD serial number that are valid at the exposure midpoint.
         rows = self.defectRegistry.executeQuery(("path",), ("defect",),
-                [(ccdKey, "?")],
-                ("DATETIME(?)", "DATETIME(validStart)", "DATETIME(validEnd)"),
-                (ccdVal, taiObs))
+                                                [(ccdKey, "?")],
+                                                ("DATETIME(?)", "DATETIME(validStart)", "DATETIME(validEnd)"),
+                                                (ccdVal, taiObs))
         if not rows or len(rows) == 0:
             return None
         if len(rows) == 1:
@@ -898,7 +897,7 @@ class CameraMapper(dafPersist.Mapper):
         """
         if isinstance(policy, pexPolicy.Policy):
             policy = dafPersist.Policy(pexPolicy=policy)
-        if not 'camera' in policy:
+        if 'camera' not in policy:
             raise RuntimeError("Cannot find 'camera' in policy; cannot construct a camera")
         cameraDataSubdir = policy['camera']
         self.cameraDataLocation = os.path.normpath(
@@ -919,7 +918,7 @@ def exposureFromImage(image):
     @return (lsst.afw.image.Exposure) Exposure containing input image
     """
     if isinstance(image, afwImage.DecoratedImageU) or isinstance(image, afwImage.DecoratedImageI) or \
-        isinstance(image, afwImage.DecoratedImageF) or isinstance(image, afwImage.DecoratedImageD):
+            isinstance(image, afwImage.DecoratedImageF) or isinstance(image, afwImage.DecoratedImageD):
         exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image.getImage()))
     else:
         exposure = image
