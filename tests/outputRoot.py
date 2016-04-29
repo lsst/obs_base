@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -11,14 +11,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.    See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -36,18 +36,20 @@ import lsst.pex.policy as pexPolicy
 import lsst.daf.persistence as dafPersist
 import lsst.daf.butlerUtils as butlerUtils
 
+
 class MinMapper1(butlerUtils.CameraMapper):
     packageName = 'larry'
 
     def __init__(self, root="tests", outputRoot=None):
         policy = pexPolicy.Policy.createPolicy("tests/MinMapper1.paf")
         butlerUtils.CameraMapper.__init__(self,
-                policy=policy, repositoryDir="tests", root=root,
-                outputRoot=outputRoot)
+                                          policy=policy, repositoryDir="tests", root=root,
+                                          outputRoot=outputRoot)
         return
 
     def std_x(self, item, dataId):
         return float(item)
+
 
 class OutputRootTestCase(unittest.TestCase):
     """A test case for output roots."""
@@ -61,7 +63,7 @@ class OutputRootTestCase(unittest.TestCase):
 
     def tearDown(self):
         subprocess.call(["rm", "-rf", "testOutput", "testOutput2",
-            "testOutput3", "testInput1", "testInput2"])
+                         "testOutput3", "testInput1", "testInput2"])
 
     def testCreateOutputRoot(self):
         MinMapper1(outputRoot="testOutput")
@@ -144,7 +146,7 @@ class OutputRootTestCase(unittest.TestCase):
         self.assert_(os.path.islink("testOutput/_parent"))
         self.assert_(os.path.exists("testOutput/_parent/foo"))
         self.assertRaises(RuntimeError, MinMapper1,
-                root="testInput2", outputRoot="testOutput")
+                          root="testInput2", outputRoot="testOutput")
         os.unlink("testInput1/foo")
         os.unlink("testInput2/foo")
         os.rmdir("testInput1")
@@ -153,7 +155,7 @@ class OutputRootTestCase(unittest.TestCase):
     def testBackup(self):
         mapper1 = MinMapper1(outputRoot="testOutput")
         butler1 = dafPersist.Butler(root=None, mapper=mapper1)
-        b1 = afwGeom.Box2I(afwGeom.Point2I(3,4), afwGeom.Point2I(7,6))
+        b1 = afwGeom.Box2I(afwGeom.Point2I(3, 4), afwGeom.Point2I(7, 6))
         butler1.put(b1, "x")
         self.assert_(os.path.exists("testOutput/foo-1,1.pickle"))
         b2 = afwGeom.Box2I(b1)
@@ -176,6 +178,7 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(b2Check, b2)
         self.assertEqual(b3Check, b3)
 
+
 def suite():
     utilsTests.init()
 
@@ -183,6 +186,7 @@ def suite():
     suites += unittest.makeSuite(OutputRootTestCase)
     suites += unittest.makeSuite(utilsTests.MemoryTestCase)
     return unittest.TestSuite(suites)
+
 
 def run(shouldExit = False):
     utilsTests.run(suite(), shouldExit)

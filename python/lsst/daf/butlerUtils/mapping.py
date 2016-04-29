@@ -1,7 +1,7 @@
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -9,14 +9,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.    See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -27,6 +27,7 @@ from lsst.daf.persistence.policy import Policy
 import lsst.pex.policy as pexPolicy
 
 """This module defines the Mapping base class."""
+
 
 class Mapping(object):
 
@@ -85,21 +86,21 @@ class Mapping(object):
         self.registry = registry
         self.root = root
 
-        self.template = policy['template'] # Template path
+        self.template = policy['template']  # Template path
         self.keyDict = dict([
             (k, _formatMap(v, k, datasetType))
             for k, v in
             re.findall(r'\%\((\w+)\).*?([diouxXeEfFgGcrs])', self.template)
-            ])
+        ])
         if provided is not None:
             for p in provided:
                 if p in self.keyDict:
                     del self.keyDict[p]
-        self.python = policy['python'] # Python type
-        self.persistable = policy['persistable'] # Persistable type
+        self.python = policy['python']  # Python type
+        self.persistable = policy['persistable']  # Persistable type
         self.storage = policy['storage']
         if 'level' in policy:
-            self.level = policy['level'] # Level in camera hierarchy
+            self.level = policy['level']  # Level in camera hierarchy
         if 'tables' in policy:
             self.tables = policy.asArray('tables')
         else:
@@ -128,7 +129,7 @@ class Mapping(object):
                 path = newPath
         assert path, "Fully-qualified filename is empty."
 
-        addFunc = "add_" + self.datasetType # Name of method for additionalData
+        addFunc = "add_" + self.datasetType  # Name of method for additionalData
         if hasattr(mapper, addFunc):
             addFunc = getattr(mapper, addFunc)
             additionalData = addFunc(actualId)
@@ -160,7 +161,7 @@ class Mapping(object):
             self.registry.lookup(properties, 'raw_visit', lookupDataId)
         if dataId is not None:
             for k, v in dataId.iteritems():
-                if self.columns and not k in self.columns:
+                if self.columns and k not in self.columns:
                     continue
                 if k == self.obsTimeName:
                     continue
@@ -205,10 +206,11 @@ class Mapping(object):
         lookups = self.lookup(newProps, newId)
         if len(lookups) != 1:
             raise RuntimeError("No unique lookup for %s from %s: %d matches" %
-                                (newProps, newId, len(lookups)))
+                               (newProps, newId, len(lookups)))
         for i, prop in enumerate(newProps):
             newId[prop] = lookups[0][i]
         return newId
+
 
 def _formatMap(ch, k, datasetType):
     """Convert a format character into a Python type."""
@@ -220,8 +222,8 @@ def _formatMap(ch, k, datasetType):
         return str
     else:
         raise RuntimeError("Unexpected format specifier %s"
-                " for field %s in template for dataset %s" %
-                (ch, k, datasetType))
+                           " for field %s in template for dataset %s" %
+                           (ch, k, datasetType))
 
 
 class ImageMapping(Mapping):
@@ -258,6 +260,7 @@ class ExposureMapping(Mapping):
     def standardize(self, mapper, item, dataId):
         return mapper._standardizeExposure(self, item, dataId)
 
+
 class CalibrationMapping(Mapping):
     """CalibrationMapping is a Mapping subclass for calibration-type products.
 
@@ -278,10 +281,10 @@ class CalibrationMapping(Mapping):
     specified by a column in the tables of the reference dataset in the
     exposure registry) and two columns in the tables of this calibration
     dataset in the calibration registry)
-    
+
     obsTimeName (string, optional): the name of the column in the reference
     dataset tables containing the observation time (default "taiObs")
-    
+
     validStartName (string, optional): the name of the column in the
     calibration dataset tables containing the start of the validity range
     (default "validStart")
@@ -361,6 +364,7 @@ class CalibrationMapping(Mapping):
     def standardize(self, mapper, item, dataId):
         return mapper._standardizeExposure(self, item, dataId, filter=self.setFilter)
 
+
 class DatasetMapping(Mapping):
     """DatasetMapping is a Mapping subclass for non-Exposure datasets that can
     be retrieved by the standard daf_persistence mechanism.
@@ -382,4 +386,4 @@ class DatasetMapping(Mapping):
         if isinstance(policy, pexPolicy.Policy):
             policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
-        self.storage = policy["storage"] # Storage type
+        self.storage = policy["storage"]  # Storage type
