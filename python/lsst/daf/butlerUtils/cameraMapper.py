@@ -27,6 +27,7 @@ import os
 import pyfits # required by _makeDefectsDict until defects are written as AFW tables
 import re
 import shutil
+import weakref
 import lsst.daf.persistence as dafPersist
 from lsst.daf.persistence.policy import Policy
 from lsst.daf.butlerUtils import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping
@@ -276,7 +277,7 @@ class CameraMapper(dafPersist.Mapper):
                     self.mappings[datasetType] = mapping
                     if not hasattr(self, "map_" + datasetType):
                         def mapClosure(dataId, write=False,
-                                mapper=self, mapping=mapping):
+                                mapper=weakref.proxy(self), mapping=mapping):
                             return mapping.map(mapper, dataId, write)
                         setattr(self, "map_" + datasetType, mapClosure)
                     if not hasattr(self, "query_" + datasetType):
@@ -286,7 +287,7 @@ class CameraMapper(dafPersist.Mapper):
                     if hasattr(mapping, "standardize") and \
                             not hasattr(self, "std_" + datasetType):
                         def stdClosure(item, dataId,
-                                mapper=self, mapping=mapping):
+                                mapper=weakref.proxy(self), mapping=mapping):
                             return mapping.standardize(mapper, item, dataId)
                         setattr(self, "std_" + datasetType, stdClosure)
 
@@ -315,7 +316,8 @@ class CameraMapper(dafPersist.Mapper):
 
                         subFunc = expFunc + "_sub" # Function name to map subimage
                         if not hasattr(self, subFunc):
-                            def mapSubClosure(dataId, write=False, mapper=self, mapping=mapping):
+                            def mapSubClosure(dataId, write=False, mapper=weakref.proxy(self),
+                                              mapping=mapping):
                                 subId = dataId.copy()
                                 del subId['bbox']
                                 loc = mapping.map(mapper, subId, write)
