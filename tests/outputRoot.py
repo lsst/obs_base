@@ -158,7 +158,9 @@ class OutputRootTestCase(unittest.TestCase):
 
     def testBackup(self):
         mapper1 = MinMapper1(outputRoot="testOutput")
-        butler1 = dafPersist.Butler(root=None, mapper=mapper1)
+        butler1 = dafPersist.Butler(outputs=dafPersist.RepositoryArgs(mode='w',
+                                                                      root="testOutput",
+                                                                      mapper=mapper1))
         b1 = afwGeom.Box2I(afwGeom.Point2I(3, 4), afwGeom.Point2I(7, 6))
         butler1.put(b1, "x")
         self.assert_(os.path.exists("testOutput/foo-1,1.pickle"))
@@ -168,10 +170,19 @@ class OutputRootTestCase(unittest.TestCase):
         self.assert_(os.path.exists("testOutput/foo-1,1.pickle"))
         self.assert_(os.path.exists("testOutput/foo-1,1.pickle~1"))
         mapper2 = MinMapper1(root="testOutput", outputRoot="testOutput2")
-        butler2 = dafPersist.Butler(root=None, mapper=mapper2)
+        butler2 = dafPersist.Butler(
+            # MinMapper is a little unconventional in that it takes its root and output root as separate 
+            # arguments, meaning that in effect it's a mapper for 2 different repositories
+            outputs=dafPersist.RepositoryArgs(
+                mode='rw',
+                root="testOutput2",
+                mapper=mapper2),
+        )
         b3 = afwGeom.Box2I(b2)
         b3.grow(1)
         butler2.put(b3, "x", doBackup=True)
+        
+
         self.assert_(os.path.exists("testOutput2/foo-1,1.pickle"))
         self.assert_(os.path.exists("testOutput2/foo-1,1.pickle~1"))
         self.assert_(os.path.exists("testOutput2/foo-1,1.pickle~2"))
