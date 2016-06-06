@@ -24,7 +24,7 @@ import copy
 import errno
 import glob
 import os
-import pyfits  # required by _makeDefectsDict until defects are written as AFW tables
+import astropy.io.fits as pyfits  # required by _makeDefectsDict until defects are written as AFW tables
 import re
 import shutil
 import weakref
