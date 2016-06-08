@@ -1,0 +1,5 @@
+packages:  # known packages and their versions, stored for later comparison
+    template: config/packages.pickle
+    python: lsst.base.Packages
+    persistable: Packages
+    storage: PickleStorage

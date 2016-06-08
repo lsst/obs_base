@@ -38,6 +38,7 @@ import lsst.afw.cameraGeom as afwCameraGeom
 import lsst.pex.logging as pexLog
 import lsst.pex.policy as pexPolicy
 from .exposureIdInfo import ExposureIdInfo
+from lsst.utils import getPackageDir
 
 """This module defines the CameraMapper base class."""
 
@@ -111,6 +112,10 @@ class CameraMapper(dafPersist.Mapper):
 
     The 'exposures', 'calibrations', and 'datasets' subpolicies configure
     mappings (see Mappings class).
+
+    Common default mappings for all subclasses can be specified in the
+    "policy/{images,exposures,calibrations,datasets}.yaml" files. This provides
+    a simple way to add a product to all camera mappers.
 
     Functions to map (provide a path to the data given a dataset
     identifier dictionary) and standardize (convert data into some standard
@@ -265,6 +270,12 @@ class CameraMapper(dafPersist.Mapper):
         for name, defPolicy, cls in mappingList:
             if name in policy:
                 datasets = policy[name]
+
+                # Centrally-defined datasets
+                defaultsPath = os.path.join(getPackageDir("daf_butlerUtils"), "policy", name + ".yaml")
+                if os.path.exists(defaultsPath):
+                    datasets.merge(dafPersist.Policy(filePath=defaultsPath))
+
                 mappings = dict()
                 setattr(self, name, mappings)
                 for datasetType in datasets.names(True):
