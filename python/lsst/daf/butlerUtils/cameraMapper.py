@@ -740,7 +740,11 @@ class CameraMapper(dafPersist.Mapper):
         @param actualId (dict) Dataset identifier
         @return (string) Pathname"""
 
-        return template % self._transformId(actualId)
+        try:
+            transformedId = self._transformId(actualId)
+            return template % transformedId
+        except Exception as e:
+            raise RuntimeError("Failed to format %r with data %r: %s" % (template, transformedId, e))
 
     @staticmethod
     def getShortCcdName(ccdName):
