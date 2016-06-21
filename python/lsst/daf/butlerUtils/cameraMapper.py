@@ -29,7 +29,6 @@ import re
 import shutil
 import weakref
 import lsst.daf.persistence as dafPersist
-from lsst.daf.persistence.policy import Policy
 from lsst.daf.butlerUtils import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping
 import lsst.daf.base as dafBase
 import lsst.afw.geom as afwGeom
@@ -562,12 +561,12 @@ class CameraMapper(dafPersist.Mapper):
             raise RuntimeError("No camera dataset available.")
         actualId = self._transformId(dataId)
         return dafPersist.ButlerLocation(
-            pythonType = "lsst.afw.cameraGeom.CameraConfig",
-            cppType = "Config",
-            storageName = "ConfigStorage",
-            locationList = self.cameraDataLocation or "ignored",
-            dataId = actualId,
-            mapper = self
+            pythonType="lsst.afw.cameraGeom.CameraConfig",
+            cppType="Config",
+            storageName="ConfigStorage",
+            locationList=self.cameraDataLocation or "ignored",
+            dataId=actualId,
+            mapper=self
         )
 
     def bypass_camera(self, datasetType, pythonType, butlerLocation, dataId):
@@ -618,12 +617,12 @@ class CameraMapper(dafPersist.Mapper):
 
     def map_expIdInfo(self, dataId, write=False):
         return dafPersist.ButlerLocation(
-            pythonType = "lsst.daf.butlerUtils.ExposureIdInfo",
-            cppType = None,
-            storageName = "Internal",
-            locationList = "ignored",
-            dataId = dataId,
-            mapper = self,
+            pythonType="lsst.daf.butlerUtils.ExposureIdInfo",
+            cppType=None,
+            storageName="Internal",
+            locationList="ignored",
+            dataId=dataId,
+            mapper=self,
         )
 
     def bypass_expIdInfo(self, datasetType, pythonType, location, dataId):
@@ -740,7 +739,11 @@ class CameraMapper(dafPersist.Mapper):
         @param actualId (dict) Dataset identifier
         @return (string) Pathname"""
 
-        return template % self._transformId(actualId)
+        try:
+            transformedId = self._transformId(actualId)
+            return template % transformedId
+        except Exception as e:
+            raise RuntimeError("Failed to format %r with data %r: %s" % (template, transformedId, e))
 
     @staticmethod
     def getShortCcdName(ccdName):
@@ -917,9 +920,9 @@ class CameraMapper(dafPersist.Mapper):
         cameraConfig.load(self.cameraDataLocation)
         ampInfoPath = os.path.dirname(self.cameraDataLocation)
         return afwCameraGeom.makeCameraFromPath(
-            cameraConfig = cameraConfig,
-            ampInfoPath = ampInfoPath,
-            shortNameFunc = self.getShortCcdName
+            cameraConfig=cameraConfig,
+            ampInfoPath=ampInfoPath,
+            shortNameFunc=self.getShortCcdName
         )
 
 
