@@ -41,8 +41,11 @@ class ExposureIdInfo(object):
         schema = SourceTable.makeMinimalSchema()
         #...add fields to schema as desired, then...
         sourceTable = SourceTable.make(self.schema, sourceIdFactory)
+
+    At least one bit must be reserved, even if there is no exposure ID, for reasons
+    that are not entirely clear (this is DM-6664).
     """
-    def __init__(self, expId, expBits, maxBits=64):
+    def __init__(self, expId=0L, expBits=1, maxBits=64):
         """!Construct an ExposureIdInfo
 
         See the class doc string for an explanation of the arguments.
