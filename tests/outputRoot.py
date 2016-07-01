@@ -24,7 +24,7 @@
 
 
 import unittest
-import lsst.utils.tests as utilsTests
+import lsst.utils.tests
 
 import cPickle
 import os
@@ -35,6 +35,10 @@ import lsst.afw.geom as afwGeom
 import lsst.pex.policy as pexPolicy
 import lsst.daf.persistence as dafPersist
 import lsst.daf.butlerUtils as butlerUtils
+
+
+def setup_module(module):
+    lsst.utils.tests.init()
 
 
 class MinMapper1(butlerUtils.CameraMapper):
@@ -179,17 +183,10 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(b3Check, b3)
 
 
-def suite():
-    utilsTests.init()
+class MemoryTester(lsst.utils.tests.MemoryTestCase):
+    pass
 
-    suites = []
-    suites += unittest.makeSuite(OutputRootTestCase)
-    suites += unittest.makeSuite(utilsTests.MemoryTestCase)
-    return unittest.TestSuite(suites)
-
-
-def run(shouldExit = False):
-    utilsTests.run(suite(), shouldExit)
 
 if __name__ == '__main__':
-    run(True)
+    lsst.utils.tests.init()
+    unittest.main()

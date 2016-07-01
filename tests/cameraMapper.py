@@ -26,10 +26,14 @@ import collections
 import os
 import unittest
 
-import lsst.utils.tests as utilsTests
+import lsst.utils.tests
 import lsst.afw.geom as afwGeom
 import lsst.daf.persistence as dafPersist
 import lsst.daf.butlerUtils as butlerUtils
+
+
+def setup_module(module):
+    lsst.utils.tests.init()
 
 
 class MinMapper1(butlerUtils.CameraMapper):
@@ -259,19 +263,10 @@ class Mapper3TestCase(unittest.TestCase):
             MinMapper3.getPackageName()
 
 
-def suite():
-    utilsTests.init()
+class MemoryTester(lsst.utils.tests.MemoryTestCase):
+    pass
 
-    suites = []
-    suites += unittest.makeSuite(Mapper1TestCase)
-    suites += unittest.makeSuite(Mapper2TestCase)
-    suites += unittest.makeSuite(Mapper3TestCase)
-    suites += unittest.makeSuite(utilsTests.MemoryTestCase)
-    return unittest.TestSuite(suites)
-
-
-def run(shouldExit = False):
-    utilsTests.run(suite(), shouldExit)
 
 if __name__ == '__main__':
-    run(True)
+    lsst.utils.tests.init()
+    unittest.main()
