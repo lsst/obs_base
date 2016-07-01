@@ -93,7 +93,11 @@ class Mapper1TestCase(unittest.TestCase):
         self.assertEqual(set(self.mapper.getDatasetTypes()),
                          set(["x", "x_filename", "badSourceHist", "defects",
                               "badSourceHist_filename", "camera", "skypolicy", "expIdInfo",
-                              "packages", "packages_filename",]))
+                              "packages", "packages_filename",
+                              "processCcd_config", "processCcd_config_filename",
+                              "calibrate_config", "calibrate_config_filename",
+                              "characterizeImage_config", "characterizeImage_config_filename"
+                              ]))
 
     def testMap(self):
         loc = self.mapper.map("x", {"sensor": "1,1"}, write=True)
@@ -143,7 +147,11 @@ class Mapper2TestCase(unittest.TestCase):
                               "some", "some_filename", "some_md", "some_sub",
                               "camera", "src", "src_filename", "skypolicy",
                               "other_sub", "other_filename", "other_md",
-                              "other", "expIdInfo", "packages", "packages_filename",]))
+                              "other", "expIdInfo", "packages", "packages_filename",
+                              "processCcd_config", "processCcd_config_filename",
+                              "calibrate_config", "calibrate_config_filename",
+                              "characterizeImage_config", "characterizeImage_config_filename"
+                              ]))
 
     def testMap(self):
         loc = self.mapper.map("raw", {"ccd": 13}, write=True)
