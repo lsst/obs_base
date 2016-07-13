@@ -36,7 +36,7 @@ import lsst.daf.base as dafBase
 import lsst.afw.geom as afwGeom
 import lsst.afw.image as afwImage
 import lsst.afw.cameraGeom as afwCameraGeom
-import lsst.pex.logging as pexLog
+import lsst.log as lsstLog
 import lsst.pex.policy as pexPolicy
 from .exposureIdInfo import ExposureIdInfo
 from lsst.utils import getPackageDir
@@ -159,7 +159,7 @@ class CameraMapper(dafPersist.Mapper):
 
         dafPersist.Mapper.__init__(self)
 
-        self.log = pexLog.Log(pexLog.getDefaultLog(), "CameraMapper")
+        self.log = lsstLog.Log.getLogger("CameraMapper")
 
         self.root = root
         if isinstance(policy, pexPolicy.Policy):
@@ -231,11 +231,9 @@ class CameraMapper(dafPersist.Mapper):
                 calibRoot = root
 
         if not os.path.exists(root):
-            self.log.log(pexLog.Log.WARN,
-                         "Root directory not found: %s" % (root,))
+            self.log.warn("Root directory not found: %s", root)
         if not os.path.exists(calibRoot):
-            self.log.log(pexLog.Log.WARN,
-                         "Calibration root directory not found: %s" % (calibRoot,))
+            self.log.warn("Calibration root directory not found: %s", calibRoot)
 
         self.root = root
 
@@ -686,12 +684,11 @@ class CameraMapper(dafPersist.Mapper):
                     newPath = self._parentSearch(os.path.join(root, path))
                     newPath = newPath[0] if newPath is not None and len(newPath) else None
                     if newPath is None:
-                        self.log.log(pexLog.Log.WARN,
-                                     "Unable to locate registry at policy path (also looked in root): %s" %
-                                     path)
+                        self.log.warn("Unable to locate registry at policy path (also looked in root): %s",
+                                      path)
                     path = newPath
                 else:
-                    self.log.log(pexLog.Log.WARN, "Unable to locate registry at policy path: %s" % path)
+                    self.log.warn("Unable to locate registry at policy path: %s", path)
                     path = None
 
         # determine if there is an sqlite registry and if not, try the posix registry.
@@ -702,16 +699,14 @@ class CameraMapper(dafPersist.Mapper):
             newPath = self._parentSearch(path)
             newPath = newPath[0] if newPath is not None and len(newPath) else None
             if newPath is None:
-                self.log.log(pexLog.Log.INFO,
-                             "Unable to locate %s registry in root: %s" % (name, path))
+                self.log.info("Unable to locate %s registry in root: %s", name, path)
             path = newPath
         if path is None:
             path = os.path.join(".", "%s.sqlite3" % name)
             newPath = self._parentSearch(path)
             newPath = newPath[0] if newPath is not None and len(newPath) else None
             if newPath is None:
-                self.log.log(pexLog.Log.INFO,
-                             "Unable to locate %s registry in current dir: %s" % (name, path))
+                self.log.info("Unable to locate %s registry in current dir: %s", name, path)
             path = newPath
         if path is not None:
             if not os.path.exists(path):
@@ -719,12 +714,10 @@ class CameraMapper(dafPersist.Mapper):
                 newPath = newPath[0] if newPath is not None and len(newPath) else None
                 if newPath is not None:
                     path = newPath
-            self.log.log(pexLog.Log.INFO,
-                         "Loading %s registry from %s" % (name, path))
+            self.log.info("Loading %s registry from %s", name, path)
             registry = dafPersist.Registry.create(path)
         elif not registry and os.path.exists(root):
-            self.log.log(pexLog.Log.INFO,
-                         "Loading Posix registry from %s" % (root))
+            self.log.info("Loading Posix registry from %s", root)
             registry = dafPersist.PosixRegistry(root)
 
         return registry
