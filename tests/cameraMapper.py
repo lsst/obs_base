@@ -96,7 +96,9 @@ class Mapper1TestCase(unittest.TestCase):
                               "packages", "packages_filename",
                               "processCcd_config", "processCcd_config_filename",
                               "calibrate_config", "calibrate_config_filename",
-                              "characterizeImage_config", "characterizeImage_config_filename"
+                              "characterizeImage_config", "characterizeImage_config_filename",
+                              "IngestIndexedReferenceTask_config",
+                              "IngestIndexedReferenceTask_config_filename",
                               ]))
 
     def testMap(self):
@@ -150,7 +152,9 @@ class Mapper2TestCase(unittest.TestCase):
                               "other", "expIdInfo", "packages", "packages_filename",
                               "processCcd_config", "processCcd_config_filename",
                               "calibrate_config", "calibrate_config_filename",
-                              "characterizeImage_config", "characterizeImage_config_filename"
+                              "characterizeImage_config", "characterizeImage_config_filename",
+                              "IngestIndexedReferenceTask_config",
+                              "IngestIndexedReferenceTask_config_filename",
                               ]))
 
     def testMap(self):
