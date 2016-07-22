@@ -18,3 +18,8 @@ calibrate_config:
     python: lsst.pipe.tasks.calibrate.CalibrateConfig
     storage: ConfigStorage
     template: config/calibrate.py
+IngestIndexedReferenceTask_config:
+    persistable: Config
+    python: lsst.meas.algorithms.IngestIndexedReferenceConfig
+    storage: ConfigStorage
+    template: config/IngestIndexedReferenceTask.py
