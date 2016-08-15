@@ -542,6 +542,7 @@ class CameraMapper(dafPersist.Mapper):
     def getCameraName(cls):
         """Return the name of the camera that this CameraMapper is for."""
         className = str(cls)
+        className = className[className.find('.'):-1]
         m = re.search(r'(\w+)Mapper', className)
         if m is None:
             m = re.search(r"class '[\w.]*?(\w+)'", className)

@@ -48,6 +48,10 @@ class MinMapper1(butlerUtils.CameraMapper):
     def std_x(self, item, dataId):
         return float(item)
 
+    @classmethod
+    def getCameraName(cls):
+        """Return the name of the camera that this CameraMapper is for."""
+        return "min"
 
 class MinMapper2(butlerUtils.CameraMapper):
     packageName = 'moe'
@@ -69,6 +73,11 @@ class MinMapper2(butlerUtils.CameraMapper):
 
     def std_x(self, item, dataId):
         return float(item)
+
+    @classmethod
+    def getCameraName(cls):
+        """Return the name of the camera that this CameraMapper is for."""
+        return "min"
 
 
 # does not assign packageName
@@ -129,7 +138,7 @@ class Mapper1TestCase(unittest.TestCase):
         self.assertEqual(result, 3.14)
 
     def testNames(self):
-
+        name = MinMapper1.getCameraName()
         self.assertEqual(MinMapper1.getCameraName(), "min")
         self.assertEqual(MinMapper1.getPackageName(), "larry")
 
