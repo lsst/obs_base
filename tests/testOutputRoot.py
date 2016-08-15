@@ -83,7 +83,7 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertTrue(os.path.isdir(testOutput))
         self.assertTrue(os.path.islink(os.path.join(testOutput, "_parent")))
         self.assertTrue(os.path.exists(os.path.join(testOutput, "_parent", "MinMapper1.paf")))
-        self.assertTrue(os.path.exists(os.path.join(testOutput, "_parent", "outputRoot.py")))
+        self.assertTrue(os.path.exists(os.path.join(testOutput, "_parent", "testOutputRoot.py")))
 
     def testParentNormal(self):
         mapper1 = MinMapper1(outputRoot=testOutput)
@@ -138,14 +138,14 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertTrue(os.path.isdir(testOutput))
         self.assertTrue(os.path.islink(os.path.join(testOutput, "_parent")))
         self.assertTrue(os.path.exists(os.path.join(testOutput, "_parent", "MinMapper1.paf")))
-        self.assertTrue(os.path.exists(os.path.join(testOutput, "_parent", "outputRoot.py")))
+        self.assertTrue(os.path.exists(os.path.join(testOutput, "_parent", "testOutputRoot.py")))
 
         MinMapper1(root=testOutput, outputRoot=testOutput2)
         self.assertTrue(os.path.exists(testOutput2))
         self.assertTrue(os.path.isdir(testOutput2))
         self.assertTrue(os.path.islink(os.path.join(testOutput2, "_parent")))
         self.assertTrue(os.path.exists(os.path.join(testOutput2, "_parent", "_parent", "MinMapper1.paf")))
-        self.assertTrue(os.path.exists(os.path.join(testOutput2, "_parent", "_parent", "outputRoot.py")))
+        self.assertTrue(os.path.exists(os.path.join(testOutput2, "_parent", "_parent", "testOutputRoot.py")))
 
     def testDiffInput(self):
         os.mkdir(testInput1)
