@@ -44,6 +44,7 @@ testOutput3 = os.path.join(testPath, "testOutput3")
 testInput1 = os.path.join(testPath, "testInput1")
 testInput2 = os.path.join(testPath, "testInput2")
 
+
 def setup_module(module):
     lsst.utils.tests.init()
 
@@ -52,7 +53,7 @@ class MinMapper1(butlerUtils.CameraMapper):
     packageName = 'larry'
 
     def __init__(self, root=testPath, outputRoot=None):
-        policy = pexPolicy.Policy.createPolicy(os.path.join(testPath,"MinMapper1.paf"))
+        policy = pexPolicy.Policy.createPolicy(os.path.join(testPath, "MinMapper1.paf"))
         butlerUtils.CameraMapper.__init__(self,
                                           policy=policy, repositoryDir=testPath, root=root,
                                           outputRoot=outputRoot)
@@ -80,9 +81,9 @@ class OutputRootTestCase(unittest.TestCase):
         MinMapper1(outputRoot=testOutput)
         self.assertTrue(os.path.exists(testOutput))
         self.assertTrue(os.path.isdir(testOutput))
-        self.assertTrue(os.path.islink(os.path.join(testOutput,"_parent")))
-        self.assertTrue(os.path.exists(os.path.join(testOutput,"_parent","MinMapper1.paf")))
-        self.assertTrue(os.path.exists(os.path.join(testOutput,"_parent","outputRoot.py")))
+        self.assertTrue(os.path.islink(os.path.join(testOutput, "_parent")))
+        self.assertTrue(os.path.exists(os.path.join(testOutput, "_parent", "MinMapper1.paf")))
+        self.assertTrue(os.path.exists(os.path.join(testOutput, "_parent", "outputRoot.py")))
 
     def testParentNormal(self):
         mapper1 = MinMapper1(outputRoot=testOutput)
@@ -91,7 +92,7 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
         self.assertEqual(loc.getCppType(), "BoxI")
         self.assertEqual(loc.getStorageName(), "PickleStorage")
-        self.assertEqual(loc.getLocations(), [os.path.join(testOutput,"foo-1,1.pickle")])
+        self.assertEqual(loc.getLocations(), [os.path.join(testOutput, "foo-1,1.pickle")])
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
         box = afwGeom.BoxI(afwGeom.PointI(0, 1), afwGeom.PointI(2, 3))
         with open(loc.getLocations()[0], "w") as f:
@@ -101,7 +102,7 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
         self.assertEqual(loc.getCppType(), "BoxI")
         self.assertEqual(loc.getStorageName(), "PickleStorage")
-        self.assertEqual(loc.getLocations(), [os.path.join(testOutput2,"_parent","foo-1,1.pickle")])
+        self.assertEqual(loc.getLocations(), [os.path.join(testOutput2, "_parent", "foo-1,1.pickle")])
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
 
     def testParentTrailingSlash2527(self):
@@ -115,29 +116,29 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
         self.assertEqual(loc.getCppType(), "BoxI")
         self.assertEqual(loc.getStorageName(), "PickleStorage")
-        self.assertEqual(loc.getLocations(), [os.path.join(testOutput,"foo-1,1.pickle")])
+        self.assertEqual(loc.getLocations(), [os.path.join(testOutput, "foo-1,1.pickle")])
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
         box = afwGeom.BoxI(afwGeom.PointI(0, 1), afwGeom.PointI(2, 3))
         with open(loc.getLocations()[0], "w") as f:
             cPickle.dump(box, f)
 
-        parent = mapper2._parentSearch(os.path.join(testOutput3,"foo-1,1.pickle"))
-        self.assertEqual(parent, [os.path.join(testOutput3,"_parent","foo-1,1.pickle")])
+        parent = mapper2._parentSearch(os.path.join(testOutput3, "foo-1,1.pickle"))
+        self.assertEqual(parent, [os.path.join(testOutput3, "_parent", "foo-1,1.pickle")])
 
         loc = mapper2.map("x", dict(sensor="1,1"))
         self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
         self.assertEqual(loc.getCppType(), "BoxI")
         self.assertEqual(loc.getStorageName(), "PickleStorage")
-        self.assertEqual(loc.getLocations(), [os.path.join(testOutput2,"_parent","foo-1,1.pickle")])
+        self.assertEqual(loc.getLocations(), [os.path.join(testOutput2, "_parent", "foo-1,1.pickle")])
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
 
     def testReuseOutputRoot(self):
         MinMapper1(outputRoot=testOutput)
         self.assertTrue(os.path.exists(testOutput))
         self.assertTrue(os.path.isdir(testOutput))
-        self.assertTrue(os.path.islink(os.path.join(testOutput,"_parent")))
-        self.assertTrue(os.path.exists(os.path.join(testOutput,"_parent","MinMapper1.paf")))
-        self.assertTrue(os.path.exists(os.path.join(testOutput,"_parent","outputRoot.py")))
+        self.assertTrue(os.path.islink(os.path.join(testOutput, "_parent")))
+        self.assertTrue(os.path.exists(os.path.join(testOutput, "_parent", "MinMapper1.paf")))
+        self.assertTrue(os.path.exists(os.path.join(testOutput, "_parent", "outputRoot.py")))
 
         MinMapper1(root=testOutput, outputRoot=testOutput2)
         self.assertTrue(os.path.exists(testOutput2))
@@ -148,10 +149,10 @@ class OutputRootTestCase(unittest.TestCase):
 
     def testDiffInput(self):
         os.mkdir(testInput1)
-        with open(os.path.join(testInput1,"foo"), "w"):
+        with open(os.path.join(testInput1, "foo"), "w"):
             pass
         os.mkdir(testInput2)
-        with open(os.path.join(testInput2,"foo"), "w"):
+        with open(os.path.join(testInput2, "foo"), "w"):
             pass
         MinMapper1(root=testInput1, outputRoot=testOutput)
         self.assertTrue(os.path.exists(testOutput))
@@ -180,7 +181,7 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(testOutput, "foo-1,1.pickle~1")))
         mapper2 = MinMapper1(root=testOutput, outputRoot=testOutput2)
         butler2 = dafPersist.Butler(
-            # MinMapper is a little unconventional in that it takes its root and output root as separate 
+            # MinMapper is a little unconventional in that it takes its root and output root as separate
             # arguments, meaning that in effect it's a mapper for 2 different repositories
             outputs=dafPersist.RepositoryArgs(
                 mode='rw',
@@ -190,7 +191,6 @@ class OutputRootTestCase(unittest.TestCase):
         b3 = afwGeom.Box2I(b2)
         b3.grow(1)
         butler2.put(b3, "x", doBackup=True)
-        
 
         self.assertTrue(os.path.exists(os.path.join(testOutput2, "foo-1,1.pickle")))
         self.assertTrue(os.path.exists(os.path.join(testOutput2, "foo-1,1.pickle~1")))
