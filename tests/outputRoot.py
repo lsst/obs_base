@@ -71,11 +71,11 @@ class OutputRootTestCase(unittest.TestCase):
 
     def testCreateOutputRoot(self):
         MinMapper1(outputRoot="testOutput")
-        self.assert_(os.path.exists("testOutput"))
-        self.assert_(os.path.isdir("testOutput"))
-        self.assert_(os.path.islink("testOutput/_parent"))
-        self.assert_(os.path.exists("testOutput/_parent/MinMapper1.paf"))
-        self.assert_(os.path.exists("testOutput/_parent/outputRoot.py"))
+        self.assertTrue(os.path.exists("testOutput"))
+        self.assertTrue(os.path.isdir("testOutput"))
+        self.assertTrue(os.path.islink("testOutput/_parent"))
+        self.assertTrue(os.path.exists("testOutput/_parent/MinMapper1.paf"))
+        self.assertTrue(os.path.exists("testOutput/_parent/outputRoot.py"))
 
     def testParentNormal(self):
         mapper1 = MinMapper1(outputRoot="testOutput")
@@ -124,18 +124,18 @@ class OutputRootTestCase(unittest.TestCase):
 
     def testReuseOutputRoot(self):
         MinMapper1(outputRoot="testOutput")
-        self.assert_(os.path.exists("testOutput"))
-        self.assert_(os.path.isdir("testOutput"))
-        self.assert_(os.path.islink("testOutput/_parent"))
-        self.assert_(os.path.exists("testOutput/_parent/MinMapper1.paf"))
-        self.assert_(os.path.exists("testOutput/_parent/outputRoot.py"))
+        self.assertTrue(os.path.exists("testOutput"))
+        self.assertTrue(os.path.isdir("testOutput"))
+        self.assertTrue(os.path.islink("testOutput/_parent"))
+        self.assertTrue(os.path.exists("testOutput/_parent/MinMapper1.paf"))
+        self.assertTrue(os.path.exists("testOutput/_parent/outputRoot.py"))
 
         MinMapper1(root="testOutput", outputRoot="testOutput2")
-        self.assert_(os.path.exists("testOutput2"))
-        self.assert_(os.path.isdir("testOutput2"))
-        self.assert_(os.path.islink("testOutput2/_parent"))
-        self.assert_(os.path.exists("testOutput2/_parent/_parent/MinMapper1.paf"))
-        self.assert_(os.path.exists("testOutput2/_parent/_parent/outputRoot.py"))
+        self.assertTrue(os.path.exists("testOutput2"))
+        self.assertTrue(os.path.isdir("testOutput2"))
+        self.assertTrue(os.path.islink("testOutput2/_parent"))
+        self.assertTrue(os.path.exists("testOutput2/_parent/_parent/MinMapper1.paf"))
+        self.assertTrue(os.path.exists("testOutput2/_parent/_parent/outputRoot.py"))
 
     def testDiffInput(self):
         os.mkdir("testInput1")
@@ -145,10 +145,10 @@ class OutputRootTestCase(unittest.TestCase):
         with open("testInput2/foo", "w"):
             pass
         MinMapper1(root="testInput1", outputRoot="testOutput")
-        self.assert_(os.path.exists("testOutput"))
-        self.assert_(os.path.isdir("testOutput"))
-        self.assert_(os.path.islink("testOutput/_parent"))
-        self.assert_(os.path.exists("testOutput/_parent/foo"))
+        self.assertTrue(os.path.exists("testOutput"))
+        self.assertTrue(os.path.isdir("testOutput"))
+        self.assertTrue(os.path.islink("testOutput/_parent"))
+        self.assertTrue(os.path.exists("testOutput/_parent/foo"))
         self.assertRaises(RuntimeError, MinMapper1,
                           root="testInput2", outputRoot="testOutput")
         os.unlink("testInput1/foo")
@@ -163,12 +163,12 @@ class OutputRootTestCase(unittest.TestCase):
                                                                       mapper=mapper1))
         b1 = afwGeom.Box2I(afwGeom.Point2I(3, 4), afwGeom.Point2I(7, 6))
         butler1.put(b1, "x")
-        self.assert_(os.path.exists("testOutput/foo-1,1.pickle"))
+        self.assertTrue(os.path.exists("testOutput/foo-1,1.pickle"))
         b2 = afwGeom.Box2I(b1)
         b2.grow(1)
         butler1.put(b2, "x", doBackup=True)
-        self.assert_(os.path.exists("testOutput/foo-1,1.pickle"))
-        self.assert_(os.path.exists("testOutput/foo-1,1.pickle~1"))
+        self.assertTrue(os.path.exists("testOutput/foo-1,1.pickle"))
+        self.assertTrue(os.path.exists("testOutput/foo-1,1.pickle~1"))
         mapper2 = MinMapper1(root="testOutput", outputRoot="testOutput2")
         butler2 = dafPersist.Butler(
             # MinMapper is a little unconventional in that it takes its root and output root as separate 
@@ -183,9 +183,9 @@ class OutputRootTestCase(unittest.TestCase):
         butler2.put(b3, "x", doBackup=True)
         
 
-        self.assert_(os.path.exists("testOutput2/foo-1,1.pickle"))
-        self.assert_(os.path.exists("testOutput2/foo-1,1.pickle~1"))
-        self.assert_(os.path.exists("testOutput2/foo-1,1.pickle~2"))
+        self.assertTrue(os.path.exists("testOutput2/foo-1,1.pickle"))
+        self.assertTrue(os.path.exists("testOutput2/foo-1,1.pickle~1"))
+        self.assertTrue(os.path.exists("testOutput2/foo-1,1.pickle~2"))
         b1Check = pickle.load(open("testOutput2/foo-1,1.pickle~2"))
         b2Check = pickle.load(open("testOutput2/foo-1,1.pickle~1"))
         b3Check = pickle.load(open("testOutput2/foo-1,1.pickle"))
