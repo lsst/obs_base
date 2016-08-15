@@ -73,6 +73,7 @@ class MinMapper2(butlerUtils.CameraMapper):
 
 # does not assign packageName
 class MinMapper3(butlerUtils.CameraMapper):
+
     def __init__(self):
         policy = dafPersist.Policy(filePath="tests/MinMapper1.paf")
         butlerUtils.CameraMapper.__init__(self,
@@ -111,24 +112,24 @@ class Mapper1TestCase(unittest.TestCase):
                          "sensor = \"1,1\"\n")
 
     def testQueryMetadata(self):
-        self.assertEqual(self.mapper.queryMetadata("x", ["sensor"], None),
-                         [("1,1",)])
+        self.assertEqual(self.mapper.queryMetadata("x", ["sensor"], None), [("1,1",)])
 
     def testStandardize(self):
-        self.assertEqual(self.mapper.canStandardize("x"), True)
-        self.assertEqual(self.mapper.canStandardize("badSourceHist"), False)
-        self.assertEqual(self.mapper.canStandardize("notPresent"), False)
+        self.assertTrue(self.mapper.canStandardize("x"))
+        self.assertFalse(self.mapper.canStandardize("badSourceHist"))
+        self.assertFalse(self.mapper.canStandardize("notPresent"))
         result = self.mapper.standardize("x", 3, None)
-        self.assertEqual(isinstance(result, float), True)
+        self.assertIsInstance(result, float)
         self.assertEqual(result, 3.0)
         result = self.mapper.standardize("x", 3.14, None)
-        self.assertEqual(isinstance(result, float), True)
+        self.assertIsInstance(result, float)
         self.assertEqual(result, 3.14)
         result = self.mapper.standardize("x", "3.14", None)
-        self.assertEqual(isinstance(result, float), True)
+        self.assertIsInstance(result, float)
         self.assertEqual(result, 3.14)
 
     def testNames(self):
+
         self.assertEqual(MinMapper1.getCameraName(), "min")
         self.assertEqual(MinMapper1.getPackageName(), "larry")
 
@@ -163,8 +164,7 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getCppType(), "ImageU")
         self.assertEqual(loc.getStorageName(), "FitsStorage")
         self.assertEqual(loc.getLocations(), ["tests/foo-13.fits"])
-        self.assertEqual(loc.getAdditionalData().toString(),
-                         "ccd = 13\n")
+        self.assertEqual(loc.getAdditionalData().toString(), "ccd = 13\n")
 
     def testSubMap(self):
         if hasattr(afwGeom, 'makePointI'):
@@ -184,7 +184,7 @@ class Mapper2TestCase(unittest.TestCase):
                          'ccd = 13\nheight = 400\nllcX = 200\nllcY = 100\nwidth = 300\n')
 
         loc = self.mapper.map("raw_sub", {"ccd": 13, "bbox": bbox,
-                              "imageOrigin": "PARENT"}, write=True)
+                                          "imageOrigin": "PARENT"}, write=True)
         self.assertEqual(loc.getPythonType(), "lsst.afw.image.ExposureU")
         self.assertEqual(loc.getCppType(), "ImageU")
         self.assertEqual(loc.getStorageName(), "FitsStorage")
@@ -211,15 +211,13 @@ class Mapper2TestCase(unittest.TestCase):
         butler = dafPersist.ButlerFactory(mapper=self.mapper).create()
         kwargs = {"ccd": 35, "filter": "r", "visit": 787731,
                   "taiObs": "2005-04-02T09:24:49.933440000"}
-        self.assertEqual(butler.queryMetadata("other", "visit", **kwargs),
-                         [787731])
+        self.assertEqual(butler.queryMetadata("other", "visit", **kwargs), [787731])
         self.assertEqual(butler.queryMetadata("other", "visit",
                                               visit=kwargs["visit"], ccd=kwargs["ccd"],
                                               taiObs=kwargs["taiObs"], filter=kwargs["filter"]),
                          [787731])
         # now test we get no matches if ccd is out of range
-        self.assertEqual(butler.queryMetadata("raw", "ccd", ccd=36, filter="r", visit=787731),
-                         [])
+        self.assertEqual(butler.queryMetadata("raw", "ccd", ccd=36, filter="r", visit=787731), [])
 
     def testQueryMetadata(self):
         self.assertEqual(self.mapper.queryMetadata("raw", ["ccd"], None),
@@ -251,7 +249,7 @@ class Mapper2TestCase(unittest.TestCase):
         for data in testData:
             path = os.path.join('tests', 'testGetRepoPolicy', data.folder)
             policy = butlerUtils.CameraMapper.getRepoPolicy(os.environ['DAF_BUTLERUTILS_DIR'], path)
-            self.assertTrue(policy is not None)
+            self.assertIsNotNone(policy)
             self.assertEqual(policy[data.key], data.value)
 
     def testParentSearch(self):
@@ -268,6 +266,7 @@ class Mapper2TestCase(unittest.TestCase):
 
 class Mapper3TestCase(unittest.TestCase):
     """A test case for a mapper subclass which does not assign packageName."""
+
     def testPackageName(self):
         with self.assertRaises(ValueError):
             MinMapper3()
