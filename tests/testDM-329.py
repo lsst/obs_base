@@ -26,20 +26,26 @@
 import unittest
 import lsst.utils.tests
 
+import lsst.afw.image
 import lsst.daf.persistence as dafPersist
 import lsst.daf.butlerUtils as butlerUtils
 import lsst.pex.policy as pexPolicy
-import lsst.afw.image
+from lsst.utils import getPackageDir
 
+import os
+
+testDir = os.path.relpath(os.path.join(getPackageDir('daf_butlerUtils'), 'tests'))
 
 class MinMapper2(butlerUtils.CameraMapper):
     packageName = 'larry'
 
     def __init__(self):
-        policy = pexPolicy.Policy.createPolicy("tests/MinMapper2.paf")
-        butlerUtils.CameraMapper.__init__(self, policy=policy,
-                                          repositoryDir="tests", root="tests",
-                                          registry="tests/cfhtls.sqlite3")
+        policy = pexPolicy.Policy.createPolicy(os.path.join(testDir, 'MinMapper2.paf'))
+        butlerUtils.CameraMapper.__init__(self, 
+                                          policy=policy, 
+                                          repositoryDir=testDir,
+                                          root=testDir,
+                                          registry=os.path.join(testDir, 'cfhtls.sqlite3'))
         return
 
     def _transformId(self, dataId):
@@ -61,7 +67,8 @@ class DM329TestCase(unittest.TestCase):
         # HDU 3 returns variance plane
         for i in (1, 2, 3):
             loc = mapper.map("other", dict(ccd=35, hdu=i))
-            self.assertEqual(loc.getLocations(), ["tests/bar-35.fits[%d]" % (i,)])
+            expectedLocations = [os.path.join(testDir, "bar-35.fits[%d]" % (i,))]
+            self.assertEqual(loc.getLocations(), expectedLocations)
             image = butler.get("other", ccd=35, hdu=i, immediate=True)
             self.assertIsInstance(image, lsst.afw.image.ImageF)
             self.assertEqual(image.getHeight(), 2024)
