@@ -36,13 +36,14 @@ import os
 
 testDir = os.path.relpath(os.path.join(getPackageDir('daf_butlerUtils'), 'tests'))
 
+
 class MinMapper2(butlerUtils.CameraMapper):
     packageName = 'larry'
 
     def __init__(self):
         policy = pexPolicy.Policy.createPolicy(os.path.join(testDir, 'MinMapper2.paf'))
-        butlerUtils.CameraMapper.__init__(self, 
-                                          policy=policy, 
+        butlerUtils.CameraMapper.__init__(self,
+                                          policy=policy,
                                           repositoryDir=testDir,
                                           root=testDir,
                                           registry=os.path.join(testDir, 'cfhtls.sqlite3'))

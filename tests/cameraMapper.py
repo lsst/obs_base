@@ -45,7 +45,7 @@ class MinMapper1(butlerUtils.CameraMapper):
 
     def __init__(self):
         policy = dafPersist.Policy(filePath=os.path.join(testDir, "MinMapper1.paf"))
-        butlerUtils.CameraMapper.__init__(self, 
+        butlerUtils.CameraMapper.__init__(self,
                                           policy=policy, repositoryDir=testDir, root=testDir)
         return
 
@@ -56,6 +56,7 @@ class MinMapper1(butlerUtils.CameraMapper):
     def getCameraName(cls):
         """Return the name of the camera that this CameraMapper is for."""
         return "min"
+
 
 class MinMapper2(butlerUtils.CameraMapper):
     packageName = 'moe'
