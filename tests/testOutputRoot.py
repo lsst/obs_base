@@ -37,7 +37,7 @@ import lsst.daf.persistence as dafPersist
 import lsst.daf.butlerUtils as butlerUtils
 
 # Define paths used for testing
-testPath = os.path.dirname(__file__)
+testPath = os.path.abspath(os.path.dirname(__file__))
 testOutput = os.path.join(testPath, "testOutput")
 testOutput2 = os.path.join(testPath, "testOutput2")
 testOutput3 = os.path.join(testPath, "testOutput3")
