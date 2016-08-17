@@ -30,6 +30,10 @@ import lsst.utils.tests
 import lsst.afw.geom as afwGeom
 import lsst.daf.persistence as dafPersist
 import lsst.daf.butlerUtils as butlerUtils
+from lsst.utils import getPackageDir
+
+
+testDir = os.path.relpath(os.path.join(getPackageDir('daf_butlerUtils'), 'tests'))
 
 
 def setup_module(module):
@@ -40,13 +44,18 @@ class MinMapper1(butlerUtils.CameraMapper):
     packageName = 'larry'
 
     def __init__(self):
-        policy = dafPersist.Policy(filePath="tests/MinMapper1.paf")
+        policy = dafPersist.Policy(filePath=os.path.join(testDir, "MinMapper1.paf"))
         butlerUtils.CameraMapper.__init__(self,
-                                          policy=policy, repositoryDir="tests", root="tests")
+                                          policy=policy, repositoryDir=testDir, root=testDir)
         return
 
     def std_x(self, item, dataId):
         return float(item)
+
+    @classmethod
+    def getCameraName(cls):
+        """Return the name of the camera that this CameraMapper is for."""
+        return "min"
 
 
 class MinMapper2(butlerUtils.CameraMapper):
@@ -55,10 +64,9 @@ class MinMapper2(butlerUtils.CameraMapper):
     # CalibRoot in policy
     # needCalibRegistry
     def __init__(self):
-        policy = dafPersist.Policy(filePath="tests/MinMapper2.paf")
-        butlerUtils.CameraMapper.__init__(self,
-                                          policy=policy, repositoryDir="tests", root="tests",
-                                          registry="tests/cfhtls.sqlite3")
+        policy = dafPersist.Policy(filePath=os.path.join(testDir, "MinMapper2.paf"))
+        butlerUtils.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir, root=testDir,
+                                          registry=os.path.join(testDir, "cfhtls.sqlite3"))
         return
 
     def _transformId(self, dataId):
@@ -70,13 +78,18 @@ class MinMapper2(butlerUtils.CameraMapper):
     def std_x(self, item, dataId):
         return float(item)
 
+    @classmethod
+    def getCameraName(cls):
+        """Return the name of the camera that this CameraMapper is for."""
+        return "min"
+
 
 # does not assign packageName
 class MinMapper3(butlerUtils.CameraMapper):
+
     def __init__(self):
-        policy = dafPersist.Policy(filePath="tests/MinMapper1.paf")
-        butlerUtils.CameraMapper.__init__(self,
-                                          policy=policy, repositoryDir="tests", root="tests")
+        policy = dafPersist.Policy(filePath=os.path.join(testDir, "MinMapper1.paf"))
+        butlerUtils.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir, root=testDir)
         return
 
 
@@ -106,29 +119,30 @@ class Mapper1TestCase(unittest.TestCase):
         self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
         self.assertEqual(loc.getCppType(), "BoxI")
         self.assertEqual(loc.getStorageName(), "PickleStorage")
-        self.assertEqual(loc.getLocations(), ["tests/foo-1,1.pickle"])
+        expectedLocations = [os.path.join(testDir, "foo-1,1.pickle")]
+        self.assertEqual(loc.getLocations(), expectedLocations)
         self.assertEqual(loc.getAdditionalData().toString(),
                          "sensor = \"1,1\"\n")
 
     def testQueryMetadata(self):
-        self.assertEqual(self.mapper.queryMetadata("x", ["sensor"], None),
-                         [("1,1",)])
+        self.assertEqual(self.mapper.queryMetadata("x", ["sensor"], None), [("1,1",)])
 
     def testStandardize(self):
-        self.assertEqual(self.mapper.canStandardize("x"), True)
-        self.assertEqual(self.mapper.canStandardize("badSourceHist"), False)
-        self.assertEqual(self.mapper.canStandardize("notPresent"), False)
+        self.assertTrue(self.mapper.canStandardize("x"))
+        self.assertFalse(self.mapper.canStandardize("badSourceHist"))
+        self.assertFalse(self.mapper.canStandardize("notPresent"))
         result = self.mapper.standardize("x", 3, None)
-        self.assertEqual(isinstance(result, float), True)
+        self.assertIsInstance(result, float)
         self.assertEqual(result, 3.0)
         result = self.mapper.standardize("x", 3.14, None)
-        self.assertEqual(isinstance(result, float), True)
+        self.assertIsInstance(result, float)
         self.assertEqual(result, 3.14)
         result = self.mapper.standardize("x", "3.14", None)
-        self.assertEqual(isinstance(result, float), True)
+        self.assertIsInstance(result, float)
         self.assertEqual(result, 3.14)
 
     def testNames(self):
+        name = MinMapper1.getCameraName()
         self.assertEqual(MinMapper1.getCameraName(), "min")
         self.assertEqual(MinMapper1.getPackageName(), "larry")
 
@@ -162,9 +176,8 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getPythonType(), "lsst.afw.image.ExposureU")
         self.assertEqual(loc.getCppType(), "ImageU")
         self.assertEqual(loc.getStorageName(), "FitsStorage")
-        self.assertEqual(loc.getLocations(), ["tests/foo-13.fits"])
-        self.assertEqual(loc.getAdditionalData().toString(),
-                         "ccd = 13\n")
+        self.assertEqual(loc.getLocations(), [os.path.join(testDir, "foo-13.fits")])
+        self.assertEqual(loc.getAdditionalData().toString(), "ccd = 13\n")
 
     def testSubMap(self):
         if hasattr(afwGeom, 'makePointI'):
@@ -179,23 +192,24 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getPythonType(), "lsst.afw.image.ExposureU")
         self.assertEqual(loc.getCppType(), "ImageU")
         self.assertEqual(loc.getStorageName(), "FitsStorage")
-        self.assertEqual(loc.getLocations(), ["tests/foo-13.fits"])
+        self.assertEqual(loc.getLocations(), [os.path.join(testDir, "foo-13.fits")])
         self.assertEqual(loc.getAdditionalData().toString(),
                          'ccd = 13\nheight = 400\nllcX = 200\nllcY = 100\nwidth = 300\n')
 
         loc = self.mapper.map("raw_sub", {"ccd": 13, "bbox": bbox,
-                              "imageOrigin": "PARENT"}, write=True)
+                                          "imageOrigin": "PARENT"}, write=True)
         self.assertEqual(loc.getPythonType(), "lsst.afw.image.ExposureU")
         self.assertEqual(loc.getCppType(), "ImageU")
         self.assertEqual(loc.getStorageName(), "FitsStorage")
-        self.assertEqual(loc.getLocations(), ["tests/foo-13.fits"])
+        self.assertEqual(loc.getLocations(), [os.path.join(testDir, "foo-13.fits")])
         self.assertEqual(loc.getAdditionalData().toString(),
                          'ccd = 13\nheight = 400\nimageOrigin = "PARENT"\n'
                          'llcX = 200\nllcY = 100\nwidth = 300\n')
 
     def testImage(self):
         loc = self.mapper.map("some", dict(ccd=35))
-        self.assertEqual(loc.getLocations(), ["tests/bar-35.fits"])
+        expectedLocations = [os.path.join(testDir, "bar-35.fits")]
+        self.assertEqual(loc.getLocations(), expectedLocations)
 
         butler = dafPersist.ButlerFactory(mapper=self.mapper).create()
         image = butler.get("some", ccd=35)
@@ -211,15 +225,13 @@ class Mapper2TestCase(unittest.TestCase):
         butler = dafPersist.ButlerFactory(mapper=self.mapper).create()
         kwargs = {"ccd": 35, "filter": "r", "visit": 787731,
                   "taiObs": "2005-04-02T09:24:49.933440000"}
-        self.assertEqual(butler.queryMetadata("other", "visit", **kwargs),
-                         [787731])
+        self.assertEqual(butler.queryMetadata("other", "visit", **kwargs), [787731])
         self.assertEqual(butler.queryMetadata("other", "visit",
                                               visit=kwargs["visit"], ccd=kwargs["ccd"],
                                               taiObs=kwargs["taiObs"], filter=kwargs["filter"]),
                          [787731])
         # now test we get no matches if ccd is out of range
-        self.assertEqual(butler.queryMetadata("raw", "ccd", ccd=36, filter="r", visit=787731),
-                         [])
+        self.assertEqual(butler.queryMetadata("raw", "ccd", ccd=36, filter="r", visit=787731), [])
 
     def testQueryMetadata(self):
         self.assertEqual(self.mapper.queryMetadata("raw", ["ccd"], None),
@@ -234,7 +246,8 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getPythonType(), "lsst.afw.image.ExposureF")
         self.assertEqual(loc.getCppType(), "ExposureF")
         self.assertEqual(loc.getStorageName(), "FitsStorage")
-        self.assertEqual(loc.getLocations(), ["tests/flat-05Am03-fi.fits"])
+        expectedLocations = [os.path.join(testDir, "flat-05Am03-fi.fits")]
+        self.assertEqual(loc.getLocations(), expectedLocations)
         self.assertEqual(loc.getAdditionalData().toString(),
                          'ccd = 13\nderivedRunId = "05Am03"\nfilter = "i"\nvisit = 787650\n')
 
@@ -249,25 +262,34 @@ class Mapper2TestCase(unittest.TestCase):
                     testDataType('yamlAndPaf', 'yaml', 'myKey', 'yamlHereWithPaf'))
 
         for data in testData:
-            path = os.path.join('tests', 'testGetRepoPolicy', data.folder)
+            path = os.path.join(testDir, 'testGetRepoPolicy', data.folder)
             policy = butlerUtils.CameraMapper.getRepoPolicy(os.environ['DAF_BUTLERUTILS_DIR'], path)
-            self.assertTrue(policy is not None)
+            self.assertIsNotNone(policy)
             self.assertEqual(policy[data.key], data.value)
 
     def testParentSearch(self):
-        paths = self.mapper.parentSearch('tests/testParentSearch', 'tests/testParentSearch/bar.fits')
-        self.assertEqual(paths, ['tests/testParentSearch/bar.fits'])
-        paths = self.mapper.parentSearch('tests/testParentSearch', 'tests/testParentSearch/bar.fits[1]')
-        self.assertEqual(paths, ['tests/testParentSearch/bar.fits[1]'])
+        paths = self.mapper.parentSearch(os.path.join(testDir, 'testParentSearch'),
+                                         os.path.join(testDir, os.path.join('testParentSearch', 'bar.fits')))
+        self.assertEqual(paths, [os.path.join(testDir, os.path.join('testParentSearch', 'bar.fits'))])
+        paths = self.mapper.parentSearch(os.path.join(testDir, 'testParentSearch'),
+                                         os.path.join(testDir,
+                                                      os.path.join('testParentSearch', 'bar.fits[1]')))
+        self.assertEqual(paths, [os.path.join(testDir, os.path.join('testParentSearch', 'bar.fits[1]'))])
 
-        paths = self.mapper.parentSearch('tests/testParentSearch', 'tests/testParentSearch/baz.fits')
-        self.assertEqual(paths, ['tests/testParentSearch/_parent/baz.fits'])
-        paths = self.mapper.parentSearch('tests/testParentSearch', 'tests/testParentSearch/baz.fits[1]')
-        self.assertEqual(paths, ['tests/testParentSearch/_parent/baz.fits[1]'])
+        paths = self.mapper.parentSearch(os.path.join(testDir, 'testParentSearch'),
+                                         os.path.join(testDir, os.path.join('testParentSearch', 'baz.fits')))
+        self.assertEqual(paths, [os.path.join(testDir,
+                                              os.path.join('testParentSearch', '_parent', 'baz.fits'))])
+        paths = self.mapper.parentSearch(os.path.join(testDir, 'testParentSearch'),
+                                         os.path.join(testDir,
+                                                      os.path.join('testParentSearch', 'baz.fits[1]')))
+        self.assertEqual(paths, [os.path.join(testDir,
+                                              os.path.join('testParentSearch', '_parent', 'baz.fits[1]'))])
 
 
 class Mapper3TestCase(unittest.TestCase):
     """A test case for a mapper subclass which does not assign packageName."""
+
     def testPackageName(self):
         with self.assertRaises(ValueError):
             MinMapper3()

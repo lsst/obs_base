@@ -45,6 +45,7 @@ class ExposureIdInfo(object):
     At least one bit must be reserved, even if there is no exposure ID, for reasons
     that are not entirely clear (this is DM-6664).
     """
+
     def __init__(self, expId=0L, expBits=1, maxBits=64):
         """!Construct an ExposureIdInfo
 
