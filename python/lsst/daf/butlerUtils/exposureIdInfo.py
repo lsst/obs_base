@@ -19,6 +19,9 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
+
+from past.builtins import long
+
 __all__ = ["ExposureIdInfo"]
 
 
@@ -46,7 +49,7 @@ class ExposureIdInfo(object):
     that are not entirely clear (this is DM-6664).
     """
 
-    def __init__(self, expId=0L, expBits=1, maxBits=64):
+    def __init__(self, expId=0, expBits=1, maxBits=64):
         """!Construct an ExposureIdInfo
 
         See the class doc string for an explanation of the arguments.
