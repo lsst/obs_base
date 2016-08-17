@@ -22,6 +22,7 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
+from builtins import range
 import collections
 import os
 import unittest
@@ -235,7 +236,7 @@ class Mapper2TestCase(unittest.TestCase):
 
     def testQueryMetadata(self):
         self.assertEqual(self.mapper.queryMetadata("raw", ["ccd"], None),
-                         [(x,) for x in xrange(36) if x != 3])
+                         [(x,) for x in range(36) if x != 3])
 
     def testStandardize(self):
         self.assertEqual(self.mapper.canStandardize("raw"), True)

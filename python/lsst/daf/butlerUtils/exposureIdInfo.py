@@ -20,6 +20,7 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
+from builtins import object
 from past.builtins import long
 
 __all__ = ["ExposureIdInfo"]

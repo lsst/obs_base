@@ -23,14 +23,14 @@
 #
 
 
+from future import standard_library
+standard_library.install_aliases()
 import unittest
 import lsst.utils.tests
-
-import cPickle
+import pickle
 import os
 import subprocess
 import pickle
-
 import lsst.afw.geom as afwGeom
 import lsst.pex.policy as pexPolicy
 import lsst.daf.persistence as dafPersist
@@ -96,7 +96,7 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
         box = afwGeom.BoxI(afwGeom.PointI(0, 1), afwGeom.PointI(2, 3))
         with open(loc.getLocations()[0], "w") as f:
-            cPickle.dump(box, f)
+            pickle.dump(box, f)
 
         loc = mapper2.map("x", dict(sensor="1,1"))
         self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
@@ -120,7 +120,7 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
         box = afwGeom.BoxI(afwGeom.PointI(0, 1), afwGeom.PointI(2, 3))
         with open(loc.getLocations()[0], "w") as f:
-            cPickle.dump(box, f)
+            pickle.dump(box, f)
 
         parent = mapper2._parentSearch(os.path.join(testOutput3, "foo-1,1.pickle"))
         self.assertEqual(parent, [os.path.join(testOutput3, "_parent", "foo-1,1.pickle")])

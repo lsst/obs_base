@@ -20,6 +20,8 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
+from builtins import zip
+from builtins import object
 import os
 import re
 from lsst.daf.persistence import ButlerLocation
@@ -119,7 +121,7 @@ class Mapping(object):
         @param dataId (dict) Dataset identifier
         @return (lsst.daf.persistence.ButlerLocation)"""
 
-        actualId = self.need(self.keyDict.iterkeys(), dataId)
+        actualId = self.need(iter(self.keyDict.keys()), dataId)
         path = mapper._mapActualToPath(self.template, actualId)
         if not os.path.isabs(path):
             path = os.path.join(self.root, path)
@@ -160,7 +162,7 @@ class Mapping(object):
             lookupDataId = {'visit': dataId['visit']}
             self.registry.lookup(properties, 'raw_visit', lookupDataId)
         if dataId is not None:
-            for k, v in dataId.iteritems():
+            for k, v in dataId.items():
                 if self.columns and k not in self.columns:
                     continue
                 if k == self.obsTimeName:
@@ -331,7 +333,7 @@ class CalibrationMapping(Mapping):
         if self.reference is not None:
             where = []
             values = []
-            for k, v in dataId.iteritems():
+            for k, v in dataId.items():
                 if self.refCols and k not in self.refCols:
                     continue
                 where.append(k)
@@ -340,7 +342,7 @@ class CalibrationMapping(Mapping):
             # Columns we need from the regular registry
             if self.columns is not None:
                 columns = set(self.columns)
-                for k in dataId.iterkeys():
+                for k in dataId.keys():
                     columns.discard(k)
             else:
                 columns = set(properties)
