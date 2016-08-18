@@ -20,6 +20,8 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
+from builtins import str
+from past.builtins import long
 import copy
 import errno
 import glob
@@ -505,7 +507,7 @@ class CameraMapper(dafPersist.Mapper):
     def keys(self):
         """Return supported keys.
         @return (iterable) List of keys usable in a dataset identifier"""
-        return self.keyDict.iterkeys()
+        return iter(self.keyDict.keys())
 
     def getKeys(self, datasetType, level):
         """Return supported keys and their value types for a given dataset

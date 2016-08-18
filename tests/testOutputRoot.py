@@ -23,14 +23,14 @@
 #
 
 
+from future import standard_library
+standard_library.install_aliases()
 import unittest
 import lsst.utils.tests
-
-import cPickle
+import pickle
 import os
 import subprocess
 import pickle
-
 import lsst.afw.geom as afwGeom
 import lsst.pex.policy as pexPolicy
 import lsst.daf.persistence as dafPersist
@@ -95,8 +95,8 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(loc.getLocations(), [os.path.join(testOutput, "foo-1,1.pickle")])
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
         box = afwGeom.BoxI(afwGeom.PointI(0, 1), afwGeom.PointI(2, 3))
-        with open(loc.getLocations()[0], "w") as f:
-            cPickle.dump(box, f)
+        with open(loc.getLocations()[0], "wb") as f:
+            pickle.dump(box, f)
 
         loc = mapper2.map("x", dict(sensor="1,1"))
         self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
@@ -119,8 +119,8 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(loc.getLocations(), [os.path.join(testOutput, "foo-1,1.pickle")])
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
         box = afwGeom.BoxI(afwGeom.PointI(0, 1), afwGeom.PointI(2, 3))
-        with open(loc.getLocations()[0], "w") as f:
-            cPickle.dump(box, f)
+        with open(loc.getLocations()[0], "wb") as f:
+            pickle.dump(box, f)
 
         parent = mapper2._parentSearch(os.path.join(testOutput3, "foo-1,1.pickle"))
         self.assertEqual(parent, [os.path.join(testOutput3, "_parent", "foo-1,1.pickle")])
@@ -195,12 +195,15 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(testOutput2, "foo-1,1.pickle")))
         self.assertTrue(os.path.exists(os.path.join(testOutput2, "foo-1,1.pickle~1")))
         self.assertTrue(os.path.exists(os.path.join(testOutput2, "foo-1,1.pickle~2")))
-        b1Check = pickle.load(open(os.path.join(testOutput2, "foo-1,1.pickle~2"), 'rb'))
-        b2Check = pickle.load(open(os.path.join(testOutput2, "foo-1,1.pickle~1"), 'rb'))
-        b3Check = pickle.load(open(os.path.join(testOutput2, "foo-1,1.pickle"), 'rb'))
-        self.assertEqual(b1Check, b1)
-        self.assertEqual(b2Check, b2)
-        self.assertEqual(b3Check, b3)
+        with open(os.path.join(testOutput2, "foo-1,1.pickle~2"), 'rb') as f:
+            b1Check = pickle.load(f)
+            self.assertEqual(b1Check, b1)
+        with open(os.path.join(testOutput2, "foo-1,1.pickle~1"), 'rb') as f:
+            b2Check = pickle.load(f)
+            self.assertEqual(b2Check, b2)
+        with open(os.path.join(testOutput2, "foo-1,1.pickle"), 'rb') as f:
+            b3Check = pickle.load(f)
+            self.assertEqual(b3Check, b3)
 
 
 class MemoryTester(lsst.utils.tests.MemoryTestCase):
