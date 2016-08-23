@@ -53,9 +53,8 @@ class MinMapper1(butlerUtils.CameraMapper):
     packageName = 'larry'
 
     def __init__(self):
-        policy = dafPersist.Policy(filePath=os.path.join(testDir, "MinMapper1.paf"))
-        butlerUtils.CameraMapper.__init__(self,
-                                          policy=policy, repositoryDir=testDir, root=testDir)
+        policy = dafPersist.Policy(os.path.join(testDir, "MinMapper1.paf"))
+        butlerUtils.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir, root=testDir)
         return
 
     def std_x(self, item, dataId):
@@ -73,7 +72,7 @@ class MinMapper2(butlerUtils.CameraMapper):
     # CalibRoot in policy
     # needCalibRegistry
     def __init__(self):
-        policy = dafPersist.Policy(filePath=os.path.join(testDir, "MinMapper2.paf"))
+        policy = dafPersist.Policy(os.path.join(testDir, "MinMapper2.paf"))
         butlerUtils.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir, root=testDir,
                                           registry=os.path.join(testDir, "cfhtls.sqlite3"))
         return
@@ -97,7 +96,7 @@ class MinMapper2(butlerUtils.CameraMapper):
 class MinMapper3(butlerUtils.CameraMapper):
 
     def __init__(self):
-        policy = dafPersist.Policy(filePath=os.path.join(testDir, "MinMapper1.paf"))
+        policy = dafPersist.Policy(os.path.join(testDir, "MinMapper1.paf"))
         butlerUtils.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir, root=testDir)
         return
 
