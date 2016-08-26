@@ -40,6 +40,14 @@ testDir = os.path.relpath(os.path.join(getPackageDir('daf_butlerUtils'), 'tests'
 def setup_module(module):
     lsst.utils.tests.init()
 
+class BaseMapper(butlerUtils.CameraMapper):
+    packageName = 'base'
+
+    def __init__(self):
+        policy = dafPersist.Policy(filePath=os.path.join(testDir, "BaseMapper.paf"))
+        butlerUtils.CameraMapper.__init__(self,
+                                          policy=policy, repositoryDir="tests", root="tests")
+        return
 
 class MinMapper1(butlerUtils.CameraMapper):
     packageName = 'larry'
@@ -104,16 +112,11 @@ class Mapper1TestCase(unittest.TestCase):
         del self.mapper
 
     def testGetDatasetTypes(self):
-        self.assertEqual(set(self.mapper.getDatasetTypes()),
-                         set(["x", "x_filename", "badSourceHist", "defects",
-                              "badSourceHist_filename", "camera", "skypolicy", "expIdInfo",
-                              "packages", "packages_filename",
-                              "processCcd_config", "processCcd_config_filename",
-                              "calibrate_config", "calibrate_config_filename",
-                              "characterizeImage_config", "characterizeImage_config_filename",
-                              "IngestIndexedReferenceTask_config",
-                              "IngestIndexedReferenceTask_config_filename",
-                              ]))
+        expectedTypes = BaseMapper().getDatasetTypes()
+        #   Add the expected additional types to what the base class provides
+        expectedTypes.extend(["x", "x_filename",
+                              "badSourceHist", "badSourceHist_filename",])
+        self.assertEqual(set(self.mapper.getDatasetTypes()), set(expectedTypes))
 
     def testMap(self):
         loc = self.mapper.map("x", {"sensor": "1,1"}, write=True)
@@ -158,19 +161,16 @@ class Mapper2TestCase(unittest.TestCase):
         del self.mapper
 
     def testGetDatasetTypes(self):
-        self.assertEqual(set(self.mapper.getDatasetTypes()),
-                         set(["flat", "flat_filename", "raw", "raw_md",
-                              "raw_filename", "raw_sub", "defects",
+        expectedTypes = BaseMapper().getDatasetTypes()
+        #   Add the expected additional types to what the base class provides
+        expectedTypes.extend(["flat", "flat_filename", "raw", "raw_md",
+                              "raw_filename", "raw_sub",
                               "some", "some_filename", "some_md", "some_sub",
-                              "camera", "src", "src_filename", "skypolicy",
-                              "other_sub", "other_filename", "other_md",
-                              "other", "expIdInfo", "packages", "packages_filename",
-                              "processCcd_config", "processCcd_config_filename",
-                              "calibrate_config", "calibrate_config_filename",
-                              "characterizeImage_config", "characterizeImage_config_filename",
-                              "IngestIndexedReferenceTask_config",
-                              "IngestIndexedReferenceTask_config_filename",
-                              ]))
+                              "src", "src_filename",
+                              "other_sub", "other_filename", "other_md", "other",
+                              ])
+        self.assertEqual(set(self.mapper.getDatasetTypes()),
+                         set(expectedTypes))
 
     def testMap(self):
         loc = self.mapper.map("raw", {"ccd": 13}, write=True)
