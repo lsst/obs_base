@@ -163,13 +163,16 @@ class CameraMapper(dafPersist.Mapper):
 
         self.root = root
         if isinstance(policy, pexPolicy.Policy):
-            policy = dafPersist.Policy(pexPolicy=policy)
+            policy = dafPersist.Policy(policy)
 
         repoPolicy = CameraMapper.getRepoPolicy(self.root, self.root)
         if repoPolicy is not None:
             policy.update(repoPolicy)
 
-        dictPolicy = dafPersist.Policy(defaultInitData=("daf_butlerUtils", "MapperDictionary.paf", "policy"))
+        defaultPolicyFile = dafPersist.Policy.defaultPolicyFile("daf_butlerUtils", 
+                                                                "MapperDictionary.paf", 
+                                                                "policy")
+        dictPolicy = dafPersist.Policy(defaultPolicyFile)
         policy.merge(dictPolicy)
 
         # Levels
@@ -245,17 +248,14 @@ class CameraMapper(dafPersist.Mapper):
             calibRegistry = None
 
         # Sub-dictionaries (for exposure/calibration/dataset types)
-        imgMappingPolicy = dafPersist.Policy(defaultInitData=("daf_butlerUtils", "ImageMappingDictionary.paf",
-                                                              "policy"))
-        expMappingPolicy = dafPersist.Policy(defaultInitData=("daf_butlerUtils",
-                                                              "ExposureMappingDictionary.paf",
-                                                              "policy"))
-        calMappingPolicy = dafPersist.Policy(defaultInitData=("daf_butlerUtils",
-                                                              "CalibrationMappingDictionary.paf",
-                                                              "policy"))
-        dsMappingPolicy = dafPersist.Policy(defaultInitData=("daf_butlerUtils",
-                                                             "DatasetMappingDictionary.paf",
-                                                             "policy"))
+        imgMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
+            "daf_butlerUtils", "ImageMappingDictionary.paf", "policy"))
+        expMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
+            "daf_butlerUtils", "ExposureMappingDictionary.paf", "policy"))
+        calMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
+            "daf_butlerUtils", "CalibrationMappingDictionary.paf", "policy"))
+        dsMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
+             "daf_butlerUtils", "DatasetMappingDictionary.paf", "policy"))
 
         # Dict of valid keys and their value types
         self.keyDict = dict()
@@ -275,7 +275,7 @@ class CameraMapper(dafPersist.Mapper):
                 # Centrally-defined datasets
                 defaultsPath = os.path.join(getPackageDir("daf_butlerUtils"), "policy", name + ".yaml")
                 if os.path.exists(defaultsPath):
-                    datasets.merge(dafPersist.Policy(filePath=defaultsPath))
+                    datasets.merge(dafPersist.Policy(defaultsPath))
 
                 mappings = dict()
                 setattr(self, name, mappings)
@@ -381,6 +381,14 @@ class CameraMapper(dafPersist.Mapper):
 
     @staticmethod
     def getRepoPolicy(root, repos):
+        """Get the policy stored in a repo (specified by 'root'), if there is one.
+        
+        @param root (string) path to the root location of the repository
+        @param repos (string) path from the root of the repo to the folder containing a file named 
+                              _policy.paf or _policy.yaml
+        @return (lsst.daf.persistence.Policy or None) A Policy instantiated with the policy found according to
+                                                      input variables, or None if a policy file was not found.
+        """
         policy = None
         if root is not None:
             paths = CameraMapper.parentSearch(root, os.path.join(repos, '_policy.*'))
@@ -390,7 +398,7 @@ class CameraMapper(dafPersist.Mapper):
                     if len(matches) > 1:
                         raise RuntimeError("More than 1 policy possibility for root:%s" % root)
                     elif len(matches) == 1:
-                        policy = dafPersist.Policy(filePath=matches[0])
+                        policy = dafPersist.Policy(matches[0])
                         break
         return policy
 
