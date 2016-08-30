@@ -1,0 +1,12 @@
+deepCoadd:
+    persistable: ExposureF
+    storage: FitsStorage
+    python: lsst.afw.image.ExposureF
+    tables: raw_skytile
+    template: deepCoadd/%(filter)s/%(tract)d/%(patch)s.fits
+deepCoadd_calexp:
+    persistable: ExposureF
+    storage: FitsStorage
+    python: lsst.afw.image.ExposureF
+    tables: raw raw_skyTile
+    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/calexp-%(filter)s-%(tract)d-%(patch)s.fits
