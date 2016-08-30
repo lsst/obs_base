@@ -5,3 +5,6 @@
 camera: "camera"
 defaultLevel: "sensor"
 datasets: {}
+exposures: {}
+calibrations: {}
+images: {}
