@@ -44,9 +44,8 @@ class BaseMapper(butlerUtils.CameraMapper):
     packageName = 'base'
 
     def __init__(self):
-        policy = dafPersist.Policy(filePath=os.path.join(testDir, "BaseMapper.paf"))
-        butlerUtils.CameraMapper.__init__(self,
-                                          policy=policy, repositoryDir="tests", root="tests")
+        policy = dafPersist.Policy(os.path.join(testDir, "BaseMapper.paf"))
+        butlerUtils.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir, root=testDir)
         return
 
 class MinMapper1(butlerUtils.CameraMapper):
