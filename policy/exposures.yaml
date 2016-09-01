@@ -1,12 +1,36 @@
+deepCoadd_diff:
+    persistable: ExposureF
+    storage: FitsStorage
+    python: lsst.afw.image.ExposureF
+    tables: raw_skytile
+    template: deepCoadd-diff/%(filter)s/%(tract)d/diff-%(filter)s-%(tract)d-%(patch)s.fits
 deepCoadd:
     persistable: ExposureF
     storage: FitsStorage
     python: lsst.afw.image.ExposureF
     tables: raw_skytile
     template: deepCoadd/%(filter)s/%(tract)d/%(patch)s.fits
+deepCoadd_depth:
+    persistable: ImageF
+    storage: FitsStorage
+    python: lsst.afw.image.ImageF
+    tables: raw_skytile
+    template: deepCoadd/%(filter)s/%(tract)d/%(patch)s.depth.fits
 deepCoadd_calexp:
     persistable: ExposureF
     storage: FitsStorage
     python: lsst.afw.image.ExposureF
     tables: raw raw_skyTile
     template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/calexp-%(filter)s-%(tract)d-%(patch)s.fits
+deepCoadd_bg:
+    persistable: ImageF
+    storage: FitsStorage
+    python: lsst.afw.image.ImageF
+    tables: raw_skytile
+    template: deepCoadd/%(filter)s/%(tract)d/%(patch)s/bgModel-%(tract)d-%(patch)s-%(filter)s.fits
+deepCoadd_bgRef:
+    persistable: ExposureF
+    storage: FitsStorage
+    python: lsst.afw.image.ExposureF
+    tables: raw_skytile
+    template: deepCoadd/%(filter)s/%(tract)d/%(patch)s/bgRef-%(tract)d-%(patch)s-%(filter)s.fits
