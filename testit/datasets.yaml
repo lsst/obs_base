@@ -1,0 +1,25 @@
+packages:  # known packages and their versions, stored for later comparison
+    template: config/packages.pickle
+    python: lsst.base.Packages
+    persistable: Packages
+    storage: PickleStorage
+processCcd_config:
+    persistable: Config
+    python: lsst.pipe.tasks.processCcd.ProcessCcdConfig
+    storage: ConfigStorage
+    template: config/processCcd.py
+characterizeImage_config:
+    persistable: Config
+    python: lsst.pipe.tasks.characterizeImage.CharacterizeImageConfig
+    storage: ConfigStorage
+    template: config/characterizeImage.py
+calibrate_config:
+    persistable: Config
+    python: lsst.pipe.tasks.calibrate.CalibrateConfig
+    storage: ConfigStorage
+    template: config/calibrate.py
+IngestIndexedReferenceTask_config:
+    persistable: Config
+    python: lsst.meas.algorithms.IngestIndexedReferenceConfig
+    storage: ConfigStorage
+    template: config/IngestIndexedReferenceTask.py

@@ -1,0 +1,10 @@
+for driver in hsc suprimecam decam sdss lsstSim megacam test; do
+    python diffit_hsc.py -n $driver -r hsc
+    python diffit_hsc.py -n $driver
+    echo "Keys in original $driver not found in hsc" > $driver.mods
+    grep 'is not in' $driver.hscdiffs | sed -e 's/\([()a-z0-9A-Z]\) .*/\1/' >> $driver.mods
+    echo "Keys in original hsc not found in $driver" >> $driver.mods
+    grep 'not present' $driver.hscdiffs | sed -e 's/\([()a-z0-9A-Z]\) .*/\1/' >> $driver.mods
+    echo "Keys which were moved to butlerUtils and differ between hsc and $driver" >> $driver.mods
+    grep 'different' $driver.hscdiffs | sed -e 's/different//' >> $driver.mods
+done

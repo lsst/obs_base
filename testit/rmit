@@ -1,0 +1,3 @@
+for driver in hsc suprimecam decam sdss lsstSim megacam test; do
+    python rmit.py -n $driver
+done

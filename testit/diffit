@@ -1,0 +1,4 @@
+echo "Summary of difference for all obs_* mappers" > diff.outs
+for driver in hsc suprimecam decam sdss lsstSim megacam test; do
+    python diffit.py -n $driver >> diff.outs
+done
