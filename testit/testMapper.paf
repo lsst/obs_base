@@ -609,5 +609,5 @@ datasets: {
         python:        "lsst.pipe.tasks.objectMasks.ObjectMaskCatalog"
         persistable:   "PurePythonClass"
         storage:       "FitsCatalogStorage"
-    }	
+    }
 }

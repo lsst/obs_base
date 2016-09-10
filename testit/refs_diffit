@@ -1,0 +1,4 @@
+for driver in hsc suprimecam decam sdss lsstSim megacam test; do
+    python diffit_hsc.py -n $driver -r hsc -c refs
+    python diffit_hsc.py -n $driver -c refs
+done

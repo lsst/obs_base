@@ -1,9 +1,9 @@
-cp DecamMapper.paf.rem $OBS_DECAM_DIR/policy
-cp HscMapper.paf.rem $OBS_SUBARU_DIR/policy
-cp LsstSimMapper.paf.rem $OBS_LSSTSIM_DIR/policy
-cp MegacamMapper.paf.rem $OBS_CFHT_DIR/policy
-cp SdssMapper.paf.rem $OBS_SDSS_DIR/policy
-cp SuprimecamMapper.paf.rem $OBS_SUBARU_DIR/policy
-cp testMapper.paf.rem $OBS_TEST_DIR/policy
+cp DecamMapper.rem_obs.paf $OBS_DECAM_DIR/policy/DecamMapper.paf
+cp LsstSimMapper.rem_obs.paf $OBS_LSSTSIM_DIR/policy/LsstSimMapper.paf
+cp MegacamMapper.rem_obs.paf $OBS_CFHT_DIR/policy/MegacamMapper.paf
+cp SdssMapper.rem_obs.paf $OBS_SDSS_DIR/policy/SdssMapper.paf
+cp SuprimecamMapper.rem_obs.paf $OBS_SUBARU_DIR/policy/SuprimecamMapper.paf
+cp testMapper.rem_obs.paf $OBS_TEST_DIR/policy/testMapper.paf
 cp exposures.yaml.new ../policy/exposures.yaml
-cp datasets.yaml.new ../policy/datasets.yaml
+cat datasets.yaml datasets.yaml.new > ../policy/datasets.yaml
+cp HscMapper.rem_obs.rem_mov.paf $OBS_SUBARU_DIR/policy/HscMapper.paf

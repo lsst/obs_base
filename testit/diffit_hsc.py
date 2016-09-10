@@ -1,11 +1,41 @@
 import argparse
 
-keys_added = {
-    'datasets': ('forcedPhotCcd_config', 'src_schema', 'diffsources_schema', 'deep_assembleCoadd_config', 'deepCoadd_calexp_background', 'deepCoadd_peak_schema', 'eups_versions', 'deepCoadd_src', 'deep_safeClipAssembleCoadd_config', 'flat_config', 'characterizeImage_config', 'deepCoadd_icSrc_schema', 'fringe_config', 'bias_config', 'deepCoadd_srcMatchFull', 'deepCoadd_srcMatch', 'deepCoadd_forced_metadata', 'isr_config', 'deepCoadd_forced_src_schema', 'deep_makeCoaddTempExp_metadata', 'deepCoadd_psf', 'deepCoadd_ref_schema', 'deepCoadd_src_schema', 'deepCoaddId', 'mergeCoaddMeasurements_config', 'deep_assembleCoadd_metadata', 'deepCoadd_meas', 'deepCoadd_forced_config', 'deepCoadd_forced_src', 'mergeCoaddDetections_config', 'deep_makeSkyMap_metadata', 'measureCoaddSources_metadata', 'mergeCoaddMeasurements_metadata', 'transformSrcMeasurement_config', 'processCcd_config', 'deepCoadd_mergeDet_schema', 'brightObjectMask', 'deep_safeClipAssembleCoadd_metadata', 'transformed_src_schema', 'processStack_config', 'deepMergedCoaddId', 'stackExposureId_bits', 'packages', 'detectCoaddSources_metadata', 'deep_makeCoaddTempExp_config', 'deepCoaddId_bits', 'deepCoadd_ref', 'forced_src_schema', 'deepCoadd_diffsrc', 'calibrated_src_schema', 'deepCoadd_det_schema', 'stackExposureId', 'deepCoadd_apCorr', 'solvetansip_config', 'dark_config', 'IngestIndexedReferenceTask_config', 'calibrate_config', 'deep_processCoadd_config', 'multiBandDriver_config', 'measureCoaddSources_config', 'deepCoadd_icMatch', 'deep_makeDiscreteSkyMap_metadata', 'deepCoadd_mergeDet', 'ccdExposureId', 'deep_coadd_metadata', 'forcedCcd_config', 'deepCoadd_meas_schema', 'deepCoadd_skyMap', 'processFocus_config', 'deepCoadd_det', 'detectCoaddSources_config', 'coaddDriver_config', 'deepCoadd_multibandReprocessing', 'deepCoadd_icSrc', 'Mosaic_config', 'deepMergedCoaddId_bits', 'forcedCoadd_config', 'singleFrameDriver_config', 'deep_coadd_config', 'mergeCoaddDetections_metadata', 'icSrc_schema', 'ccdExposureId_bits', 'processFocusSweep_config', 'deepCoadd_initPsf', 'deep_processCoadd_metadata'),
-    'exposures': ('deepCoadd_diff','deepCoadd','deepCoadd_depth','deepCoadd_calexp','deepCoadd_bg', 'deepCoadd_bgRef'),
-    'calibrations': (),
-    'images': (),
-}
+def getIndent(line):
+    for i in range(len(line)):
+        if not line[i].isspace():
+            break
+    return i
+
+def readPafSection(filename, type=None):
+    result = {}
+    try:
+        fin = open(filename, "r")
+    except:
+        return result
+    lines = fin.readlines()
+    if type is None:
+        indent = -4
+    else:
+        indent = None    
+    for line in lines:
+        line = line.rstrip()
+        if line.find("#") >= 0:
+            continue
+        if len(line.strip()) == 0:
+            continue
+        if indent is None:
+            if line.find(type + ":") >= 0:
+                indent = getIndent(line)               
+            continue
+        thisindent = getIndent(line)
+        if thisindent <= indent:
+                break 
+        if line.find(':') > 0:
+            if thisindent == indent + 4:
+                name = line[:line.find(":")].strip()
+                result[name] = None
+    fin.close()           
+    return result
 
 def readSection(filename):
     try:
@@ -23,42 +53,83 @@ def readSection(filename):
             name = line[:line.find(":")]
         else:
             bset = bset + line 
+    if bset:
+        result[name] = bset
     fin.close()           
     return result
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-n", "--name", type=str, help="mapper name", default=None) 
-    parser.add_argument("-r", "--reftype", type=str, help="path to ref", default=None) 
+    parser.add_argument("-r", "--refmapper", type=str, help="path to ref", default=None) 
+    parser.add_argument("-c", "--cpath", type=str, help="path to comps", default=None) 
+    parser.add_argument("-p", "--rpath", type=str, help="path to comps", default="refs") 
+    obskeys = readPafSection("obskeys.yaml")
+    movekeys = readPafSection("movekeys.yaml")
     args = parser.parse_args()
     name = args.name
-    reftype = args.reftype
-    if reftype == None:
-        reftype = name
-        fout = open(name + ".selfdiffs", "w")
+    # refmapper is the mappers we are comparing against.  
+    refmapper = args.refmapper
+    if refmapper == None:
+        refmapper = name
+        outname = name + ".selfdiffs"
     else:
-        fout = open(name + ".%sdiffs"%(reftype,), "w")
-    errors = 0
+        outname = name + ".%sdiffs"%(refmapper,)
+    if not args.cpath is None:
+        outname = args.cpath + "/" + outname
+    cpath = args.cpath
+    rpath = args.rpath
+    fout = open(outname, "w")
     types = ("datasets", "images", "exposures", "calibrations")
+    #  "ref" is the original typeset, and "comp" is the new one
     for type in types:
-        ref = readSection("refs/%s.%s"%(reftype, type,))
-        comp = readSection("ones/%s.%s"%(name, type))
+        ref = readSection("%s/%s.%s"%(args.rpath, refmapper, type))
+        comp = readSection("%s/%s.%s"%(args.cpath, name, type))
+
         if ref is None and comp is None:
             continue
         if ref is None and not comp is None:
-            fout.write("Section %s doesn't appear in reference of %s"%(type, reftype))
+            fout.write("Section %s doesn't appear in reference of %s"%(type, refmapper))
             continue
         if not ref is None and comp is None:
             fout.write("Section %s doesn't appear in current of %s"%(type,name))
             continue
-        fout.write("%s.%s\n"%(name,type))
+      
+        # Compare the keys in the reference with the keys in the compare
+        # The focus is on how the compare differs from the reference, which
+        # is the way the output is written.  For example, if the comp is missing
+        # something in the reference, it is a "missing" key.  If the comp has
+        # somthing which the reference does not, it is an "added" key
+        count = 0
         for key in ref.keys():
             if not key in comp.keys():
-                fout.write("    %s.%s key of reference %s not present.\n"%(type, key, reftype))
-                errors = errors + 1
-            
-            elif not ref[key] == comp[key] and (key in keys_added[type]):
-                fout.write("    %s.%s different\n"%(type, key,))
+                if count == 0:
+                    count = count + 1
+                    fout.write("Keys missing from mapper %s:%s which appear in %s:%s\n"%(cpath, name, rpath, refmapper))
+                fout.write("    %s.%s: "%(type, key))
+                fout.write("(M)" if key in movekeys else ("(O)" if key in obskeys else "(-)"))
+                fout.write("\n")
+
+        count = 0
+        for key in comp.keys():
+            # just look at the ones we have not already looked at
+            if not key in ref.keys():
+                if count == 0:
+                    count = count + 1
+                    fout.write("Keys not in %s:%s which exist in reference %s:%s\n"%(cpath, name, rpath, refmapper))
+                fout.write("    %s.%s: "%(type, key))
+                fout.write("(M)" if key in movekeys else ("(O)" if key in obskeys else "(-)"))
+                fout.write("\n")
+
+        count = 0
+        for key in ref.keys():
+            if key in comp.keys() and not ref[key] == comp[key]:
+                if count == 0:
+                    count = count + 1
+                    fout.write("Keys which appear in both but differ:\n")
+                fout.write("    %s.%s: "%(type, key))
+                fout.write("(M)" if key in movekeys else ("(O)" if key in obskeys else "(-)"))
+                fout.write("\n")
                 refs = ref[key].split("\n")
                 comps = comp[key].split("\n")
                 
@@ -68,14 +139,6 @@ if __name__ == "__main__":
                     if i > (len(refs)-1):
                         refs.append("")
                     if not refs[i] == comps[i]:
-                        fout.write("    different:" + comps[i] + "\n")
-                        fout.write("    different:" + refs[i] + " in %s reference\n"%(reftype))
-                errors = errors + 1
-        # see if key in current was in the reference
-        for key in comp.keys():
-            if not key in ref.keys():
-                if name == reftype:
-                    if not key in keys_added[type]:
-                        fout.write("   %s.%s in %s was added, and not by butlerUtils\n"%(type, key, name))
-                else:
-                    fout.write("    %s.%s in %s is not in %s\n"%(type, key, name, reftype))
+                        fout.write("        " + comps[i] + "\n")
+                        fout.write("        " + refs[i] + " in %s reference\n"%(refmapper))
+        # see if all the keys in the comp are also in the reference

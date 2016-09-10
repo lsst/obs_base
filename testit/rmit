@@ -1,3 +1,4 @@
-for driver in hsc suprimecam decam sdss lsstSim megacam test; do
-    python rmit.py -n $driver
+for driver in Hsc Suprimecam Decam Sdss LsstSim Megacam test; do
+    python rmit.py ${driver}Mapper obs
 done
+    python rmit.py HscMapper.rem_obs mov

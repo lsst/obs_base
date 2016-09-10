@@ -489,14 +489,14 @@ datasets: {
         python:      "lsst.afw.table.SourceCatalog"
         persistable: "SourceCatalog"
         storage:     "FitsCatalogStorage"
-	tables:      "raw_skytile"
+        tables:      "raw_skytile"
     }
     deepCoadd_tempExp_diffsrc: {
         template:    "deepCoadd-diff/%(filter)s/%(tract)d/%(patch)s/diffsrc-%(filter)s-%(tract)d-%(patch)s-%(visit)d.fits"
         python:      "lsst.afw.table.SourceCatalog"
         persistable: "SourceCatalog"
         storage:     "FitsCatalogStorage"
-	tables:      "raw_skytile"
+        tables:      "raw_skytile"
     }
 
     diffsources: {

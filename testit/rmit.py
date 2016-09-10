@@ -1,30 +1,77 @@
 import argparse
+import sys
 
-rmKeys = ('deepCoadd_calexp_background', 'deepCoadd_det', 'deepCoadd_mergeDet', 'deepCoadd_meas', 'deepCoadd_ref', 'deepCoadd_forced_src', 'detectCoaddSources_metadata', 'mergeCoaddDetections_metadata', 'measureCoaddSources_metadata', 'mergeCoaddMeasurements_metadata', 'deepCoadd_forced_metadata', 'isr_config', 'transformSrcMeasurement_config', 'singleFrameDriver_config', 'Mosaic_config', 'processStack_config', 'deep_makeCoaddTempExp_config', 'deep_assembleCoadd_config', 'deep_safeClipAssembleCoadd_config', 'deep_coadd_config', 'deep_processCoadd_config', 'bias_config', 'dark_config', 'flat_config', 'fringe_config', 'solvetansip_config', 'coaddDriver_config', 'forcedCoadd_config', 'forcedCcd_config', 'deepCoadd_forced_config', 'forcedPhotCcd_config', 'processFocus_config', 'processFocusSweep_config', 'detectCoaddSources_config', 'mergeCoaddDetections_config', 'measureCoaddSources_config', 'mergeCoaddMeasurements_config', 'multiBandDriver_config',)
+def getIndent(line):
+    for i in range(len(line)):
+        if not line[i].isspace():
+            break
+    return i
 
-pafs = ("DecamMapper.paf","HscMapper.paf","LsstSimMapper.paf","MegacamMapper.paf","SdssMapper.paf","SuprimecamMapper.paf","testMapper.paf")
+def readPafSection(filename, type=None):
+    result = {}
+    try:
+        fin = open(filename, "r")
+    except:
+        return result
+    lines = fin.readlines()
+    if type is None:
+        indent = -4
+    else:
+        indent = None    
+    for line in lines:
+        line = line.rstrip()
+        if line.find("#") >= 0:
+            continue
+        if len(line.strip()) == 0:
+            continue
+        if indent is None:
+            if line.find(type + ":") >= 0:
+                indent = getIndent(line)               
+            continue
+        thisindent = getIndent(line)
+        if thisindent <= indent:
+                break 
+        if line.find(':') > 0:
+            if thisindent == indent + 4:
+                name = line[:line.find(":")].strip()
+                result[name] = None
+    fin.close()           
+    return result
+
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("file", type=str, help="first file", default=None) 
+    parser.add_argument("type", type=str, help="remove obsolete or moved", default="obs") 
+    args = parser.parse_args()
     keys = {}
-    for file in pafs:
-        fin = open(file, "r")
-        fout = open(file + ".rem", "w")
-        lines = fin.readlines()
-        bset = None
-        for line in lines:
-            if bset:
-                bset = bset + line 
-                if len(line) > 0 and  line.find(' }') > 0:
-                    if not name in rmKeys:
-                        fout.write(bset)
-                    keys[name] = None
-                    bset = None
-                continue
-             
-            if line.find('{') > 0 and line.find(":") > 0:
-                bset = line
-                name = line[4: line.find(":")]
-            else:
-                fout.write(line)
-        fin.close()           
-        fout.close()           
+    movekeys = readPafSection("movekeys.yaml")
+    obskeys = readPafSection("obskeys.yaml")
+    fin = open(args.file + ".paf", "r")
+    if args.type.startswith("mov"):
+        rmKeys = movekeys
+        fout = open(args.file + ".rem_mov.paf", "w")
+    elif args.type.startswith("obs"):
+        rmKeys = obskeys
+        fout = open(args.file + ".rem_obs.paf", "w")
+    else:
+        print "type of removal must be specified"
+        sys.exit()
+    lines = fin.readlines()
+    bset = None
+    for line in lines:
+        if bset:
+            bset = bset + line 
+            if len(line) > 0 and  line.find(' }') > 0:
+                if not name in rmKeys:
+                    fout.write(bset)
+                keys[name] = None
+                bset = None
+            continue
+         
+        if line.find('{') > 0 and line.find(":") > 0:
+            bset = line
+            name = line[4: line.find(":")]
+        else:
+            fout.write(line)
+    fin.close()           
