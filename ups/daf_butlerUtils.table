@@ -1,5 +1,5 @@
 setupRequired(daf_base)
-setupRequired(pex_logging)
+setupRequired(log)
 setupRequired(pex_policy)
 setupRequired(daf_persistence)
 setupRequired(afw)
