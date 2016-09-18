@@ -21,3 +21,6 @@ datasets: {
         storage:     "PickleStorage"
     }
 }
+exposures: {}
+calibrations: {}
+images: {}
