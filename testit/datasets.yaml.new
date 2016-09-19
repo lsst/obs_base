@@ -7,20 +7,17 @@ src_schema:
     persistable: SourceCatalog
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
-    tables: raw raw_visit
     template: schema/src.fits
 deep_assembleCoadd_config:
     persistable: Config
     storage: ConfigStorage
     python: lsst.pipe.tasks.assembleCoadd.AssembleCoaddConfig
-    tables: raw raw_skyTile
     template: config/deep_assembleCoadd.py
 deepCoadd_calexp_background:
     persistable: PurePythonClass
     storage: FitsCatalogStorage
     python: lsst.afw.math.BackgroundList
-    tables: raw raw_skyTile
-    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/det_bkgd-%(filter)s-%(tract)d-%(patch)s.fits
+    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/bkgd-%(filter)s-%(tract)d-%(patch)s.fits
 deepCoadd_peak_schema:
     persistable: PeakCatalog
     storage: FitsCatalogStorage
@@ -30,37 +27,27 @@ deep_safeClipAssembleCoadd_config:
     persistable: Config
     storage: ConfigStorage
     python: lsst.pipe.tasks.assembleCoadd.SafeClipAssembleCoaddConfig
-    tables: raw raw_skyTile
     template: config/deep_safeClipAssembleCoadd.py
 flat_config:
     persistable: Config
     storage: ConfigStorage
     python: lsst.pipe.drivers.constructCalibs.FlatConfig
-    tables: raw raw_visit
     template: config/flat.py
 fringe_config:
     persistable: Config
     storage: ConfigStorage
     python: lsst.pipe.drivers.constructCalibs.FringeConfig
-    tables: raw raw_visit
     template: config/fringe.py
 bias_config:
     persistable: Config
     storage: ConfigStorage
     python: lsst.pipe.drivers.constructCalibs.BiasConfig
-    tables: raw raw_visit
     template: config/bias.py
 deepCoadd_forced_metadata:
     persistable: PropertySet
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
-    tables: raw raw_visit
     template: deepCoadd_forcedPhotCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.boost
-isr_config:
-    persistable: Config
-    storage: ConfigStorage
-    python: lsst.obs.subaru.isr.SubaruIsrConfig
-    template: config/isr.py
 deepCoadd_forced_src_schema:
     persistable: ignored
     storage: FitsCatalogStorage
@@ -70,7 +57,6 @@ deep_makeCoaddTempExp_metadata:
     persistable: PropertySet
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
-    tables: raw raw_skyTile
     template: deep_makeCoaddTempExp_metadata/%(filter)s/%(tract)d/%(patch)s_metadata.boost
 deepCoadd_ref_schema:
     persistable: SourceCatalog
@@ -81,7 +67,6 @@ deepCoaddId:
     persistable: ignored
     storage: ignored
     python: lsst.daf.base.PropertySet
-    tables: raw
     template: ignored
 mergeCoaddMeasurements_config:
     persistable: Config
@@ -92,13 +77,11 @@ deep_assembleCoadd_metadata:
     persistable: PropertySet
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
-    tables: raw raw_skyTile
     template: deep_assembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.boost
 deepCoadd_meas:
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
-    tables: raw raw_skyTile
     template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/meas-%(filter)s-%(tract)d-%(patch)s.fits
 deepCoadd_forced_config:
     persistable: Config
@@ -109,7 +92,6 @@ deepCoadd_forced_src:
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
-    tables: raw raw_skyTile
     template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/forced_src-%(filter)s-%(tract)d-%(patch)s.fits
 mergeCoaddDetections_config:
     persistable: Config
@@ -120,25 +102,21 @@ deep_makeSkyMap_metadata:
     persistable: PropertySet
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
-    tables: raw
     template: metadata/deep_makeSkyMap.boost
 measureCoaddSources_metadata:
     persistable: PropertySet
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
-    tables: raw raw_skyTile
     template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/measMD-%(filter)s-%(tract)d-%(patch)s.boost
 mergeCoaddMeasurements_metadata:
     persistable: PropertySet
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
-    tables: raw raw_skyTile
     template: deepCoadd-results/merged/%(tract)d/%(patch)s/mergeMeasMD-%(tract)d-%(patch)s.boost
 transformSrcMeasurement_config:
     persistable: Config
     storage: ConfigStorage
     python: lsst.pipe.tasks.transformMeasurement.RunTransformConfig
-    tables: raw raw_visit
     template: config/transformSrcMeasurement.py
 deepCoadd_mergeDet_schema:
     persistable: SourceCatalog
@@ -154,43 +132,36 @@ deep_safeClipAssembleCoadd_metadata:
     persistable: PropertySet
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
-    tables: raw raw_skyTile
     template: deep_assembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.boost
 transformed_src_schema:
     persistable: BaseCatalog
     storage: FitsCatalogStorage
     python: lsst.afw.table.BaseCatalog
-    tables: raw raw_visit
     template: schema/transformed_src.fits
 deepMergedCoaddId:
     persistable: ignored
     storage: ignored
     python: lsst.daf.base.PropertySet
-    tables: raw
     template: ignored
 detectCoaddSources_metadata:
     persistable: PropertySet
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
-    tables: raw raw_skyTile
     template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/detectMD-%(filter)s-%(tract)d-%(patch)s.boost
 deep_makeCoaddTempExp_config:
     persistable: Config
     storage: ConfigStorage
     python: lsst.pipe.tasks.makeCoaddTempExp.MakeCoaddTempExpConfig
-    tables: raw raw_skyTile
     template: config/deep_makeCoaddTempExp.py
 deepCoaddId_bits:
     persistable: ignored
     storage: ignored
     python: lsst.daf.base.PropertySet
-    tables: raw
     template: ignored
 deepCoadd_ref:
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
-    tables: raw raw_skyTile
     template: deepCoadd-results/merged/%(tract)d/%(patch)s/ref-%(tract)d-%(patch)s.fits
 forced_src_schema:
     persistable: ignored
@@ -201,7 +172,6 @@ calibrated_src_schema:
     persistable: SourceCatalog
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
-    tables: raw raw_visit
     template: schema/calibrated_src.fits
 deepCoadd_det_schema:
     persistable: SourceCatalog
@@ -212,7 +182,6 @@ dark_config:
     persistable: Config
     storage: ConfigStorage
     python: lsst.pipe.drivers.constructCalibs.DarkConfig
-    tables: raw raw_visit
     template: config/dark.py
 multiBandDriver_config:
     persistable: Config
@@ -228,25 +197,21 @@ deep_makeDiscreteSkyMap_metadata:
     persistable: PropertySet
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
-    tables: raw
     template: metadata/deep_makeDiscreteSkyMap.boost
 deepCoadd_mergeDet:
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
-    tables: raw raw_skyTile
     template: deepCoadd-results/merged/%(tract)d/%(patch)s/mergeDet-%(tract)d-%(patch)s.fits
 ccdExposureId:
     persistable: ignored
     storage: ignored
     python: lsst.daf.base.PropertySet
-    tables: raw
     template: ignored
 forcedCcd_config:
     persistable: Config
     storage: ConfigStorage
     python: hsc.pipe.tasks.forcedCcd.ForcedCcdConfig
-    tables: raw raw_visit
     template: config/forcedCcd.py
 deepCoadd_meas_schema:
     persistable: SourceCatalog
@@ -257,13 +222,11 @@ deepCoadd_skyMap:
     persistable: ignored
     storage: PickleStorage
     python: lsst.skymap.BaseSkyMap
-    tables: raw
     template: deepCoadd/skyMap.pickle
 deepCoadd_det:
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
-    tables: raw raw_skyTile
     template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/det-%(filter)s-%(tract)d-%(patch)s.fits
 detectCoaddSources_config:
     persistable: Config
@@ -274,41 +237,34 @@ coaddDriver_config:
     persistable: Config
     storage: ConfigStorage
     python: lsst.pipe.drivers.coaddDriver.CoaddDriverConfig
-    tables: raw raw_visit
     template: config/coaddDriver.py
 Mosaic_config:
     persistable: Config
     storage: ConfigStorage
     python: lsst.meas.mosaic.mosaicTask.MosaicConfig
-    tables: raw raw_visit
     template: config/mosaic.py
 deepMergedCoaddId_bits:
     persistable: ignored
     storage: ignored
     python: lsst.daf.base.PropertySet
-    tables: raw
     template: ignored
 singleFrameDriver_config:
     persistable: Config
     storage: ConfigStorage
     python: lsst.pipe.drivers.singleFrameDriver.SingleFrameDriverConfig
-    tables: raw raw_visit
     template: config/singleFrameDriver.py
 mergeCoaddDetections_metadata:
     persistable: PropertySet
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
-    tables: raw raw_skyTile
     template: deepCoadd-results/merged/%(tract)d/%(patch)s/mergeDetMD-%(tract)d-%(patch)s.boost
 icSrc_schema:
     persistable: SourceCatalog
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
-    tables: raw raw_visit
     template: schema/icSrc.fits
 ccdExposureId_bits:
     persistable: ignored
     storage: ignored
     python: lsst.daf.base.PropertySet
-    tables: raw
     template: ignored

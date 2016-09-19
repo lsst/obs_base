@@ -1089,3 +1089,5 @@ datasets: {
         storage:       "FitsCatalogStorage"
     }
 }
+calibrations: {
+}

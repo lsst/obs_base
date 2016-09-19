@@ -1,0 +1,9 @@
+cp -p DecamMapper.paf $OBS_DECAM_DIR/policy
+cp -p HscMapper.paf $OBS_SUBARU_DIR/policy
+cp -p LsstSimMapper.paf $OBS_LSSTSIM_DIR/policy
+cp -p MegacamMapper.paf $OBS_CFHT_DIR/policy
+cp -p SdssMapper.paf $OBS_SDSS_DIR/policy
+cp -p SuprimecamMapper.paf $OBS_SUBARU_DIR/policy
+cp -p testMapper.paf $OBS_TEST_DIR/policy
+cp -p datasets.yaml ../policy
+rm ../policy/exposures.yaml

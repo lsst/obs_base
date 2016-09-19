@@ -210,6 +210,14 @@ exposures: {
         tables:        "raw"
         tables:        "raw_visit"
     }
+    dcrModel: {
+        template:    "dcrModel/%(filter)s%(subfilter)s/%(tract)d/%(patch)s.fits"
+        python:      "lsst.afw.image.ExposureF"
+        persistable: "ExposureF"
+        storage:     "FitsStorage"
+        level:       "None"
+        tables:      raw
+    }
 }
 
 calibrations: {

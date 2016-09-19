@@ -1,0 +1,40 @@
+
+DM-7049 is an attempt to make the paf/yaml items consistent across mappers
+by moving some entries to daf_butlerUtils using the latest HscMapper as a model.
+Items were moved (M) to datasets.yaml and exposures.yaml. Some were also determined
+to be obsolete (O) and removed from all of the mappers. The moved items were removed
+from the HscMapper.paf file, but not the others.
+
+Further work is needed, as described in this RFC, to bring all the mappers into
+a consistent state.
+
+1.  Datasets should have been moved (M), but retain a different definition in the
+    mapper, because they differ from exposures.yaml or datasets.yaml.
+    These are marked with M!.
+ 
+2.  Data sets which appear in the mapper but not in HscMapper should be examined
+    to see if they should be deleted or altered.
+
+    These could be datasets which are unique to this mapper.
+    They could also be datasets which are not longer in use.
+    If they are neither, they are candidates for a name change.
+
+3.  Number of datasets which appear in HSC but not in the mapper are not listed.
+    They were not moved to daf_butlerUtils, so presumably are not targets for this
+    round of changes.
+
+4.  Datasets which share names with an HSC dataset but are not in butlerUtils.
+    They marked with X!, P!, T!, S! or x! to show how they differ.
+
+    These are not targets for this round of changes.
+
+    They are listed in case there is some reason to either move them or make
+    them consistent with HSC.
+
+Other notes:
+
+megacamMapper and suprimecamMapper contain bypass case for StackExposureId[_bits]
+which now may be outmoded.
+
+Many mappers constain a set of keys called "goodSeeingDiff" which do not appear to
+be used.

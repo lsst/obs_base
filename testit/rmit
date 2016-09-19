@@ -1,4 +1,4 @@
 for driver in Hsc Suprimecam Decam Sdss LsstSim Megacam test; do
-    python rmit.py ${driver}Mapper obs
+    python rmit2.py ${driver}Mapper obs
+    python rmit2.py ${driver}Mapper.rem_obs mov
 done
-    python rmit.py HscMapper.rem_obs mov

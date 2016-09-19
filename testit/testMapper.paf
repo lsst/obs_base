@@ -397,6 +397,12 @@ datasets: {
         tables:        raw
         tables:        raw_skyTile
     }
+    deepCoadd_meas_schema: {
+        template:      "schema/deepCoadd_meas.fits"
+        python:        "lsst.afw.table.SourceCatalog"
+        persistable:   "SourceCatalog"
+        storage:       "FitsCatalogStorage"
+    }
     sourceHist: {
         template:      "results/st%(skyTile)d/sourceHist.fits"
         python:        "lsst.afw.image.DecoratedImageU"
@@ -476,6 +482,12 @@ datasets: {
         storage:    "FitsCatalogStorage"
         tables:        raw
         tables:        raw_skyTile
+    }
+    measureCoaddSources_config: {
+        template:      "config/measureMerged.py"
+        python:        "lsst.pipe.tasks.multiBand.MeasureMergedCoaddSourcesConfig"
+        persistable:   "Config"
+        storage:       "ConfigStorage"
     }
     Mosaic_config: {
         template:      "config/mosaic.py"
@@ -609,5 +621,5 @@ datasets: {
         python:        "lsst.pipe.tasks.objectMasks.ObjectMaskCatalog"
         persistable:   "PurePythonClass"
         storage:       "FitsCatalogStorage"
-    }
+    }	
 }

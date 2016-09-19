@@ -8,7 +8,6 @@ flat_config: { }
 fringe_config: { }
 bias_config: { }
 deepCoadd_forced_metadata: { }
-isr_config: { }
 deepCoadd_forced_src_schema: { }
 deep_makeCoaddTempExp_metadata: { }
 deepCoadd_ref_schema: { }
@@ -53,3 +52,5 @@ singleFrameDriver_config: { }
 mergeCoaddDetections_metadata: { }
 icSrc_schema: { }
 ccdExposureId_bits: { }
+deepCoadd: { }
+deepCoadd_calexp: { }

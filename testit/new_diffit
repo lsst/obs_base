@@ -1,0 +1,7 @@
+source copynew
+for driver in hsc suprimecam decam sdss lsstSim megacam test; do
+    python dumpit.py -n $driver -d obs
+    python dumpit.py -n $driver -d new
+    python diffit.py -n $driver -c new -p ref
+    python diffit.py -n $driver -r hsc -p new -c new
+done

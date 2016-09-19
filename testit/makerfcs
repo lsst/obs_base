@@ -1,0 +1,6 @@
+for driver in hsc suprimecam decam sdss lsstSim megacam test; do
+    echo "RFC recommendation for changes to $driver mapper.paf file" > $driver.rfc
+    cat changes.summary >> $driver.rfc
+    echo "-------------------------------------" >> $driver.rfc
+    cat new/$driver.hscdiffs >> $driver.rfc
+done
