@@ -92,6 +92,11 @@ class MakeRawVisitInfo(object):
     def setArgDict(self, md, argDict):
         """Fill an argument dict with arguments for makeVisitInfo and pop associated metadata
 
+        Subclasses are expected to override this method, though the override
+        may wish to call this default implementation, which:
+        - sets exposureTime from "EXPTIME"
+        - sets date by calling getDateAvg
+
         @param[in,out] md  metadata, as an lsst.daf.base.PropertyList or PropertySet;
             items that are used are stripped from the metadata
             (except TIMESYS, because it may apply to more than one other keyword).

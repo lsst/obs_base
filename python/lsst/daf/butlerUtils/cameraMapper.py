@@ -39,6 +39,7 @@ import lsst.afw.cameraGeom as afwCameraGeom
 import lsst.log as lsstLog
 import lsst.pex.policy as pexPolicy
 from .exposureIdInfo import ExposureIdInfo
+from .makeRawVisitInfo import MakeRawVisitInfo
 from lsst.utils import getPackageDir
 
 """This module defines the CameraMapper base class."""
@@ -84,13 +85,23 @@ class CameraMapper(dafPersist.Mapper):
     data.  This should contain validity start and end entries for each
     calibration dataset in the same timescale as the observation time.
 
-    The following method must be provided by the subclass:
+    Subclasses will typically set MakeRawVisitInfoClass:
+
+    MakeRawVisitInfoClass: a class variable that points to a subclass of
+    MakeRawVisitInfo, a functor that creates an
+    lsst.afw.image.VisitInfo from the FITS metadata of a raw image.
+
+    Subclasses must provide the following methods:
 
     _extractDetectorName(self, dataId): returns the detector name for a CCD
     (e.g., "CFHT 21", "R:1,2 S:3,4") as used in the AFW CameraGeom class given
     a dataset identifier referring to that CCD or a subcomponent of it.
 
-    Other methods that the subclass may wish to override include:
+    _computeCcdExposureId(self, dataId): see below
+
+    _computeCoaddExposureId(self, dataId, singleFilter): see below
+
+    Subclasses may also need to override the following methods:
 
     _transformId(self, dataId): transformation of a data identifier
     from colloquial usage (e.g., "ccdname") to proper/actual usage (e.g., "ccd"),
@@ -138,6 +149,10 @@ class CameraMapper(dafPersist.Mapper):
       of pyfits from this package.
     """
     packageName = None
+
+    # a class or subclass of MakeRawVisitInfo, a functor that makes an
+    # lsst.afw.image.VisitInfo from the FITS metadata of a raw image
+    MakeRawVisitInfoClass = MakeRawVisitInfo
 
     def __init__(self, policy, repositoryDir,
                  root=None, registry=None, calibRoot=None, calibRegistry=None,
@@ -376,6 +391,29 @@ class CameraMapper(dafPersist.Mapper):
         # to instantiate an instance
         if self.packageName is None:
             raise ValueError('class variable packageName must not be None')
+
+        self.makeRawVisitInfo = self.MakeRawVisitInfoClass(log=self.log)
+
+    def _computeCcdExposureId(self, dataId):
+        """Compute the 64-bit (long) identifier for a CCD exposure.
+
+        Subclasses must override
+
+        @param dataId (dict) Data identifier with visit, ccd
+        """
+        raise NotImplementedError()
+
+    def _computeCoaddExposureId(self, dataId, singleFilter):
+        """Compute the 64-bit (long) identifier for a coadd.
+
+        Subclasses must override
+
+        @param dataId (dict)       Data identifier with tract and patch.
+        @param singleFilter (bool) True means the desired ID is for a single-
+                                   filter coadd, in which case dataId
+                                   must contain filter.
+        """
+        raise NotImplementedError()
 
     @staticmethod
     def getRepoPolicy(root, repos):
@@ -652,8 +690,12 @@ class CameraMapper(dafPersist.Mapper):
 
     def std_raw(self, item, dataId):
         """Standardize a raw dataset by converting it to an Exposure instead of an Image"""
-        item = exposureFromImage(item)
-        return self._standardizeExposure(self.exposures['raw'], item, dataId,
+        exposure = exposureFromImage(item)
+        exposureId = self._computeCcdExposureId(dataId)
+        md = exposure.getMetadata()
+        visitInfo = self.makeRawVisitInfo(md=md, exposureId=exposureId)
+        exposure.getInfo().setVisitInfo(visitInfo)
+        return self._standardizeExposure(self.exposures['raw'], exposure, dataId,
                                          trimmed=False)
 
     def map_skypolicy(self, dataId):
@@ -827,28 +869,6 @@ class CameraMapper(dafPersist.Mapper):
             filterName = self.filters[filterName]
         item.setFilter(afwImage.Filter(filterName))
 
-    def _setTimes(self, mapping, item, dataId):
-        """Set the exposure time and exposure midpoint in the calib object in
-        an Exposure.  Use the EXPTIME and MJD-OBS keywords (and strip out
-        EXPTIME).
-        @param mapping (lsst.daf.butlerUtils.Mapping)
-        @param[in,out] item (lsst.afw.image.Exposure)
-        @param dataId (dict) Dataset identifier"""
-
-        md = item.getMetadata()
-        calib = item.getCalib()
-        if md.exists("EXPTIME"):
-            expTime = md.get("EXPTIME")
-            calib.setExptime(expTime)
-            md.remove("EXPTIME")
-        else:
-            expTime = calib.getExptime()
-        if md.exists("MJD-OBS"):
-            obsStart = dafBase.DateTime(md.get("MJD-OBS"),
-                                        dafBase.DateTime.MJD, dafBase.DateTime.UTC)
-            obsMidpoint = obsStart.nsecs() + long(expTime * 1000000000 / 2)
-            calib.setMidTime(dafBase.DateTime(obsMidpoint))
-
     # Default standardization function for exposures
     def _standardizeExposure(self, mapping, item, dataId, filter=True,
                              trimmed=True):
@@ -880,8 +900,6 @@ class CameraMapper(dafPersist.Mapper):
 
         if filter:
             self._setFilter(mapping, item, dataId)
-        if not isinstance(mapping, CalibrationMapping):
-            self._setTimes(mapping, item, dataId)
 
         return item
 
