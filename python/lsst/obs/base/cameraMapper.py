@@ -324,18 +324,15 @@ class CameraMapper(dafPersist.Mapper):
                     mappings[datasetType] = mapping
                     self.mappings[datasetType] = mapping
                     if not hasattr(self, "map_" + datasetType):
-                        def mapClosure(dataId, write=False,
-                                       mapper=weakref.proxy(self), mapping=mapping):
+                        def mapClosure(dataId, write=False, mapper=weakref.proxy(self), mapping=mapping):
                             return mapping.map(mapper, dataId, write)
                         setattr(self, "map_" + datasetType, mapClosure)
                     if not hasattr(self, "query_" + datasetType):
                         def queryClosure(format, dataId, mapping=mapping):
                             return mapping.lookup(format, dataId)
                         setattr(self, "query_" + datasetType, queryClosure)
-                    if hasattr(mapping, "standardize") and \
-                            not hasattr(self, "std_" + datasetType):
-                        def stdClosure(item, dataId,
-                                       mapper=weakref.proxy(self), mapping=mapping):
+                    if hasattr(mapping, "standardize") and not hasattr(self, "std_" + datasetType):
+                        def stdClosure(item, dataId, mapper=weakref.proxy(self), mapping=mapping):
                             return mapping.standardize(mapper, item, dataId)
                         setattr(self, "std_" + datasetType, stdClosure)
 
