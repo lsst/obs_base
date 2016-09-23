@@ -931,18 +931,30 @@ class CameraMapper(dafPersist.Mapper):
 
 
 def exposureFromImage(image):
-    """Generate an exposure from a DecoratedImage or similar
-    @param[in] image Image of interest
+    """Generate an Exposure from an image-like object
+
+    If the image is a DecoratedImage then also set its WCS and metadata
+    (Image and MaskedImage are missing the necessary metadata
+    and Exposure already has those set)
+
+    @param[in] image  Image-like object (lsst.afw.image.DecoratedImage, Image, MaskedImage or Exposure)
     @return (lsst.afw.image.Exposure) Exposure containing input image
     """
-    if isinstance(image, afwImage.DecoratedImageU) or isinstance(image, afwImage.DecoratedImageI) or \
-            isinstance(image, afwImage.DecoratedImageF) or isinstance(image, afwImage.DecoratedImageD):
+    if hasattr(image, "getVariance"):
+        # MaskedImage
+        exposure = afwImage.makeExposure(image)
+    elif hasattr(image, "getImage"):
+        # DecoratedImage
         exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image.getImage()))
-    else:
+        metadata = image.getMetadata()
+        wcs = afwImage.makeWcs(metadata, True)
+        exposure.setWcs(wcs)
+        exposure.setMetadata(metadata)
+    elif hasattr(image, "getMaskedImage"):
+        # Exposure
         exposure = image
-    md = image.getMetadata()
-    exposure.setMetadata(md)
-    wcs = afwImage.makeWcs(md, True)
-    exposure.setWcs(wcs)
+    else:
+        # Image
+        exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image))
 
     return exposure
