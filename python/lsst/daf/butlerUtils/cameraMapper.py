@@ -39,6 +39,7 @@ import lsst.afw.cameraGeom as afwCameraGeom
 import lsst.log as lsstLog
 import lsst.pex.policy as pexPolicy
 from .exposureIdInfo import ExposureIdInfo
+from .makeRawVisitInfo import MakeRawVisitInfo
 from lsst.utils import getPackageDir
 
 """This module defines the CameraMapper base class."""
@@ -84,13 +85,23 @@ class CameraMapper(dafPersist.Mapper):
     data.  This should contain validity start and end entries for each
     calibration dataset in the same timescale as the observation time.
 
-    The following method must be provided by the subclass:
+    Subclasses will typically set MakeRawVisitInfoClass:
+
+    MakeRawVisitInfoClass: a class variable that points to a subclass of
+    MakeRawVisitInfo, a functor that creates an
+    lsst.afw.image.VisitInfo from the FITS metadata of a raw image.
+
+    Subclasses must provide the following methods:
 
     _extractDetectorName(self, dataId): returns the detector name for a CCD
     (e.g., "CFHT 21", "R:1,2 S:3,4") as used in the AFW CameraGeom class given
     a dataset identifier referring to that CCD or a subcomponent of it.
 
-    Other methods that the subclass may wish to override include:
+    _computeCcdExposureId(self, dataId): see below
+
+    _computeCoaddExposureId(self, dataId, singleFilter): see below
+
+    Subclasses may also need to override the following methods:
 
     _transformId(self, dataId): transformation of a data identifier
     from colloquial usage (e.g., "ccdname") to proper/actual usage (e.g., "ccd"),
@@ -139,6 +150,10 @@ class CameraMapper(dafPersist.Mapper):
     """
     packageName = None
 
+    # a class or subclass of MakeRawVisitInfo, a functor that makes an
+    # lsst.afw.image.VisitInfo from the FITS metadata of a raw image
+    MakeRawVisitInfoClass = MakeRawVisitInfo
+
     def __init__(self, policy, repositoryDir,
                  root=None, registry=None, calibRoot=None, calibRegistry=None,
                  provided=None, outputRoot=None):
@@ -169,8 +184,8 @@ class CameraMapper(dafPersist.Mapper):
         if repoPolicy is not None:
             policy.update(repoPolicy)
 
-        defaultPolicyFile = dafPersist.Policy.defaultPolicyFile("daf_butlerUtils", 
-                                                                "MapperDictionary.paf", 
+        defaultPolicyFile = dafPersist.Policy.defaultPolicyFile("daf_butlerUtils",
+                                                                "MapperDictionary.paf",
                                                                 "policy")
         dictPolicy = dafPersist.Policy(defaultPolicyFile)
         policy.merge(dictPolicy)
@@ -377,12 +392,35 @@ class CameraMapper(dafPersist.Mapper):
         if self.packageName is None:
             raise ValueError('class variable packageName must not be None')
 
+        self.makeRawVisitInfo = self.MakeRawVisitInfoClass(log=self.log)
+
+    def _computeCcdExposureId(self, dataId):
+        """Compute the 64-bit (long) identifier for a CCD exposure.
+
+        Subclasses must override
+
+        @param dataId (dict) Data identifier with visit, ccd
+        """
+        raise NotImplementedError()
+
+    def _computeCoaddExposureId(self, dataId, singleFilter):
+        """Compute the 64-bit (long) identifier for a coadd.
+
+        Subclasses must override
+
+        @param dataId (dict)       Data identifier with tract and patch.
+        @param singleFilter (bool) True means the desired ID is for a single-
+                                   filter coadd, in which case dataId
+                                   must contain filter.
+        """
+        raise NotImplementedError()
+
     @staticmethod
     def getRepoPolicy(root, repos):
         """Get the policy stored in a repo (specified by 'root'), if there is one.
-        
+
         @param root (string) path to the root location of the repository
-        @param repos (string) path from the root of the repo to the folder containing a file named 
+        @param repos (string) path from the root of the repo to the folder containing a file named
                               _policy.paf or _policy.yaml
         @return (lsst.daf.persistence.Policy or None) A Policy instantiated with the policy found according to
                                                       input variables, or None if a policy file was not found.
@@ -640,10 +678,24 @@ class CameraMapper(dafPersist.Mapper):
         expBits = self.bypass_ccdExposureId_bits(datasetType, pythonType, location, dataId)
         return ExposureIdInfo(expId=expId, expBits=expBits)
 
+    def std_bfKernel(self, item, dataId):
+        """Disable standardization for bfKernel
+
+        bfKernel is a calibration product that is numpy array,
+        unlike other calibration products that are all images;
+        all calibration images are sent through _standardizeExposure
+        due to CalibrationMapping, but we don't want that to happen to bfKernel
+        """
+        return item
+
     def std_raw(self, item, dataId):
         """Standardize a raw dataset by converting it to an Exposure instead of an Image"""
-        item = exposureFromImage(item)
-        return self._standardizeExposure(self.exposures['raw'], item, dataId,
+        exposure = exposureFromImage(item)
+        exposureId = self._computeCcdExposureId(dataId)
+        md = exposure.getMetadata()
+        visitInfo = self.makeRawVisitInfo(md=md, exposureId=exposureId)
+        exposure.getInfo().setVisitInfo(visitInfo)
+        return self._standardizeExposure(self.exposures['raw'], exposure, dataId,
                                          trimmed=False)
 
     def map_skypolicy(self, dataId):
@@ -817,41 +869,29 @@ class CameraMapper(dafPersist.Mapper):
             filterName = self.filters[filterName]
         item.setFilter(afwImage.Filter(filterName))
 
-    def _setTimes(self, mapping, item, dataId):
-        """Set the exposure time and exposure midpoint in the calib object in
-        an Exposure.  Use the EXPTIME and MJD-OBS keywords (and strip out
-        EXPTIME).
-        @param mapping (lsst.daf.butlerUtils.Mapping)
-        @param[in,out] item (lsst.afw.image.Exposure)
-        @param dataId (dict) Dataset identifier"""
-
-        md = item.getMetadata()
-        calib = item.getCalib()
-        if md.exists("EXPTIME"):
-            expTime = md.get("EXPTIME")
-            calib.setExptime(expTime)
-            md.remove("EXPTIME")
-        else:
-            expTime = calib.getExptime()
-        if md.exists("MJD-OBS"):
-            obsStart = dafBase.DateTime(md.get("MJD-OBS"),
-                                        dafBase.DateTime.MJD, dafBase.DateTime.UTC)
-            obsMidpoint = obsStart.nsecs() + long(expTime * 1000000000 / 2)
-            calib.setMidTime(dafBase.DateTime(obsMidpoint))
-
     # Default standardization function for exposures
     def _standardizeExposure(self, mapping, item, dataId, filter=True,
                              trimmed=True):
         """Default standardization function for images.
+
+        This sets the Detector from the camera geometry
+        and optionally set the Fiter. In both cases this saves
+        having to persist some data in each exposure (or image).
+
         @param mapping (lsst.daf.butlerUtils.Mapping)
-        @param[in,out] item (lsst.afw.image.Exposure)
+        @param[in,out] item image-like object; any of lsst.afw.image.Exposure,
+                lsst.afw.image.DecoratedImage, lsst.afw.image.Image
+                or lsst.afw.image.MaskedImage
         @param dataId (dict) Dataset identifier
-        @param filter (bool) Set filter?
+        @param filter (bool) Set filter? Ignored if item is already an exposure
         @param trimmed (bool) Should detector be marked as trimmed?
         @return (lsst.afw.image.Exposure) the standardized Exposure"""
-
-        if (re.search(r'Exposure', mapping.python) and re.search(r'Image', mapping.persistable)):
-            item = exposureFromImage(item)
+        if not hasattr(item, "getMaskedImage"):
+            try:
+                item = exposureFromImage(item)
+            except Exception as e:
+                self.log.error("Could not turn item=%r into an exposure: %s" % (repr(item), e))
+                raise
 
         if mapping.level.lower() == "amp":
             self._setAmpDetector(item, dataId, trimmed)
@@ -860,8 +900,6 @@ class CameraMapper(dafPersist.Mapper):
 
         if filter:
             self._setFilter(mapping, item, dataId)
-        if not isinstance(mapping, CalibrationMapping):
-            self._setTimes(mapping, item, dataId)
 
         return item
 
@@ -931,18 +969,30 @@ class CameraMapper(dafPersist.Mapper):
 
 
 def exposureFromImage(image):
-    """Generate an exposure from a DecoratedImage or similar
-    @param[in] image Image of interest
+    """Generate an Exposure from an image-like object
+
+    If the image is a DecoratedImage then also set its WCS and metadata
+    (Image and MaskedImage are missing the necessary metadata
+    and Exposure already has those set)
+
+    @param[in] image  Image-like object (lsst.afw.image.DecoratedImage, Image, MaskedImage or Exposure)
     @return (lsst.afw.image.Exposure) Exposure containing input image
     """
-    if isinstance(image, afwImage.DecoratedImageU) or isinstance(image, afwImage.DecoratedImageI) or \
-            isinstance(image, afwImage.DecoratedImageF) or isinstance(image, afwImage.DecoratedImageD):
+    if hasattr(image, "getVariance"):
+        # MaskedImage
+        exposure = afwImage.makeExposure(image)
+    elif hasattr(image, "getImage"):
+        # DecoratedImage
         exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image.getImage()))
-    else:
+        metadata = image.getMetadata()
+        wcs = afwImage.makeWcs(metadata, True)
+        exposure.setWcs(wcs)
+        exposure.setMetadata(metadata)
+    elif hasattr(image, "getMaskedImage"):
+        # Exposure
         exposure = image
-    md = image.getMetadata()
-    exposure.setMetadata(md)
-    wcs = afwImage.makeWcs(md, True)
-    exposure.setWcs(wcs)
+    else:
+        # Image
+        exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image))
 
     return exposure

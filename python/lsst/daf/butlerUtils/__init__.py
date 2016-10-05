@@ -25,3 +25,4 @@ from .version import *
 from .mapping import *
 from .cameraMapper import *
 from .exposureIdInfo import *
+from .makeRawVisitInfo import *
