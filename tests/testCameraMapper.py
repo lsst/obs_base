@@ -264,7 +264,7 @@ class Mapper2TestCase(unittest.TestCase):
 
         for data in testData:
             path = os.path.join(testDir, 'testGetRepoPolicy', data.folder)
-            policy = lsst.obs.base.CameraMapper.getRepoPolicy(os.environ['obs_base_DIR'], path)
+            policy = lsst.obs.base.CameraMapper.getRepoPolicy(getPackageDir('obs_base'), path)
             self.assertIsNotNone(policy)
             self.assertEqual(policy[data.key], data.value)
 
