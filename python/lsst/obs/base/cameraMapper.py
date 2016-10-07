@@ -31,7 +31,7 @@ import re
 import shutil
 import weakref
 import lsst.daf.persistence as dafPersist
-from lsst.daf.butlerUtils import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping
+from . import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping
 import lsst.daf.base as dafBase
 import lsst.afw.geom as afwGeom
 import lsst.afw.image as afwImage
@@ -184,7 +184,7 @@ class CameraMapper(dafPersist.Mapper):
         if repoPolicy is not None:
             policy.update(repoPolicy)
 
-        defaultPolicyFile = dafPersist.Policy.defaultPolicyFile("daf_butlerUtils",
+        defaultPolicyFile = dafPersist.Policy.defaultPolicyFile("obs_base",
                                                                 "MapperDictionary.paf",
                                                                 "policy")
         dictPolicy = dafPersist.Policy(defaultPolicyFile)
@@ -262,13 +262,13 @@ class CameraMapper(dafPersist.Mapper):
 
         # Sub-dictionaries (for exposure/calibration/dataset types)
         imgMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
-            "daf_butlerUtils", "ImageMappingDictionary.paf", "policy"))
+            "obs_base", "ImageMappingDictionary.paf", "policy"))
         expMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
-            "daf_butlerUtils", "ExposureMappingDictionary.paf", "policy"))
+            "obs_base", "ExposureMappingDictionary.paf", "policy"))
         calMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
-            "daf_butlerUtils", "CalibrationMappingDictionary.paf", "policy"))
+            "obs_base", "CalibrationMappingDictionary.paf", "policy"))
         dsMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
-             "daf_butlerUtils", "DatasetMappingDictionary.paf", "policy"))
+             "obs_base", "DatasetMappingDictionary.paf", "policy"))
 
         # Dict of valid keys and their value types
         self.keyDict = dict()
@@ -286,7 +286,7 @@ class CameraMapper(dafPersist.Mapper):
                 datasets = policy[name]
 
                 # Centrally-defined datasets
-                defaultsPath = os.path.join(getPackageDir("daf_butlerUtils"), "policy", name + ".yaml")
+                defaultsPath = os.path.join(getPackageDir("obs_base"), "policy", name + ".yaml")
                 if os.path.exists(defaultsPath):
                     datasets.merge(dafPersist.Policy(defaultsPath))
 
@@ -664,7 +664,7 @@ class CameraMapper(dafPersist.Mapper):
 
     def map_expIdInfo(self, dataId, write=False):
         return dafPersist.ButlerLocation(
-            pythonType="lsst.daf.butlerUtils.ExposureIdInfo",
+            pythonType="lsst.obs.base.ExposureIdInfo",
             cppType=None,
             storageName="Internal",
             locationList="ignored",
@@ -673,7 +673,7 @@ class CameraMapper(dafPersist.Mapper):
         )
 
     def bypass_expIdInfo(self, datasetType, pythonType, location, dataId):
-        """Hook to retrieve an lsst.daf.butlerUtils.ExposureIdInfo for an exposure"""
+        """Hook to retrieve an lsst.obs.base.ExposureIdInfo for an exposure"""
         expId = self.bypass_ccdExposureId(datasetType, pythonType, location, dataId)
         expBits = self.bypass_ccdExposureId_bits(datasetType, pythonType, location, dataId)
         return ExposureIdInfo(expId=expId, expBits=expBits)
@@ -855,7 +855,7 @@ class CameraMapper(dafPersist.Mapper):
         """Set the filter object in an Exposure.  If the Exposure had a FILTER
         keyword, this was already processed during load.  But if it didn't,
         use the filter from the registry.
-        @param mapping (lsst.daf.butlerUtils.Mapping)
+        @param mapping (lsst.obs.base.Mapping)
         @param[in,out] item (lsst.afw.image.Exposure)
         @param dataId (dict) Dataset identifier"""
 
@@ -878,7 +878,7 @@ class CameraMapper(dafPersist.Mapper):
         and optionally set the Fiter. In both cases this saves
         having to persist some data in each exposure (or image).
 
-        @param mapping (lsst.daf.butlerUtils.Mapping)
+        @param mapping (lsst.obs.base.Mapping)
         @param[in,out] item image-like object; any of lsst.afw.image.Exposure,
                 lsst.afw.image.DecoratedImage, lsst.afw.image.Image
                 or lsst.afw.image.MaskedImage

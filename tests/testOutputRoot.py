@@ -30,11 +30,10 @@ import lsst.utils.tests
 import pickle
 import os
 import subprocess
-import pickle
 import lsst.afw.geom as afwGeom
 import lsst.pex.policy as pexPolicy
 import lsst.daf.persistence as dafPersist
-import lsst.daf.butlerUtils as butlerUtils
+import lsst.obs.base
 
 # Define paths used for testing
 testPath = os.path.abspath(os.path.dirname(__file__))
@@ -49,14 +48,14 @@ def setup_module(module):
     lsst.utils.tests.init()
 
 
-class MinMapper1(butlerUtils.CameraMapper):
+class MinMapper1(lsst.obs.base.CameraMapper):
     packageName = 'larry'
 
     def __init__(self, root=testPath, outputRoot=None):
         policy = pexPolicy.Policy.createPolicy(os.path.join(testPath, "MinMapper1.paf"))
-        butlerUtils.CameraMapper.__init__(self,
-                                          policy=policy, repositoryDir=testPath, root=root,
-                                          outputRoot=outputRoot)
+        lsst.obs.base.CameraMapper.__init__(self,
+                                            policy=policy, repositoryDir=testPath, root=root,
+                                            outputRoot=outputRoot)
         return
 
     def std_x(self, item, dataId):

@@ -30,30 +30,32 @@ import unittest
 import lsst.utils.tests
 import lsst.afw.geom as afwGeom
 import lsst.daf.persistence as dafPersist
-import lsst.daf.butlerUtils as butlerUtils
+import lsst.obs.base
 from lsst.utils import getPackageDir
 
 
-testDir = os.path.relpath(os.path.join(getPackageDir('daf_butlerUtils'), 'tests'))
+testDir = os.path.relpath(os.path.join(getPackageDir('obs_base'), 'tests'))
 
 
 def setup_module(module):
     lsst.utils.tests.init()
 
-class BaseMapper(butlerUtils.CameraMapper):
+
+class BaseMapper(lsst.obs.base.CameraMapper):
     packageName = 'base'
 
     def __init__(self):
         policy = dafPersist.Policy(os.path.join(testDir, "BaseMapper.paf"))
-        butlerUtils.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir, root=testDir)
+        lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir, root=testDir)
         return
 
-class MinMapper1(butlerUtils.CameraMapper):
+
+class MinMapper1(lsst.obs.base.CameraMapper):
     packageName = 'larry'
 
     def __init__(self):
         policy = dafPersist.Policy(os.path.join(testDir, "MinMapper1.paf"))
-        butlerUtils.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir, root=testDir)
+        lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir, root=testDir)
         return
 
     def std_x(self, item, dataId):
@@ -65,15 +67,15 @@ class MinMapper1(butlerUtils.CameraMapper):
         return "min"
 
 
-class MinMapper2(butlerUtils.CameraMapper):
+class MinMapper2(lsst.obs.base.CameraMapper):
     packageName = 'moe'
 
     # CalibRoot in policy
     # needCalibRegistry
     def __init__(self):
         policy = dafPersist.Policy(os.path.join(testDir, "MinMapper2.paf"))
-        butlerUtils.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir, root=testDir,
-                                          registry=os.path.join(testDir, "cfhtls.sqlite3"))
+        lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir, root=testDir,
+                                            registry=os.path.join(testDir, "cfhtls.sqlite3"))
         return
 
     def _transformId(self, dataId):
@@ -92,11 +94,11 @@ class MinMapper2(butlerUtils.CameraMapper):
 
 
 # does not assign packageName
-class MinMapper3(butlerUtils.CameraMapper):
+class MinMapper3(lsst.obs.base.CameraMapper):
 
     def __init__(self):
         policy = dafPersist.Policy(os.path.join(testDir, "MinMapper1.paf"))
-        butlerUtils.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir, root=testDir)
+        lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir, root=testDir)
         return
 
 
@@ -262,7 +264,7 @@ class Mapper2TestCase(unittest.TestCase):
 
         for data in testData:
             path = os.path.join(testDir, 'testGetRepoPolicy', data.folder)
-            policy = butlerUtils.CameraMapper.getRepoPolicy(os.environ['DAF_BUTLERUTILS_DIR'], path)
+            policy = lsst.obs.base.CameraMapper.getRepoPolicy(os.environ['obs_base_DIR'], path)
             self.assertIsNotNone(policy)
             self.assertEqual(policy[data.key], data.value)
 

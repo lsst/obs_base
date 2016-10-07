@@ -73,7 +73,7 @@ class Mapping(object):
         @param datasetType    (string)
         @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
                               Mapping Policy
-        @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
+        @param registry       (lsst.obs.base.Registry) Registry for metadata lookups
         @param root           (string) Path of root directory
         @param provided       (list of strings) Keys provided by the mapper
         """
@@ -236,7 +236,7 @@ class ImageMapping(Mapping):
         @param datasetType    (string)
         @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
                               Mapping Policy
-        @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
+        @param registry       (lsst.obs.base.Registry) Registry for metadata lookups
         @param root           (string) Path of root directory"""
         if isinstance(policy, pexPolicy.Policy):
             policy = Policy(policy)
@@ -252,7 +252,7 @@ class ExposureMapping(Mapping):
         @param datasetType    (string)
         @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
                               Mapping Policy
-        @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
+        @param registry       (lsst.obs.base.Registry) Registry for metadata lookups
         @param root           (string) Path of root directory"""
         if isinstance(policy, pexPolicy.Policy):
             policy = Policy(policy)
@@ -300,8 +300,8 @@ class CalibrationMapping(Mapping):
         @param datasetType    (string)
         @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
                               Mapping Policy
-        @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
-        @param calibRegistry  (lsst.daf.butlerUtils.Registry) Registry for calibration metadata lookups
+        @param registry       (lsst.obs.base.Registry) Registry for metadata lookups
+        @param calibRegistry  (lsst.obs.base.Registry) Registry for calibration metadata lookups
         @param calibRoot      (string) Path of calibration root directory"""
         if isinstance(policy, pexPolicy.Policy):
             policy = Policy(policy)
@@ -383,7 +383,7 @@ class DatasetMapping(Mapping):
         @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
                               Mapping Policy
         @param datasetType    (string)
-        @param registry       (lsst.daf.butlerUtils.Registry) Registry for metadata lookups
+        @param registry       (lsst.obs.base.Registry) Registry for metadata lookups
         @param root           (string) Path of root directory"""
         if isinstance(policy, pexPolicy.Policy):
             policy = Policy(policy)

@@ -28,25 +28,25 @@ import lsst.utils.tests
 
 import lsst.afw.image
 import lsst.daf.persistence as dafPersist
-import lsst.daf.butlerUtils as butlerUtils
+import lsst.obs.base
 import lsst.pex.policy as pexPolicy
 from lsst.utils import getPackageDir
 
 import os
 
-testDir = os.path.relpath(os.path.join(getPackageDir('daf_butlerUtils'), 'tests'))
+testDir = os.path.relpath(os.path.join(getPackageDir('obs_base'), 'tests'))
 
 
-class MinMapper2(butlerUtils.CameraMapper):
+class MinMapper2(lsst.obs.base.CameraMapper):
     packageName = 'larry'
 
     def __init__(self):
         policy = pexPolicy.Policy.createPolicy(os.path.join(testDir, 'MinMapper2.paf'))
-        butlerUtils.CameraMapper.__init__(self,
-                                          policy=policy,
-                                          repositoryDir=testDir,
-                                          root=testDir,
-                                          registry=os.path.join(testDir, 'cfhtls.sqlite3'))
+        lsst.obs.base.CameraMapper.__init__(self,
+                                            policy=policy,
+                                            repositoryDir=testDir,
+                                            root=testDir,
+                                            registry=os.path.join(testDir, 'cfhtls.sqlite3'))
         return
 
     def _transformId(self, dataId):
