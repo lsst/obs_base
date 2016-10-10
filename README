@@ -1,5 +1,10 @@
+Description
+===========
+
+This package provides base classes for the obs camera packages, to provide a unified framework for building new cameras and testing their functionality.
+
 Calibrations
-============
+------------
 
 Calibrations, like all datasets, are identified by a set of data ids.  These
 are typically only used internally, so they do not need to be as user-friendly

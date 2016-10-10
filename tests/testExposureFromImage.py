@@ -24,7 +24,7 @@ import unittest
 
 import lsst.utils.tests
 from lsst.daf.base import PropertyList
-from lsst.daf.butlerUtils import exposureFromImage
+from lsst.obs.base import exposureFromImage
 import lsst.afw.image as afwImage
 
 

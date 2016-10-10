@@ -33,7 +33,7 @@ import astropy.units
 import lsst.utils.tests
 import lsst.pex.exceptions
 from lsst.daf.base import DateTime, PropertySet
-from lsst.daf.butlerUtils import MakeRawVisitInfo
+from lsst.obs.base import MakeRawVisitInfo
 from lsst.afw.geom import degrees
 
 
