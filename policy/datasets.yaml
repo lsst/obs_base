@@ -293,3 +293,9 @@ ccdExposureId_bits:
     storage: ignored
     python: lsst.daf.base.PropertySet
     template: ignored
+cal_ref_cat:
+    persistable: SourceCatalog
+    python: lsst.afw.table.SourceCatalog
+    storage: FitsCatalogStorage
+    table: ignored
+    template: photo_astro_ref/%(pixel_id)s.fits
