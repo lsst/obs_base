@@ -115,7 +115,7 @@ class Mapper1TestCase(unittest.TestCase):
         expectedTypes = BaseMapper().getDatasetTypes()
         #   Add the expected additional types to what the base class provides
         expectedTypes.extend(["x", "x_filename",
-                              "badSourceHist", "badSourceHist_filename",])
+                              "badSourceHist", "badSourceHist_filename", ])
         self.assertEqual(set(self.mapper.getDatasetTypes()), set(expectedTypes))
 
     def testMap(self):

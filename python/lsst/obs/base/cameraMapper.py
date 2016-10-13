@@ -295,6 +295,26 @@ class CameraMapper(dafPersist.Mapper):
                 for datasetType in datasets.names(True):
                     subPolicy = datasets[datasetType]
                     subPolicy.merge(defPolicy)
+
+                    if not hasattr(self, "map_" + datasetType) and 'composite' in subPolicy:
+                        def compositeClosure(dataId, write=False, mapper=None, mapping=None, subPolicy=subPolicy):
+                            components = subPolicy.get('composite')
+                            assembler = subPolicy['assembler'] if 'assembler' in subPolicy else None
+                            disassembler = subPolicy['disassembler'] if 'disassembler' in subPolicy else None
+                            python = subPolicy['python']
+                            butlerComposite = dafPersist.ButlerComposite(assembler=assembler,
+                                                                         disassembler=disassembler,
+                                                                         python=python,
+                                                                         dataId=dataId,
+                                                                         mapper=self)
+                            for name, component in components.items():
+                                datasetType = component['datasetType']
+                                butlerComposite.add(id=name, datasetType=datasetType)
+                            return butlerComposite
+                        setattr(self, "map_" + datasetType, compositeClosure)
+                        # for now at least, don't set up any other handling for this dataset type.
+                        continue
+
                     if name == "calibrations":
                         mapping = cls(datasetType, subPolicy, self.registry, calibRegistry, calibRoot,
                                       provided=provided)
@@ -304,18 +324,15 @@ class CameraMapper(dafPersist.Mapper):
                     mappings[datasetType] = mapping
                     self.mappings[datasetType] = mapping
                     if not hasattr(self, "map_" + datasetType):
-                        def mapClosure(dataId, write=False,
-                                       mapper=weakref.proxy(self), mapping=mapping):
+                        def mapClosure(dataId, write=False, mapper=weakref.proxy(self), mapping=mapping):
                             return mapping.map(mapper, dataId, write)
                         setattr(self, "map_" + datasetType, mapClosure)
                     if not hasattr(self, "query_" + datasetType):
                         def queryClosure(format, dataId, mapping=mapping):
                             return mapping.lookup(format, dataId)
                         setattr(self, "query_" + datasetType, queryClosure)
-                    if hasattr(mapping, "standardize") and \
-                            not hasattr(self, "std_" + datasetType):
-                        def stdClosure(item, dataId,
-                                       mapper=weakref.proxy(self), mapping=mapping):
+                    if hasattr(mapping, "standardize") and not hasattr(self, "std_" + datasetType):
+                        def stdClosure(item, dataId, mapper=weakref.proxy(self), mapping=mapping):
                             return mapping.standardize(mapper, item, dataId)
                         setattr(self, "std_" + datasetType, stdClosure)
 
