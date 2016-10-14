@@ -120,8 +120,8 @@ class Mapping(object):
         @param mapper (lsst.daf.persistence.Mapper)
         @param dataId (dict) Dataset identifier
         @return (lsst.daf.persistence.ButlerLocation)"""
-
         actualId = self.need(iter(self.keyDict.keys()), dataId)
+        usedDataId = {key: actualId[key] for key in self.keyDict.keys()}
         path = mapper._mapActualToPath(self.template, actualId)
         if not os.path.isabs(path):
             path = os.path.join(self.root, path)
@@ -139,7 +139,8 @@ class Mapping(object):
         else:
             additionalData = actualId.copy()
 
-        return ButlerLocation(self.python, self.persistable, self.storage, path, additionalData, mapper)
+        return ButlerLocation(self.python, self.persistable, self.storage, path, additionalData, mapper,
+                              usedDataId=usedDataId, datasetType=self.datasetType)
 
     def lookup(self, properties, dataId):
         """Look up properties for in a metadata registry given a partial
