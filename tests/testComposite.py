@@ -84,10 +84,10 @@ class TestCompositeTestCase(unittest.TestCase):
         del repoArgs
 
 
-
     def tearDown(self):
         if os.path.exists(self.testData):
             shutil.rmtree(self.testData)
+
 
     def testType3GetAndPut(self):
         """1. Verify that a composite can be loaded and that its components are the same as when the type1
@@ -166,6 +166,131 @@ class TestCompositeTestCase(unittest.TestCase):
                                     os.path.join(thirdRepoPath, 'basic', 'idfoo.pickle')))
         self.assertTrue(filecmp.cmp(os.path.join(self.firstRepoPath, 'basic', 'namebar.pickle'),
                                     os.path.join(thirdRepoPath, 'basic', 'namebar.pickle')))
+
+
+class TestGenericAssembler(unittest.TestCase):
+    """A test case for composite object i/o."""
+
+    def setUp(self):
+        packageDir = getPackageDir('obs_base')
+        self.testData = os.path.join(packageDir, 'tests', 'genericAssembler')
+        self.firstRepoPath = os.path.join(self.testData, 'repo1')
+        self.objA = dpTest.TestObject("abc")
+        self.objB = dpTest.TestObject("def")
+        policy = dafPersist.Policy({'camera': 'lsst.afw.cameraGeom.Camera',
+                                    'datasets': {
+                                        'basicObject1': {
+                                            'python': 'lsst.daf.persistence.test.TestObject',
+                                            'template': 'basic/id%(id)s.pickle',
+                                            'storage': 'PickleStorage'},
+                                        'basicObject2': {
+                                            'python': 'lsst.daf.persistence.test.TestObject',
+                                            'template': 'basic/name%(name)s.pickle',
+                                            'storage': 'PickleStorage'},
+                                        'basicPair': {
+                                            'python': 'lsst.daf.persistence.test.TestObjectPair',
+                                            'composite': {
+                                                'a': {'datasetType': 'basicObject1'},
+                                                'b': {'datasetType': 'basicObject2'}
+                                            },
+                                            # note, no assembler or disassembler specified here, will use
+                                            # setter names inferred by component name.
+                                        },
+                                        # "generic assembler default constructor pair"
+                                        'gaDefCtorPair': { # dataset defition that uses the default ctor
+                                            'python': 'lsst.daf.persistence.test.TestObjectPair',
+                                            'composite': {
+                                                # note that the component names are the same as the argument
+                                                # names in the TestObjectPair.__init__ func.
+                                                'objA': {'datasetType': 'basicObject1',
+                                                         'getter': 'getA'},
+                                                'objB': {'datasetType': 'basicObject2',
+                                                         'getter': 'getB'}
+                                            },
+                                            # note, no assembler or disassembler specified here.
+                                        },
+                                        # "generic assembler default "
+                                        'gaPairWithSetter': {
+                                            'python': 'lsst.daf.persistence.test.TestObjectPair',
+                                            'composite': {
+                                                # note that the component names do not match argument names
+                                                # in the TestObjectPair.__init__ func or the set functions
+                                                # in the python object.
+                                                'z': {'datasetType': 'basicObject1',
+                                                      'setter': 'setA'},
+                                                'x': {'datasetType': 'basicObject2',
+                                                      'setter': 'setB'}
+                                            }
+                                        }
+                                    }})
+
+        # We need a way to put policy into a repo. Butler does not support it yet. This is a cheat.
+        # The ticket to fix it is DM-7777
+        if not os.path.exists(self.firstRepoPath):
+            os.makedirs(self.firstRepoPath)
+        policy.dumpToFile(os.path.join(self.testData, 'policy.yaml'))
+        del policy
+
+        repoArgs = dafPersist.RepositoryArgs(root=self.firstRepoPath,
+                                             mapper='lsst.obs.base.test.CompositeMapper',
+                                             mapperArgs={'policyDir': self.testData})
+        butler = dafPersist.Butler(outputs=repoArgs)
+        butler.put(self.objA, 'basicObject1', dataId={'id': 'foo'})
+        butler.put(self.objB, 'basicObject2', dataId={'name': 'bar'})
+        del butler
+        del repoArgs
+
+
+
+    def tearDown(self):
+        if os.path.exists(self.testData):
+            shutil.rmtree(self.testData)
+
+    def testGenericAssembler(self):
+        """Verify that the generic assembler and disassembler work for objects that conform to the generic
+        set/get API.
+        """
+        secondRepoPath = os.path.join(self.testData, 'repo2')
+        # child repositories do not look up in-repo policies. We need to fix that.
+        # The ticket to fix this is DM-7778
+        repoArgs = dafPersist.RepositoryArgs(root=secondRepoPath,
+                                             mapperArgs={'policyDir': self.testData})
+        butler = dafPersist.Butler(inputs=self.firstRepoPath, outputs=repoArgs)
+        objABPair = butler.get('basicPair', dataId={'id': 'foo', 'name': 'bar'})
+        self.assertEqual(self.objA, objABPair.objA)
+        self.assertEqual(self.objB, objABPair.objB)
+
+        butler.put(objABPair, 'basicPair', dataId={'id': 'foo', 'name': 'bar'})
+        # comparing the output files directly works so long as the storage is posix:
+        self.assertTrue(filecmp.cmp(os.path.join(self.firstRepoPath, 'basic', 'idfoo.pickle'),
+                                    os.path.join(secondRepoPath, 'basic', 'idfoo.pickle')))
+        self.assertTrue(filecmp.cmp(os.path.join(self.firstRepoPath, 'basic', 'namebar.pickle'),
+                                    os.path.join(secondRepoPath, 'basic', 'namebar.pickle')))
+
+        del objABPair
+
+        objABPair = butler.get('gaDefCtorPair', dataId={'id': 'foo', 'name': 'bar'})
+        self.assertEqual(self.objA, objABPair.objA)
+        self.assertEqual(self.objB, objABPair.objB)
+        self.assertTrue(objABPair.usedInitSetter)
+        self.assertFalse(objABPair.usedASetter)
+        self.assertFalse(objABPair.usedBSetter)
+
+        butler.put(objABPair, 'gaDefCtorPair', dataId={'id': 'baz', 'name': 'qux'})
+        # comparing the output files directly works so long as the storage is posix:
+        self.assertTrue(filecmp.cmp(os.path.join(self.firstRepoPath, 'basic', 'idfoo.pickle'),
+                                    os.path.join(secondRepoPath, 'basic', 'idbaz.pickle')))
+        self.assertTrue(filecmp.cmp(os.path.join(self.firstRepoPath, 'basic', 'namebar.pickle'),
+                                    os.path.join(secondRepoPath, 'basic', 'namequx.pickle')))
+
+        objABPair = butler.get('gaPairWithSetter', dataId={'id': 'foo', 'name': 'bar'})
+        self.assertEqual(self.objA, objABPair.objA)
+        self.assertEqual(self.objB, objABPair.objB)
+        self.assertFalse(objABPair.usedInitSetter)
+        self.assertTrue(objABPair.usedASetter)
+        self.assertTrue(objABPair.usedBSetter)
+
+
 
 
 class MemoryTester(lsst.utils.tests.MemoryTestCase):
