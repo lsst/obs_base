@@ -783,7 +783,7 @@ class CameraMapper(dafPersist.Mapper):
                 newPath = newPath[0] if newPath is not None and len(newPath) else None
                 if newPath is not None:
                     path = newPath
-            self.log.info("Loading %s registry from %s", name, path)
+            self.log.debug("Loading %s registry from %s", name, path)
             registry = dafPersist.Registry.create(path)
         elif not registry and os.path.exists(root):
             self.log.info("Loading Posix registry from %s", root)
