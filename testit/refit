@@ -1,0 +1,4 @@
+source copyref
+for driver in hsc suprimecam decam sdss lsstSim megacam test; do
+    python dumpit.py -n $driver -d ref
+done

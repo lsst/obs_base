@@ -1,0 +1,301 @@
+packages:  # known packages and their versions, stored for later comparison
+    template: config/packages.pickle
+    python: lsst.base.Packages
+    persistable: Packages
+    storage: PickleStorage
+processCcd_config:
+    persistable: Config
+    python: lsst.pipe.tasks.processCcd.ProcessCcdConfig
+    storage: ConfigStorage
+    template: config/processCcd.py
+characterizeImage_config:
+    persistable: Config
+    python: lsst.pipe.tasks.characterizeImage.CharacterizeImageConfig
+    storage: ConfigStorage
+    template: config/characterizeImage.py
+calibrate_config:
+    persistable: Config
+    python: lsst.pipe.tasks.calibrate.CalibrateConfig
+    storage: ConfigStorage
+    template: config/calibrate.py
+IngestIndexedReferenceTask_config:
+    persistable: Config
+    python: lsst.meas.algorithms.IngestIndexedReferenceConfig
+    storage: ConfigStorage
+    template: config/IngestIndexedReferenceTask.py
+forcedPhotCcd_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.meas.base.forcedPhotCcd.ForcedPhotCcdConfig
+    template: config/forcedPhotCcd.py
+src_schema:
+    persistable: SourceCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: schema/src.fits
+deep_assembleCoadd_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.tasks.assembleCoadd.AssembleCoaddConfig
+    template: config/deep_assembleCoadd.py
+deepCoadd_calexp_background:
+    persistable: PurePythonClass
+    storage: FitsCatalogStorage
+    python: lsst.afw.math.BackgroundList
+    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/bkgd-%(filter)s-%(tract)d-%(patch)s.fits
+deepCoadd_peak_schema:
+    persistable: PeakCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.detection.PeakCatalog
+    template: schema/deepCoadd_peak.fits
+deep_safeClipAssembleCoadd_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.tasks.assembleCoadd.SafeClipAssembleCoaddConfig
+    template: config/deep_safeClipAssembleCoadd.py
+flat_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.drivers.constructCalibs.FlatConfig
+    template: config/flat.py
+fringe_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.drivers.constructCalibs.FringeConfig
+    template: config/fringe.py
+bias_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.drivers.constructCalibs.BiasConfig
+    template: config/bias.py
+deepCoadd_forced_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    template: deepCoadd_forcedPhotCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.boost
+deepCoadd_forced_src_schema:
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: schema/deepCoadd_forced_src.fits
+deep_makeCoaddTempExp_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    template: deep_makeCoaddTempExp_metadata/%(filter)s/%(tract)d/%(patch)s_metadata.boost
+deepCoadd_ref_schema:
+    persistable: SourceCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: schema/deepCoadd_ref.fits
+deepCoaddId:
+    persistable: ignored
+    storage: ignored
+    python: lsst.daf.base.PropertySet
+    template: ignored
+mergeCoaddMeasurements_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.tasks.multiBand.MergeMeasurementsConfig
+    template: config/mergeMeasure.py
+deep_assembleCoadd_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    template: deep_assembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.boost
+deepCoadd_meas:
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/meas-%(filter)s-%(tract)d-%(patch)s.fits
+deepCoadd_forced_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.meas.base.forcedPhotCoadd.ForcedPhotCoaddConfig
+    template: config/forcedPhotCoadd.py
+deepCoadd_forced_src:
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/forced_src-%(filter)s-%(tract)d-%(patch)s.fits
+mergeCoaddDetections_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.tasks.multiBand.MergeDetectionsConfig
+    template: config/mergeDetect.py
+deep_makeSkyMap_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    template: metadata/deep_makeSkyMap.boost
+measureCoaddSources_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/measMD-%(filter)s-%(tract)d-%(patch)s.boost
+mergeCoaddMeasurements_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    template: deepCoadd-results/merged/%(tract)d/%(patch)s/mergeMeasMD-%(tract)d-%(patch)s.boost
+transformSrcMeasurement_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.tasks.transformMeasurement.RunTransformConfig
+    template: config/transformSrcMeasurement.py
+deepCoadd_mergeDet_schema:
+    persistable: SourceCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: schema/deepCoadd_mergeDet.fits
+brightObjectMask:
+    persistable: PurePythonClass
+    storage: FitsCatalogStorage
+    python: lsst.pipe.tasks.objectMasks.ObjectMaskCatalog
+    template: deepCoadd/BrightObjectMasks/%(tract)d/BrightObjectMask-%(tract)d-%(patch)s-%(filter)s.reg
+deep_safeClipAssembleCoadd_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    template: deep_assembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.boost
+transformed_src_schema:
+    persistable: BaseCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.BaseCatalog
+    template: schema/transformed_src.fits
+deepMergedCoaddId:
+    persistable: ignored
+    storage: ignored
+    python: lsst.daf.base.PropertySet
+    template: ignored
+detectCoaddSources_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/detectMD-%(filter)s-%(tract)d-%(patch)s.boost
+deep_makeCoaddTempExp_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.tasks.makeCoaddTempExp.MakeCoaddTempExpConfig
+    template: config/deep_makeCoaddTempExp.py
+deepCoaddId_bits:
+    persistable: ignored
+    storage: ignored
+    python: lsst.daf.base.PropertySet
+    template: ignored
+deepCoadd_ref:
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: deepCoadd-results/merged/%(tract)d/%(patch)s/ref-%(tract)d-%(patch)s.fits
+forced_src_schema:
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: schema/forced_src_schema.fits
+calibrated_src_schema:
+    persistable: SourceCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: schema/calibrated_src.fits
+deepCoadd_det_schema:
+    persistable: SourceCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: schema/deepCoadd_det.fits
+dark_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.drivers.constructCalibs.DarkConfig
+    template: config/dark.py
+multiBandDriver_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.drivers.multiBandDriver.MultiBandDriverConfig
+    template: config/multiBandDriver.py
+measureCoaddSources_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.tasks.multiBand.MeasureMergedCoaddSourcesConfig
+    template: config/measureMerged.py
+deep_makeDiscreteSkyMap_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    template: metadata/deep_makeDiscreteSkyMap.boost
+deepCoadd_mergeDet:
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: deepCoadd-results/merged/%(tract)d/%(patch)s/mergeDet-%(tract)d-%(patch)s.fits
+ccdExposureId:
+    persistable: ignored
+    storage: ignored
+    python: lsst.daf.base.PropertySet
+    template: ignored
+forcedCcd_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: hsc.pipe.tasks.forcedCcd.ForcedCcdConfig
+    template: config/forcedCcd.py
+deepCoadd_meas_schema:
+    persistable: SourceCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: schema/deepCoadd_meas.fits
+deepCoadd_skyMap:
+    persistable: ignored
+    storage: PickleStorage
+    python: lsst.skymap.BaseSkyMap
+    template: deepCoadd/skyMap.pickle
+deepCoadd_det:
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/det-%(filter)s-%(tract)d-%(patch)s.fits
+detectCoaddSources_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.tasks.multiBand.DetectCoaddSourcesConfig
+    template: config/detect.py
+coaddDriver_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.drivers.coaddDriver.CoaddDriverConfig
+    template: config/coaddDriver.py
+Mosaic_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.meas.mosaic.mosaicTask.MosaicConfig
+    template: config/mosaic.py
+deepMergedCoaddId_bits:
+    persistable: ignored
+    storage: ignored
+    python: lsst.daf.base.PropertySet
+    template: ignored
+singleFrameDriver_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.drivers.singleFrameDriver.SingleFrameDriverConfig
+    template: config/singleFrameDriver.py
+mergeCoaddDetections_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    template: deepCoadd-results/merged/%(tract)d/%(patch)s/mergeDetMD-%(tract)d-%(patch)s.boost
+icSrc_schema:
+    persistable: SourceCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: schema/icSrc.fits
+ccdExposureId_bits:
+    persistable: ignored
+    storage: ignored
+    python: lsst.daf.base.PropertySet
+    template: ignored
+cal_ref_cat:
+    persistable: SourceCatalog
+    python: lsst.afw.table.SourceCatalog
+    storage: FitsCatalogStorage
+    table: ignored
+    template: photo_astro_ref/%(pixel_id)s.fits
