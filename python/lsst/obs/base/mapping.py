@@ -176,7 +176,7 @@ class Mapping(object):
             # format of self.range is ('?', isBetween-lowKey, isBetween-highKey)
             # here we transform that to {(lowKey, highKey): value}
             lookupDataId[(self.range[1], self.range[2])] = dataId[self.obsTimeName]
-        return self.registry.lookup(properties, self.tables, lookupDataId)
+        return self.registry.lookup(properties, self.tables, lookupDataId, template=self.template)
 
     def have(self, properties, dataId):
         """Returns whether the provided data identifier has all
