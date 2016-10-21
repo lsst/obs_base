@@ -165,7 +165,7 @@ class TestCompositeTestCase(unittest.TestCase):
 
 
 class TestGenericAssembler(unittest.TestCase):
-    """A test case for composite object i/o."""
+    """A test case for the generic assembler feature of composite datasets."""
 
     def setUp(self):
         packageDir = getPackageDir('obs_base')
@@ -361,6 +361,88 @@ class TestGenericAssembler(unittest.TestCase):
         verificationButler = dafPersist.Butler(inputs=self.secondRepoPath)
         componentObj = verificationButler.get('basicObject1', dataId={'id': 'foo'})
         self.assertEqual(componentObj, obj.getFoo())
+
+
+def subsetAssembler(dataId, componentInfo, cls):
+    obj = cls()
+    obj.set_a(componentInfo['a'].obj)
+    return obj
+
+class TestSubset(unittest.TestCase):
+    """A test case for composite object subset keyword."""
+
+    def setUp(self):
+        packageDir = getPackageDir('obs_base')
+        self.testData = os.path.join(packageDir, 'tests', 'compositeSubset')
+        self.firstRepoPath = os.path.join(self.testData, 'repo1')
+        self.objA1 = dpTest.TestObject("abc")
+        self.objA2 = dpTest.TestObject("ABC")
+        self.objB = dpTest.TestObject("def")
+        policy = dafPersist.Policy({'camera': 'lsst.afw.cameraGeom.Camera',
+                                    'datasets': {
+                                        'basicObject1': {
+                                            'python': 'lsst.daf.persistence.test.TestObject',
+                                            'template': 'basic/id%(id)s.pickle',
+                                            'storage': 'PickleStorage'},
+                                        'basicObject2': {
+                                            'python': 'lsst.daf.persistence.test.TestObject',
+                                            'template': 'basic/name%(name)s.pickle',
+                                            'storage': 'PickleStorage'},
+                                        'basicPair': {
+                                            'python': 'lsst.daf.persistence.test.TestObjectPair',
+                                            'composite': {
+                                                'a': {
+                                                    'datasetType': 'basicObject1',
+                                                    'subset': True
+                                                }
+                                            },
+                                            'assembler': subsetAssembler
+                                        },
+                                    }})
+
+        # We need a way to put policy into a repo. Butler does not support it yet. This is a cheat.
+        # The ticket to fix it is DM-7777
+        if not os.path.exists(self.firstRepoPath):
+            os.makedirs(self.firstRepoPath)
+        policy.dumpToFile(os.path.join(self.testData, 'policy.yaml'))
+        del policy
+
+        repoArgs = dafPersist.RepositoryArgs(root=self.firstRepoPath,
+                                             mapper='lsst.obs.base.test.CompositeMapper',
+                                             mapperArgs={'policyDir': self.testData})
+        butler = dafPersist.Butler(outputs=repoArgs)
+        butler.put(self.objA1, 'basicObject1', dataId={'id': 'foo1'})
+        butler.put(self.objA2, 'basicObject1', dataId={'id': 'foo2'})
+        butler.put(self.objB, 'basicObject2', dataId={'name': 'bar'})
+        del butler
+        del repoArgs
+
+
+    def tearDown(self):
+        if os.path.exists(self.testData):
+            shutil.rmtree(self.testData)
+
+
+    def test(self):
+        """Verify that the generic assembler and disassembler work for objects that conform to the generic
+        set/get API.
+        """
+        secondRepoPath = os.path.join(self.testData, 'repo2')
+        # child repositories do not look up in-repo policies. We need to fix that.
+        # The ticket to fix this is DM-7778
+        repoArgs = dafPersist.RepositoryArgs(root=secondRepoPath,
+                                             mapperArgs={'policyDir': self.testData})
+        butler = dafPersist.Butler(inputs=self.firstRepoPath, outputs=repoArgs)
+        # the name 'bar' will find the obj that was put as obj b. It expects to find n objects of dataset
+        # type basicObject1. Since we don't specify any dataId that relates to basicObject1 (its only dataId
+        # key is 'id'), it will return everything it finds according to its policy. In this case that should
+        # be self.objA1 and self.objA2 that we put above. They will be in a list at objABPair.objA.
+        objABPair = butler.get('basicPair', dataId={'name': 'bar'})
+        objABPair.objA.sort()
+        self.assertEqual(self.objA2, objABPair.objA[0])
+        self.assertEqual(self.objA1, objABPair.objA[1])
+        # subset is a get-only operation. To put, the dataId must be specified, so there's no put to test
+        # here.
 
 
 class MemoryTester(lsst.utils.tests.MemoryTestCase):
