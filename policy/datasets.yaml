@@ -329,15 +329,3 @@ deepDiff_kernelSrc:
     persistable:   SourceCatalog
     storage:       FitsCatalogStorage
     tables:        'raw raw_skyTile'
-deepDiff_differenceExp:
-    template:      ''
-    python:        lsst.afw.image.ExposureF
-    persistable:   ExposureF
-    storage:       FitsStorage
-    tables:        'raw raw_skyTile'
-deepDiff_matchedExp:
-    template:      ''
-    python:        lsst.afw.image.ExposureF
-    persistable:   ExposureF
-    storage:       FitsStorage
-    tables:        'raw raw_skyTile'
