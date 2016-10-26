@@ -45,7 +45,8 @@ class TestCompositeTestCase(unittest.TestCase):
         self.firstRepoPath = os.path.join(self.testData, 'repo1')
         self.objA = dpTest.TestObject("abc")
         self.objB = dpTest.TestObject("def")
-        policy = dafPersist.Policy({'camera': 'lsst.afw.cameraGeom.Camera',
+        self.policy = dafPersist.Policy(
+                                   {'camera': 'lsst.afw.cameraGeom.Camera',
                                     'datasets': {
                                         'basicObject1': {
                                             'python': 'lsst.daf.persistence.test.TestObject',
@@ -67,16 +68,8 @@ class TestCompositeTestCase(unittest.TestCase):
                                         }
                                     }})
 
-        # We need a way to put policy into a repo. Butler does not support it yet. This is a cheat.
-        # The ticket to fix it is DM-7777
-        if not os.path.exists(self.firstRepoPath):
-            os.makedirs(self.firstRepoPath)
-        policy.dumpToFile(os.path.join(self.testData, 'policy.yaml'))
-        del policy
-
-        repoArgs = dafPersist.RepositoryArgs(root=self.firstRepoPath,
-                                             mapper='lsst.obs.base.test.CompositeMapper',
-                                             mapperArgs={'policyDir': self.testData})
+        repoArgs = dafPersist.RepositoryArgs(root=self.firstRepoPath, policy=self.policy,
+                                             mapper='lsst.obs.base.test.CompositeMapper')
         butler = dafPersist.Butler(outputs=repoArgs)
         butler.put(self.objA, 'basicObject1', dataId={'id': 'foo'})
         butler.put(self.objB, 'basicObject2', dataId={'name': 'bar'})
@@ -97,10 +90,7 @@ class TestCompositeTestCase(unittest.TestCase):
         4. Verify release & garbage collection of the cached objects when they are no longer used.
         """
         secondRepoPath = os.path.join(self.testData, 'repo2')
-        # child repositories do not look up in-repo policies. We need to fix that.
-        # The ticket to fix this is DM-7778
-        repoArgs = dafPersist.RepositoryArgs(root=secondRepoPath,
-                                             mapperArgs={'policyDir': self.testData})
+        repoArgs = dafPersist.RepositoryArgs(root=secondRepoPath, policy=self.policy)
         butler = dafPersist.Butler(inputs=self.firstRepoPath, outputs=repoArgs)
         verificationButler = dafPersist.Butler(inputs=secondRepoPath)
         objABPair = butler.get('basicPair', dataId={'id': 'foo', 'name': 'bar'})
@@ -148,8 +138,7 @@ class TestCompositeTestCase(unittest.TestCase):
         """
         thirdRepoPath = os.path.join(self.testData, 'repo3')
         # child repositories do not look up in-repo policies. We need to fix that.
-        repoArgs = dafPersist.RepositoryArgs(root=thirdRepoPath,
-                                             mapperArgs={'policyDir': self.testData})
+        repoArgs = dafPersist.RepositoryArgs(root=thirdRepoPath, policy=self.policy)
         butler = dafPersist.Butler(inputs=self.firstRepoPath, outputs=repoArgs)
         verificationButler = dafPersist.Butler(inputs=thirdRepoPath)
         componentObjA = butler.get('basicPair.a', dataId={'id': 'foo', 'name': 'bar'})
@@ -175,7 +164,8 @@ class TestGenericAssembler(unittest.TestCase):
         self.secondRepoPath = os.path.join(self.testData, 'repo2')
         self.objA = dpTest.TestObject("abc")
         self.objB = dpTest.TestObject("def")
-        policy = dafPersist.Policy({'camera': 'lsst.afw.cameraGeom.Camera',
+        self.policy = dafPersist.Policy(
+                                   {'camera': 'lsst.afw.cameraGeom.Camera',
                                     'datasets': {
                                         'basicObject1': {
                                             'python': 'lsst.daf.persistence.test.TestObject',
@@ -243,16 +233,8 @@ class TestGenericAssembler(unittest.TestCase):
                                         }
                                     }})
 
-        # We need a way to put policy into a repo. Butler does not support it yet. This is a cheat.
-        # The ticket to fix it is DM-7777
-        if not os.path.exists(self.firstRepoPath):
-            os.makedirs(self.firstRepoPath)
-        policy.dumpToFile(os.path.join(self.testData, 'policy.yaml'))
-        del policy
-
-        repoArgs = dafPersist.RepositoryArgs(root=self.firstRepoPath,
-                                             mapper='lsst.obs.base.test.CompositeMapper',
-                                             mapperArgs={'policyDir': self.testData})
+        repoArgs = dafPersist.RepositoryArgs(root=self.firstRepoPath, policy=self.policy,
+                                             mapper='lsst.obs.base.test.CompositeMapper')
         butler = dafPersist.Butler(outputs=repoArgs)
         butler.put(self.objA, 'basicObject1', dataId={'id': 'foo'})
         butler.put(self.objB, 'basicObject2', dataId={'name': 'bar'})
@@ -268,10 +250,7 @@ class TestGenericAssembler(unittest.TestCase):
         default constructor can be used by the generic assembler to assemble the object
         Uses getters named by the policy to disassemble the object.
         """
-        # child repositories do not look up in-repo policies. We need to fix that.
-        # The ticket to fix this is DM-7778
-        repoArgs = dafPersist.RepositoryArgs(root=self.secondRepoPath,
-                                             mapperArgs={'policyDir': self.testData})
+        repoArgs = dafPersist.RepositoryArgs(root=self.secondRepoPath, policy=self.policy)
         butler = dafPersist.Butler(inputs=self.firstRepoPath, outputs=repoArgs)
         verificationButler = dafPersist.Butler(inputs=self.secondRepoPath)
 
@@ -311,8 +290,7 @@ class TestGenericAssembler(unittest.TestCase):
         or the init function parameter names, and instead the component policy entry specifies the setter and
         getter names.
         """
-        repoArgs = dafPersist.RepositoryArgs(root=self.secondRepoPath,
-                                             mapperArgs={'policyDir': self.testData})
+        repoArgs = dafPersist.RepositoryArgs(root=self.secondRepoPath, policy=self.policy)
         butler = dafPersist.Butler(inputs=self.firstRepoPath, outputs=repoArgs)
         objABPair = butler.get('gaPairWithSetter', dataId={'id': 'foo', 'name': 'bar'})
         self.assertEqual(self.objA, objABPair.objA)
@@ -334,8 +312,7 @@ class TestGenericAssembler(unittest.TestCase):
         """Test the case where the name of the setter & getter is inferred by the policy name by prepending
         'set_' and get_
         """
-        repoArgs = dafPersist.RepositoryArgs(root=self.secondRepoPath,
-                                             mapperArgs={'policyDir': self.testData})
+        repoArgs = dafPersist.RepositoryArgs(root=self.secondRepoPath, policy=self.policy)
         butler = dafPersist.Butler(inputs=self.firstRepoPath, outputs=repoArgs)
         obj = butler.get('underscoreSetter', dataId={'id': 'foo'})
         self.assertEqual(self.objA, obj.get_foo())
@@ -351,8 +328,7 @@ class TestGenericAssembler(unittest.TestCase):
         'set' or 'get', to the capitalized component name. E.g. for component name 'foo' the setter and getter
         will be named setFoo and getFoo.
         """
-        repoArgs = dafPersist.RepositoryArgs(root=self.secondRepoPath,
-                                             mapperArgs={'policyDir': self.testData})
+        repoArgs = dafPersist.RepositoryArgs(root=self.secondRepoPath, policy=self.policy)
         butler = dafPersist.Butler(inputs=self.firstRepoPath, outputs=repoArgs)
         obj = butler.get('camelCaseSetter', dataId={'id': 'foo'})
         self.assertEqual(self.objA, obj.getFoo())
@@ -378,7 +354,8 @@ class TestSubset(unittest.TestCase):
         self.objA1 = dpTest.TestObject("abc")
         self.objA2 = dpTest.TestObject("ABC")
         self.objB = dpTest.TestObject("def")
-        policy = dafPersist.Policy({'camera': 'lsst.afw.cameraGeom.Camera',
+        self.policy = dafPersist.Policy(
+                                   {'camera': 'lsst.afw.cameraGeom.Camera',
                                     'datasets': {
                                         'basicObject1': {
                                             'python': 'lsst.daf.persistence.test.TestObject',
@@ -400,16 +377,8 @@ class TestSubset(unittest.TestCase):
                                         },
                                     }})
 
-        # We need a way to put policy into a repo. Butler does not support it yet. This is a cheat.
-        # The ticket to fix it is DM-7777
-        if not os.path.exists(self.firstRepoPath):
-            os.makedirs(self.firstRepoPath)
-        policy.dumpToFile(os.path.join(self.testData, 'policy.yaml'))
-        del policy
-
-        repoArgs = dafPersist.RepositoryArgs(root=self.firstRepoPath,
-                                             mapper='lsst.obs.base.test.CompositeMapper',
-                                             mapperArgs={'policyDir': self.testData})
+        repoArgs = dafPersist.RepositoryArgs(root=self.firstRepoPath, policy=self.policy,
+                                             mapper='lsst.obs.base.test.CompositeMapper')
         butler = dafPersist.Butler(outputs=repoArgs)
         butler.put(self.objA1, 'basicObject1', dataId={'id': 'foo1'})
         butler.put(self.objA2, 'basicObject1', dataId={'id': 'foo2'})
@@ -428,10 +397,7 @@ class TestSubset(unittest.TestCase):
         set/get API.
         """
         secondRepoPath = os.path.join(self.testData, 'repo2')
-        # child repositories do not look up in-repo policies. We need to fix that.
-        # The ticket to fix this is DM-7778
-        repoArgs = dafPersist.RepositoryArgs(root=secondRepoPath,
-                                             mapperArgs={'policyDir': self.testData})
+        repoArgs = dafPersist.RepositoryArgs(root=secondRepoPath, policy=self.policy)
         butler = dafPersist.Butler(inputs=self.firstRepoPath, outputs=repoArgs)
         # the name 'bar' will find the obj that was put as obj b. It expects to find n objects of dataset
         # type basicObject1. Since we don't specify any dataId that relates to basicObject1 (its only dataId
@@ -454,7 +420,8 @@ class TestInputOnly(unittest.TestCase):
         self.firstRepoPath = os.path.join(self.testData, 'repo1')
         self.objA = dpTest.TestObject("abc")
         self.objB = dpTest.TestObject("def")
-        policy = dafPersist.Policy({'camera': 'lsst.afw.cameraGeom.Camera',
+        self.policy = dafPersist.Policy(
+                                   {'camera': 'lsst.afw.cameraGeom.Camera',
                                     'datasets': {
                                         'basicObject1': {
                                             'python': 'lsst.daf.persistence.test.TestObject',
@@ -481,16 +448,9 @@ class TestInputOnly(unittest.TestCase):
                                         }
                                     }})
 
-        # We need a way to put policy into a repo. Butler does not support it yet. This is a cheat.
-        # The ticket to fix it is DM-7777
-        if not os.path.exists(self.firstRepoPath):
-            os.makedirs(self.firstRepoPath)
-        policy.dumpToFile(os.path.join(self.testData, 'policy.yaml'))
-        del policy
-
         repoArgs = dafPersist.RepositoryArgs(root=self.firstRepoPath,
                                              mapper='lsst.obs.base.test.CompositeMapper',
-                                             mapperArgs={'policyDir': self.testData})
+                                             policy=self.policy)
         butler = dafPersist.Butler(outputs=repoArgs)
         butler.put(self.objA, 'basicObject1', dataId={'id': 'foo'})
         butler.put(self.objB, 'basicObject2', dataId={'name': 'bar'})
@@ -506,10 +466,7 @@ class TestInputOnly(unittest.TestCase):
         policy that the inputOnly comonent is not written.
         """
         secondRepoPath = os.path.join(self.testData, 'repo2')
-        # child repositories do not look up in-repo policies. We need to fix that.
-        # The ticket to fix this is DM-7778
-        repoArgs = dafPersist.RepositoryArgs(root=secondRepoPath,
-                                             mapperArgs={'policyDir': self.testData})
+        repoArgs = dafPersist.RepositoryArgs(root=secondRepoPath, policy=self.policy)
         butler = dafPersist.Butler(inputs=self.firstRepoPath, outputs=repoArgs)
         objABPair = butler.get('basicPair', dataId={'id': 'foo', 'name': 'bar'})
 
