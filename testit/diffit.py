@@ -17,9 +17,11 @@ if __name__ == "__main__":
     parser.add_argument("-x", "--xtags", type=bool, help="print xtagged items", default=True) 
     parser.add_argument("-a", "--added", type=bool, help="print items added in comp", default=True) 
     parser.add_argument("-m", "--moved", type=bool, help="print items moved but conflicting", default=True) 
-    parser.add_argument("-s", "--missing", type=bool, help="print items missing from comp", default=True) 
+    parser.add_argument("-s", "--missing", type=bool, help="print items missing from comp", default=False) 
     obsdict = readPafSection("obskeys.yaml")
-    movedict = readPafSection("datasets.yaml.new")
+    movedict = readPafSection("datasets.yaml")
+    movedict.update(readPafSection("datasets.yaml.new"))
+    movedict.update(readPafSection("exposures.yaml"))
     movedict.update(readPafSection("exposures.yaml.new"))
     args = parser.parse_args()
     name = args.name
@@ -63,10 +65,13 @@ if __name__ == "__main__":
               if diffs:
                 tag = ''
                 if key in movedict.keys():
+                    if not "python" in diffs and not "persistable" in diffs and not "storage" in diffs:
+                        continue
                     tag = tag + 'M'
                     if args.moved:
                         if count == 0:
-                            fout.write("\n1. Datasets with same name but different content in %sMapper.paf\n"%(name))
+                            fout.write("\n1. Moved datasets with same name but different content in %sMapper.paf\n"%(name))
+                            fout.write("\n   Don't count differences in tables or templates.\n")
                             fout.write("\n")
                         count = count + 1
                         fout.write("%s.%s\n"%(type, key))
@@ -88,6 +93,7 @@ if __name__ == "__main__":
                         tag = tag + 'L'
                     outstr = "    %s %s.%s\n"%(tag.ljust(4), type, key)
                     xtagged[key] = outstr
+
     #  Do the keys in the reference which do not appear in the comp    
     if args.added:
       count = 0

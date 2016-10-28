@@ -56,6 +56,7 @@ deepCoadd_forced: { }
 deepCoadd_forced_schema: { }
 modelfits: { }
 modelfits_schema: { }
+deepCoadd_icMatch: { }
 deepCoadd_modelfits: { }
 deepCoadd_modelfits_schema: { }
 deepCoadd_multiModelfits: { }
