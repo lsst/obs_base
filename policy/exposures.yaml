@@ -10,22 +10,23 @@ deepCoadd_calexp:
     python: lsst.afw.image.ExposureF
     template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/calexp-%(filter)s-%(tract)d-%(patch)s.fits
     level: None
+    tables:        ''
 deepDiff_differenceExp:
     template:      ''
     python:        lsst.afw.image.ExposureF
     persistable:   ExposureF
     storage:       FitsStorage
-    tables:        'raw raw_skyTile'
+    tables:        'raw'
 deepDiff_matchedExp:
     template:      ''
     python:        lsst.afw.image.ExposureF
     persistable:   ExposureF
     storage:       FitsStorage
-    tables:        'raw raw_skyTile'
+    tables:        'raw'
 deepCoadd_tempExp:
     template:    ''
     python:      lsst.afw.image.ExposureF
     persistable: ExposureF
     storage:     FitsStorage
     level:       Skytile
-    tables:      raw_skytile
+    tables:      'raw'
