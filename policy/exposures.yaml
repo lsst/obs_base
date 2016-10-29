@@ -22,3 +22,10 @@ deepDiff_matchedExp:
     persistable:   ExposureF
     storage:       FitsStorage
     tables:        'raw raw_skyTile'
+deepCoadd_tempExp:
+    template:    ''
+    python:      lsst.afw.image.ExposureF
+    persistable: ExposureF
+    storage:     FitsStorage
+    level:       Skytile
+    tables:      raw_skytile

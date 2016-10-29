@@ -110,25 +110,31 @@ def onlyCoadd(template):
            return False
     return True
 
-def compare(name, refdict, compdict, refName="ref", compName="comp", ignoretables=False, fout=None, indent="    "):
+def compare(name, refdict, compdict, refName="ref", compName="comp", ignoretables=False, ignorelevel=False, fout=None, indent="    "):
     result = list() 
     if not name in refdict.keys() or not name in compdict.keys():
         return result
     items1 = parseEntry(refdict[name])
     items2 = parseEntry(compdict[name])
     for key in items1.keys():
+        if key == 'level' and ignorelevel:
+            continue
         if key == 'tables' and ignoretables:
             continue
         if not key in items2.keys():
             result.append(key)
             if fout: fout.write(indent + "%s key not in comp\n"%key)
     for key in items2.keys():
+        if key == 'level' and ignorelevel:
+            continue
         if key == 'tables' and ignoretables:
             continue
         if not key in items1.keys():
             result.append(key)
             if fout: fout.write(indent + "%s key not in ref\n"%key)
     for key in items1.keys():
+        if key == 'level' and ignorelevel:
+            continue
         if key == 'tables' and ignoretables:
             continue
         if key in items2.keys() and not items1[key] == items2[key] and not key==name:

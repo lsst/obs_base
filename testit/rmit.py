@@ -38,11 +38,12 @@ if __name__ == "__main__":
                     if not name in movedict.keys():
                         fout.write(bset)
                     else:
-                        differ = compare(name, pafdict, movedict, ignoretables=False)
+                        differ = compare(name, pafdict, movedict, ignoretables=True, ignorelevel=True)
                         if "coaddtemplate" in differ:
                             differ.append("template")
+
                         if len(differ) > 0:
-                            fout.write("    # dataset defined in obs_base modifield in this mapper as follows:\n")
+                            fout.write("    # dataset defined in obs_base modified in this mapper as follows:\n")
                             for item in bset.split("\n"):
                                 if item.find(":") >= 0:
                                     key = item[:item.find(":")].strip()
@@ -50,8 +51,6 @@ if __name__ == "__main__":
                                         continue
                                 if len(item) > 0:
                                     fout.write(item + "\n")
-                        else:
-                            fout.write(bset)
                 keys[name] = None
                 bset = None
             continue
