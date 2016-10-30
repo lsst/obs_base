@@ -3,34 +3,34 @@ deepDiff_config:
     python:        lsst.pipe.tasks.imageDifference.ImageDifferenceConfig
     persistable:   Config
     storage:       ConfigStorage
-    tables:        'raw raw_skyTile'
+    tables:        'raw'
 deepDiff_metadata:
     template:      ''
     python:        lsst.daf.base.PropertySet
     persistable:   PropertySet
     storage:       BoostStorage
-    tables:        'raw raw_skyTile'
+    tables:        'raw'
 deepDiff_diaSrc:
     template:      ''
     python:        lsst.afw.table.SourceCatalog
     persistable:   SourceCatalog
     storage:       FitsCatalogStorage
-    tables:        'raw raw_skyTile'
+    tables:        'raw'
 deepDiff_diaSrc_schema:
     template:      schema/deepDiff_diaSrc.fits
     python:        lsst.afw.table.SourceCatalog
     persistable:   SourceCatalog
     storage:       FitsCatalogStorage
-    tables:        'raw raw_skyTile'
+    tables:        'raw'
 deepDiff_kernelSrc:
     template:      ''
     python:        lsst.afw.table.SourceCatalog
     persistable:   SourceCatalog
     storage:       FitsCatalogStorage
-    tables:        'raw raw_skyTile'
+    tables:        'raw'
 deepCoadd_srcMatch:
     template:      ''
     python:        lsst.afw.table.BaseCatalog
     persistable:   BaseCatalog
     storage:       FitsCatalogStorage
-    tables:        'raw raw_visit'
+    tables:        'raw'
