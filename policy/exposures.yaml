@@ -10,7 +10,6 @@ deepCoadd_calexp:
     python: lsst.afw.image.ExposureF
     template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/calexp-%(filter)s-%(tract)d-%(patch)s.fits
     level: None
-    tables:        ''
 deepDiff_differenceExp:
     template:      ''
     python:        lsst.afw.image.ExposureF
