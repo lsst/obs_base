@@ -299,3 +299,39 @@ cal_ref_cat:
     storage: FitsCatalogStorage
     table: ignored
     template: photo_astro_ref/%(pixel_id)s.fits
+deepDiff_config:
+    template:      config/deepDiff.py
+    python:        lsst.pipe.tasks.imageDifference.ImageDifferenceConfig
+    persistable:   Config
+    storage:       ConfigStorage
+    tables:        'raw'
+deepDiff_metadata:
+    template:      ''
+    python:        lsst.daf.base.PropertySet
+    persistable:   PropertySet
+    storage:       BoostStorage
+    tables:        'raw'
+deepDiff_diaSrc:
+    template:      ''
+    python:        lsst.afw.table.SourceCatalog
+    persistable:   SourceCatalog
+    storage:       FitsCatalogStorage
+    tables:        'raw'
+deepDiff_diaSrc_schema:
+    template:      schema/deepDiff_diaSrc.fits
+    python:        lsst.afw.table.SourceCatalog
+    persistable:   SourceCatalog
+    storage:       FitsCatalogStorage
+    tables:        'raw'
+deepDiff_kernelSrc:
+    template:      ''
+    python:        lsst.afw.table.SourceCatalog
+    persistable:   SourceCatalog
+    storage:       FitsCatalogStorage
+    tables:        'raw'
+deepCoadd_srcMatch:
+    template:      ''
+    python:        lsst.afw.table.BaseCatalog
+    persistable:   BaseCatalog
+    storage:       FitsCatalogStorage
+    tables:        'raw'
