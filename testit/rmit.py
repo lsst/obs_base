@@ -26,6 +26,7 @@ if __name__ == "__main__":
     lines = fin.readlines()
     bset = None
     name = None
+    lastline = ''
     for line in lines:
         if bset:
             bset = bset + line
@@ -43,7 +44,8 @@ if __name__ == "__main__":
                             differ.append("template")
 
                         if len(differ) > 0:
-                            fout.write("    # dataset defined in obs_base modified in this mapper as follows:\n")
+                            if lastline.find('mapper as follows:') < 0:
+                                fout.write("    # dataset defined in obs_base modified in this mapper as follows:\n")
                             for item in bset.split("\n"):
                                 if item.find(":") >= 0:
                                     key = item[:item.find(":")].strip()
@@ -61,3 +63,4 @@ if __name__ == "__main__":
             name = line[4: line.find(":")]
         else:
             fout.write(line)
+            lastline = line

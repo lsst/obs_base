@@ -335,3 +335,121 @@ deepCoadd_srcMatch:
     persistable:   BaseCatalog
     storage:       FitsCatalogStorage
     tables:        'raw'
+isr_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.obs.subaru.isr.SubaruIsrConfig
+    template: config/isr.py
+isr_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    tables: raw raw_visit
+    template: ''
+icSrc:
+    persistable: SourceCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    tables: raw raw_visit
+    template: ''
+icExpBackground:
+    persistable: PurePythonClass
+    storage: FitsCatalogStorage
+    python: lsst.afw.math.BackgroundList
+    tables: raw raw_visit
+    template: ''
+processCcd_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    tables: raw raw_visit
+    template: ''
+processCcd_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.tasks.processCcd.ProcessCcdConfig
+    template: config/processCcd.py
+characterizeImage_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.tasks.characterizeImage.CharacterizeImageConfig
+    template: config/characterizeImage.py
+characterizeImage_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    template: ''
+calibrate_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    tables: raw raw_visit
+    template: ''
+forcedPhotCcd_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.meas.base.forcedPhotCcd.ForcedPhotCcdConfig
+    template: config/forcedPhotCcd.py
+forcedPhotCcd_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    tables: raw raw_visit
+    template: ''
+psf:
+    persistable: Psf
+    storage: BoostStorage
+    python: lsst.afw.detection.Psf
+    tables: raw raw_visit
+    template: ''
+forced_src:
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    tables: raw raw_visit
+    template: ''
+forced_src_schema:
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: schema/forced_src_schema.fits
+deepCoadd_forced_src:
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/forced_src-%(filter)s-%(tract)d-%(patch)s.fits
+deepCoadd_forced_src_schema:
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: schema/deepCoadd_forced_src.fits
+src:
+    persistable: SourceCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    tables: raw raw_visit
+    template: ''
+apCorr:
+    persistable: ApertureCorrection
+    storage: PickleStorage
+    python: lsst.meas.algorithms.ApertureCorrection
+    tables: raw raw_visit
+    template: ''
+calexpBackground:
+    persistable: PurePythonClass
+    storage: FitsCatalogStorage
+    python: lsst.afw.math.BackgroundList
+    tables: raw raw_visit
+    template: ''
+srcMatch:
+    persistable: BaseCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.BaseCatalog
+    tables: raw raw_visit
+    template: ''
+deepCoadd_srcMatch:
+    persistable: BaseCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.BaseCatalog
+    tables: raw
+    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/srcMatch-%(filter)s-%(tract)d-%(patch)s.fits

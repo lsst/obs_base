@@ -29,3 +29,38 @@ deepCoadd_tempExp:
     storage:     FitsStorage
     level:       Skytile
     tables:      'raw'
+postISRCCD:
+    persistable: ExposureF
+    storage: FitsStorage
+    python: lsst.afw.image.ExposureF
+    tables: raw
+calexp:
+    persistable: ExposureF
+    storage: FitsStorage
+    python: lsst.afw.image.ExposureF
+    tables: raw
+    template: ''
+visitim:
+    persistable: ExposureF
+    storage: FitsStorage
+    python: lsst.afw.image.ExposureF
+    tables: raw
+    template: ''
+raw:
+    persistable: DecoratedImageU
+    storage: FitsStorage
+    python: lsst.afw.image.DecoratedImageU
+    tables: raw
+    template: ''
+wcs:
+    persistable: ExposureI
+    storage: FitsStorage
+    python: lsst.afw.image.ExposureI
+    tables: raw
+    template: ''
+icExp:
+    persistable: ExposureF
+    storage: FitsStorage
+    python: lsst.afw.image.ExposureF
+    tables: raw
+    template: ''
