@@ -1,0 +1,357 @@
+#<?cfg paf policy ?>
+
+camera:        "../description/camera"
+defects:    "../description/defects"
+
+needCalibRegistry: false
+
+levels: {
+    visit: "snap" "raft" "sensor" "channel"
+    raft: "snap" "sensor" "channel"
+    sensor: "snap" "channel"
+    snap: "channel"
+    tract: "patch"
+}
+defaultLevel: "sensor"
+defaultSubLevels: {
+    visit: "sensor"
+    raft: "sensor"
+    sensor: "channel"
+}
+
+exposures: {
+    raw: {
+        template:    "raw/v%(visit)d-f%(filter)s/E%(snap)03d/R%(raft)s/S%(sensor)s/imsim_%(visit)d_R%(raft)s_S%(sensor)s_C%(channel)s_E%(snap)03d.fits.gz"
+        python:     "lsst.afw.image.DecoratedImageU"
+        persistable:         "DecoratedImageU"
+        storage:     "FitsStorage"
+        level:        "Amp"
+        tables:        raw
+    }
+    snapExp: {
+        template:    "snapExp/v%(visit)d-f%(filter)s/s%(snap)d/R%(raft)s/S%(sensor)s.fits"
+        python:        "lsst.afw.image.ExposureF"
+        persistable:        "ExposureF"
+        storage:    "FitsStorage"
+        level:        "Ccd"
+        tables:        raw
+    }
+    postISRCCD: {
+        template:    "postISRCCD/v%(visit)d-f%(filter)s/R%(raft)s/S%(sensor)s.fits"
+        python:        "lsst.afw.image.ExposureF"
+        persistable:        "ExposureF"
+        storage:    "FitsStorage"
+        level:        "Ccd"
+        tables:        raw
+    }
+    visitim: {
+        template:      "visitim/v%(visit)d-f%(filter)s/R%(raft)s/S%(sensor)s.fits"
+        python:        "lsst.afw.image.ExposureF"
+        persistable:        "ExposureF"
+        storage:    "FitsStorage"
+        level:        "Ccd"
+        tables:        raw
+    }
+    icExp: {
+        template:      "icExp/v%(visit)d-f%(filter)s/R%(raft)s/S%(sensor)s.fits"
+        python:        "lsst.afw.image.ExposureF"
+        persistable:        "ExposureF"
+        storage:    "FitsStorage"
+        level:        "Ccd"
+        tables:        raw
+    }
+    calexp: {
+        template:      "calexp/v%(visit)d-f%(filter)s/R%(raft)s/S%(sensor)s.fits"
+        python:        "lsst.afw.image.ExposureF"
+        persistable:        "ExposureF"
+        storage:    "FitsStorage"
+        level:        "Ccd"
+        tables:        raw
+    }
+    calsnap: {
+        template:      "calsnap/v%(visit)d-f%(filter)s/s%(snap)d/R%(raft)s/S%(sensor)s.fits"
+        python:        "lsst.afw.image.ExposureF"
+        persistable:        "ExposureF"
+        storage:    "FitsStorage"
+        level:        "Ccd"
+        tables:        raw
+    }
+    # dataset defined in obs_base modified in this mapper as follows:
+    deepCoadd_tempExp: {
+        template:    "deepCoadd/%(filter)s/%(tract)d/%(patch)stempExp/v%(visit)d-f%(filter)s.fits"
+    }
+    wcs: {
+        template:      "wcs/v%(visit)d-f%(filter)s/R%(raft)s/S%(sensor)s.wcs.fits"
+        python:        "lsst.afw.image.ExposureI"
+        persistable:        "ExposureI"
+        storage:    "FitsStorage"
+        level:        "Ccd"
+        tables:        "raw"
+        tables:        "raw_visit"
+    }
+    fcr: {
+        template:      "fcr/v%(visit)d-f%(filter)s/R%(raft)s/S%(sensor)s.fcr.fits"
+        python:        "lsst.afw.image.ExposureI"
+        persistable:        "ExposureI"
+        storage:    "FitsStorage"
+        level:        "Ccd"
+        tables:        "raw"
+        tables:        "raw_visit"
+    }
+    # dataset defined in obs_base modified in this mapper as follows:
+    deepDiff_differenceExp: {
+        template:      "deepDiff/v%(visit)d-f%(filter)s/R%(raft)s/diffexp-S%(sensor)s.fits"
+    }
+    # dataset defined in obs_base modified in this mapper as follows:
+    deepDiff_matchedExp: {
+        template:      "deepDiff/v%(visit)d-f%(filter)s/R%(raft)s/matchexp-S%(sensor)s.fits"
+    }
+}
+
+calibrations: {
+    bias: {
+        template:    "bias/v0/R%(raft)s/S%(sensor)s/imsim_0_R%(raft)s_S%(sensor)s_C%(channel)s.fits"
+        python:        "lsst.afw.image.ExposureF"
+        persistable:        "ExposureF"
+        storage:    "FitsStorage"
+        level:        "Amp"
+        refCols: "raft"
+        refCols: "sensor"
+        refCols: "visit"
+        refCols: "filter"
+        refCols: "channel"
+    }
+    dark: {
+        template:    "dark/v1/R%(raft)s/S%(sensor)s/imsim_1_R%(raft)s_S%(sensor)s_C%(channel)s.fits"
+        python:        "lsst.afw.image.ExposureF"
+        persistable:        "ExposureF"
+        storage:    "FitsStorage"
+        level:        "Amp"
+        refCols: "raft"
+        refCols: "sensor"
+        refCols: "visit"
+        refCols: "filter"
+        refCols: "channel"
+    }
+    flat: {
+        template:    "flat/v2-f%(filter)s/R%(raft)s/S%(sensor)s/imsim_2_R%(raft)s_S%(sensor)s_C%(channel)s.fits"
+        python:        "lsst.afw.image.ExposureF"
+        persistable:        "ExposureF"
+        storage:    "FitsStorage"
+        level:        "Amp"
+        reference:    "raw"
+        columns:      "filter"
+        refCols: "raft"
+        refCols: "sensor"
+        refCols: "visit"
+        refCols: "filter"
+        refCols: "channel"
+    }
+    fringe: {
+        template:    "fringe/v2-f%(filter)s/R%(raft)s/S%(sensor)s/imsim_2_R%(raft)s_S%(sensor)s_C%(channel)s.fits"
+        python:        "lsst.afw.image.ExposureF"
+        persistable:        "ExposureF"
+        storage:    "FitsStorage"
+        level:        "Amp"
+        reference:    "raw"
+        columns:      "filter"
+        refCols: "raft"
+        refCols: "sensor"
+        refCols: "visit"
+        refCols: "filter"
+        refCols: "channel"
+    }
+}
+
+datasets: {
+    eimage: {
+        template:   "eimage/v%(visit)d-f%(filter)s/E%(snap)03d/R%(raft)s/eimage_%(visit)d_R%(raft)s_S%(sensor)s_E%(snap)03d.fits.gz"
+        python:     "lsst.afw.image.ExposureF"
+        persistable:         "ExposureF"
+        storage:     "FitsStorage"
+        tables:        raw
+    }
+    ampExposureId: {
+        template:     "ignored"
+        # Provide something to import, although we actually return a tuple
+        python:       "lsst.daf.base.PropertySet"
+        persistable:  "ignored"
+        storage:      "ignored"
+        tables:       "raw"
+    }
+    ampExposureId_bits: {
+        template:     "ignored"
+        # Provide something to import, although we actually return a tuple
+        python:       "lsst.daf.base.PropertySet"
+        persistable:  "ignored"
+        storage:      "ignored"
+        tables:       "raw"
+    }
+    icExpBackground: {
+        template:      "icExp/v%(visit)d-f%(filter)s/R%(raft)s/bkgd-S%(sensor)s.fits"
+        python:        "lsst.afw.math.BackgroundList"
+        persistable:   "PurePythonClass"
+        storage:       "FitsCatalogStorage"
+        tables:        raw
+        tables:        raw_skyTile
+    }
+    calexpBackground: {
+        template:      "calexp/v%(visit)d-f%(filter)s/R%(raft)s/bkgd-S%(sensor)s.fits"
+        python:        "lsst.afw.math.BackgroundList"
+        persistable:   "PurePythonClass"
+        storage:       "FitsCatalogStorage"
+        tables:        raw
+    }
+    icSrc: {
+        template:      "icSrc/v%(visit)d-f%(filter)s/R%(raft)s/S%(sensor)s.fits"
+        python:        "lsst.afw.table.SourceCatalog"
+        persistable:        "SourceCatalog"
+        storage:    "FitsCatalogStorage"
+        tables:        raw
+    }
+    icMatch: {
+        template:      "icMatch/v%(visit)d-f%(filter)s/R%(raft)s/S%(sensor)s.fits"
+        python:        "lsst.afw.table.BaseCatalog"
+        persistable:        "BaseCatalog"
+        storage:    "FitsCatalogStorage"
+        tables:        raw
+    }
+    srcMatch: {
+        template:      "srcMatch/v%(visit)d-f%(filter)s/R%(raft)s/S%(sensor)s.fits"
+        python:        "lsst.afw.table.BaseCatalog"
+        persistable:        "BaseCatalog"
+        storage:    "FitsCatalogStorage"
+        tables:        raw
+    }
+    apCorr: {
+        template:      "apCorr/v%(visit)d-f%(filter)s/R%(raft)s/S%(sensor)s.pickle"
+        python:        "lsst.meas.algorithms.ApertureCorrection"
+        persistable:        "ApertureCorrection"
+        storage:    "PickleStorage"
+        tables:        raw
+    }
+    forced_src: {
+        template:      "forced/%(tract)d/v%(visit)d-f%(filter)s/R%(raft)s/S%(sensor)s.fits"
+        python:        "lsst.afw.table.SourceCatalog"
+        persistable:        "SourceCatalog"
+        storage:    "FitsCatalogStorage"
+        tables:        raw
+    }
+    # dataset defined in obs_base modified in this mapper as follows:
+    forced_src_schema: {
+        template:      "schema/forced.fits"
+    }
+    forcedPhotCcd_metadata: {
+        template: "forcedPhotCcd_metadata/tract%(tract)d/%(visit)d-%(sensor)s.boost"
+        python:        "lsst.daf.base.PropertySet"
+        persistable:        "PropertySet"
+        storage:    "BoostStorage"
+        tables:        raw
+        tables:        raw_visit
+    }
+    src: {
+        template:      "src/v%(visit)d-f%(filter)s/R%(raft)s/S%(sensor)s.fits"
+        python:        "lsst.afw.table.SourceCatalog"
+        persistable:        "SourceCatalog"
+        storage:    "FitsCatalogStorage"
+        tables:        raw
+    }
+    Mosaic_metadata: {
+        template:      "metadata/Mosaic.boost"
+        python:        "lsst.daf.base.PropertySet"
+        persistable:        "PropertySet"
+        storage:    "BoostStorage"
+        tables:        raw
+    }
+    processCcd_metadata: {
+        template:      "processCcd_metadata/v%(visit)d-f%(filter)s/R%(raft)s/S%(sensor)s.boost"
+        python:        "lsst.daf.base.PropertySet"
+        persistable:        "PropertySet"
+        storage:    "BoostStorage"
+        tables:        raw
+    }
+    isr_config: {
+        template:      "config/isr.py"
+        python:        "lsst.obs.lsstSim.LsstSimIsrConfig"
+        persistable:      "Config"
+        storage:    "ConfigStorage"
+        tables:        raw
+    }
+    isr_metadata: {
+        template:      "isr_metadata/v%(visit)d-f%(filter)s/R%(raft)s/S%(sensor)s.boost"
+        python:        "lsst.daf.base.PropertySet"
+        persistable:        "PropertySet"
+        storage:    "BoostStorage"
+        tables:        raw
+    }
+    characterizeImage_metadata: {
+        template:      "characterizeImage_metadata/v%(visit)d-f%(filter)s/R%(raft)s/S%(sensor)s.boost"
+        python:        "lsst.daf.base.PropertySet"
+        persistable:        "PropertySet"
+        storage:    "BoostStorage"
+        tables:        raw
+    }
+    calibrate_metadata: {
+        template:      "calibrate_metadata/v%(visit)d-f%(filter)s/R%(raft)s/S%(sensor)s.boost"
+        python:        "lsst.daf.base.PropertySet"
+        persistable:        "PropertySet"
+        storage:    "BoostStorage"
+        tables:        raw
+    }
+    processEimage_config: {
+        template:      "config/processEimage.py"
+        python:        "lsst.obs.lsstSim.processEimage.ProcessEimageConfig"
+        persistable:      "Config"
+        storage:    "ConfigStorage"
+        tables:        raw
+    }
+    processEimage_metadata: {
+        template:      "processEimage_metadata/v%(visit)d-f%(filter)s/s%(snap)i/R%(raft)s/S%(sensor)s.boost"
+        python:        "lsst.daf.base.PropertySet"
+        persistable:        "PropertySet"
+        storage:    "BoostStorage"
+        tables:        raw
+    }
+    deep_measureMulti_config: {
+        template:      "config/deep_measureMulti.py"
+        python:        "lsst.meas.multifit.measureMulti.MeasureMultiConfig"
+        persistable:      "Config"
+        storage:    "ConfigStorage"
+        tables:        raw
+    }
+    # dataset defined in obs_base modified in this mapper as follows:
+    deep_safeClipAssembleCoadd_metadata: {
+        template:      "deep_safeClipAssembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.boost"
+    }
+    # dataset defined in obs_base modified in this mapper as follows:
+    deepCoadd_srcMatch: {
+        template:      "deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/srcMatch-%(filter)s-%(tract)d-%(patch)s.fits"
+    }
+    # dataset defined in obs_base modified in this mapper as follows:
+    deepCoadd_forced_src: {
+        template:      "deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/forced-%(filter)s-%(tract)d-%(patch)s.fits"
+    }
+    # dataset defined in obs_base modified in this mapper as follows:
+    deepCoadd_forced_config: {
+        template:      "config/deepCoadd_forced.py"
+    }
+    # dataset defined in obs_base modified in this mapper as follows:
+    deepCoadd_forced_metadata: {
+        template:      "deepCoadd_forced_metadata/%(filter)s/%(tract)d/%(patch)s.boost"
+    }
+    # dataset defined in obs_base modified in this mapper as follows:
+    deepDiff_diaSrc: {
+        template:      "deepDiff/v%(visit)d-f%(filter)s/R%(raft)s/diaSrc-S%(sensor)s.fits"
+    }
+    # dataset defined in obs_base modified in this mapper as follows:
+    deepDiff_kernelSrc: {
+        template:      "deepDiff/v%(visit)d-f%(filter)s/R%(raft)s/kernelSrc-S%(sensor)s.fits"
+    }
+    # dataset defined in obs_base modified in this mapper as follows:
+    deepDiff_config: {
+        python:        "lsst.pex.config.Config"
+    }
+    # dataset defined in obs_base modified in this mapper as follows:
+    deepDiff_metadata: {
+        template:      "deepDiff/v%(visit)d-f%(filter)s/R%(raft)s/metadata-S%(sensor)s.boost"
+    }
