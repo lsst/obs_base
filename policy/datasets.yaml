@@ -344,25 +344,25 @@ isr_metadata:
     persistable: PropertySet
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
-    tables: raw raw_visit
+    tables: raw
     template: ''
 icSrc:
     persistable: SourceCatalog
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
-    tables: raw raw_visit
+    tables: raw
     template: ''
 icExpBackground:
     persistable: PurePythonClass
     storage: FitsCatalogStorage
     python: lsst.afw.math.BackgroundList
-    tables: raw raw_visit
+    tables: raw
     template: ''
 processCcd_metadata:
     persistable: PropertySet
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
-    tables: raw raw_visit
+    tables: raw
     template: ''
 processCcd_config:
     persistable: Config
@@ -383,7 +383,7 @@ calibrate_metadata:
     persistable: PropertySet
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
-    tables: raw raw_visit
+    tables: raw
     template: ''
 forcedPhotCcd_config:
     persistable: Config
@@ -394,13 +394,13 @@ forcedPhotCcd_metadata:
     persistable: PropertySet
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
-    tables: raw raw_visit
+    tables: raw
     template: ''
 forced_src:
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
-    tables: raw raw_visit
+    tables: raw
     template: ''
 forced_src_schema:
     persistable: ignored
@@ -421,19 +421,19 @@ src:
     persistable: SourceCatalog
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
-    tables: raw raw_visit
+    tables: raw
     template: ''
 calexpBackground:
     persistable: PurePythonClass
     storage: FitsCatalogStorage
     python: lsst.afw.math.BackgroundList
-    tables: raw raw_visit
+    tables: raw
     template: ''
 srcMatch:
     persistable: BaseCatalog
     storage: FitsCatalogStorage
     python: lsst.afw.table.BaseCatalog
-    tables: raw raw_visit
+    tables: raw
     template: ''
 deepCoadd_srcMatch:
     persistable: BaseCatalog

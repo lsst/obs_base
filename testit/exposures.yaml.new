@@ -2,18 +2,14 @@ postISRCCD:
     persistable: ExposureF
     storage: FitsStorage
     python: lsst.afw.image.ExposureF
+    level: Ccd
     tables: raw
     template: ''
 calexp:
     persistable: ExposureF
     storage: FitsStorage
     python: lsst.afw.image.ExposureF
-    tables: raw
-    template: ''
-visitim:
-    persistable: ExposureF
-    storage: FitsStorage
-    python: lsst.afw.image.ExposureF
+    level: Ccd
     tables: raw
     template: ''
 raw:
@@ -27,11 +23,13 @@ wcs:
     persistable: ExposureI
     storage: FitsStorage
     python: lsst.afw.image.ExposureI
+    level: Ccd
     tables: raw
     template: ''
 icExp:
     persistable: ExposureF
     storage: FitsStorage
     python: lsst.afw.image.ExposureF
+    level: Ccd
     tables: raw
     template: ''
