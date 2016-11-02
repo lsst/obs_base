@@ -59,12 +59,6 @@ forcedPhotCcd_metadata:
     python: lsst.daf.base.PropertySet
     tables: raw raw_visit
     template: ''
-psf:
-    persistable: Psf
-    storage: BoostStorage
-    python: lsst.afw.detection.Psf
-    tables: raw raw_visit
-    template: ''
 forced_src:
     persistable: ignored
     storage: FitsCatalogStorage
@@ -92,12 +86,6 @@ src:
     python: lsst.afw.table.SourceCatalog
     tables: raw raw_visit
     template: ''
-apCorr:
-    persistable: ApertureCorrection
-    storage: PickleStorage
-    python: lsst.meas.algorithms.ApertureCorrection
-    tables: raw raw_visit
-    template: ''
 calexpBackground:
     persistable: PurePythonClass
     storage: FitsCatalogStorage
@@ -115,4 +103,4 @@ deepCoadd_srcMatch:
     storage: FitsCatalogStorage
     python: lsst.afw.table.BaseCatalog
     tables: raw
-    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/srcMatch-%(filter)s-%(tract)d-%(patch)s.fits
+    template: ''

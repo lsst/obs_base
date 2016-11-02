@@ -34,6 +34,7 @@ postISRCCD:
     storage: FitsStorage
     python: lsst.afw.image.ExposureF
     tables: raw
+    template: ''
 calexp:
     persistable: ExposureF
     storage: FitsStorage
@@ -50,6 +51,7 @@ raw:
     persistable: DecoratedImageU
     storage: FitsStorage
     python: lsst.afw.image.DecoratedImageU
+    level: Ccd
     tables: raw
     template: ''
 wcs:
