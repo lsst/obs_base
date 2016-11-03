@@ -28,6 +28,14 @@ exposures: {
         level:        "Amp"
         tables:        raw
     }
+    eimage: {
+        template:    "eimage/v%(visit)d-f%(filter)s/E%(snap)03d/R%(raft)s/eimage_%(visit)d_R%(raft)s_S%(sensor)s_E%(snap)03d.fits.gz"
+        python:      "lsst.afw.image.DecoratedImageU"
+        persistable: "DecoratedImageU"
+        storage:     "FitsStorage"
+        level:       "Ccd"
+        tables:      raw
+    }
     snapExp: {
         template:    "snapExp/v%(visit)d-f%(filter)s/s%(snap)d/R%(raft)s/S%(sensor)s.fits"
         python:        "lsst.afw.image.ExposureF"
@@ -164,13 +172,6 @@ calibrations: {
 }
 
 datasets: {
-    eimage: {
-        template:   "eimage/v%(visit)d-f%(filter)s/E%(snap)03d/R%(raft)s/eimage_%(visit)d_R%(raft)s_S%(sensor)s_E%(snap)03d.fits.gz"
-        python:     "lsst.afw.image.ExposureF"
-        persistable:         "ExposureF"
-        storage:     "FitsStorage"
-        tables:        raw
-    }
     ampExposureId: {
         template:     "ignored"
         # Provide something to import, although we actually return a tuple
@@ -193,7 +194,6 @@ datasets: {
         persistable:   "PurePythonClass"
         storage:       "FitsCatalogStorage"
         tables:        raw
-        tables:        raw_skyTile
     }
     calexpBackground: {
         template:      "calexp/v%(visit)d-f%(filter)s/R%(raft)s/bkgd-S%(sensor)s.fits"
@@ -355,3 +355,4 @@ datasets: {
     deepDiff_metadata: {
         template:      "deepDiff/v%(visit)d-f%(filter)s/R%(raft)s/metadata-S%(sensor)s.boost"
     }
+}

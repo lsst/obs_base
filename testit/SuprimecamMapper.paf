@@ -265,14 +265,6 @@ datasets: {
         tables:        raw
         tables:        raw_skyTile
     }
-    deepCoad_calexpBackground: {
-        template:    "deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/bkgd-%(filter)s-%(tract)d-%(patch)s.fits"
-        python:        "lsst.afw.math.BackgroundList"
-        persistable:   "PurePythonClass"
-        storage:       "FitsCatalogStorage"
-        tables:        raw
-        tables:        raw_skyTile
-    }
     psf: {
         template:      "%(pointing)05d/%(filter)s/output/PSF%(visit)07d%(ccd)1d.boost"
         python:        "lsst.afw.detection.Psf"
@@ -437,6 +429,12 @@ datasets: {
         storage:       "ConfigStorage"
         tables:        raw
         tables:        raw_visit
+    }
+    deep_forcedPhotCoadd_config: {
+        template:      "config/forcedPhotCoadd.py"
+        python:        "lsst.pipe.tasks.forcedPhotCoadd.ForcedPhotCoaddConfig"
+        persistable:      "Config"
+        storage:    "ConfigStorage"
     }
     deep_forcedPhotCoadd_metadata: {
         template:      "deepCoadd_forcedPhotCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.boost"
@@ -624,5 +622,11 @@ datasets: {
     # dataset defined in obs_base modified in this mapper as follows:
     mergeCoaddMeasurements_config: {
         python:        "lsst.pipe.tasks.multiBand.MergeSourcesConfig"
+    }
+    multiband_config: {
+        template:      "config/multiband.py"
+        python:        "hsc.pipe.tasks.multiband.MultiBandConfig"
+        persistable:   "Config"
+        storage:       "ConfigStorage"
     }
 }
