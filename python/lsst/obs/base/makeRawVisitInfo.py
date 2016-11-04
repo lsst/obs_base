@@ -241,6 +241,18 @@ class MakeRawVisitInfo(object):
         return BadDate
 
     @staticmethod
+    def eraFromLstAndLongitude(lst, longitude):
+        """
+        Return an approximate Earth Rotation Angle (afw:Angle) computed from
+        local sidereal time and longitude (both as afw:Angle; Longitude shares
+        the afw:Observatory covention: positive values are E of Greenwich).
+
+        NOTE: if we properly compute ERA via UT1 a la DM-8053, we should remove
+        this method.
+        """
+        return lst - longitude
+
+    @staticmethod
     def altitudeFromZenithDistance(zd):
         """Convert zenith distance to altitude (lsst.afw.geom.Angle)"""
         return 90*degrees - zd
