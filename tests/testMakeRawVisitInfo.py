@@ -268,6 +268,12 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
             missingDate = self.makeRawVisitInfo.popMjdDate(md, "BADKEY")
             self.assertEqual(missingDate, DateTime())
 
+    def testEraFromLstAndLongitude(self):
+        LST = 90*degrees
+        Longitude = 50*degrees
+        era = self.makeRawVisitInfo.eraFromLstAndLongitude(LST, Longitude)
+        self.assertEqual(era, LST-Longitude)
+
     def testAltitudeFromZenithDistance(self):
         for zdDeg in (0, 35.6, 89.999, 90.0):
             desAltDeg = 90-zdDeg

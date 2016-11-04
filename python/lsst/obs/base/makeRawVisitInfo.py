@@ -241,6 +241,15 @@ class MakeRawVisitInfo(object):
         return BadDate
 
     @staticmethod
+    def eraFromLstAndLongitude(lst, longitude):
+        """
+        Convert local sidereal time and longitude (both in degrees) to an approximate Earth Rotation Angle.
+
+        NOTE: if we properly compute ERA via UT1 a la DM-8053, we could remove this method.
+        """
+        return lst - longitude
+
+    @staticmethod
     def altitudeFromZenithDistance(zd):
         """Convert zenith distance to altitude (lsst.afw.geom.Angle)"""
         return 90*degrees - zd
