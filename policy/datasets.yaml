@@ -379,6 +379,7 @@ characterizeImage_metadata:
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
     template: ''
+    tables: raw
 calibrate_metadata:
     persistable: PropertySet
     storage: BoostStorage

@@ -44,8 +44,6 @@ if __name__ == "__main__":
                             differ.append("template")
 
                         if len(differ) > 0:
-                            if lastline.find('mapper as follows:') < 0:
-                                fout.write("    # dataset defined in obs_base modified in this mapper as follows:\n")
                             for item in bset.split("\n"):
                                 if item.find(":") >= 0:
                                     key = item[:item.find(":")].strip()

@@ -106,6 +106,14 @@ exposures: {
         tables:        "raw"
         tables:        "raw_visit"
     }
+    dcrModel: {
+        template:    "dcrModel/%(filter)s%(subfilter)s/%(tract)d/%(patch)s.fits"
+        python:      "lsst.afw.image.ExposureF"
+        persistable: "ExposureF"
+        storage:     "FitsStorage"
+        level:       "None"
+        tables:      raw
+    }
     # dataset defined in obs_base modified in this mapper as follows:
     deepDiff_differenceExp: {
         template:      "deepDiff/v%(visit)d-f%(filter)s/R%(raft)s/diffexp-S%(sensor)s.fits"
