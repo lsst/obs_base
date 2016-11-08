@@ -36,7 +36,6 @@ class CompositeMapper(CameraMapper):
         super(CompositeMapper, self).__init__(policy, repositoryDir=root, root=root)
 
     def _makeCamera(self, policy, repositoryDir):
-        """Normally this makes a camera (instance of lsst.afw.cameraGeom.Camera) describing the camera
-        geometry. For composite testing, we don't need a camera.
+        """Normally this makes a camera. For composite testing, we don't need a camera.
         """
         return None
