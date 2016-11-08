@@ -38,6 +38,7 @@ from lsst.afw.geom import degrees
 
 
 class SimpleMakeRawVisitInfo(MakeRawVisitInfo):
+
     def getDateAvg(self, md, exposureTime):
         """Return date at the middle of the exposure"""
         dateObs = self.popIsoDate(md, "DATE-OBS")

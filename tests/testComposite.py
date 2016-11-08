@@ -83,8 +83,6 @@ class TestCompositeTestCase(unittest.TestCase):
         del butler
         del repoArgs
 
-
-
     def tearDown(self):
         if os.path.exists(self.testData):
             shutil.rmtree(self.testData)
@@ -118,8 +116,6 @@ class TestCompositeTestCase(unittest.TestCase):
         self.assertTrue(filecmp.cmp(os.path.join(self.firstRepoPath, 'basic', 'namebar.pickle'),
                                     os.path.join(secondRepoPath, 'basic', 'namebar.pickle')))
         del butler
-
-
 
     def testDottedDatasetType(self):
         """Verify that components of a composite can be loaded by dotted name in the form

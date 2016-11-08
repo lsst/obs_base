@@ -268,7 +268,7 @@ class CameraMapper(dafPersist.Mapper):
         calMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
             "obs_base", "CalibrationMappingDictionary.paf", "policy"))
         dsMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
-             "obs_base", "DatasetMappingDictionary.paf", "policy"))
+            "obs_base", "DatasetMappingDictionary.paf", "policy"))
 
         # Dict of valid keys and their value types
         self.keyDict = dict()
