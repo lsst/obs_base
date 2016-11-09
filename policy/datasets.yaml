@@ -123,6 +123,21 @@ mergeCoaddDetections_config:
     storage: ConfigStorage
     python: lsst.pipe.tasks.multiBand.MergeDetectionsConfig
     template: config/mergeDetect.py
+removeDegenerateTemplates_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.tasks.multiBand.RemoveDegenerateTemplatesConfig
+    template: config/removeDegenerateTemplates.py
+deepCoadd_template:
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/template-%(filter)s-%(tract)d-%(patch)s.fits
+deepCoadd_template_schema:
+    persistable: SourceCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: schema/deepCoadd_template.fits
 deep_makeSkyMap_metadata:
     persistable: PropertySet
     storage: BoostStorage
