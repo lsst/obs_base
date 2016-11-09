@@ -169,6 +169,8 @@ class Mapper2TestCase(unittest.TestCase):
                               "some", "some_filename", "some_md", "some_sub",
                               "someCatalog", "someCatalog_md", "someCatalog_filename",
                               "someCatalog_len", "someCatalog_schema",
+                              "forced_src", "forced_src_md", "forced_src_filename",
+                              "forced_src_len","forced_src_schema",
                               "other_sub", "other_filename", "other_md", "other",
                               "someGz", "someGz_filename", "someFz", "someFz_filename", "someGz_md",
                               "someFz_sub", "someFz_md", "someGz_sub"
@@ -345,6 +347,20 @@ class Mapper2TestCase(unittest.TestCase):
                                                       os.path.join('testParentSearch', 'baz.fits[1]')))
         self.assertEqual(paths, [os.path.join(testDir,
                                               os.path.join('testParentSearch', '_parent', 'baz.fits[1]'))])
+
+    def testSkymapLookups(self):
+        """Test that metadata lookups don't try to get skymap data ID values from the registry.
+        """
+        butler = dafPersist.Butler(mapper=self.mapper)
+        with self.assertRaises(RuntimeError) as manager:
+            butler.dataRef("forced_src", visit=787650, ccd=13)
+            self.assertIn("Cannot lookup skymap key 'tract'", str(manager.exception))
+        # We're mostly concerned that the statements below will raise an exception;
+        # if they don't, it's not likely the following tests will fail.
+        subset = butler.subset("forced_src", visit=787650, ccd=13, tract=0)
+        self.assertEqual(len(subset), 1)
+        dataRef = butler.dataRef("forced_src", visit=787650, ccd=13, tract=0)
+        self.assertFalse(dataRef.datasetExists("forced_src"))
 
 
 class Mapper3TestCase(unittest.TestCase):

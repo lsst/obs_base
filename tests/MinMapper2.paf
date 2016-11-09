@@ -71,4 +71,11 @@ datasets: {
         storage:     "FitsCatalogStorage"
         tables:      "raw"
     }
+    forced_src: {
+        template:    "%(tract)d/%(filter)s/forced_src-v%(visit)d-c%(ccd)02d.boost"
+        python:      "lsst.afw.table.SourceCatalog"
+        persistable: "SourceCatalog"
+        storage:     "FitsCatalogStorage"
+        tables:      "raw"
+    }
 }
