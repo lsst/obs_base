@@ -23,6 +23,7 @@
 #
 
 import filecmp
+import gc
 import os
 import shutil
 import unittest
@@ -64,8 +65,7 @@ class TestCompositeTestCase(unittest.TestCase):
                                             'disassembler': 'lsst.daf.persistence.test.TestObjectPair.disassembler'
 
                                         }
-                                    }
-                                    })
+                                    }})
 
         # We need a way to put policy into a repo. Butler does not support it yet. This is a cheat.
         # The ticket to fix it is DM-7777
@@ -88,10 +88,13 @@ class TestCompositeTestCase(unittest.TestCase):
             shutil.rmtree(self.testData)
 
     def testType3GetAndPut(self):
-        """Verify that a composite can be loaded and that its components are the same as when the type1
+        """1. Verify that a composite can be loaded and that its components are the same as when the type1
         components are loaded individually (verifies correct lookup in this case).
-        Also verify that when the individual components are put and when the composite is put (which
+        2. Verify that when the individual components are put and when the composite is put (which
         disassembles into individual components) that the objects that are written are the same.
+        3. Verify object caching & reuse - that 2 components of the same datasetType and the same used dataId
+        are loaded from the same dataset the object is shared instead of loaded 2 times.
+        4. Verify release & garbage collection of the cached objects when they are no longer used.
         """
         secondRepoPath = os.path.join(self.testData, 'repo2')
         # child repositories do not look up in-repo policies. We need to fix that.
@@ -105,9 +108,16 @@ class TestCompositeTestCase(unittest.TestCase):
         self.assertEqual(self.objB, objABPair.objB)
 
         # For now also test that the type 1 and type 3 components are not the same object.
-        # When we add caching they may end up becoming the same object.
+        # These objects are not yet in the butler cache because they have not been gotten yet (they have only
+        # only been put)
         self.assertIsNot(self.objA, objABPair.objA)
         self.assertIsNot(self.objB, objABPair.objB)
+
+        # Now, get a type 1 copy of objA and objB, and they should be the same instance as in the composite.
+        objA = butler.get('basicObject1', dataId={'id': 'foo'}, immediate=True)
+        objB = butler.get('basicObject2', dataId={'name': 'bar'}, immediate=True)
+        self.assertIs(objA, objABPair.objA)
+        self.assertIs(objB, objABPair.objB)
 
         butler.put(objABPair, 'basicPair', dataId={'id': 'foo', 'name': 'bar'})
         # comparing the output files directly works so long as the storage is posix:
@@ -115,6 +125,21 @@ class TestCompositeTestCase(unittest.TestCase):
                                     os.path.join(secondRepoPath, 'basic', 'idfoo.pickle')))
         self.assertTrue(filecmp.cmp(os.path.join(self.firstRepoPath, 'basic', 'namebar.pickle'),
                                     os.path.join(secondRepoPath, 'basic', 'namebar.pickle')))
+
+        # check that objA and objB are cached
+        self.assertIn(objA, butler.objectCache.values())
+        self.assertIn(objB, butler.objectCache.values())
+        del objA
+        del objABPair
+        gc.collect()
+        # check that A is not cached but B is cached by verifying B is the only object in the cache
+        self.assertIs(len(butler.objectCache), 1)
+        self.assertIn(objB, butler.objectCache.values())
+        del objB
+        gc.collect()
+        # check that B is not cached
+        self.assertIs(len(butler.objectCache), 0)
+
         del butler
 
     def testDottedDatasetType(self):
