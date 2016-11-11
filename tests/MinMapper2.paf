@@ -35,6 +35,18 @@ images: {
         persistable: "ImageF"
         tables:      raw
     }
+    someGz: {
+        template:    "gz/bar-%(ccd)02d.fits" # the file will end in ...fits.gz but butler will still find it.
+        python:      "lsst.afw.image.ExposureF"
+        persistable: "ExposureF"
+        tables:      raw
+    }
+        someFz: {
+        template:    "fz/bar-%(ccd)02d.fits" # the file will end in ...fits.fz but butler will still find it.
+        python:      "lsst.afw.image.ExposureF"
+        persistable: "ExposureF"
+        tables:      raw
+    }
 }
 calibrations: {
     flat: {
