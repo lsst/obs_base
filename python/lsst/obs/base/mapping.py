@@ -126,9 +126,19 @@ class Mapping(object):
         if not os.path.isabs(path):
             path = os.path.join(self.root, path)
         if not write:
-            newPath = mapper._parentSearch(path)
-            if newPath:
-                path = newPath
+            # This allows mapped files to be compressed, ending in .gz or .fz, without any indication from the
+            # policy that the file should be compressed, easily allowing repositories to contain a combination
+            # of comporessed and not-compressed files.
+            # If needed we can add a policy flag to allow compressed files or not, and perhaps a list of
+            # allowed extensions that may exist at the end of the template.
+            for ext in (None, '.gz', '.fz'):
+                if ext and path.endswith(ext):
+                    continue # if the path already ends with the extension
+                extPath = path + ext if ext else path
+                newPath = mapper._parentSearch(extPath)
+                if newPath:
+                    path = newPath
+                    break
         assert path, "Fully-qualified filename is empty."
 
         addFunc = "add_" + self.datasetType  # Name of method for additionalData

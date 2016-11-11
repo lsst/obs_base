@@ -168,6 +168,8 @@ class Mapper2TestCase(unittest.TestCase):
                               "some", "some_filename", "some_md", "some_sub",
                               "src", "src_filename",
                               "other_sub", "other_filename", "other_md", "other",
+                              "someGz", "someGz_filename", "someFz", "someFz_filename", "someGz_md",
+                              "someFz_sub", "someFz_md", "someGz_sub"
                               ])
         self.assertEqual(set(self.mapper.getDatasetTypes()),
                          set(expectedTypes))
@@ -219,6 +221,36 @@ class Mapper2TestCase(unittest.TestCase):
         bbox = afwGeom.BoxI(afwGeom.Point2I(200, 100),
                             afwGeom.Extent2I(300, 400))
         image = butler.get("some_sub", ccd=35, bbox=bbox, imageOrigin="LOCAL", immediate=True)
+        self.assertEqual(image.getHeight(), 400)
+        self.assertEqual(image.getWidth(), 300)
+
+    def testGzImage(self):
+        loc = self.mapper.map("someGz", dict(ccd=35))
+        expectedLocations = [os.path.join(testDir, "gz", "bar-35.fits.gz")]
+        self.assertEqual(loc.getLocations(), expectedLocations)
+
+        butler = dafPersist.ButlerFactory(mapper=self.mapper).create()
+        image = butler.get("someGz", ccd=35)
+        self.assertEqual(image.getFilter().getName(), "r")
+
+        bbox = afwGeom.BoxI(afwGeom.Point2I(200, 100),
+                            afwGeom.Extent2I(300, 400))
+        image = butler.get("someGz_sub", ccd=35, bbox=bbox, imageOrigin="LOCAL", immediate=True)
+        self.assertEqual(image.getHeight(), 400)
+        self.assertEqual(image.getWidth(), 300)
+
+    def testFzImage(self):
+        loc = self.mapper.map("someFz", dict(ccd=35))
+        expectedLocations = [os.path.join(testDir, "fz", "bar-35.fits.fz")]
+        self.assertEqual(loc.getLocations(), expectedLocations)
+
+        butler = dafPersist.ButlerFactory(mapper=self.mapper).create()
+        image = butler.get("someFz", ccd=35)
+        self.assertEqual(image.getFilter().getName(), "r")
+
+        bbox = afwGeom.BoxI(afwGeom.Point2I(200, 100),
+                            afwGeom.Extent2I(300, 400))
+        image = butler.get("someFz_sub", ccd=35, bbox=bbox, imageOrigin="LOCAL", immediate=True)
         self.assertEqual(image.getHeight(), 400)
         self.assertEqual(image.getWidth(), 300)
 
