@@ -243,9 +243,12 @@ class MakeRawVisitInfo(object):
     @staticmethod
     def eraFromLstAndLongitude(lst, longitude):
         """
-        Convert local sidereal time and longitude (both in degrees) to an approximate Earth Rotation Angle.
+        Return an approximate Earth Rotation Angle (afw:Angle) computed from
+        local sidereal time and longitude (both as afw:Angle; Longitude shares
+        the afw:Observatory covention: positive values are E of Greenwich).
 
-        NOTE: if we properly compute ERA via UT1 a la DM-8053, we could remove this method.
+        NOTE: if we properly compute ERA via UT1 a la DM-8053, we should remove
+        this method.
         """
         return lst - longitude
 

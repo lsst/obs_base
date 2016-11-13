@@ -272,7 +272,15 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
         LST = 90*degrees
         Longitude = 50*degrees
         era = self.makeRawVisitInfo.eraFromLstAndLongitude(LST, Longitude)
-        self.assertEqual(era, LST-Longitude)
+        self.assertAnglesNearlyEqual(era, LST-Longitude)
+
+    def testEraFromLstAndLongitude_float_vs_Angle_fails(self):
+        val1 = 90*degrees
+        val2 = 50.0
+        with self.assertRaises(TypeError):
+            self.makeRawVisitInfo.eraFromLstAndLongitude(val1, val2)
+        with self.assertRaises(TypeError):
+            self.makeRawVisitInfo.eraFromLstAndLongitude(val2, val1)
 
     def testAltitudeFromZenithDistance(self):
         for zdDeg in (0, 35.6, 89.999, 90.0):
