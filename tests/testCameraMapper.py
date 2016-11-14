@@ -29,6 +29,7 @@ import unittest
 
 import lsst.utils.tests
 import lsst.afw.geom as afwGeom
+import lsst.afw.table as afwTable
 import lsst.daf.persistence as dafPersist
 import lsst.obs.base
 from lsst.utils import getPackageDir
@@ -163,10 +164,11 @@ class Mapper2TestCase(unittest.TestCase):
     def testGetDatasetTypes(self):
         expectedTypes = BaseMapper().getDatasetTypes()
         #   Add the expected additional types to what the base class provides
-        expectedTypes.extend(["flat", "flat_filename", "raw", "raw_md",
-                              "raw_filename", "raw_sub",
+        expectedTypes.extend(["flat", "flat_md", "flat_filename", "flat_sub",
+                              "raw", "raw_md", "raw_filename", "raw_sub",
                               "some", "some_filename", "some_md", "some_sub",
-                              "src", "src_filename",
+                              "someCatalog", "someCatalog_md", "someCatalog_filename",
+                              "someCatalog_len", "someCatalog_schema",
                               "other_sub", "other_filename", "other_md", "other",
                               "someGz", "someGz_filename", "someFz", "someFz_filename", "someGz_md",
                               "someFz_sub", "someFz_md", "someGz_sub"
@@ -208,6 +210,31 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getAdditionalData().toString(),
                          'ccd = 13\nheight = 400\nimageOrigin = "PARENT"\n'
                          'llcX = 200\nllcY = 100\nwidth = 300\n')
+
+    def testCatalogExtras(self):
+        butler = dafPersist.Butler(mapper=self.mapper)
+        schema = afwTable.Schema()
+        aa = schema.addField("a", type=int, doc="a")
+        bb = schema.addField("b", type=float, doc="b")
+        catalog = lsst.afw.table.BaseCatalog(schema)
+        row = catalog.addNew()
+        row.set(aa, 12345)
+        row.set(bb, 1.2345)
+        size = len(catalog)
+        dataId = dict(visit=123, ccd=45)
+        filename = butler.get("someCatalog_filename", dataId)[0]
+        butler.put(catalog, "someCatalog", dataId)
+        try:
+            self.assertTrue(os.path.exists(filename))
+            self.assertEqual(butler.get("someCatalog_schema", dataId), schema)
+            self.assertEqual(butler.get("someCatalog_len", dataId), size)
+            header = butler.get("someCatalog_md", dataId)
+            self.assertEqual(header.get("NAXIS2"), size)
+        finally:
+            try:
+                os.remove(filename)
+            except OSError as exc:
+                print("Warning: could not remove file %r: %s" % (filename, exc))
 
     def testImage(self):
         loc = self.mapper.map("some", dict(ccd=35))

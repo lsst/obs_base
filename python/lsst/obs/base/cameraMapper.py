@@ -35,6 +35,7 @@ from . import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping
 import lsst.daf.base as dafBase
 import lsst.afw.geom as afwGeom
 import lsst.afw.image as afwImage
+import lsst.afw.table as afwTable
 import lsst.afw.cameraGeom as afwCameraGeom
 import lsst.log as lsstLog
 import lsst.pex.policy as pexPolicy
@@ -407,6 +408,9 @@ class CameraMapper(dafPersist.Mapper):
                     if subPolicy["storage"] == "FitsStorage":  # a FITS image
                         setMethods("md", bypassImpl=lambda datasetType, pythonType, location, dataId:
                                    afwImage.readMetadata(location.getLocations()[0]))
+                    if subPolicy["storage"] == "FitsCatalogStorage":  # a FITS catalog
+                        setMethods("md", bypassImpl=lambda datasetType, pythonType, location, dataId:
+                                   afwImage.readMetadata(location.getLocations()[0], 2))
 
                     # Sub-images
                     if subPolicy["storage"] == "FitsStorage":
@@ -432,6 +436,16 @@ class CameraMapper(dafPersist.Mapper):
                             del subId['bbox']
                             return mapping.lookup(format, subId)
                         setMethods("sub", mapImpl=mapSubClosure, queryImpl=querySubClosure)
+
+                    if subPolicy["storage"] == "FitsCatalogStorage":
+                        # Length of catalog
+                        setMethods("len", bypassImpl=lambda datasetType, pythonType, location, dataId:
+                                   afwImage.readMetadata(location.getLocations()[0], 2).get("NAXIS2"))
+
+                        # Schema of catalog
+                        if not datasetType.endswith("_schema") and datasetType + "_schema" not in datasets:
+                            setMethods("schema", bypassImpl=lambda datasetType, pythonType, location, dataId:
+                                       afwTable.Schema.readFits(location.getLocations()[0]))
 
 
     def _computeCcdExposureId(self, dataId):
