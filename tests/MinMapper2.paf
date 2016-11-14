@@ -64,11 +64,11 @@ calibrations: {
     }
 }
 datasets: {
-    src: {
-        template:    "src-v%(visit)d-c%(ccd)02d.boost"
-        python:      "lsst.afw.detection.PersistableSourceVector"
-        persistable: "PersistableSourceVector"
-        storage:     "BoostStorage"
+    someCatalog: {
+        template:    "catalog-v%(visit)d-c%(ccd)02d.fits"
+        python:      "lsst.afw.table.BaseCatalog"
+        persistable: "BasesCatalog"
+        storage:     "FitsCatalogStorage"
         tables:      "raw"
     }
 }

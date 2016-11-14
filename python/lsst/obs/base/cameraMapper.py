@@ -35,6 +35,7 @@ from . import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping
 import lsst.daf.base as dafBase
 import lsst.afw.geom as afwGeom
 import lsst.afw.image as afwImage
+import lsst.afw.table as afwTable
 import lsst.afw.cameraGeom as afwCameraGeom
 import lsst.log as lsstLog
 import lsst.pex.policy as pexPolicy
@@ -260,6 +261,55 @@ class CameraMapper(dafPersist.Mapper):
         else:
             calibRegistry = None
 
+        # Dict of valid keys and their value types
+        self.keyDict = dict()
+
+        self._initMappings(policy, root, calibRoot, calibRegistry, provided=None)
+
+        # Camera geometry
+        self.cameraDataLocation = None  # path to camera geometry config file
+        self.camera = self._makeCamera(policy=policy, repositoryDir=repositoryDir)
+
+        # Defect registry and root
+        self.defectRegistry = None
+        if 'defects' in policy:
+            self.defectPath = os.path.join(repositoryDir, policy['defects'])
+            defectRegistryLocation = os.path.join(self.defectPath, "defectRegistry.sqlite3")
+            self.defectRegistry = dafPersist.Registry.create(defectRegistryLocation)
+
+        # Filter translation table
+        self.filters = None
+
+        # Skytile policy
+        self.skypolicy = policy['skytiles']
+
+        # verify that the class variable packageName is set before attempting
+        # to instantiate an instance
+        if self.packageName is None:
+            raise ValueError('class variable packageName must not be None')
+
+        self.makeRawVisitInfo = self.MakeRawVisitInfoClass(log=self.log)
+
+    def _initMappings(self, policy, root=None, calibRoot=None, calibRegistry=None, provided=None):
+        """Initialize mappings
+
+        For each of the dataset types that we want to be able to read, there are
+        methods that can be created to support them:
+        * map_<dataset> : determine the path for dataset
+        * std_<dataset> : standardize the retrieved dataset
+        * bypass_<dataset> : retrieve the dataset (bypassing the usual retrieval machinery)
+        * query_<dataset> : query the registry
+
+        Besides the dataset types explicitly listed in the policy, we create
+        additional, derived datasets for additional conveniences, e.g., reading
+        the header of an image, retrieving only the size of a catalog.
+
+        @param policy        (Policy) Policy with per-camera defaults already merged
+        @param root          (string) Root directory for data
+        @param calibRoot     (string) Root directory for calibrations
+        @param calibRegistry (string) Path to registry with calibrations' metadata
+        @param provided      (list of strings) Keys provided by the mapper
+        """
         # Sub-dictionaries (for exposure/calibration/dataset types)
         imgMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
             "obs_base", "ImageMappingDictionary.paf", "policy"))
@@ -269,9 +319,6 @@ class CameraMapper(dafPersist.Mapper):
             "obs_base", "CalibrationMappingDictionary.paf", "policy"))
         dsMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
             "obs_base", "DatasetMappingDictionary.paf", "policy"))
-
-        # Dict of valid keys and their value types
-        self.keyDict = dict()
 
         # Mappings
         mappingList = (
@@ -338,80 +385,68 @@ class CameraMapper(dafPersist.Mapper):
                             return mapping.standardize(mapper, item, dataId)
                         setattr(self, "std_" + datasetType, stdClosure)
 
-                    mapFunc = "map_" + datasetType + "_filename"
-                    bypassFunc = "bypass_" + datasetType + "_filename"
-                    if not hasattr(self, mapFunc):
-                        setattr(self, mapFunc, getattr(self, "map_" + datasetType))
-                    if not hasattr(self, bypassFunc):
-                        setattr(self, bypassFunc,
-                                lambda datasetType, pythonType, location, dataId: location.getLocations())
+                    def setMethods(suffix, mapImpl=None, bypassImpl=None, queryImpl=None):
+                        """Set convenience methods on CameraMapper"""
+                        mapName = "map_" + datasetType + "_" + suffix
+                        bypassName = "bypass_" + datasetType + "_" + suffix
+                        queryName = "query_" + datasetType + "_" + suffix
+                        if not hasattr(self, mapName):
+                            setattr(self, mapName, mapImpl or getattr(self, "map_" + datasetType))
+                        if not hasattr(self, bypassName):
+                            if bypassImpl is None and hasattr(self, "bypass_" + datasetType):
+                                bypassImpl = getattr(self, "bypass_" + datasetType)
+                            if bypassImpl is not None:
+                                setattr(self, bypassName, bypassImpl)
+                        if not hasattr(self, queryName):
+                            setattr(self, queryName, queryImpl or getattr(self, "query_" + datasetType))
 
-                    # Set up metadata versions
-                    if name == "exposures" or name == "images":
-                        expFunc = "map_" + datasetType  # Function name to map exposure
-                        mdFunc = expFunc + "_md"       # Function name to map metadata
-                        bypassFunc = "bypass_" + datasetType + "_md"  # Func name to bypass daf_persistence
-                        if not hasattr(self, mdFunc):
-                            setattr(self, mdFunc, getattr(self, expFunc))
-                        if not hasattr(self, bypassFunc):
-                            setattr(self, bypassFunc,
-                                    lambda datasetType, pythonType, location, dataId:
-                                    afwImage.readMetadata(location.getLocations()[0]))
-                        if not hasattr(self, "query_" + datasetType + "_md"):
-                            setattr(self, "query_" + datasetType + "_md",
-                                    getattr(self, "query_" + datasetType))
+                    # Filename of dataset
+                    setMethods("filename", bypassImpl=lambda datasetType, pythonType, location, dataId:
+                               location.getLocations())
 
-                        subFunc = expFunc + "_sub"  # Function name to map subimage
-                        if not hasattr(self, subFunc):
-                            def mapSubClosure(dataId, write=False, mapper=weakref.proxy(self),
-                                              mapping=mapping):
-                                subId = dataId.copy()
-                                del subId['bbox']
-                                loc = mapping.map(mapper, subId, write)
-                                bbox = dataId['bbox']
-                                llcX = bbox.getMinX()
-                                llcY = bbox.getMinY()
-                                width = bbox.getWidth()
-                                height = bbox.getHeight()
-                                loc.additionalData.set('llcX', llcX)
-                                loc.additionalData.set('llcY', llcY)
-                                loc.additionalData.set('width', width)
-                                loc.additionalData.set('height', height)
-                                if 'imageOrigin' in dataId:
-                                    loc.additionalData.set('imageOrigin',
-                                                           dataId['imageOrigin'])
-                                return loc
-                            setattr(self, subFunc, mapSubClosure)
-                        if not hasattr(self, "query_" + datasetType + "_sub"):
-                            def querySubClosure(key, format, dataId, mapping=mapping):
-                                subId = dataId.copy()
-                                del subId['bbox']
-                                return mapping.lookup(format, subId)
-                            setattr(self, "query_" + datasetType + "_sub", querySubClosure)
+                    # Metadata from FITS file
+                    if subPolicy["storage"] == "FitsStorage":  # a FITS image
+                        setMethods("md", bypassImpl=lambda datasetType, pythonType, location, dataId:
+                                   afwImage.readMetadata(location.getLocations()[0]))
+                    if subPolicy["storage"] == "FitsCatalogStorage":  # a FITS catalog
+                        setMethods("md", bypassImpl=lambda datasetType, pythonType, location, dataId:
+                                   afwImage.readMetadata(location.getLocations()[0], 2))
 
-        # Camera geometry
-        self.cameraDataLocation = None  # path to camera geometry config file
-        self.camera = self._makeCamera(policy=policy, repositoryDir=repositoryDir)
+                    # Sub-images
+                    if subPolicy["storage"] == "FitsStorage":
+                        def mapSubClosure(dataId, write=False, mapper=weakref.proxy(self), mapping=mapping):
+                            subId = dataId.copy()
+                            del subId['bbox']
+                            loc = mapping.map(mapper, subId, write)
+                            bbox = dataId['bbox']
+                            llcX = bbox.getMinX()
+                            llcY = bbox.getMinY()
+                            width = bbox.getWidth()
+                            height = bbox.getHeight()
+                            loc.additionalData.set('llcX', llcX)
+                            loc.additionalData.set('llcY', llcY)
+                            loc.additionalData.set('width', width)
+                            loc.additionalData.set('height', height)
+                            if 'imageOrigin' in dataId:
+                                loc.additionalData.set('imageOrigin',
+                                                       dataId['imageOrigin'])
+                            return loc
+                        def querySubClosure(key, format, dataId, mapping=mapping):
+                            subId = dataId.copy()
+                            del subId['bbox']
+                            return mapping.lookup(format, subId)
+                        setMethods("sub", mapImpl=mapSubClosure, queryImpl=querySubClosure)
 
-        # Defect registry and root
-        self.defectRegistry = None
-        if 'defects' in policy:
-            self.defectPath = os.path.join(repositoryDir, policy['defects'])
-            defectRegistryLocation = os.path.join(self.defectPath, "defectRegistry.sqlite3")
-            self.defectRegistry = dafPersist.Registry.create(defectRegistryLocation)
+                    if subPolicy["storage"] == "FitsCatalogStorage":
+                        # Length of catalog
+                        setMethods("len", bypassImpl=lambda datasetType, pythonType, location, dataId:
+                                   afwImage.readMetadata(location.getLocations()[0], 2).get("NAXIS2"))
 
-        # Filter translation table
-        self.filters = None
+                        # Schema of catalog
+                        if not datasetType.endswith("_schema") and datasetType + "_schema" not in datasets:
+                            setMethods("schema", bypassImpl=lambda datasetType, pythonType, location, dataId:
+                                       afwTable.Schema.readFits(location.getLocations()[0]))
 
-        # Skytile policy
-        self.skypolicy = policy['skytiles']
-
-        # verify that the class variable packageName is set before attempting
-        # to instantiate an instance
-        if self.packageName is None:
-            raise ValueError('class variable packageName must not be None')
-
-        self.makeRawVisitInfo = self.MakeRawVisitInfoClass(log=self.log)
 
     def _computeCcdExposureId(self, dataId):
         """Compute the 64-bit (long) identifier for a CCD exposure.
