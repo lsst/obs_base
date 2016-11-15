@@ -22,6 +22,7 @@
 
 from builtins import zip
 from builtins import object
+from collections import OrderedDict
 import os
 import re
 from lsst.daf.persistence import ButlerLocation
@@ -162,8 +163,37 @@ class Mapping(object):
         if self.registry is None:
             raise RuntimeError("No registry for lookup")
 
+        skyMapKeys = ("tract", "patch")
+
         where = []
         values = []
+
+        # Prepare to remove skymap entries from properties list.  These must
+        # be in the data ID, so we store which ones we're removing and create
+        # an OrderedDict that tells us where to re-insert them.  That maps the
+        # name of the property to either its index in the properties list
+        # *after* the skymap ones have been removed (for entries that aren't
+        # skymap ones) or the value from the data ID (for those that are).
+        removed = set()
+        substitutions = OrderedDict()
+        index = 0
+        properties = list(properties)  # don't modify the original list
+        for p in properties:
+            if p in skyMapKeys:
+                try:
+                    substitutions[p] = dataId[p]
+                    removed.add(p)
+                except KeyError:
+                    raise RuntimeError(
+                        "Cannot look up skymap key '%s'; it must be explicitly included in the data ID" % p
+                    )
+            else:
+                substitutions[p] = index
+                index += 1
+        # Can't actually remove while iterating above, so we do it here.
+        for p in removed:
+            properties.remove(p)
+
         fastPath = True
         for p in properties:
             if p not in ('filter', 'expTime', 'taiObs'):
@@ -171,22 +201,30 @@ class Mapping(object):
                 break
         if fastPath and 'visit' in dataId and "raw" in self.tables:
             lookupDataId = {'visit': dataId['visit']}
-            self.registry.lookup(properties, 'raw_visit', lookupDataId)
-        if dataId is not None:
-            for k, v in dataId.items():
-                if self.columns and k not in self.columns:
-                    continue
-                if k == self.obsTimeName:
-                    continue
-                where.append((k, '?'))
-                values.append(v)
-
-        lookupDataId = {k[0]: v for k, v in zip(where, values)}
-        if self.range:
-            # format of self.range is ('?', isBetween-lowKey, isBetween-highKey)
-            # here we transform that to {(lowKey, highKey): value}
-            lookupDataId[(self.range[1], self.range[2])] = dataId[self.obsTimeName]
-        return self.registry.lookup(properties, self.tables, lookupDataId, template=self.template)
+            result = self.registry.lookup(properties, 'raw_visit', lookupDataId, template=self.template)
+        else:
+            if dataId is not None:
+                for k, v in dataId.items():
+                    if self.columns and k not in self.columns:
+                        continue
+                    if k == self.obsTimeName:
+                        continue
+                    if k in skyMapKeys:
+                        continue
+                    where.append((k, '?'))
+                    values.append(v)
+            lookupDataId = {k[0]: v for k, v in zip(where, values)}
+            if self.range:
+                # format of self.range is ('?', isBetween-lowKey, isBetween-highKey)
+                # here we transform that to {(lowKey, highKey): value}
+                lookupDataId[(self.range[1], self.range[2])] = dataId[self.obsTimeName]
+            result = self.registry.lookup(properties, self.tables, lookupDataId, template=self.template)
+        if not removed:
+            return result
+        # Iterate over the query results, re-inserting the skymap entries.
+        result = [tuple(v if k in removed else item[v] for k, v in substitutions.items())
+                  for item in result]
+        return result
 
     def have(self, properties, dataId):
         """Returns whether the provided data identifier has all
