@@ -359,7 +359,8 @@ class CameraMapper(dafPersist.Mapper):
                                                     datasetType=component.get('datasetType'),
                                                     setter=component.get('setter', None),
                                                     getter=component.get('getter', None),
-                                                    subset=component.get('subset', False))
+                                                    subset=component.get('subset', False),
+                                                    inputOnly=component.get('inputOnly', False))
                             return butlerComposite
                         setattr(self, "map_" + datasetType, compositeClosure)
                         # for now at least, don't set up any other handling for this dataset type.

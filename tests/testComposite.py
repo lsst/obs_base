@@ -445,6 +445,85 @@ class TestSubset(unittest.TestCase):
         # here.
 
 
+class TestInputOnly(unittest.TestCase):
+    """A test case for composite input keyword."""
+
+    def setUp(self):
+        packageDir = getPackageDir('obs_base')
+        self.testData = os.path.join(packageDir, 'tests', 'composite')
+        self.firstRepoPath = os.path.join(self.testData, 'repo1')
+        self.objA = dpTest.TestObject("abc")
+        self.objB = dpTest.TestObject("def")
+        policy = dafPersist.Policy({'camera': 'lsst.afw.cameraGeom.Camera',
+                                    'datasets': {
+                                        'basicObject1': {
+                                            'python': 'lsst.daf.persistence.test.TestObject',
+                                            'template': 'basic/id%(id)s.pickle',
+                                            'storage': 'PickleStorage'},
+                                        'basicObject2': {
+                                            'python': 'lsst.daf.persistence.test.TestObject',
+                                            'template': 'basic/name%(name)s.pickle',
+                                            'storage': 'PickleStorage'},
+                                        'basicPair': {
+                                            'python': 'lsst.daf.persistence.test.TestObjectPair',
+                                            'composite': {
+                                                'a': {
+                                                    'datasetType': 'basicObject1'
+                                                },
+                                                'b': {
+                                                    'datasetType': 'basicObject2',
+                                                    'inputOnly' : True
+                                                }
+                                            },
+                                            'assembler': 'lsst.daf.persistence.test.TestObjectPair.assembler',
+                                            'disassembler': 'lsst.daf.persistence.test.TestObjectPair.disassembler'
+
+                                        }
+                                    }})
+
+        # We need a way to put policy into a repo. Butler does not support it yet. This is a cheat.
+        # The ticket to fix it is DM-7777
+        if not os.path.exists(self.firstRepoPath):
+            os.makedirs(self.firstRepoPath)
+        policy.dumpToFile(os.path.join(self.testData, 'policy.yaml'))
+        del policy
+
+        repoArgs = dafPersist.RepositoryArgs(root=self.firstRepoPath,
+                                             mapper='lsst.obs.base.test.CompositeMapper',
+                                             mapperArgs={'policyDir': self.testData})
+        butler = dafPersist.Butler(outputs=repoArgs)
+        butler.put(self.objA, 'basicObject1', dataId={'id': 'foo'})
+        butler.put(self.objB, 'basicObject2', dataId={'name': 'bar'})
+        del butler
+        del repoArgs
+
+    def tearDown(self):
+        if os.path.exists(self.testData):
+            shutil.rmtree(self.testData)
+
+    def test(self):
+        """ Verify that when a type 3 dataset is put and one of its components is marked 'inputOnly' by the
+        policy that the inputOnly comonent is not written.
+        """
+        secondRepoPath = os.path.join(self.testData, 'repo2')
+        # child repositories do not look up in-repo policies. We need to fix that.
+        # The ticket to fix this is DM-7778
+        repoArgs = dafPersist.RepositoryArgs(root=secondRepoPath,
+                                             mapperArgs={'policyDir': self.testData})
+        butler = dafPersist.Butler(inputs=self.firstRepoPath, outputs=repoArgs)
+        objABPair = butler.get('basicPair', dataId={'id': 'foo', 'name': 'bar'})
+
+        butler.put(objABPair, 'basicPair', dataId={'id': 'foo', 'name': 'bar'})
+        # comparing the output files directly works so long as the storage is posix:
+
+        verificationButler = dafPersist.Butler(inputs=secondRepoPath)
+        objA = verificationButler.get('basicObject1', {'id': 'foo'})
+        self.assertEqual(objA, objABPair.objA)
+        with self.assertRaises(RuntimeError):
+            objB = verificationButler.get('basicObject2', {'name': 'bar'}, immediate=True)
+
+
+
 class MemoryTester(lsst.utils.tests.MemoryTestCase):
     pass
 
