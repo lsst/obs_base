@@ -31,8 +31,9 @@ import os
 class CompositeMapper(CameraMapper):
     packageName = "obs_base"
 
-    def __init__(self, root, policyDir):
-        policy = dafPersist.Policy(os.path.join(policyDir, 'policy.yaml'))
+    def __init__(self, root, policy=None):
+        if policy is None:
+            policy = dafPersist.Policy()
         super(CompositeMapper, self).__init__(policy, repositoryDir=root, root=root)
 
     def _makeCamera(self, policy, repositoryDir):
