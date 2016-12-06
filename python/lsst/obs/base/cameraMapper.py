@@ -206,37 +206,15 @@ class CameraMapper(dafPersist.Mapper):
             root = "."
         root = dafPersist.LogicalLocation(root).locString()
 
-        if outputRoot is not None and os.path.abspath(outputRoot) != os.path.abspath(root):
-            # Path manipulations are subject to race condition
-            if not os.path.exists(outputRoot):
-                try:
-                    os.makedirs(outputRoot)
-                except OSError as e:
-                    if not e.errno == errno.EEXIST:
-                        raise
-                if not os.path.exists(outputRoot):
-                    raise RuntimeError("Unable to create output repository '%s'" % (outputRoot,))
-            if os.path.exists(root):
-                # Symlink existing input root to "_parent" in outputRoot.
-                src = os.path.abspath(root)
-                dst = os.path.join(outputRoot, "_parent")
-                if not os.path.exists(dst):
-                    try:
-                        os.symlink(src, dst)
-                    except OSError:
-                        pass
-                if os.path.exists(dst):
-                    if os.path.realpath(dst) != os.path.realpath(src):
-                        raise RuntimeError("Output repository path "
-                                           "'%s' already exists and differs from "
-                                           "input repository path '%s'" % (dst, src))
-                else:
-                    raise RuntimeError("Unable to symlink from input "
-                                       "repository path '%s' to output repository "
-                                       "path '%s'" % (src, dst))
-            # We now use the outputRoot as the main root with access to the
-            # input via "_parent".
-            root = outputRoot
+        if outputRoot is not None:
+            if outputRoot == root:
+                self.log.warn("outputRoot and root should not indicate the same repo; both are %s" % root)
+            else:
+                # The function 'prepOutputRootRepos' is very CameraMapper specific. Managing the output root
+                # will be handled outside of the camera mapper in a story (TBD) that is part of epic DM-6225
+                # For now, we allow the specific use special case.
+                dafPersist.PosixStorage.prepOutputRootRepos(outputRoot=outputRoot, root=root)
+                root = outputRoot
 
         if calibRoot is None:
             if 'calibRoot' in policy:
