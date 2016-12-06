@@ -24,7 +24,6 @@ from builtins import str
 from past.builtins import long
 import copy
 import errno
-import glob
 import os
 import pyfits  # required by _makeDefectsDict until defects are written as AFW tables
 import re
@@ -520,63 +519,11 @@ class CameraMapper(dafPersist.Mapper):
         # Separate path into a root-equivalent prefix (in dir) and the rest
         # (left in path)
 
-        rootDir = root
-        # First remove trailing slashes (#2527)
-        while len(rootDir) > 1 and rootDir[-1] == '/':
-            rootDir = rootDir[:-1]
-
-        if path.startswith(rootDir + "/"):
-            # Common case; we have the same root prefix string
-            path = path[len(rootDir)+1:]
-            dir = rootDir
-        elif rootDir == "/" and path.startswith("/"):
-            path = path[1:]
-            dir = rootDir
-        else:
-            # Search for prefix that is the same as root
-            pathPrefix = os.path.dirname(path)
-            while pathPrefix != "" and pathPrefix != "/":
-                if os.path.realpath(pathPrefix) == os.path.realpath(root):
-                    break
-                pathPrefix = os.path.dirname(pathPrefix)
-            if os.path.realpath(pathPrefix) != os.path.realpath(root):
-                # No prefix matching root, don't search for parents
-                paths = glob.glob(path)
-
-                # The contract states that `None` will be returned
-                #   if no matches are found.
-                # Thus we explicitly set up this if/else to return `None`
-                #   if `not paths` instead of `[]`.
-                # An argument could be made that the contract should be changed
-                if paths:
-                    return paths
-                else:
-                    return None
-            if pathPrefix == "/":
-                path = path[1:]
-            elif pathPrefix != "":
-                path = path[len(pathPrefix)+1:]
-            # If pathPrefix == "", then the current directory is the root
-            dir = pathPrefix
-
-        # Now search for the path in the root or its parents
-        # Strip off any cfitsio bracketed extension if present
-        strippedPath = path
-        pathStripped = None
-        firstBracket = path.find("[")
-        if firstBracket != -1:
-            strippedPath = path[:firstBracket]
-            pathStripped = path[firstBracket:]
-
-        while True:
-            paths = glob.glob(os.path.join(dir, strippedPath))
-            if len(paths) > 0:
-                if pathStripped is not None:
-                    paths = [p + pathStripped for p in paths]
-                return paths
-            dir = os.path.join(dir, "_parent")
-            if not os.path.exists(dir):
-                return None
+        # Calling PosixStorage directly is not the long term solution here, this is work-in-progress on epic
+        # DM-6225. The plan is for parentSearch to be changed to 'search', and search only the storage
+        # associated with this mapper. All searching of parents will be handled by traversing the container of
+        # repositories in Butler.
+        return dafPersist.PosixStorage.parentSearch(root, path)
 
     def backup(self, datasetType, dataId):
         """Rename any existing object with the given type and dataId.
