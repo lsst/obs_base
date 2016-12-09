@@ -27,7 +27,6 @@ import errno
 import os
 import pyfits  # required by _makeDefectsDict until defects are written as AFW tables
 import re
-import shutil
 import weakref
 import lsst.daf.persistence as dafPersist
 from . import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping
@@ -216,38 +215,40 @@ class CameraMapper(dafPersist.Mapper):
                 dafPersist.PosixStorage.prepOutputRootRepos(outputRoot=outputRoot, root=root)
                 root = outputRoot
 
-        if calibRoot is None:
-            if 'calibRoot' in policy:
-                calibRoot = policy['calibRoot']
-                calibRoot = dafPersist.LogicalLocation(calibRoot).locString()
-            else:
-                calibRoot = root
+        self.rootStorage = dafPersist.Storage.makeFromURI(uri=root)
 
-        if not os.path.exists(root):
-            self.log.warn("Root directory not found: %s", root)
-        if not os.path.exists(calibRoot):
-            self.log.warn("Calibration root directory not found: %s", calibRoot)
+        # If the calibRoot is passed in, use that. If not and it's indicated in the policy, use that. And
+        # otherwise, the calibs are in the regular root.
+        if calibRoot is not None:
+            calibStorage = dafPersist.Storage.makeFromURI(uri=calibRoot)
+        elif 'calibRoot' in policy:
+            calibRoot = policy['calibRoot']
+            calibRoot = dafPersist.LogicalLocation(calibRoot).locString()
+            calibStorage = dafPersist.Storage.makeFromURI(uri=calibRoot)
+        else:
+            calibStorage = self.rootStorage
 
         self.root = root
 
         # Registries
-        self.registry = self._setupRegistry("registry", registry, policy, "registryPath", root)
+        self.registry = self._setupRegistry("registry", registry, policy, "registryPath", self.rootStorage)
         if 'needCalibRegistry' in policy and policy['needCalibRegistry']:
-            calibRegistry = self._setupRegistry("calibRegistry", calibRegistry, policy,
-                                                "calibRegistryPath", calibRoot)
+            self.calibRegistry = self._setupRegistry("calibRegistry", calibRegistry, policy,
+                                                     "calibRegistryPath", calibStorage)
         else:
-            calibRegistry = None
+            self.calibRegistry = None
 
         # Dict of valid keys and their value types
         self.keyDict = dict()
 
-        self._initMappings(policy, root, calibRoot, calibRegistry, provided=None)
+        self._initMappings(policy, self.rootStorage, calibStorage, provided=None)
 
         # Camera geometry
         self.cameraDataLocation = None  # path to camera geometry config file
         self.camera = self._makeCamera(policy=policy, repositoryDir=repositoryDir)
 
-        # Defect registry and root
+        # Defect registry and root. Defects are stored with the camera and the registry is loaded from the
+        # camera package, which is on the local filesystem.
         self.defectRegistry = None
         if 'defects' in policy:
             self.defectPath = os.path.join(repositoryDir, policy['defects'])
@@ -267,7 +268,7 @@ class CameraMapper(dafPersist.Mapper):
 
         self.makeRawVisitInfo = self.MakeRawVisitInfoClass(log=self.log)
 
-    def _initMappings(self, policy, root=None, calibRoot=None, calibRegistry=None, provided=None):
+    def _initMappings(self, policy, rootStorage=None, calibStorage=None, provided=None):
         """Initialize mappings
 
         For each of the dataset types that we want to be able to read, there are
@@ -282,9 +283,8 @@ class CameraMapper(dafPersist.Mapper):
         the header of an image, retrieving only the size of a catalog.
 
         @param policy        (Policy) Policy with per-camera defaults already merged
-        @param root          (string) Root directory for data
-        @param calibRoot     (string) Root directory for calibrations
-        @param calibRegistry (string) Path to registry with calibrations' metadata
+        @param rootStorage   (Storage subclass instance) Interface to persisted repository data
+        @param calibRoot     (Storage subclass instance) Interface to persisted calib repository data
         @param provided      (list of strings) Keys provided by the mapper
         """
         # Sub-dictionaries (for exposure/calibration/dataset types)
@@ -344,10 +344,10 @@ class CameraMapper(dafPersist.Mapper):
                         continue
 
                     if name == "calibrations":
-                        mapping = cls(datasetType, subPolicy, self.registry, calibRegistry, calibRoot,
+                        mapping = cls(datasetType, subPolicy, self.registry, self.calibRegistry, calibStorage,
                                       provided=provided)
                     else:
-                        mapping = cls(datasetType, subPolicy, self.registry, root, provided=provided)
+                        mapping = cls(datasetType, subPolicy, self.registry, rootStorage, provided=provided)
                     self.keyDict.update(mapping.keys())
                     mappings[datasetType] = mapping
                     self.mappings[datasetType] = mapping
@@ -381,15 +381,17 @@ class CameraMapper(dafPersist.Mapper):
 
                     # Filename of dataset
                     setMethods("filename", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                               location.getLocations())
+                        [os.path.join(location.getStorage().getRoot(), p) for p in location.getLocations()])
 
                     # Metadata from FITS file
                     if subPolicy["storage"] == "FitsStorage":  # a FITS image
                         setMethods("md", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                   afwImage.readMetadata(location.getLocations()[0]))
+                                   afwImage.readMetadata(os.path.join(location.getStorage().getRoot(),
+                                                                      location.getLocations()[0])))
                     if subPolicy["storage"] == "FitsCatalogStorage":  # a FITS catalog
                         setMethods("md", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                   afwImage.readMetadata(location.getLocations()[0], 2))
+                                   afwImage.readMetadata(os.path.join(location.getStorage().getRoot(),
+                                                                      location.getLocations()[0]), 2))
 
                     # Sub-images
                     if subPolicy["storage"] == "FitsStorage":
@@ -419,12 +421,15 @@ class CameraMapper(dafPersist.Mapper):
                     if subPolicy["storage"] == "FitsCatalogStorage":
                         # Length of catalog
                         setMethods("len", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                   afwImage.readMetadata(location.getLocations()[0], 2).get("NAXIS2"))
+                                   afwImage.readMetadata(os.path.join(location.getStorage().getRoot(),
+                                                                      location.getLocations()[0]),
+                                                         2).get("NAXIS2"))
 
                         # Schema of catalog
                         if not datasetType.endswith("_schema") and datasetType + "_schema" not in datasets:
                             setMethods("schema", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                       afwTable.Schema.readFits(location.getLocations()[0]))
+                                       afwTable.Schema.readFits(os.path.join(location.getStorage().getRoot(),
+                                                                             location.getLocations()[0])))
 
 
     def _computeCcdExposureId(self, dataId):
@@ -521,13 +526,10 @@ class CameraMapper(dafPersist.Mapper):
         while path is not None:
             n += 1
             oldPaths.append((n, path))
-            path = self._parentSearch("%s~%d" % (newPath, n))
+            path = self.rootStorage.instanceParentSearch("%s~%d" % (newPath, n))
             path = firstElement(path)
         for n, oldPath in reversed(oldPaths):
-            newDir, newFile = os.path.split(newPath)
-            if not os.path.exists(newDir):
-                os.makedirs(newDir)
-            shutil.copy(oldPath, "%s~%d" % (newPath, n))
+            self.rootStorage.copyFile(oldPath, "%s~%d" % (newPath, n))
 
     def keys(self):
         """Return supported keys.
@@ -701,57 +703,67 @@ class CameraMapper(dafPersist.Mapper):
         """
         return ("ccd", self._extractDetectorName(dataId))
 
-    def _setupRegistry(self, name, path, policy, policyKey, root):
+    def _setupRegistry(self, name, path, policy, policyKey, storage):
         """Set up a registry (usually SQLite3), trying a number of possible
         paths.
         @param name       (string) Name of registry
         @param path       (string) Path for registry
         @param policyKey  (string) Key in policy for registry path
-        @param root       (string) Root directory to look in
+        @param storage    (Storage subclass) Repository Storage to look in
         @return (lsst.daf.persistence.Registry) Registry object"""
 
         if path is None and policyKey in policy:
             path = dafPersist.LogicalLocation(policy[policyKey]).locString()
-            if not os.path.exists(path):
-                if not os.path.isabs(path) and root is not None:
-                    newPath = self._parentSearch(os.path.join(root, path))
-                    newPath = newPath[0] if newPath is not None and len(newPath) else None
-                    if newPath is None:
-                        self.log.warn("Unable to locate registry at policy path (also looked in root): %s",
-                                      path)
-                    path = newPath
-                else:
-                    self.log.warn("Unable to locate registry at policy path: %s", path)
-                    path = None
+            if os.path.isabs(path):
+                raise RuntimeError("Policy should not indicate an absolute path for registry.")
+            if not storage.exists(path):
+                newPath = storage.instanceParentSearch(path)
+
+                newPath = newPath[0] if newPath is not None and len(newPath) else None
+                if newPath is None:
+                    self.log.warn("Unable to locate registry at policy path (also looked in root): %s",
+                                  path)
+                path = newPath
+            else:
+                self.log.warn("Unable to locate registry at policy path: %s", path)
+                path = None
+
+
+        # Old Butler API was to indicate the registry WITH the repo folder, New Butler expects the registry to
+        # be in the repo folder. To support Old API, check to see if path starts with root, and if so, strip
+        # root from path.
+        root = storage.getRoot()
+        if path and (path.startswith(root)):
+            path = path[len(root + '/'):]
 
         # determine if there is an sqlite registry and if not, try the posix registry.
         registry = None
 
-        if path is None and root is not None:
-            path = os.path.join(root, "%s.sqlite3" % name)
-            newPath = self._parentSearch(path)
+        if path is None:
+            path = "%s.sqlite3" % name
+            newPath = storage.instanceParentSearch(path)
             newPath = newPath[0] if newPath is not None and len(newPath) else None
             if newPath is None:
                 self.log.info("Unable to locate %s registry in root: %s", name, path)
             path = newPath
         if path is None:
             path = os.path.join(".", "%s.sqlite3" % name)
-            newPath = self._parentSearch(path)
+            newPath = storage.instanceParentSearch(path)
             newPath = newPath[0] if newPath is not None and len(newPath) else None
             if newPath is None:
                 self.log.info("Unable to locate %s registry in current dir: %s", name, path)
             path = newPath
         if path is not None:
-            if not os.path.exists(path):
-                newPath = self._parentSearch(path)
+            if not storage.exists(path):
+                newPath = storage.instanceParentSearch(path)
                 newPath = newPath[0] if newPath is not None and len(newPath) else None
                 if newPath is not None:
                     path = newPath
             self.log.debug("Loading %s registry from %s", name, path)
-            registry = dafPersist.Registry.create(path)
-        elif not registry and os.path.exists(root):
-            self.log.info("Loading Posix registry from %s", root)
-            registry = dafPersist.PosixRegistry(root)
+            registry = dafPersist.Registry.create(storage.getLocalFile(path))
+        elif not registry:
+            self.log.info("Loading Posix registry from %s", storage.root)
+            registry = dafPersist.PosixRegistry(storage.root)
 
         return registry
 
