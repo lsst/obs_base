@@ -91,20 +91,22 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
         self.assertEqual(loc.getCppType(), "BoxI")
         self.assertEqual(loc.getStorageName(), "PickleStorage")
-        self.assertEqual(loc.getLocations(), [os.path.join(testOutput, "foo-1,1.pickle")])
+        self.assertEqual(loc.getLocations(), ["foo-1,1.pickle"])
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
         box = afwGeom.BoxI(afwGeom.PointI(0, 1), afwGeom.PointI(2, 3))
-        with open(loc.getLocations()[0], "wb") as f:
+        with open(os.path.join(testOutput, loc.getLocations()[0]), "wb") as f:
             pickle.dump(box, f)
 
         loc = mapper2.map("x", dict(sensor="1,1"))
         self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
         self.assertEqual(loc.getCppType(), "BoxI")
         self.assertEqual(loc.getStorageName(), "PickleStorage")
-        self.assertEqual(loc.getLocations(), [os.path.join(testOutput2, "_parent", "foo-1,1.pickle")])
+        self.assertEqual(loc.getLocations(), [os.path.join("_parent", "foo-1,1.pickle")])
+        self.assertEqual(loc.getStorage().getRoot(), testOutput2)
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
 
     def testParentTrailingSlash2527(self):
+        # todo these shouldn't be commented out, I think the test wants the trailing slash.
         #mapper1 = MinMapper1(outputRoot="testOutput/")
         mapper1 = MinMapper1(outputRoot=testOutput)
         #mapper2 = MinMapper1(root="testOutput", outputRoot="testOutput2/")
@@ -115,20 +117,22 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
         self.assertEqual(loc.getCppType(), "BoxI")
         self.assertEqual(loc.getStorageName(), "PickleStorage")
-        self.assertEqual(loc.getLocations(), [os.path.join(testOutput, "foo-1,1.pickle")])
+        self.assertEqual(loc.getLocations(), ["foo-1,1.pickle"])
+        self.assertEqual(loc.getStorage().getRoot(), testOutput)
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
         box = afwGeom.BoxI(afwGeom.PointI(0, 1), afwGeom.PointI(2, 3))
-        with open(loc.getLocations()[0], "wb") as f:
+        with open(os.path.join(loc.getStorage().getRoot(), loc.getLocations()[0]), "wb") as f:
             pickle.dump(box, f)
 
         parent = mapper2._parentSearch(os.path.join(testOutput3, "foo-1,1.pickle"))
-        self.assertEqual(parent, [os.path.join(testOutput3, "_parent", "foo-1,1.pickle")])
+        self.assertEqual(parent, [os.path.join("_parent", "foo-1,1.pickle")])
 
         loc = mapper2.map("x", dict(sensor="1,1"))
         self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
         self.assertEqual(loc.getCppType(), "BoxI")
         self.assertEqual(loc.getStorageName(), "PickleStorage")
-        self.assertEqual(loc.getLocations(), [os.path.join(testOutput2, "_parent", "foo-1,1.pickle")])
+        self.assertEqual(loc.getLocations(), [os.path.join("_parent", "foo-1,1.pickle")])
+        self.assertEqual(loc.getStorage().getRoot(), testOutput2)
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
 
     def testReuseOutputRoot(self):
