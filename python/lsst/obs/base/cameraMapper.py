@@ -219,14 +219,7 @@ class CameraMapper(dafPersist.Mapper):
         # If the calibRoot is passed in, use that. If not and it's indicated in the policy, use that. And
         # otherwise, the calibs are in the regular root.
         if calibRoot is not None:
-            try:
-                calibStorage = dafPersist.Storage.makeFromURI(uri=calibRoot)
-            except RuntimeError:
-                # obs_subaru passes 'CALIB' for the calib root, even if there is no such folder. Old
-                # CameraMapper silently allowed it. Ideally this block would raise if a calibRoot was passed
-                # in but does not exist, but for now at least allow it, with a warning.
-                self.log.warn("Unable to locate calib repository at passed-in calibRoot: %s" % calibRoot)
-                calibStorage = None
+            calibStorage = dafPersist.Storage.makeFromURI(uri=calibRoot)
         elif 'calibRoot' in policy:
             calibRoot = policy['calibRoot']
             calibRoot = dafPersist.LogicalLocation(calibRoot).locString()
@@ -244,12 +237,10 @@ class CameraMapper(dafPersist.Mapper):
                 self.calibRegistry = self._setupRegistry("calibRegistry", calibRegistry, policy,
                                                          "calibRegistryPath", calibStorage)
             else:
-                # it seems like it should be a bug if the policy's 'needCalibStorage' is True, and the
-                # provided calibRoot does not exist, which does seem to happen in obs_subaru.testCamera. For
-                # now, allow it.
-                self.log.warn("'needCalibRegistry' is true in Policy, but was unable to locate a repo at " +
-                              "calibRoot ivar:%s or policy['calibRoot']:%s" %
-                              (calibRoot, policy.get('calibRoot', None)))
+                raise RuntimeError(
+                    "'needCalibRegistry' is true in Policy, but was unable to locate a repo at " +
+                    "calibRoot ivar:%s or policy['calibRoot']:%s" %
+                    (calibRoot, policy.get('calibRoot', None)))
         else:
             self.calibRegistry = None
 
