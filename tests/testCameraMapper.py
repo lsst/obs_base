@@ -27,6 +27,8 @@ import collections
 import os
 import unittest
 
+import numpy as np
+
 import lsst.utils.tests
 import lsst.afw.geom as afwGeom
 import lsst.afw.table as afwTable
@@ -216,8 +218,8 @@ class Mapper2TestCase(unittest.TestCase):
     def testCatalogExtras(self):
         butler = dafPersist.Butler(mapper=self.mapper)
         schema = afwTable.Schema()
-        aa = schema.addField("a", type=int, doc="a")
-        bb = schema.addField("b", type=float, doc="b")
+        aa = schema.addField("a", type=np.int32, doc="a")
+        bb = schema.addField("b", type=np.float64, doc="b")
         catalog = lsst.afw.table.BaseCatalog(schema)
         row = catalog.addNew()
         row.set(aa, 12345)
