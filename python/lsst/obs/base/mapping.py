@@ -25,7 +25,7 @@ from builtins import object
 from collections import OrderedDict
 import os
 import re
-from lsst.daf.persistence import ButlerLocation
+from lsst.daf.persistence import ButlerLocation, SqliteRegistry
 from lsst.daf.persistence.policy import Policy
 import lsst.pex.policy as pexPolicy
 
@@ -69,7 +69,7 @@ class Mapping(object):
     registry that can be NATURAL JOIN-ed to look up additional
     information.  """
 
-    def __init__(self, datasetType, policy, registry, rootStorage, provided=None):
+    def __init__(self, datasetType, policy, registry, rootStorage, provided=None, parentRegistryList=None):
         """Constructor for Mapping class.
         @param datasetType    (string)
         @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
@@ -77,6 +77,7 @@ class Mapping(object):
         @param registry       (lsst.obs.base.Registry) Registry for metadata lookups
         @param rootStorage    (Storage subclass instance) Interface to persisted repository data
         @param provided       (list of strings) Keys provided by the mapper
+        @param parentRegistryList(list of dicts of Registries) named parent registries that can be used for lookups
         """
 
         if policy is None:
@@ -86,9 +87,7 @@ class Mapping(object):
             policy = Policy(policy)
 
         self.datasetType = datasetType
-        self.registry = registry
         self.rootStorage = rootStorage
-
         self.template = policy['template']  # Template path
         self.keyDict = dict([
             (k, _formatMap(v, k, datasetType))
@@ -108,9 +107,33 @@ class Mapping(object):
             self.tables = policy.asArray('tables')
         else:
             self.tables = None
+        self.localRegistry = registry
+        self.setParentRegistryList(parentRegistryList)
         self.range = None
         self.columns = None
         self.obsTimeName = policy['obsTimeName'] if 'obsTimeName' in policy else None
+
+    def setParentRegistryList(self, parentRegistryList):
+        """Set the registries that may be used for lookups.
+
+        When preparing to do a lookup, a registry will be chosen from self.registry + this parent registry
+        list. The preference order is 1. a local sqlite registry (if present), 2. all the parent
+        registries in order, and 3. a PosixRegisry for the local repository. To choose an sqlite registry,
+        butler will verify that the tables specified for the policy for this mapping are in the registry. If
+        they are, butler will choose that registry. If the tables are not in that registry, butler will look
+        in the next registry.
+        """
+        self.registry = None
+        parentRegistries = \
+            [registry['regular'] for registry in parentRegistryList] if parentRegistryList else []
+        if self.tables:
+            for r in [self.localRegistry] + parentRegistries:
+                if isinstance(r, SqliteRegistry):
+                    if r.tablesExist(self.tables):
+                        self.registry = r
+                        break
+        if not self.registry and not isinstance(self.localRegistry, SqliteRegistry):
+            self.registry = self.localRegistry
 
     def keys(self):
         """Return the dict of keys and value types required for this mapping."""
@@ -281,7 +304,7 @@ def _formatMap(ch, k, datasetType):
 class ImageMapping(Mapping):
     """ImageMapping is a Mapping subclass for non-camera images."""
 
-    def __init__(self, datasetType, policy, registry, root, **kwargs):
+    def __init__(self, datasetType, policy, registry, root, parentRegistryList, **kwargs):
         """Constructor for Mapping class.
         @param datasetType    (string)
         @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
@@ -290,14 +313,15 @@ class ImageMapping(Mapping):
         @param root           (string) Path of root directory"""
         if isinstance(policy, pexPolicy.Policy):
             policy = Policy(policy)
-        Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
+        Mapping.__init__(self, datasetType, policy, registry, root, parentRegistryList=parentRegistryList,
+                         **kwargs)
         self.columns = policy.asArray('columns') if 'columns' in policy else None
 
 
 class ExposureMapping(Mapping):
     """ExposureMapping is a Mapping subclass for normal exposures."""
 
-    def __init__(self, datasetType, policy, registry, root, **kwargs):
+    def __init__(self, datasetType, policy, registry, root, parentRegistryList, **kwargs):
         """Constructor for Mapping class.
         @param datasetType    (string)
         @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
@@ -306,7 +330,8 @@ class ExposureMapping(Mapping):
         @param root           (string) Path of root directory"""
         if isinstance(policy, pexPolicy.Policy):
             policy = Policy(policy)
-        Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
+        Mapping.__init__(self, datasetType, policy, registry, root, parentRegistryList=parentRegistryList,
+                         **kwargs)
         self.columns = policy.asArray('columns') if 'columns' in policy else None
 
     def standardize(self, mapper, item, dataId):
@@ -345,7 +370,7 @@ class CalibrationMapping(Mapping):
     calibration dataset tables containing the end of the validity range
     (default "validEnd") """
 
-    def __init__(self, datasetType, policy, registry, calibRegistry, calibRoot, **kwargs):
+    def __init__(self, datasetType, policy, registry, calibRegistry, calibRoot, parentRegistryList, **kwargs):
         """Constructor for Mapping class.
         @param datasetType    (string)
         @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
@@ -355,7 +380,8 @@ class CalibrationMapping(Mapping):
         @param calibRoot      (string) Path of calibration root directory"""
         if isinstance(policy, pexPolicy.Policy):
             policy = Policy(policy)
-        Mapping.__init__(self, datasetType, policy, calibRegistry, calibRoot, **kwargs)
+        Mapping.__init__(self, datasetType, policy, calibRegistry, calibRoot,
+                         parentRegistryList=parentRegistryList, **kwargs)
         self.reference = policy.asArray("reference") if "reference" in policy else None
         self.refCols = policy.asArray("refCols") if "refCols" in policy else None
         self.refRegistry = registry

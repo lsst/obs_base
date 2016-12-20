@@ -155,7 +155,7 @@ class CameraMapper(dafPersist.Mapper):
 
     def __init__(self, policy, repositoryDir,
                  root=None, registry=None, calibRoot=None, calibRegistry=None,
-                 provided=None, outputRoot=None):
+                 provided=None, outputRoot=None, parentRegistryList=None):
         """Initialize the CameraMapper.
         @param policy        (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
                              Policy with per-camera defaults already merged
@@ -169,8 +169,11 @@ class CameraMapper(dafPersist.Mapper):
                              metadata
         @param provided      (list of strings) Keys provided by the mapper
         @param outputRoot    (string) Root directory for output data
+        @param parentRegistryList (list of dict) Parent registries
         """
         dafPersist.Mapper.__init__(self)
+
+        self.parentRegistryList = parentRegistryList
 
         self.log = lsstLog.Log.getLogger("CameraMapper")
 
@@ -351,9 +354,10 @@ class CameraMapper(dafPersist.Mapper):
 
                     if name == "calibrations":
                         mapping = cls(datasetType, subPolicy, self.registry, self.calibRegistry, calibStorage,
-                                      provided=provided)
+                                      provided=provided, parentRegistryList=self.parentRegistryList)
                     else:
-                        mapping = cls(datasetType, subPolicy, self.registry, rootStorage, provided=provided)
+                        mapping = cls(datasetType, subPolicy, self.registry, rootStorage, provided=provided,
+                                      parentRegistryList=self.parentRegistryList)
                     self.keyDict.update(mapping.keys())
                     mappings[datasetType] = mapping
                     self.mappings[datasetType] = mapping
@@ -505,6 +509,26 @@ class CameraMapper(dafPersist.Mapper):
         # associated with this mapper. All searching of parents will be handled by traversing the container of
         # repositories in Butler.
         return dafPersist.PosixStorage.parentSearch(root, path)
+
+    def setParentRegistryList(self, parentRegistryList):
+        """Set the parent registry list into the mappings.
+
+        This is used when the Mapper is initalized before being passed into Butler.__init__. When Butler
+        initializes the mapper, the parent registries are passed into mapper init.
+
+        This should only need to be called one time.
+
+        Parameters
+        ----------
+        parentRegistryList : list of dict
+            A list of the registries in search order that can be used for lookups. Each dict contains keys,
+            defined by the mapper, that describe the registry's use.
+        """
+        if self.parentRegistryList:
+            raise RuntimeError("Should not set parentRegistryList twice (including this func and __init__)")
+        self.parentRegistryList = parentRegistryList
+        for mapping in self.mappings.values():
+            mapping.setParentRegistryList(parentRegistryList)
 
     def backup(self, datasetType, dataId):
         """Rename any existing object with the given type and dataId.
@@ -966,6 +990,22 @@ class CameraMapper(dafPersist.Mapper):
             shortNameFunc=self.getShortCcdName
         )
 
+    def getRegistries(self):
+        """Get the sqlite registries that are used in this mapper for lookups.
+
+        Returns
+        -------
+        dict or None
+            If self.registry is a SqliteRegistry it will be in the 'regular' key of the dict. If
+            self.calibRegisry exists it will be in the 'calib' key.
+            If neither of the above is true, will return None.
+        """
+        registries = {}
+        if isinstance(self.registry, dafPersist.SqliteRegistry):
+            registries['regular'] = self.registry
+        if self.calibRegistry:
+            registries['calib'] = self.calibRegistry
+        return registries if registries else None
 
 def exposureFromImage(image):
     """Generate an Exposure from an image-like object
