@@ -165,7 +165,6 @@ class OutputRootTestCase(unittest.TestCase):
         os.rmdir(testInput1)
         os.rmdir(testInput2)
 
-    @unittest.skip("TODO: pybind11 depends on afw pickling")
     def testBackup(self):
         mapper1 = MinMapper1(outputRoot=testOutput)
         butler1 = dafPersist.Butler(outputs=dafPersist.RepositoryArgs(mode='w',
