@@ -23,6 +23,11 @@ IngestIndexedReferenceTask_config:
     python: lsst.meas.algorithms.IngestIndexedReferenceConfig
     storage: ConfigStorage
     template: config/IngestIndexedReferenceTask.py
+ref_cat_config:
+    persistable: Config
+    python: lsst.meas.algorithms.DatasetConfig
+    storage: ConfigStorage
+    template: ref_cats/%(name)s/config.py
 forcedPhotCcd_config:
     persistable: Config
     storage: ConfigStorage
@@ -293,12 +298,12 @@ ccdExposureId_bits:
     storage: ignored
     python: lsst.daf.base.PropertySet
     template: ignored
-cal_ref_cat:
+ref_cat:
     persistable: SourceCatalog
     python: lsst.afw.table.SourceCatalog
     storage: FitsCatalogStorage
     table: ignored
-    template: photo_astro_ref/%(pixel_id)s.fits
+    template: ref_cats/%(name)s/%(pixel_id)s.fits
 deepDiff_config:
     template:      config/deepDiff.py
     python:        lsst.pipe.tasks.imageDifference.ImageDifferenceConfig
