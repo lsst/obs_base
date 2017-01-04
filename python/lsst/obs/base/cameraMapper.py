@@ -181,7 +181,7 @@ class CameraMapper(dafPersist.Mapper):
         if isinstance(policy, pexPolicy.Policy):
             policy = dafPersist.Policy(policy)
 
-        repoPolicy = CameraMapper.getRepoPolicy(self.root, self.root)
+        repoPolicy = CameraMapper.getRepoPolicy(self.root, None)
         if repoPolicy is not None:
             policy.update(repoPolicy)
 
@@ -475,7 +475,9 @@ class CameraMapper(dafPersist.Mapper):
         """
         policy = None
         if root is not None:
-            paths = CameraMapper.parentSearch(root, os.path.join(repos, '_policy.*'))
+            storage = dafPersist.Storage.makeFromURI(uri=root)
+            file = os.path.join(repos, '_policy.*') if repos else '_policy.*'
+            paths = storage.instanceParentSearch(file)
             if paths is not None:
                 for postfix in ('.yaml', '.paf'):
                     matches = [path for path in paths if (os.path.splitext(path))[1] == postfix]
@@ -503,12 +505,8 @@ class CameraMapper(dafPersist.Mapper):
         """
         # Separate path into a root-equivalent prefix (in dir) and the rest
         # (left in path)
-
-        # Calling PosixStorage directly is not the long term solution here, this is work-in-progress on epic
-        # DM-6225. The plan is for parentSearch to be changed to 'search', and search only the storage
-        # associated with this mapper. All searching of parents will be handled by traversing the container of
-        # repositories in Butler.
-        return dafPersist.PosixStorage.parentSearch(root, path)
+        storage = dafPersist.Storage.makeFromURI(uri=root)
+        return storage.instanceParentSearch(path, searchParents=False)
 
     def setParentRegistryList(self, parentRegistryList):
         """Set the parent registry list into the mappings.
@@ -531,16 +529,8 @@ class CameraMapper(dafPersist.Mapper):
             mapping.setParentRegistryList(parentRegistryList)
 
     def backup(self, datasetType, dataId):
-        """Rename any existing object with the given type and dataId.
-
-        The CameraMapper implementation saves objects in a sequence of e.g.:
-          foo.fits
-          foo.fits~1
-          foo.fits~2
-        All of the backups will be placed in the output repo, however, and will
-        not be removed if they are found elsewhere in the _parent chain.  This
-        means that the same file will be stored twice if the previous version was
-        found in an input repo.
+        """
+        TODO rewrite this comment block according to new parent search behavior, per RFC-whatever-it-was
         """
         def firstElement(list):
             """Get the first element in the list, or None if that can't be done.
@@ -550,13 +540,13 @@ class CameraMapper(dafPersist.Mapper):
         n = 0
         newLocation = self.map(datasetType, dataId, write=True)
         newPath = newLocation.getLocations()[0]
-        path = self._parentSearch(newPath)
+        path = self.rootStorage.instanceParentSearch(newPath, searchParents=False)
         path = firstElement(path)
         oldPaths = []
         while path is not None:
             n += 1
             oldPaths.append((n, path))
-            path = self.rootStorage.instanceParentSearch("%s~%d" % (newPath, n))
+            path = self.rootStorage.instanceParentSearch("%s~%d" % (newPath, n), searchParents=False)
             path = firstElement(path)
         for n, oldPath in reversed(oldPaths):
             self.rootStorage.copyFile(oldPath, "%s~%d" % (newPath, n))
@@ -747,7 +737,7 @@ class CameraMapper(dafPersist.Mapper):
             if os.path.isabs(path):
                 raise RuntimeError("Policy should not indicate an absolute path for registry.")
             if not storage.exists(path):
-                newPath = storage.instanceParentSearch(path)
+                newPath = storage.instanceParentSearch(path, searchParents=False)
 
                 newPath = newPath[0] if newPath is not None and len(newPath) else None
                 if newPath is None:

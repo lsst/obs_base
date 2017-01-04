@@ -350,16 +350,6 @@ class Mapper2TestCase(unittest.TestCase):
                                                       os.path.join('testParentSearch', 'bar.fits[1]')))
         self.assertEqual(paths, [os.path.join(testDir, os.path.join('testParentSearch', 'bar.fits[1]'))])
 
-        paths = self.mapper.parentSearch(os.path.join(testDir, 'testParentSearch'),
-                                         os.path.join(testDir, os.path.join('testParentSearch', 'baz.fits')))
-        self.assertEqual(paths, [os.path.join(testDir,
-                                              os.path.join('testParentSearch', '_parent', 'baz.fits'))])
-        paths = self.mapper.parentSearch(os.path.join(testDir, 'testParentSearch'),
-                                         os.path.join(testDir,
-                                                      os.path.join('testParentSearch', 'baz.fits[1]')))
-        self.assertEqual(paths, [os.path.join(testDir,
-                                              os.path.join('testParentSearch', '_parent', 'baz.fits[1]'))])
-
     def testSkymapLookups(self):
         """Test that metadata lookups don't try to get skymap data ID values from the registry.
         """

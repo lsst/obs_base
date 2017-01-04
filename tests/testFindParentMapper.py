@@ -64,6 +64,7 @@ class TestFindParentMapperV1Butler(unittest.TestCase):
             f.write('lsst.obs.base.test.CompositeMapper')
 
         # this should not raise an error, no error indicates that the mapper can not be found.
+        import pdb; pdb.set_trace()
         butler = dafPersist.Butler(root=self.childRepoDir)
 
     def testNoMapper(self):
