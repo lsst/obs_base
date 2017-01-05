@@ -41,8 +41,11 @@ class TestFindParentMapperV1Butler(unittest.TestCase):
     """
 
     def setUp(self):
+
         packageDir = getPackageDir('obs_base')
         self.testDir = os.path.join(packageDir, 'tests', 'findParentMapper')
+
+        self.tearDown()
 
         self.parentRepoDir = os.path.join(self.testDir, 'parentRepo')
         os.makedirs(self.parentRepoDir)
@@ -64,7 +67,6 @@ class TestFindParentMapperV1Butler(unittest.TestCase):
             f.write('lsst.obs.base.test.CompositeMapper')
 
         # this should not raise an error, no error indicates that the mapper can not be found.
-        import pdb; pdb.set_trace()
         butler = dafPersist.Butler(root=self.childRepoDir)
 
     def testNoMapper(self):

@@ -51,11 +51,11 @@ def setup_module(module):
 class MinMapper1(lsst.obs.base.CameraMapper):
     packageName = 'larry'
 
-    def __init__(self, root=testPath, outputRoot=None):
+    def __init__(self, root=testPath, outputRoot=None, **kwargs):
         policy = pexPolicy.Policy.createPolicy(os.path.join(testPath, "MinMapper1.paf"))
         lsst.obs.base.CameraMapper.__init__(self,
                                             policy=policy, repositoryDir=testPath, root=root,
-                                            outputRoot=outputRoot)
+                                            outputRoot=outputRoot, **kwargs)
         return
 
     def std_x(self, item, dataId):
@@ -170,7 +170,7 @@ class OutputRootTestCase(unittest.TestCase):
         os.rmdir(testInput2)
 
     def testBackup(self):
-        mapper1 = MinMapper1(outputRoot=testOutput)
+        mapper1 = MinMapper1#(outputRoot=testOutput)
         butler1 = dafPersist.Butler(outputs=dafPersist.RepositoryArgs(mode='w',
                                                                       root=testOutput,
                                                                       mapper=mapper1))
