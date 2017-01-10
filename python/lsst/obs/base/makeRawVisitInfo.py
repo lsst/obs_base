@@ -105,6 +105,8 @@ class MakeRawVisitInfo(object):
         Subclasses should expand this or replace it.
         """
         argDict["exposureTime"] = self.popFloat(md, "EXPTIME")
+        darkTime = self.popFloat(md, "DARKTIME") if md.exists("DARKTIME") else NaN
+        argDict["darkTime"] = darkTime if not math.isnan(darkTime) else argDict["exposureTime"]
         argDict["date"] = self.getDateAvg(md=md, exposureTime=argDict["exposureTime"])
 
     def getDateAvg(self, md, exposureTime):

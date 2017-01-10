@@ -66,6 +66,7 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
         and deletes DATE-OBS and EXPTIME, but not TIMESYS.
         """
         exposureTime = 6.2  # arbitrary value in seconds
+        darkTime = 7.2  # arbitrary value in seconds
         date = DateTime("2001-01-02T03:04:05.123456789", DateTime.TAI)
         dateNsec = date.nsecs(DateTime.TAI)
         startDate = DateTime(dateNsec - int(exposureTime*1e9/2), DateTime.TAI)
@@ -75,6 +76,7 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
             "DATE-OBS": startDate.toString(DateTime.UTC),
             "TIMESYS": "UTC",
             "EXPTIME": exposureTime,
+            "DARKTIME": darkTime,
             "EXTRA1": "an abitrary key and value",
             "EXTRA2": 5,
         })
@@ -82,6 +84,7 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
         self.assertEqual(visitInfo.getExposureId(), exposureId)
         self.assertEqual(md.nameCount(), 3)  # TIMESYS and two EXTRAn keywords
         self.assertEqual(visitInfo.getExposureTime(), exposureTime)
+        self.assertEqual(visitInfo.getDarkTime(), darkTime)
         self.assertEqual(visitInfo.getDate(), date)
 
         # try TIMESYS=TAI
@@ -106,12 +109,14 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
         self.assertEqual(visitInfo.getDate(), date)
 
         # omit DATE-OBS; date should be default-constructed
+        # omit DARKTIME; darkTime should be the exposure time
         md = getMetadata({
             "EXPTIME": exposureTime,
         })
         visitInfo = self.makeRawVisitInfo(md=md, exposureId=exposureId)
         self.assertEqual(md.nameCount(), 0)
         self.assertEqual(visitInfo.getExposureTime(), exposureTime)
+        self.assertEqual(visitInfo.getDarkTime(), exposureTime)
         self.assertEqual(visitInfo.getDate(), DateTime())
 
         # omit EXPTIME; date should be start date, not avg date, and exposureTime should be nan
