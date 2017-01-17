@@ -178,6 +178,7 @@ class CameraMapper(dafPersist.Mapper):
         self.log = lsstLog.Log.getLogger("CameraMapper")
 
         self.root = root
+        self.outputRoot = bool(outputRoot)
         if isinstance(policy, pexPolicy.Policy):
             policy = dafPersist.Policy(policy)
 
@@ -233,6 +234,7 @@ class CameraMapper(dafPersist.Mapper):
         self.root = root
 
         # Registries
+        import pdb; pdb.set_trace()
         self.registry = self._setupRegistry("registry", registry, policy, "registryPath", self.rootStorage)
         needCalibRegistry = policy.get('needCalibRegistry', None)
         if needCalibRegistry:

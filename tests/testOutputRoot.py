@@ -51,7 +51,7 @@ def setup_module(module):
 class MinMapper1(lsst.obs.base.CameraMapper):
     packageName = 'larry'
 
-    def __init__(self, root=testPath, outputRoot=None, **kwargs):
+    def __init__(self, root=None, outputRoot=None, **kwargs):
         policy = pexPolicy.Policy.createPolicy(os.path.join(testPath, "MinMapper1.paf"))
         lsst.obs.base.CameraMapper.__init__(self,
                                             policy=policy, repositoryDir=testPath, root=root,
@@ -77,7 +77,7 @@ class OutputRootTestCase(unittest.TestCase):
                          testOutput3, testInput1, testInput2])
 
     def testCreateOutputRoot(self):
-        MinMapper1(outputRoot=testOutput)
+        MinMapper1(root=testPath, outputRoot=testOutput)
         self.assertTrue(os.path.exists(testOutput))
         self.assertTrue(os.path.isdir(testOutput))
         self.assertTrue(os.path.islink(os.path.join(testOutput, "_parent")))
@@ -85,7 +85,7 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(testOutput, "_parent", "testOutputRoot.py")))
 
     def testParentNormal(self):
-        mapper1 = MinMapper1(outputRoot=testOutput)
+        mapper1 = MinMapper1(root=testPath, outputRoot=testOutput)
         mapper2 = MinMapper1(root=testOutput, outputRoot=testOutput2)
         loc = mapper1.map("x", dict(sensor="1,1"), write=True)
         self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
@@ -108,7 +108,7 @@ class OutputRootTestCase(unittest.TestCase):
     def testParentTrailingSlash2527(self):
         # todo these shouldn't be commented out, I think the test wants the trailing slash.
         #mapper1 = MinMapper1(outputRoot="testOutput/")
-        mapper1 = MinMapper1(outputRoot=testOutput)
+        mapper1 = MinMapper1(root=testPath, outputRoot=testOutput)
         #mapper2 = MinMapper1(root="testOutput", outputRoot="testOutput2/")
         mapper2 = MinMapper1(root=testOutput, outputRoot=testOutput2)
         os.symlink('testOutput2', testOutput3)
@@ -136,7 +136,7 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
 
     def testReuseOutputRoot(self):
-        MinMapper1(outputRoot=testOutput)
+        MinMapper1(root=testPath, outputRoot=testOutput)
         self.assertTrue(os.path.exists(testOutput))
         self.assertTrue(os.path.isdir(testOutput))
         self.assertTrue(os.path.islink(os.path.join(testOutput, "_parent")))
@@ -170,11 +170,10 @@ class OutputRootTestCase(unittest.TestCase):
         os.rmdir(testInput2)
 
     def testBackup(self):
-        mapper1 = MinMapper1#(outputRoot=testOutput)
-        butler1 = dafPersist.Butler(outputs=dafPersist.RepositoryArgs(mode='w',
-                                                                      root=testOutput,
-                                                                      mapper=mapper1))
+        mapper1 = MinMapper1(root=testPath, outputRoot=testOutput)
+        butler1 = dafPersist.Butler(mapper=mapper1)
         b1 = afwGeom.Box2I(afwGeom.Point2I(3, 4), afwGeom.Point2I(7, 6))
+        import pdb; pdb.set_trace()
         butler1.put(b1, "x")
         self.assertTrue(os.path.exists(os.path.join(testOutput, "foo-1,1.pickle")))
         b2 = afwGeom.Box2I(b1)
