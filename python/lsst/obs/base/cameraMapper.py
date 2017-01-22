@@ -410,6 +410,14 @@ class CameraMapper(dafPersist.Mapper):
                     if subPolicy["storage"] == "FitsStorage":  # a FITS image
                         setMethods("md", bypassImpl=lambda datasetType, pythonType, location, dataId:
                                    afwImage.readMetadata(location.getLocations()[0]))
+                        if name == "exposures":
+                            setMethods("wcs", bypassImpl=lambda datasetType, pythonType, location, dataId:
+                                       afwImage.makeWcs(afwImage.readMetadata(location.getLocations()[0])))
+                            setMethods("calib", bypassImpl=lambda datasetType, pythonType, location, dataId:
+                                       afwImage.Calib(afwImage.readMetadata(location.getLocations()[0])))
+                            setMethods("visitInfo",
+                                       bypassImpl=lambda datasetType, pythonType, location, dataId:
+                                       afwImage.VisitInfo(afwImage.readMetadata(location.getLocations()[0])))
                     if subPolicy["storage"] == "FitsCatalogStorage":  # a FITS catalog
                         setMethods("md", bypassImpl=lambda datasetType, pythonType, location, dataId:
                                    afwImage.readMetadata(location.getLocations()[0], 2))
