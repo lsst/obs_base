@@ -976,6 +976,15 @@ class CameraMapper(dafPersist.Mapper):
             shortNameFunc=self.getShortCcdName
         )
 
+    def getRegistry(self):
+        """Get the registry used by this mapper.
+
+        Returns
+        -------
+        Registry or None
+            The registry used by this mapper for this mapper's repository.
+        """
+        return self.registry
 
 def exposureFromImage(image):
     """Generate an Exposure from an image-like object
@@ -1005,3 +1014,4 @@ def exposureFromImage(image):
         exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image))
 
     return exposure
+
