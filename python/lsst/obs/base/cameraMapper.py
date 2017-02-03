@@ -731,11 +731,25 @@ class CameraMapper(dafPersist.Mapper):
     def _setupRegistry(self, name, path, policy, policyKey, storage):
         """Set up a registry (usually SQLite3), trying a number of possible
         paths.
-        @param name       (string) Name of registry
-        @param path       (string) Path for registry
-        @param policyKey  (string) Key in policy for registry path
-        @param storage    (Storage subclass) Repository Storage to look in
-        @return (lsst.daf.persistence.Registry) Registry object"""
+
+        Parameters
+        ----------
+        name : string
+            Name of registry.
+        path : string
+            Path for registry.
+        policy : string
+            Policy that contains the registry name, used if path is None.
+        policyKey : string
+            Key in policy for registry path.
+        storage : Storage subclass
+            Repository Storage to look in.
+
+        Returns
+        -------
+        lsst.daf.persistence.Registry
+            Registry object
+        """
 
         if path is None and policyKey in policy:
             path = dafPersist.LogicalLocation(policy[policyKey]).locString()
