@@ -157,18 +157,27 @@ class CameraMapper(dafPersist.Mapper):
                  root=None, registry=None, calibRoot=None, calibRegistry=None,
                  provided=None, outputRoot=None):
         """Initialize the CameraMapper.
-        @param policy        (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
-                             Policy with per-camera defaults already merged
-        @param repositoryDir (string) Policy repository for the subclassing
-                             module (obtained with getRepositoryPath() on the
-                             per-camera default dictionary)
-        @param root          (string) Root directory for data
-        @param registry      (string) Path to registry with data's metadata
-        @param calibRoot     (string) Root directory for calibrations
-        @param calibRegistry (string) Path to registry with calibrations'
-                             metadata
-        @param provided      (list of strings) Keys provided by the mapper
-        @param outputRoot    (string) Root directory for output data
+
+        Parameters
+        ----------
+        policy : daf_persistence.Policy,
+            Can also be pexPolicy.Policy, only for backward compatibility.
+            Policy with per-camera defaults already merged.
+        repositoryDir : string
+            Policy repository for the subclassing module (obtained with
+            getRepositoryPath() on the per-camera default dictionary).
+        root : string, optional
+            Path to the root directory for data.
+        registry : string, optional
+            Path to registry with data's metadata.
+        calibRoot : string, optional
+            Root directory for calibrations.
+        calibRegistry : string, optional
+            Path to registry with calibrations' metadata.
+        provided : list of string, optional
+            Keys provided by the mapper.
+        outputRoot : string, optional
+            Root directory for output data.
         """
         dafPersist.Mapper.__init__(self)
 
