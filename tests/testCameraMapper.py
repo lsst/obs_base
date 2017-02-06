@@ -33,7 +33,7 @@ import lsst.afw.table as afwTable
 import lsst.daf.persistence as dafPersist
 import lsst.obs.base
 from lsst.utils import getPackageDir
-
+import shutil
 
 testDir = os.path.relpath(os.path.join(getPackageDir('obs_base'), 'tests'))
 
@@ -54,9 +54,9 @@ class BaseMapper(lsst.obs.base.CameraMapper):
 class MinMapper1(lsst.obs.base.CameraMapper):
     packageName = 'larry'
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         policy = dafPersist.Policy(os.path.join(testDir, "MinMapper1.paf"))
-        lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir, root=testDir)
+        lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir, **kwargs)
         return
 
     def std_x(self, item, dataId):
@@ -97,7 +97,7 @@ class MinMapper2(lsst.obs.base.CameraMapper):
 # does not assign packageName
 class MinMapper3(lsst.obs.base.CameraMapper):
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         policy = dafPersist.Policy(os.path.join(testDir, "MinMapper1.paf"))
         lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir, root=testDir)
         return
@@ -107,7 +107,7 @@ class Mapper1TestCase(unittest.TestCase):
     """A test case for the mapper used by the data butler."""
 
     def setUp(self):
-        self.mapper = MinMapper1()
+        self.mapper = MinMapper1(root=testDir)
 
     def tearDown(self):
         del self.mapper
@@ -383,6 +383,42 @@ class Mapper3TestCase(unittest.TestCase):
             MinMapper3()
         with self.assertRaises(ValueError):
             MinMapper3.getPackageName()
+
+class ParentRegistryTestCase(unittest.TestCase):
+
+    def setUp(self):
+        self.testDir = os.path.join(testDir, "ParentRegistryTestCase")
+        self.tearDown()
+        self.repoARoot = os.path.join(self.testDir, 'a')
+        args = dafPersist.RepositoryArgs(root=self.repoARoot, mapper=MinMapper1)
+        butler = dafPersist.Butler(outputs=args)
+        with open(os.path.join(self.repoARoot, 'registry.sqlite3'), 'w') as f:
+            f.write('123')
+
+    def tearDown(self):
+        if os.path.exists(self.testDir):
+            shutil.rmtree(self.testDir)
+
+    def test(self):
+        """Verify that when the child repo does not have a registry it is assigned the registry from the
+        parent."""
+        repoBRoot = os.path.join(self.testDir, 'b')
+        butler = dafPersist.Butler(inputs=self.repoARoot, outputs=repoBRoot)
+        # This way of getting the registry from the mapping is obviously going way into private members and
+        # the python lambda implementation code. It is very brittle and should not be duplicated in user code
+        # or any location that is not trivial to fix along with changes to the CameraMapper or Mapping.
+        registryA = butler._repos.inputs()[0].repo._mapper.registry
+        registryB = butler._repos.outputs()[0].repo._mapper.registry
+        self.assertEqual(id(registryA), id(registryB))
+        del butler
+
+        with open(os.path.join(repoBRoot, 'registry.sqlite3'), 'w') as f:
+            f.write('123')
+        butler = dafPersist.Butler(inputs=self.repoARoot, outputs=repoBRoot)
+        # see above; don't copy this way of getting the registry.
+        registryA = butler._repos.inputs()[0].repo._mapper.registry
+        registryB = butler._repos.outputs()[0].repo._mapper.registry
+        self.assertNotEqual(id(registryA), id(registryB))
 
 
 class MemoryTester(lsst.utils.tests.MemoryTestCase):

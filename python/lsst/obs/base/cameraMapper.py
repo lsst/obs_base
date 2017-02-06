@@ -21,16 +21,13 @@
 #
 
 from builtins import str
-from past.builtins import long
 import copy
-import errno
 import os
 import pyfits  # required by _makeDefectsDict until defects are written as AFW tables
 import re
 import weakref
 import lsst.daf.persistence as dafPersist
 from . import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping
-import lsst.daf.base as dafBase
 import lsst.afw.geom as afwGeom
 import lsst.afw.image as afwImage
 import lsst.afw.table as afwTable
@@ -155,7 +152,7 @@ class CameraMapper(dafPersist.Mapper):
 
     def __init__(self, policy, repositoryDir,
                  root=None, registry=None, calibRoot=None, calibRegistry=None,
-                 provided=None, outputRoot=None):
+                 provided=None, outputRoot=None, parentRegistry=None):
         """Initialize the CameraMapper.
 
         Parameters
@@ -178,6 +175,9 @@ class CameraMapper(dafPersist.Mapper):
             Keys provided by the mapper.
         outputRoot : string, optional
             Root directory for output data.
+        parentRegistry : Registry subclass, optional
+            Registry from a parent repository that may be used to look up
+            data's metadata.
         """
         dafPersist.Mapper.__init__(self)
 
@@ -239,7 +239,10 @@ class CameraMapper(dafPersist.Mapper):
         self.root = root
 
         # Registries
-        self.registry = self._setupRegistry("registry", registry, policy, "registryPath", self.rootStorage)
+        self.registry = self._setupRegistry("registry", registry, policy, "registryPath", self.rootStorage,
+                                            searchParents=False, posixIfNoSql=(not parentRegistry))
+        if not self.registry:
+            self.registry = parentRegistry
         needCalibRegistry = policy.get('needCalibRegistry', None)
         if needCalibRegistry:
             if calibStorage:
@@ -728,7 +731,8 @@ class CameraMapper(dafPersist.Mapper):
         """
         return ("ccd", self._extractDetectorName(dataId))
 
-    def _setupRegistry(self, name, path, policy, policyKey, storage):
+    def _setupRegistry(self, name, path, policy, policyKey, storage, searchParents=True,
+                       posixIfNoSql=True):
         """Set up a registry (usually SQLite3), trying a number of possible
         paths.
 
@@ -744,13 +748,18 @@ class CameraMapper(dafPersist.Mapper):
             Key in policy for registry path.
         storage : Storage subclass
             Repository Storage to look in.
+        searchParents : bool, optional
+            True if the search for a registry should follow any Butler v1
+            _parent symlinks.
+        posixIfNoSql : bool, optional
+            If an sqlite registry is not found, will create a posix registry if
+            this is True.
 
         Returns
         -------
         lsst.daf.persistence.Registry
             Registry object
         """
-
         if path is None and policyKey in policy:
             path = dafPersist.LogicalLocation(policy[policyKey]).locString()
             if os.path.isabs(path):
@@ -766,7 +775,6 @@ class CameraMapper(dafPersist.Mapper):
             else:
                 self.log.warn("Unable to locate registry at policy path: %s", path)
                 path = None
-
 
         # Old Butler API was to indicate the registry WITH the repo folder, New Butler expects the registry to
         # be in the repo folder. To support Old API, check to see if path starts with root, and if so, strip
@@ -794,13 +802,13 @@ class CameraMapper(dafPersist.Mapper):
             path = newPath
         if path is not None:
             if not storage.exists(path):
-                newPath = storage.instanceParentSearch(path)
+                newPath = storage.instanceParentSearch(path, searchParents=searchParents)
                 newPath = newPath[0] if newPath is not None and len(newPath) else None
                 if newPath is not None:
                     path = newPath
             self.log.debug("Loading %s registry from %s", name, path)
             registry = dafPersist.Registry.create(storage.getLocalFile(path))
-        elif not registry:
+        elif not registry and posixIfNoSql:
             self.log.info("Loading Posix registry from %s", storage.root)
             registry = dafPersist.PosixRegistry(storage.root)
 

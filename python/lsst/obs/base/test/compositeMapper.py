@@ -31,10 +31,10 @@ import os
 class CompositeMapper(CameraMapper):
     packageName = "obs_base"
 
-    def __init__(self, root, policy=None):
+    def __init__(self, root, policy=None, **kwargs):
         if policy is None:
             policy = dafPersist.Policy()
-        super(CompositeMapper, self).__init__(policy, repositoryDir=root, root=root)
+        super(CompositeMapper, self).__init__(policy, repositoryDir=root, root=root, **kwargs)
 
     def _makeCamera(self, policy, repositoryDir):
         """Normally this makes a camera. For composite testing, we don't need a camera.
