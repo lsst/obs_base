@@ -77,6 +77,8 @@ class OutputRootTestCase(unittest.TestCase):
                          testOutput3, testInput1, testInput2])
 
     def testCreateOutputRoot(self):
+        """Create an input repository and a related output repo, and verify there is a parent relationship
+        from the output repo to the input repo."""
         MinMapper1(outputRoot=testOutput)
         self.assertTrue(os.path.exists(testOutput))
         self.assertTrue(os.path.isdir(testOutput))
@@ -85,6 +87,10 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(testOutput, "_parent", "testOutputRoot.py")))
 
     def testParentNormal(self):
+        """Test that an object can be found at root location and put into an output location.
+        Then test that when the output locaiton is used as an input location, and with a new output location,
+        that the object is found in the first output location.
+        """
         mapper1 = MinMapper1(outputRoot=testOutput)
         mapper2 = MinMapper1(root=testOutput, outputRoot=testOutput2)
         loc = mapper1.map("x", dict(sensor="1,1"), write=True)
@@ -106,6 +112,10 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
 
     def testParentTrailingSlash2527(self):
+        """Just like testParentNormal, but put a trailing slash on the root paths.
+        Test that an object can be found at root location and put into an output location.
+        Then test that when the output locaiton is used as an input location, and with a new output location,
+        that the object is found in the first output location."""
         # todo these shouldn't be commented out, I think the test wants the trailing slash.
         #mapper1 = MinMapper1(outputRoot="testOutput/")
         mapper1 = MinMapper1(outputRoot=testOutput)
@@ -136,6 +146,9 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
 
     def testReuseOutputRoot(self):
+        """Set up an output repositoriy and verify its parent relationship to the input repository.
+        Then set up an output repository with the first output as an input, and verify the parent
+        relationships."""
         MinMapper1(outputRoot=testOutput)
         self.assertTrue(os.path.exists(testOutput))
         self.assertTrue(os.path.isdir(testOutput))
