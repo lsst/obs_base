@@ -164,6 +164,8 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(testOutput2, "_parent", "_parent", "testOutputRoot.py")))
 
     def testDiffInput(self):
+        """Verify that if an output repository is loaded/created twice, and the second time it has a different
+        parent than the first time, then the second instantiation should raise an exception."""
         os.mkdir(testInput1)
         with open(os.path.join(testInput1, "foo"), "w"):
             pass
