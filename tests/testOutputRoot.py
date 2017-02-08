@@ -51,11 +51,10 @@ def setup_module(module):
 class MinMapper1(lsst.obs.base.CameraMapper):
     packageName = 'larry'
 
-    def __init__(self, root=testPath, outputRoot=None):
+    def __init__(self, **kwargs):
         policy = pexPolicy.Policy.createPolicy(os.path.join(testPath, "MinMapper1.paf"))
         lsst.obs.base.CameraMapper.__init__(self,
-                                            policy=policy, repositoryDir=testPath, root=root,
-                                            outputRoot=outputRoot)
+                                            policy=policy, repositoryDir=testPath, **kwargs)
         return
 
     def std_x(self, item, dataId):
@@ -79,20 +78,23 @@ class OutputRootTestCase(unittest.TestCase):
     def testCreateOutputRoot(self):
         """Create an input repository and a related output repo, and verify there is a parent relationship
         from the output repo to the input repo."""
-        MinMapper1(outputRoot=testOutput)
+        butler = dafPersist.Butler(inputs={'root': testPath, 'mapper': MinMapper1},
+                                   outputs=testOutput)
+        self.assertTrue(butler)
         self.assertTrue(os.path.exists(testOutput))
         self.assertTrue(os.path.isdir(testOutput))
-        self.assertTrue(os.path.islink(os.path.join(testOutput, "_parent")))
-        self.assertTrue(os.path.exists(os.path.join(testOutput, "_parent", "MinMapper1.paf")))
-        self.assertTrue(os.path.exists(os.path.join(testOutput, "_parent", "testOutputRoot.py")))
+        self.assertTrue(os.path.exists(os.path.join(testOutput, "repositoryCfg.yaml")))
+        cfg = dafPersist.PosixStorage.getRepositoryCfg(testOutput)
+        self.assertEqual(len(cfg.parents), 1)
+        self.assertEqual(cfg.parents[0], testPath)
 
     def testParentNormal(self):
         """Test that an object can be found at root location and put into an output location.
         Then test that when the output locaiton is used as an input location, and with a new output location,
         that the object is found in the first output location.
         """
-        mapper1 = MinMapper1(outputRoot=testOutput)
-        mapper2 = MinMapper1(root=testOutput, outputRoot=testOutput2)
+        butler = dafPersist.Butler(inputs={'root': testPath, 'mapper': MinMapper1}, outputs=testOutput)
+        mapper1 = butler._repos.inputs()[0].repo._mapper
         loc = mapper1.map("x", dict(sensor="1,1"), write=True)
         self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
         self.assertEqual(loc.getCppType(), "BoxI")
@@ -100,15 +102,18 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(loc.getLocations(), ["foo-1,1.pickle"])
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
         box = afwGeom.BoxI(afwGeom.PointI(0, 1), afwGeom.PointI(2, 3))
-        with open(os.path.join(testOutput, loc.getLocations()[0]), "wb") as f:
-            pickle.dump(box, f)
+        butler.put(box, "x", sensor="1,1")
+        self.assertTrue(os.path.exists(os.path.join(testOutput, loc.getLocations()[0])))
+        del butler
 
+        butler = dafPersist.Butler(inputs={'root': testOutput, 'mapper': MinMapper1}, outputs=testOutput2)
+        mapper2 = butler._repos.inputs()[0].repo._mapper
         loc = mapper2.map("x", dict(sensor="1,1"))
         self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
         self.assertEqual(loc.getCppType(), "BoxI")
         self.assertEqual(loc.getStorageName(), "PickleStorage")
-        self.assertEqual(loc.getLocations(), [os.path.join("_parent", "foo-1,1.pickle")])
-        self.assertEqual(loc.getStorage().getRoot(), testOutput2)
+        self.assertEqual(loc.getLocations(), ["foo-1,1.pickle"])
+        self.assertEqual(loc.getStorage().getRoot(), testOutput)
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
 
     def testParentTrailingSlash2527(self):
@@ -117,74 +122,68 @@ class OutputRootTestCase(unittest.TestCase):
         Then test that when the output locaiton is used as an input location, and with a new output location,
         that the object is found in the first output location."""
         # todo these shouldn't be commented out, I think the test wants the trailing slash.
-        #mapper1 = MinMapper1(outputRoot="testOutput/")
-        mapper1 = MinMapper1(outputRoot=testOutput)
-        #mapper2 = MinMapper1(root="testOutput", outputRoot="testOutput2/")
-        mapper2 = MinMapper1(root=testOutput, outputRoot=testOutput2)
-        os.symlink('testOutput2', testOutput3)
-
+        butler = dafPersist.Butler(inputs={'root': testPath + '/', 'mapper': MinMapper1},
+                                   outputs=testOutput + '/')
+        mapper1 = butler._repos.inputs()[0].repo._mapper
         loc = mapper1.map("x", dict(sensor="1,1"), write=True)
+        self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
+        self.assertEqual(loc.getCppType(), "BoxI")
+        self.assertEqual(loc.getStorageName(), "PickleStorage")
+        self.assertEqual(loc.getLocations(), ["foo-1,1.pickle"])
+        self.assertEqual(loc.getStorage().getRoot(), testPath)
+        self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
+        box = afwGeom.BoxI(afwGeom.PointI(0, 1), afwGeom.PointI(2, 3))
+        butler.put(box, "x", sensor="1,1")
+        self.assertTrue(os.path.exists(os.path.join(testOutput, loc.getLocations()[0])))
+        del butler
+        del mapper1
+
+        butler = dafPersist.Butler(inputs={'root': testOutput, 'mapper': MinMapper1},
+                                   outputs=testOutput2 + '/')
+        mapper2 = butler._repos.inputs()[0].repo._mapper
+        loc = mapper2.map("x", dict(sensor="1,1"))
         self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
         self.assertEqual(loc.getCppType(), "BoxI")
         self.assertEqual(loc.getStorageName(), "PickleStorage")
         self.assertEqual(loc.getLocations(), ["foo-1,1.pickle"])
         self.assertEqual(loc.getStorage().getRoot(), testOutput)
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
-        box = afwGeom.BoxI(afwGeom.PointI(0, 1), afwGeom.PointI(2, 3))
-        with open(os.path.join(loc.getStorage().getRoot(), loc.getLocations()[0]), "wb") as f:
-            pickle.dump(box, f)
-
-        parent = mapper2._parentSearch(os.path.join(testOutput3, "foo-1,1.pickle"))
-        self.assertEqual(parent, [os.path.join("_parent", "foo-1,1.pickle")])
-
-        loc = mapper2.map("x", dict(sensor="1,1"))
-        self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
-        self.assertEqual(loc.getCppType(), "BoxI")
-        self.assertEqual(loc.getStorageName(), "PickleStorage")
-        self.assertEqual(loc.getLocations(), [os.path.join("_parent", "foo-1,1.pickle")])
-        self.assertEqual(loc.getStorage().getRoot(), testOutput2)
-        self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
 
     def testReuseOutputRoot(self):
         """Set up an output repositoriy and verify its parent relationship to the input repository.
         Then set up an output repository with the first output as an input, and verify the parent
         relationships."""
-        MinMapper1(outputRoot=testOutput)
+        butler = dafPersist.Butler(inputs={'root': testPath, 'mapper': MinMapper1},
+                                   outputs=testOutput)
         self.assertTrue(os.path.exists(testOutput))
         self.assertTrue(os.path.isdir(testOutput))
-        self.assertTrue(os.path.islink(os.path.join(testOutput, "_parent")))
-        self.assertTrue(os.path.exists(os.path.join(testOutput, "_parent", "MinMapper1.paf")))
-        self.assertTrue(os.path.exists(os.path.join(testOutput, "_parent", "testOutputRoot.py")))
+        cfg = dafPersist.Storage.getRepositoryCfg(testOutput)
+        self.assertEqual(cfg.parents, [testPath])
+        del butler
 
-        MinMapper1(root=testOutput, outputRoot=testOutput2)
+        butler = dafPersist.Butler(inputs={'root': testOutput, 'mapper': MinMapper1},
+                                   outputs=testOutput2)
         self.assertTrue(os.path.exists(testOutput2))
         self.assertTrue(os.path.isdir(testOutput2))
-        self.assertTrue(os.path.islink(os.path.join(testOutput2, "_parent")))
-        self.assertTrue(os.path.exists(os.path.join(testOutput2, "_parent", "_parent", "MinMapper1.paf")))
-        self.assertTrue(os.path.exists(os.path.join(testOutput2, "_parent", "_parent", "testOutputRoot.py")))
+        cfg = dafPersist.Storage.getRepositoryCfg(testOutput2)
+        self.assertEqual(cfg.parents, [testOutput])
+        del butler
 
     def testDiffInput(self):
         """Verify that if an output repository is loaded/created twice, and the second time it has a different
         parent than the first time, then the second instantiation should raise an exception."""
-        os.mkdir(testInput1)
-        with open(os.path.join(testInput1, "foo"), "w"):
-            pass
-        os.mkdir(testInput2)
-        with open(os.path.join(testInput2, "foo"), "w"):
-            pass
-        MinMapper1(root=testInput1, outputRoot=testOutput)
-        self.assertTrue(os.path.exists(testOutput))
-        self.assertTrue(os.path.isdir(testOutput))
-        self.assertTrue(os.path.islink(os.path.join(testOutput, "_parent")))
-        self.assertTrue(os.path.exists(os.path.join(testOutput, "_parent", "foo")))
-        self.assertRaises(RuntimeError, MinMapper1,
-                          root=testInput2, outputRoot=testOutput)
-        os.unlink(os.path.join(testInput1, "foo"))
-        os.unlink(os.path.join(testInput2, "foo"))
-        os.rmdir(testInput1)
-        os.rmdir(testInput2)
+        butler = dafPersist.Butler(outputs={'root': testInput1, 'mapper': MinMapper1})
+        del butler
+        butler = dafPersist.Butler(outputs={'root': testInput2, 'mapper': MinMapper1})
+        del butler
+        butler = dafPersist.Butler(inputs=testInput1, outputs=testOutput)
+        del butler
+        # should raise:
+        with self.assertRaises(RuntimeError):
+            butler = dafPersist.Butler(inputs=testInput2, outputs=testOutput)
+            del butler
 
-    @unittest.expectedFailure
+    @unittest.expectedFailure  # this is flagged to be fixed in DM-9048
     def testBackup(self):
         mapper1 = MinMapper1(outputRoot=testOutput)
         butler1 = dafPersist.Butler(outputs=dafPersist.RepositoryArgs(mode='w',
