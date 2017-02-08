@@ -134,9 +134,9 @@ class Mapping(object):
             # allowed extensions that may exist at the end of the template.
             for ext in (None, '.gz', '.fz'):
                 if ext and path.endswith(ext):
-                    continue # if the path already ends with the extension
+                    continue  # if the path already ends with the extension
                 extPath = path + ext if ext else path
-                newPath = mapper._parentSearch(extPath)
+                newPath = mapper._search(extPath)
                 if newPath:
                     path = newPath
                     break
