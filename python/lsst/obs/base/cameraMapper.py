@@ -487,16 +487,35 @@ class CameraMapper(dafPersist.Mapper):
                         break
         return policy
 
+    def _search(self, path):
+        """Search for path in the associated repository's storage.
+
+        Parameters
+        ----------
+        path : string
+            Path that describes an object in the repository associated with
+            this mapper.
+            Path may contain an HDU indicator, e.g. 'foo.fits[1]'. The
+            indicator will be stripped when searching and so will match
+            filenames without the HDU indicator, e.g. 'foo.fits'. The path
+            returned WILL contain the indicator though, e.g. ['foo.fits[1]'].
+
+        Returns
+        -------
+        string
+            The path for this object in the repository. Will return None if the
+            object can't be found. If the input argument path contained an HDU
+            indicator, the returned path will also contain the HDU indicator.
+        """
+        return CameraMapper.parentSearch(self.root, path, searchParents=False)
+
     def _parentSearch(self, path):
         return CameraMapper.parentSearch(self.root, path)
 
     @staticmethod
-    def parentSearch(root, path):
-        """Look for the given path in the current root or any of its parents
-        by following "_parent" symlinks; return None if it can't be found.  A
-        little tricky because the path may be in an alias of the root (e.g.
-        ".") and because the "_parent" links go between the root and the rest
-        of the path.
+    def parentSearch(root, path, searchParents=True):
+
+        """Look for the given path in the current root; return None if it can't be found.
         If the path contains an HDU indicator (a number in brackets before the
         dot, e.g. 'foo.fits[1]', this will be stripped when searching and so
         will match filenames without the HDU indicator, e.g. 'foo.fits'. The
@@ -509,7 +528,7 @@ class CameraMapper(dafPersist.Mapper):
         # DM-6225. The plan is for parentSearch to be changed to 'search', and search only the storage
         # associated with this mapper. All searching of parents will be handled by traversing the container of
         # repositories in Butler.
-        return dafPersist.PosixStorage.parentSearch(root, path)
+        return dafPersist.PosixStorage.parentSearch(root, path, searchParents=searchParents)
 
     def backup(self, datasetType, dataId):
         """Rename any existing object with the given type and dataId.
