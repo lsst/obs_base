@@ -53,14 +53,9 @@ class CameraMapper(dafPersist.Mapper):
     Mappers for specific data sources (e.g., CFHT Megacam, LSST
     simulations, etc.) should inherit this class.
 
-    The CameraMapper manages datasets within a "root" directory.  It can also
-    be given an "outputRoot".  If so, the input root is linked into the
-    outputRoot directory using a symlink named "_parent"; writes go into the
-    outputRoot while reads can come from either the root or outputRoot.  As
-    outputRoots are used as inputs for further processing, the chain of
-    _parent links allows any dataset to be retrieved.  Note that writing to a
-    dataset present in the input root will hide the existing dataset but not
-    overwrite it.  See #2160 for design discussion.
+    The CameraMapper manages datasets within a "root" directory. Note that
+    writing to a dataset present in the input root will hide the existing
+    dataset but not overwrite it.  See #2160 for design discussion.
 
     A camera is assumed to consist of one or more rafts, each composed of
     multiple CCDs.  Each CCD is in turn composed of one or more amplifiers
@@ -152,7 +147,7 @@ class CameraMapper(dafPersist.Mapper):
 
     def __init__(self, policy, repositoryDir,
                  root=None, registry=None, calibRoot=None, calibRegistry=None,
-                 provided=None, outputRoot=None, parentRegistry=None):
+                 provided=None, parentRegistry=None):
         """Initialize the CameraMapper.
 
         Parameters
@@ -173,8 +168,6 @@ class CameraMapper(dafPersist.Mapper):
             Path to registry with calibrations' metadata.
         provided : list of string, optional
             Keys provided by the mapper.
-        outputRoot : string, optional
-            Root directory for output data.
         parentRegistry : Registry subclass, optional
             Registry from a parent repository that may be used to look up
             data's metadata.
@@ -212,16 +205,6 @@ class CameraMapper(dafPersist.Mapper):
         if root is None:
             root = "."
         root = dafPersist.LogicalLocation(root).locString()
-
-        if outputRoot is not None:
-            if outputRoot == root:
-                self.log.warn("outputRoot and root should not indicate the same repo; both are %s" % root)
-            else:
-                # The function 'prepOutputRootRepos' is very CameraMapper specific. Managing the output root
-                # will be handled outside of the camera mapper in a story (TBD) that is part of epic DM-6225
-                # For now, we allow the specific use special case.
-                dafPersist.PosixStorage.prepOutputRootRepos(outputRoot=outputRoot, root=root)
-                root = outputRoot
 
         self.rootStorage = dafPersist.Storage.makeFromURI(uri=root)
 
