@@ -476,7 +476,7 @@ class CameraMapper(dafPersist.Mapper):
         """
         policy = None
         if root is not None:
-            paths = CameraMapper.parentSearch(root, os.path.join(repos, '_policy.*'))
+            paths = dafPersist.Storage.search(root, os.path.join(repos, '_policy.*'))
             if paths is not None:
                 for postfix in ('.yaml', '.paf'):
                     matches = [path for path in paths if (os.path.splitext(path))[1] == postfix]
@@ -507,28 +507,8 @@ class CameraMapper(dafPersist.Mapper):
             object can't be found. If the input argument path contained an HDU
             indicator, the returned path will also contain the HDU indicator.
         """
-        return CameraMapper.parentSearch(self.root, path, searchParents=False)
-
-    def _parentSearch(self, path):
-        return CameraMapper.parentSearch(self.root, path)
-
-    @staticmethod
-    def parentSearch(root, path, searchParents=True):
-
-        """Look for the given path in the current root; return None if it can't be found.
-        If the path contains an HDU indicator (a number in brackets before the
-        dot, e.g. 'foo.fits[1]', this will be stripped when searching and so
-        will match filenames without the HDU indicator, e.g. 'foo.fits'. The
-        path returned WILL contain the indicator though, e.g. ['foo.fits[1]'].
-        """
-        # Separate path into a root-equivalent prefix (in dir) and the rest
-        # (left in path)
-
-        # Calling PosixStorage directly is not the long term solution here, this is work-in-progress on epic
-        # DM-6225. The plan is for parentSearch to be changed to 'search', and search only the storage
-        # associated with this mapper. All searching of parents will be handled by traversing the container of
-        # repositories in Butler.
-        return dafPersist.PosixStorage.parentSearch(root, path, searchParents=searchParents)
+        # it would be better if storage was an instance, instead of having to demux the root URI every time.
+        return dafPersist.Storage.search(self.root, path)
 
     def backup(self, datasetType, dataId):
         """Rename any existing object with the given type and dataId.
@@ -542,6 +522,13 @@ class CameraMapper(dafPersist.Mapper):
         means that the same file will be stored twice if the previous version was
         found in an input repo.
         """
+
+        # Calling PosixStorage directly is not the long term solution in this
+        # function, this is work-in-progress on epic DM-6225. The plan is for
+        # parentSearch to be changed to 'search', and search only the storage
+        # associated with this mapper. All searching of parents will be handled
+        # by traversing the container of repositories in Butler.
+
         def firstElement(list):
             """Get the first element in the list, or None if that can't be done.
             """
@@ -550,13 +537,13 @@ class CameraMapper(dafPersist.Mapper):
         n = 0
         newLocation = self.map(datasetType, dataId, write=True)
         newPath = newLocation.getLocations()[0]
-        path = self._parentSearch(newPath)
+        path = dafPersist.PosixStorage.search(self.root, newPath, searchParents=True)
         path = firstElement(path)
         oldPaths = []
         while path is not None:
             n += 1
             oldPaths.append((n, path))
-            path = self.rootStorage.instanceParentSearch("%s~%d" % (newPath, n))
+            path = dafPersist.PosixStorage.search(self.root, "%s~%d" % (newPath, n), searchParents=True)
             path = firstElement(path)
         for n, oldPath in reversed(oldPaths):
             self.rootStorage.copyFile(oldPath, "%s~%d" % (newPath, n))
@@ -767,7 +754,7 @@ class CameraMapper(dafPersist.Mapper):
             if os.path.isabs(path):
                 raise RuntimeError("Policy should not indicate an absolute path for registry.")
             if not storage.exists(path):
-                newPath = storage.instanceParentSearch(path)
+                newPath = storage.instanceSearch(path)
 
                 newPath = newPath[0] if newPath is not None and len(newPath) else None
                 if newPath is None:
@@ -790,21 +777,21 @@ class CameraMapper(dafPersist.Mapper):
 
         if path is None:
             path = "%s.sqlite3" % name
-            newPath = storage.instanceParentSearch(path)
+            newPath = storage.instanceSearch(path)
             newPath = newPath[0] if newPath is not None and len(newPath) else None
             if newPath is None:
                 self.log.info("Unable to locate %s registry in root: %s", name, path)
             path = newPath
         if path is None:
             path = os.path.join(".", "%s.sqlite3" % name)
-            newPath = storage.instanceParentSearch(path)
+            newPath = storage.instanceSearch(path)
             newPath = newPath[0] if newPath is not None and len(newPath) else None
             if newPath is None:
                 self.log.info("Unable to locate %s registry in current dir: %s", name, path)
             path = newPath
         if path is not None:
             if not storage.exists(path):
-                newPath = storage.instanceParentSearch(path, searchParents=searchParents)
+                newPath = storage.instanceSearch(path)
                 newPath = newPath[0] if newPath is not None and len(newPath) else None
                 if newPath is not None:
                     path = newPath
