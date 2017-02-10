@@ -62,6 +62,19 @@ class ExposureFromImageTestCase(lsst.utils.tests.TestCase):
         exposure = exposureFromImage(self.maskedImage)
         self.assertMaskedImagesEqual(self.maskedImage, exposure.getMaskedImage())
 
+    def testDecoratedImageBadWcs(self):
+        """Test that exposureFromImage() attaches a None wcs to the exposure
+        when makeWcs() raises an invalidParameter error
+        """
+        image = self.maskedImage.getImage()
+        decoImage = afwImage.DecoratedImageF(image)
+        metadata = PropertyList()
+        metadata.set("CTYPE1", "RA---TPV")
+        metadata.set("CTYPE2", "DEC--TPV")
+        decoImage.setMetadata(metadata)
+        exposure = exposureFromImage(decoImage)
+        self.assertIs(exposure.getWcs(), None)
+
 
 def makeRampMaskedImage(width, height, imgClass=afwImage.MaskedImageF):
     """Make a ramp image of the specified size and image class

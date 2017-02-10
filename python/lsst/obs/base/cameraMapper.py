@@ -34,6 +34,7 @@ import lsst.afw.table as afwTable
 import lsst.afw.cameraGeom as afwCameraGeom
 import lsst.log as lsstLog
 import lsst.pex.policy as pexPolicy
+import lsst.pex.exceptions as pexExcept
 from .exposureIdInfo import ExposureIdInfo
 from .makeRawVisitInfo import MakeRawVisitInfo
 from lsst.utils import getPackageDir
@@ -689,7 +690,7 @@ class CameraMapper(dafPersist.Mapper):
 
     def std_raw(self, item, dataId):
         """Standardize a raw dataset by converting it to an Exposure instead of an Image"""
-        exposure = exposureFromImage(item)
+        exposure = exposureFromImage(item, logger=self.log)
         exposureId = self._computeCcdExposureId(dataId)
         md = exposure.getMetadata()
         visitInfo = self.makeRawVisitInfo(md=md, exposureId=exposureId)
@@ -947,7 +948,7 @@ class CameraMapper(dafPersist.Mapper):
         @return (lsst.afw.image.Exposure) the standardized Exposure"""
         if not hasattr(item, "getMaskedImage"):
             try:
-                item = exposureFromImage(item)
+                item = exposureFromImage(item, logger=self.log)
             except Exception as e:
                 self.log.error("Could not turn item=%r into an exposure: %s" % (repr(item), e))
                 raise
@@ -1037,7 +1038,7 @@ class CameraMapper(dafPersist.Mapper):
         """
         return self.registry
 
-def exposureFromImage(image):
+def exposureFromImage(image, logger=None):
     """Generate an Exposure from an image-like object
 
     If the image is a DecoratedImage then also set its WCS and metadata
@@ -1052,8 +1053,16 @@ def exposureFromImage(image):
     elif isinstance(image, afwImage.DecoratedImage):
         exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image.getImage()))
         metadata = image.getMetadata()
-        wcs = afwImage.makeWcs(metadata, True)
-        exposure.setWcs(wcs)
+        try:
+            wcs = afwImage.makeWcs(metadata, True)
+            exposure.setWcs(wcs)
+        except pexExcept.InvalidParameterError as e:
+            # raised on failure to create a wcs (and possibly others)
+            if logger is None:
+                logger = lsstLog.Log.getLogger("obs.base.cameraMapper")
+            logger.warn("wcs set to None; insufficient information found in metadata to create a valid wcs: "
+                        "%s", e.args[0])
+
         exposure.setMetadata(metadata)
     elif isinstance(image, afwImage.Exposure):
         # Exposure
