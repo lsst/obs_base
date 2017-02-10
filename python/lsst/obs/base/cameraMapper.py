@@ -147,7 +147,7 @@ class CameraMapper(dafPersist.Mapper):
 
     def __init__(self, policy, repositoryDir,
                  root=None, registry=None, calibRoot=None, calibRegistry=None,
-                 provided=None, parentRegistry=None):
+                 provided=None, parentRegistry=None, repositoryCfg=None):
         """Initialize the CameraMapper.
 
         Parameters
@@ -171,16 +171,20 @@ class CameraMapper(dafPersist.Mapper):
         parentRegistry : Registry subclass, optional
             Registry from a parent repository that may be used to look up
             data's metadata.
+        repositoryCfg : daf_persistence.RepositoryCfg or None, optional
+            The configuration information for the repository this mapper is
+            being used with.
         """
+
         dafPersist.Mapper.__init__(self)
 
         self.log = lsstLog.Log.getLogger("CameraMapper")
 
-        self.root = root
+        self.root = root if root else repositoryCfg.root
         if isinstance(policy, pexPolicy.Policy):
             policy = dafPersist.Policy(policy)
 
-        repoPolicy = CameraMapper.getRepoPolicy(self.root, self.root)
+        repoPolicy = repositoryCfg.policy if repositoryCfg else None
         if repoPolicy is not None:
             policy.update(repoPolicy)
 
@@ -442,7 +446,6 @@ class CameraMapper(dafPersist.Mapper):
                                        afwTable.Schema.readFits(os.path.join(location.getStorage().getRoot(),
                                                                              location.getLocations()[0])))
 
-
     def _computeCcdExposureId(self, dataId):
         """Compute the 64-bit (long) identifier for a CCD exposure.
 
@@ -463,29 +466,6 @@ class CameraMapper(dafPersist.Mapper):
                                    must contain filter.
         """
         raise NotImplementedError()
-
-    @staticmethod
-    def getRepoPolicy(root, repos):
-        """Get the policy stored in a repo (specified by 'root'), if there is one.
-
-        @param root (string) path to the root location of the repository
-        @param repos (string) path from the root of the repo to the folder containing a file named
-                              _policy.paf or _policy.yaml
-        @return (lsst.daf.persistence.Policy or None) A Policy instantiated with the policy found according to
-                                                      input variables, or None if a policy file was not found.
-        """
-        policy = None
-        if root is not None:
-            paths = dafPersist.Storage.search(root, os.path.join(repos, '_policy.*'))
-            if paths is not None:
-                for postfix in ('.yaml', '.paf'):
-                    matches = [path for path in paths if (os.path.splitext(path))[1] == postfix]
-                    if len(matches) > 1:
-                        raise RuntimeError("More than 1 policy possibility for root:%s" % root)
-                    elif len(matches) == 1:
-                        policy = dafPersist.Policy(matches[0])
-                        break
-        return policy
 
     def _search(self, path):
         """Search for path in the associated repository's storage.
