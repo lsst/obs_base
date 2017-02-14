@@ -25,7 +25,7 @@ from builtins import object
 from collections import OrderedDict
 import os
 import re
-from lsst.daf.persistence import ButlerLocation
+from lsst.daf.persistence import ButlerLocation, NoResults
 from lsst.daf.persistence.policy import Policy
 import lsst.pex.policy as pexPolicy
 
@@ -257,8 +257,9 @@ class Mapping(object):
 
         lookups = self.lookup(newProps, newId)
         if len(lookups) != 1:
-            raise RuntimeError("No unique lookup for %s from %s: %d matches" %
-                               (newProps, newId, len(lookups)))
+            raise NoResults("No unique lookup for %s from %s: %d matches" %
+                            (newProps, newId, len(lookups)),
+                            self.datasetType, dataId)
         for i, prop in enumerate(newProps):
             newId[prop] = lookups[0][i]
         return newId
