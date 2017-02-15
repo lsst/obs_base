@@ -447,3 +447,13 @@ deepCoadd_srcMatch:
     python: lsst.afw.table.BaseCatalog
     tables: raw
     template: ''
+singleFrameDatabase:  # Database to store bounding boxes of single frames
+    persistable: ignored
+    storage: ignored
+    python: ignored
+    template: singleFrameDatabase.sqlite3
+deepCoadd_selection:  # Table of frames selected for coaddition
+    persistable: BaseCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.BaseCatalog
+    template: deepCoadd/%(filter)s/%(tract)d/%(patch)s/selection-%(tract)d-%(patch)d-%(filter)s.fits
