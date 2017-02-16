@@ -593,7 +593,8 @@ class CameraMapper(dafPersist.Mapper):
             storageName="ConfigStorage",
             locationList=self.cameraDataLocation or "ignored",
             dataId=actualId,
-            mapper=self
+            mapper=self,
+            storage=self.rootStorage
         )
 
     def bypass_camera(self, datasetType, pythonType, butlerLocation, dataId):
@@ -613,7 +614,9 @@ class CameraMapper(dafPersist.Mapper):
         if defectFitsPath is None:
             raise RuntimeError("No defects available for dataId=%s" % (dataId,))
 
-        return dafPersist.ButlerLocation(None, None, None, defectFitsPath, dataId, self)
+        return dafPersist.ButlerLocation(None, None, None, defectFitsPath,
+                                         dataId, self,
+                                         storage=self.rootStorage)
 
     def bypass_defects(self, datasetType, pythonType, butlerLocation, dataId):
         """Return a defect based on the butler location returned by map_defects
@@ -650,6 +653,7 @@ class CameraMapper(dafPersist.Mapper):
             locationList="ignored",
             dataId=dataId,
             mapper=self,
+            storage=self.rootStorage
         )
 
     def bypass_expIdInfo(self, datasetType, pythonType, location, dataId):
@@ -681,7 +685,8 @@ class CameraMapper(dafPersist.Mapper):
     def map_skypolicy(self, dataId):
         """Map a sky policy."""
         return dafPersist.ButlerLocation("lsst.pex.policy.Policy", "Policy",
-                                         "Internal", None, None, self)
+                                         "Internal", None, None, self,
+                                         storage=self.rootStorage)
 
     def std_skypolicy(self, item, dataId):
         """Standardize a sky policy by returning the one we use."""
