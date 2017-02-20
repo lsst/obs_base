@@ -30,14 +30,14 @@ deepDiff_matchedExp:
     storage:       FitsStorage
     level:         Ccd
     tables:        'raw'
-deepCoadd_tempExp:
+deepCoadd_directWarp:
     template:    ''
     python:      lsst.afw.image.ExposureF
     persistable: ExposureF
     storage:     FitsStorage
     level:       Skytile
     tables:      'raw'
-deepCoadd_tempExpPsfMatched:
+deepCoadd_psfMatchedWarp:
     template:    ''
     python:      lsst.afw.image.ExposureF
     persistable: ExposureF
@@ -91,7 +91,7 @@ dcrCoadd_calexp:
     python: lsst.afw.image.ExposureF
     template: dcrCoadd-results/%(filter)s%(subfilter)s/%(tract)d/%(patch)s/calexp-%(filter)s-%(tract)d-%(patch)s.fits
     level: None
-dcrCoadd_tempExp:
+dcrCoadd_directWarp:
     template:    ''
     python:      lsst.afw.image.ExposureF
     persistable: ExposureF
