@@ -283,6 +283,11 @@ singleFrameDriver_config:
     storage: ConfigStorage
     python: lsst.pipe.drivers.singleFrameDriver.SingleFrameDriverConfig
     template: config/singleFrameDriver.py
+donutDriver_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.drivers.donutDriver.DonutDriverConfig
+    template: config/donutDriver.py
 mergeCoaddDetections_metadata:
     persistable: PropertySet
     storage: BoostStorage
@@ -293,6 +298,11 @@ icSrc_schema:
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
     template: schema/icSrc.fits
+donutCat_schema:
+    persistable: SourceCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: schema/donutCat.fits
 ccdExposureId_bits:
     persistable: ignored
     storage: ignored
@@ -349,6 +359,12 @@ icSrc:
     persistable: SourceCatalog
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
+    tables: raw
+    template: ''
+donutCat:
+    persistable: BaseCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.BaseCatalog
     tables: raw
     template: ''
 icExpBackground:
