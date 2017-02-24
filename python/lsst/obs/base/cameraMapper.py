@@ -386,7 +386,7 @@ class CameraMapper(dafPersist.Mapper):
 
                     # Filename of dataset
                     setMethods("filename", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                        [os.path.join(location.getStorage().getRoot(), p) for p in location.getLocations()])
+                        [os.path.join(location.getStorage().root, p) for p in location.getLocations()])
 
                     # Metadata from FITS file
                     if subPolicy["storage"] == "FitsStorage":  # a FITS image
@@ -405,7 +405,7 @@ class CameraMapper(dafPersist.Mapper):
                                            afwImage.readMetadata(location.getLocationsWithRoot()[0])))
                     if subPolicy["storage"] == "FitsCatalogStorage":  # a FITS catalog
                         setMethods("md", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                   afwImage.readMetadata(os.path.join(location.getStorage().getRoot(),
+                                   afwImage.readMetadata(os.path.join(location.getStorage().root,
                                                                       location.getLocations()[0]), 2))
 
                     # Sub-images
@@ -436,14 +436,14 @@ class CameraMapper(dafPersist.Mapper):
                     if subPolicy["storage"] == "FitsCatalogStorage":
                         # Length of catalog
                         setMethods("len", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                   afwImage.readMetadata(os.path.join(location.getStorage().getRoot(),
+                                   afwImage.readMetadata(os.path.join(location.getStorage().root,
                                                                       location.getLocations()[0]),
                                                          2).get("NAXIS2"))
 
                         # Schema of catalog
                         if not datasetType.endswith("_schema") and datasetType + "_schema" not in datasets:
                             setMethods("schema", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                       afwTable.Schema.readFits(os.path.join(location.getStorage().getRoot(),
+                                       afwTable.Schema.readFits(os.path.join(location.getStorage().root,
                                                                              location.getLocations()[0])))
 
     def _computeCcdExposureId(self, dataId):
@@ -753,7 +753,7 @@ class CameraMapper(dafPersist.Mapper):
         # Old Butler API was to indicate the registry WITH the repo folder, New Butler expects the registry to
         # be in the repo folder. To support Old API, check to see if path starts with root, and if so, strip
         # root from path.
-        root = storage.getRoot()
+        root = storage.root
         if path and (path.startswith(root)):
             path = path[len(root + '/'):]
 

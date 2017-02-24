@@ -113,7 +113,7 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(loc.getCppType(), "BoxI")
         self.assertEqual(loc.getStorageName(), "PickleStorage")
         self.assertEqual(loc.getLocations(), ["foo-1,1.pickle"])
-        self.assertEqual(loc.getStorage().getRoot(), testOutput)
+        self.assertEqual(loc.getStorage().root, testOutput)
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
 
     def testParentTrailingSlash2527(self):
@@ -130,7 +130,7 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(loc.getCppType(), "BoxI")
         self.assertEqual(loc.getStorageName(), "PickleStorage")
         self.assertEqual(loc.getLocations(), ["foo-1,1.pickle"])
-        self.assertEqual(loc.getStorage().getRoot(), testPath)
+        self.assertEqual(loc.getStorage().root, testPath)
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
         box = afwGeom.BoxI(afwGeom.PointI(0, 1), afwGeom.PointI(2, 3))
         butler.put(box, "x", sensor="1,1")
@@ -146,7 +146,7 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(loc.getCppType(), "BoxI")
         self.assertEqual(loc.getStorageName(), "PickleStorage")
         self.assertEqual(loc.getLocations(), ["foo-1,1.pickle"])
-        self.assertEqual(loc.getStorage().getRoot(), testOutput)
+        self.assertEqual(loc.getStorage().root, testOutput)
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
 
     def testReuseOutputRoot(self):
