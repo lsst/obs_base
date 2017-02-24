@@ -69,7 +69,7 @@ class DM329TestCase(unittest.TestCase):
         for i in (1, 2, 3):
             loc = mapper.map("other", dict(ccd=35, hdu=i))
             expectedLocations = ["bar-35.fits[%d]" % (i,)]
-            self.assertEqual(loc.getStorage().getRoot(), testDir)
+            self.assertEqual(loc.getStorage().root, testDir)
             self.assertEqual(loc.getLocations(), expectedLocations)
             image = butler.get("other", ccd=35, hdu=i, immediate=True)
             self.assertIsInstance(image, lsst.afw.image.ImageF)

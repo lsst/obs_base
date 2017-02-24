@@ -128,7 +128,7 @@ class Mapper1TestCase(unittest.TestCase):
         self.assertEqual(loc.getStorageName(), "PickleStorage")
         expectedRoot = testDir
         expectedLocations = ["foo-1,1.pickle"]
-        self.assertEqual(loc.getStorage().getRoot(), expectedRoot)
+        self.assertEqual(loc.getStorage().root, expectedRoot)
         self.assertEqual(loc.getLocations(), expectedLocations)
         self.assertEqual(loc.getAdditionalData().toString(),
                          "sensor = \"1,1\"\n")
@@ -184,7 +184,7 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getCppType(), "ImageU")
         self.assertEqual(loc.getStorageName(), "FitsStorage")
         self.assertEqual(loc.getLocations(), ["foo-13.fits"])
-        self.assertEqual(loc.getStorage().getRoot(), testDir)
+        self.assertEqual(loc.getStorage().root, testDir)
         self.assertEqual(loc.getAdditionalData().toString(), "ccd = 13\n")
 
     def testSubMap(self):
@@ -202,7 +202,7 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getCppType(), "ImageU")
         self.assertEqual(loc.getStorageName(), "FitsStorage")
         self.assertEqual(loc.getLocations(), ["foo-13.fits"])
-        self.assertEqual(loc.getStorage().getRoot(), testDir)
+        self.assertEqual(loc.getStorage().root, testDir)
         self.assertEqual(loc.getAdditionalData().toString(),
                          'ccd = 13\nheight = 400\nllcX = 200\nllcY = 100\nwidth = 300\n')
 
@@ -211,7 +211,7 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getCppType(), "ImageU")
         self.assertEqual(loc.getStorageName(), "FitsStorage")
         self.assertEqual(loc.getLocations(), ["foo-13.fits"])
-        self.assertEqual(loc.getStorage().getRoot(), testDir)
+        self.assertEqual(loc.getStorage().root, testDir)
         self.assertEqual(loc.getAdditionalData().toString(),
                          'ccd = 13\nheight = 400\nimageOrigin = "PARENT"\n'
                          'llcX = 200\nllcY = 100\nwidth = 300\n')
@@ -245,7 +245,7 @@ class Mapper2TestCase(unittest.TestCase):
         mapper = MinMapper2(root=testDir)
         loc = mapper.map("some", dict(ccd=35))
         expectedLocations = ["bar-35.fits"]
-        self.assertEqual(loc.getStorage().getRoot(), testDir)
+        self.assertEqual(loc.getStorage().root, testDir)
         self.assertEqual(loc.getLocations(), expectedLocations)
 
         butler = dafPersist.ButlerFactory(mapper=mapper).create()
@@ -262,7 +262,7 @@ class Mapper2TestCase(unittest.TestCase):
         mapper = MinMapper2(root=testDir)
         loc = mapper.map("someGz", dict(ccd=35))
         expectedLocations = [os.path.join("gz", "bar-35.fits.gz")]
-        self.assertEqual(loc.getStorage().getRoot(), testDir)
+        self.assertEqual(loc.getStorage().root, testDir)
         self.assertEqual(loc.getLocations(), expectedLocations)
 
         butler = dafPersist.ButlerFactory(mapper=mapper).create()
@@ -280,7 +280,7 @@ class Mapper2TestCase(unittest.TestCase):
         loc = mapper.map("someFz", dict(ccd=35))
         expectedRoot = testDir
         expectedLocations = [os.path.join("fz", "bar-35.fits.fz")]
-        self.assertEqual(loc.getStorage().getRoot(), expectedRoot)
+        self.assertEqual(loc.getStorage().root, expectedRoot)
         self.assertEqual(loc.getLocations(), expectedLocations)
 
         butler = dafPersist.ButlerFactory(mapper=mapper).create()
@@ -324,7 +324,7 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getStorageName(), "FitsStorage")
         expectedRoot = testDir
         expectedLocations = ["flat-05Am03-fi.fits"]
-        self.assertEqual(loc.getStorage().getRoot(), expectedRoot)
+        self.assertEqual(loc.getStorage().root, expectedRoot)
         self.assertEqual(loc.getLocations(), expectedLocations)
         self.assertEqual(loc.getAdditionalData().toString(),
                          'ccd = 13\nderivedRunId = "05Am03"\nfilter = "i"\nvisit = 787650\n')

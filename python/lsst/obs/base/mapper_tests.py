@@ -119,7 +119,7 @@ class MapperTests(with_metaclass(abc.ABCMeta)):
         self.assertEqual(butlerLocation.getCppType(), "Config")
         self.assertEqual(butlerLocation.getStorageName(), "ConfigStorage")
         processCcd_path = os.path.join("config", "processCcd.py")
-        self.assertEqual(self.mapper.root, butlerLocation.getStorage().getRoot())
+        self.assertEqual(self.mapper.root, butlerLocation.getStorage().root)
         self.assertEqual(butlerLocation.getLocations(), [processCcd_path])
         for k, v in dataId.items():
             self.assertEqual(butlerLocation.getAdditionalData().get(k), v, msg="Failed for key={}".format(k))
