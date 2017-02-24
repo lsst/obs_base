@@ -9,6 +9,7 @@ config.log
 *.pyc
 *_wrap.cc
 *Lib.py
+.cache
 doc/html
 doc/*.tag
 doc/*.inc
