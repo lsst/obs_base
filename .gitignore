@@ -16,4 +16,5 @@ doc/*.inc
 doc/xml
 doc/doxygen.conf
 tests/.tests
+tests/.cache
 version.py
