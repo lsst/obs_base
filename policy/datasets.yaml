@@ -653,3 +653,25 @@ qaTableVisit:
     python: builtins.str
     storage: TextStorage
     template: ''
+skyCorr_config:  # Configuration for sky correction
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.drivers.skyCorrection.SkyCorrectionConfig
+    template: config/skyCorr.py
+sky_config:  # Configuration for sky frame construction
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.drivers.constructCalibs.SkyConfig
+    template: config/sky.py
+skyCorr:  # Result of sky correction
+    persistable: PurePythonClass
+    storage: FitsCatalogStorage
+    python: lsst.afw.math.BackgroundList
+    tables: raw
+    template: ''
+calexp_camera:  # Camera-level view of calexp after sky correction
+    template: ''
+    persistable: ExposureF
+    python: lsst.afw.image.ExposureF
+    storage: FitsStorage
+    level: None
