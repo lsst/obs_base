@@ -621,9 +621,9 @@ class CameraMapper(dafPersist.Mapper):
         """Return supported keys and their value types for a given dataset
         type at a given level of the key hierarchy.
 
-        @param datasetType (str) dataset type or None for all keys
-        @param level (str) level or None for all levels
-        @return (iterable) Set of keys usable in a dataset identifier"""
+        @param datasetType (str) dataset type or None for all dataset types
+        @param level (str) level or None for all levels or '' for the default level for the camera
+        @return (dict) dict keys are strings usable in a dataset identifier; values are their value types"""
 
         # not sure if this is how we want to do this. what if None was intended?
         if level == '':
