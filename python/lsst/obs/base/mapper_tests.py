@@ -144,7 +144,7 @@ class MapperTests(with_metaclass(abc.ABCMeta)):
     def test_get_keys_raw(self):
         for level, expect in self.mapper_data.raw_levels:
             result = self.mapper.getKeys("raw", level)
-            self.assertEqual(set(result), expect, msg='Failed for level={}'.format(level))
+            self.assertEqual(result, expect, msg='Failed for level={}'.format(level))
 
     def test_get_default_level(self):
         self.assertEqual(self.mapper.getDefaultLevel(), self.mapper_data.default_level)

@@ -136,7 +136,6 @@ class ButlerGetTests(with_metaclass(abc.ABCMeta)):
         self.assertEqual(exp.getFilter().getName(), self.butler_get_data.filters[name])
         exposureId = self.butler.get('ccdExposureId', dataId=self.dataIds[name])
         self.assertEqual(exposureId, self.butler_get_data.exposureIds[name])
-        self.assertEqual(exp.getInfo().getVisitInfo().getExposureTime(), self.butler_get_data.exptimes[name])
         return exp
 
     def test_raw(self):
@@ -146,8 +145,8 @@ class ButlerGetTests(with_metaclass(abc.ABCMeta)):
         # on various implementation details.
         self.assertEqual(exp.hasWcs(), True)
         origin = exp.getWcs().getSkyOrigin()
-        self.assertAlmostEqual(origin.getLongitude().asDegrees(), self.butler_get_data.sky_origin[0])
-        self.assertAlmostEqual(origin.getLatitude().asDegrees(), self.butler_get_data.sky_origin[1])
+        self.assertEqual(exp.getInfo().getVisitInfo().getExposureTime(), self.butler_get_data.exptimes['raw'])
+        self.assertCoordsNearlyEqual(origin, self.butler_get_data.sky_origin)
 
     def test_bias(self):
         self._test_exposure('bias')
@@ -181,7 +180,7 @@ class ButlerGetTests(with_metaclass(abc.ABCMeta)):
         for detectorId in self.butler_get_data.good_detectorIds:
             detector = camera[detectorId]
             linearizer = self.butler.get("linearizer", dataId=dict(ccd=detectorId), immediate=True)
-            self.assertEqual(linearizer.LinearityType, self.butler_get_data.linearizer_type[detectorId])
+            self.assertEqual(linearizer.LinearityType, self.butler_get_data.linearizer_type)
             linearizer.checkDetector(detector)
 
     def test_get_linearizer_bad_detectorIds(self):
