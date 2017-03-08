@@ -618,7 +618,7 @@ class CameraMapper(dafPersist.Mapper):
         return iter(self.keyDict.keys())
 
     def getKeys(self, datasetType, level):
-        """Return supported keys and their value types for a given dataset
+        """Return a dict of supported keys and their value types for a given dataset
         type at a given level of the key hierarchy.
 
         @param datasetType (str) dataset type or None for all dataset types
