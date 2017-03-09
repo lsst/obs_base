@@ -136,7 +136,7 @@ class Mapping(object):
                 if ext and path.endswith(ext):
                     continue  # if the path already ends with the extension
                 extPath = path + ext if ext else path
-                newPath = self.rootStorage.search(self.rootStorage.root, extPath)
+                newPath = self.rootStorage.instanceSearch(extPath)
                 if newPath:
                     path = newPath
                     break
