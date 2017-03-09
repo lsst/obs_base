@@ -757,10 +757,13 @@ class CameraMapper(dafPersist.Mapper):
 
         # Old Butler API was to indicate the registry WITH the repo folder, New Butler expects the registry to
         # be in the repo folder. To support Old API, check to see if path starts with root, and if so, strip
-        # root from path.
-        root = storage.root
-        if path and (path.startswith(root)):
-            path = path[len(root + '/'):]
+        # root from path. Currently only works with PosixStorage
+        try:
+            root = storage.root
+            if path and (path.startswith(root)):
+                path = path[len(root + '/'):]
+        except AttributeError:
+            pass
 
         # determine if there is an sqlite registry and if not, try the posix registry.
         registry = None
