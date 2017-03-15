@@ -25,7 +25,7 @@ from builtins import object
 from collections import OrderedDict
 import os
 import re
-from lsst.daf.persistence import ButlerLocation
+from lsst.daf.persistence import ButlerLocation, NoResults
 from lsst.daf.persistence.policy import Policy
 import lsst.pex.policy as pexPolicy
 
@@ -69,13 +69,13 @@ class Mapping(object):
     registry that can be NATURAL JOIN-ed to look up additional
     information.  """
 
-    def __init__(self, datasetType, policy, registry, root, provided=None):
+    def __init__(self, datasetType, policy, registry, rootStorage, provided=None):
         """Constructor for Mapping class.
         @param datasetType    (string)
         @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
                               Mapping Policy
         @param registry       (lsst.obs.base.Registry) Registry for metadata lookups
-        @param root           (string) Path of root directory
+        @param rootStorage    (Storage subclass instance) Interface to persisted repository data
         @param provided       (list of strings) Keys provided by the mapper
         """
 
@@ -87,7 +87,7 @@ class Mapping(object):
 
         self.datasetType = datasetType
         self.registry = registry
-        self.root = root
+        self.rootStorage = rootStorage
 
         self.template = policy['template']  # Template path
         self.keyDict = dict([
@@ -124,8 +124,8 @@ class Mapping(object):
         actualId = self.need(iter(self.keyDict.keys()), dataId)
         usedDataId = {key: actualId[key] for key in self.keyDict.keys()}
         path = mapper._mapActualToPath(self.template, actualId)
-        if not os.path.isabs(path):
-            path = os.path.join(self.root, path)
+        if os.path.isabs(path):
+            raise RuntimeError("Mapped path should not be absolute.")
         if not write:
             # This allows mapped files to be compressed, ending in .gz or .fz, without any indication from the
             # policy that the file should be compressed, easily allowing repositories to contain a combination
@@ -134,9 +134,9 @@ class Mapping(object):
             # allowed extensions that may exist at the end of the template.
             for ext in (None, '.gz', '.fz'):
                 if ext and path.endswith(ext):
-                    continue # if the path already ends with the extension
+                    continue  # if the path already ends with the extension
                 extPath = path + ext if ext else path
-                newPath = mapper._parentSearch(extPath)
+                newPath = self.rootStorage.search(self.rootStorage.root, extPath)
                 if newPath:
                     path = newPath
                     break
@@ -150,8 +150,9 @@ class Mapping(object):
         else:
             additionalData = actualId.copy()
 
-        return ButlerLocation(self.python, self.persistable, self.storage, path, additionalData, mapper,
-                              usedDataId=usedDataId, datasetType=self.datasetType)
+        return ButlerLocation(pythonType=self.python, cppType=self.persistable, storageName=self.storage,
+                              locationList=path, dataId=additionalData, mapper=mapper,
+                              storage=self.rootStorage, usedDataId=usedDataId, datasetType=self.datasetType)
 
     def lookup(self, properties, dataId):
         """Look up properties for in a metadata registry given a partial
@@ -256,8 +257,9 @@ class Mapping(object):
 
         lookups = self.lookup(newProps, newId)
         if len(lookups) != 1:
-            raise RuntimeError("No unique lookup for %s from %s: %d matches" %
-                               (newProps, newId, len(lookups)))
+            raise NoResults("No unique lookup for %s from %s: %d matches" %
+                            (newProps, newId, len(lookups)),
+                            self.datasetType, dataId)
         for i, prop in enumerate(newProps):
             newId[prop] = lookups[0][i]
         return newId

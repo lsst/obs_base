@@ -21,18 +21,13 @@
 #
 
 from builtins import str
-from past.builtins import long
 import copy
-import errno
-import glob
 import os
 import pyfits  # required by _makeDefectsDict until defects are written as AFW tables
 import re
-import shutil
 import weakref
 import lsst.daf.persistence as dafPersist
 from . import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping
-import lsst.daf.base as dafBase
 import lsst.afw.geom as afwGeom
 import lsst.afw.image as afwImage
 import lsst.afw.table as afwTable
@@ -58,14 +53,9 @@ class CameraMapper(dafPersist.Mapper):
     Mappers for specific data sources (e.g., CFHT Megacam, LSST
     simulations, etc.) should inherit this class.
 
-    The CameraMapper manages datasets within a "root" directory.  It can also
-    be given an "outputRoot".  If so, the input root is linked into the
-    outputRoot directory using a symlink named "_parent"; writes go into the
-    outputRoot while reads can come from either the root or outputRoot.  As
-    outputRoots are used as inputs for further processing, the chain of
-    _parent links allows any dataset to be retrieved.  Note that writing to a
-    dataset present in the input root will hide the existing dataset but not
-    overwrite it.  See #2160 for design discussion.
+    The CameraMapper manages datasets within a "root" directory. Note that
+    writing to a dataset present in the input root will hide the existing
+    dataset but not overwrite it.  See #2160 for design discussion.
 
     A camera is assumed to consist of one or more rafts, each composed of
     multiple CCDs.  Each CCD is in turn composed of one or more amplifiers
@@ -157,31 +147,49 @@ class CameraMapper(dafPersist.Mapper):
 
     def __init__(self, policy, repositoryDir,
                  root=None, registry=None, calibRoot=None, calibRegistry=None,
-                 provided=None, outputRoot=None):
+                 provided=None, parentRegistry=None, repositoryCfg=None):
         """Initialize the CameraMapper.
-        @param policy        (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
-                             Policy with per-camera defaults already merged
-        @param repositoryDir (string) Policy repository for the subclassing
-                             module (obtained with getRepositoryPath() on the
-                             per-camera default dictionary)
-        @param root          (string) Root directory for data
-        @param registry      (string) Path to registry with data's metadata
-        @param calibRoot     (string) Root directory for calibrations
-        @param calibRegistry (string) Path to registry with calibrations'
-                             metadata
-        @param provided      (list of strings) Keys provided by the mapper
-        @param outputRoot    (string) Root directory for output data
+
+        Parameters
+        ----------
+        policy : daf_persistence.Policy,
+            Can also be pexPolicy.Policy, only for backward compatibility.
+            Policy with per-camera defaults already merged.
+        repositoryDir : string
+            Policy repository for the subclassing module (obtained with
+            getRepositoryPath() on the per-camera default dictionary).
+        root : string, optional
+            Path to the root directory for data.
+        registry : string, optional
+            Path to registry with data's metadata.
+        calibRoot : string, optional
+            Root directory for calibrations.
+        calibRegistry : string, optional
+            Path to registry with calibrations' metadata.
+        provided : list of string, optional
+            Keys provided by the mapper.
+        parentRegistry : Registry subclass, optional
+            Registry from a parent repository that may be used to look up
+            data's metadata.
+        repositoryCfg : daf_persistence.RepositoryCfg or None, optional
+            The configuration information for the repository this mapper is
+            being used with.
         """
 
         dafPersist.Mapper.__init__(self)
 
         self.log = lsstLog.Log.getLogger("CameraMapper")
 
-        self.root = root
+        if root:
+            self.root = root
+        elif repositoryCfg:
+            self.root = repositoryCfg.root
+        else:
+            self.root = None
         if isinstance(policy, pexPolicy.Policy):
             policy = dafPersist.Policy(policy)
 
-        repoPolicy = CameraMapper.getRepoPolicy(self.root, self.root)
+        repoPolicy = repositoryCfg.policy if repositoryCfg else None
         if repoPolicy is not None:
             policy.update(repoPolicy)
 
@@ -207,70 +215,50 @@ class CameraMapper(dafPersist.Mapper):
             root = "."
         root = dafPersist.LogicalLocation(root).locString()
 
-        if outputRoot is not None and os.path.abspath(outputRoot) != os.path.abspath(root):
-            # Path manipulations are subject to race condition
-            if not os.path.exists(outputRoot):
-                try:
-                    os.makedirs(outputRoot)
-                except OSError as e:
-                    if not e.errno == errno.EEXIST:
-                        raise
-                if not os.path.exists(outputRoot):
-                    raise RuntimeError("Unable to create output repository '%s'" % (outputRoot,))
-            if os.path.exists(root):
-                # Symlink existing input root to "_parent" in outputRoot.
-                src = os.path.abspath(root)
-                dst = os.path.join(outputRoot, "_parent")
-                if not os.path.exists(dst):
-                    try:
-                        os.symlink(src, dst)
-                    except OSError:
-                        pass
-                if os.path.exists(dst):
-                    if os.path.realpath(dst) != os.path.realpath(src):
-                        raise RuntimeError("Output repository path "
-                                           "'%s' already exists and differs from "
-                                           "input repository path '%s'" % (dst, src))
-                else:
-                    raise RuntimeError("Unable to symlink from input "
-                                       "repository path '%s' to output repository "
-                                       "path '%s'" % (src, dst))
-            # We now use the outputRoot as the main root with access to the
-            # input via "_parent".
-            root = outputRoot
+        self.rootStorage = dafPersist.Storage.makeFromURI(uri=root)
 
-        if calibRoot is None:
-            if 'calibRoot' in policy:
-                calibRoot = policy['calibRoot']
-                calibRoot = dafPersist.LogicalLocation(calibRoot).locString()
-            else:
-                calibRoot = root
-
-        if not os.path.exists(root):
-            self.log.warn("Root directory not found: %s", root)
-        if not os.path.exists(calibRoot):
-            self.log.warn("Calibration root directory not found: %s", calibRoot)
+        # If the calibRoot is passed in, use that. If not and it's indicated in the policy, use that. And
+        # otherwise, the calibs are in the regular root.
+        if calibRoot is not None:
+            calibStorage = dafPersist.Storage.makeFromURI(uri=calibRoot)
+        elif 'calibRoot' in policy:
+            calibRoot = policy['calibRoot']
+            calibRoot = dafPersist.LogicalLocation(calibRoot).locString()
+            calibStorage = dafPersist.Storage.makeFromURI(uri=calibRoot)
+        else:
+            calibStorage = self.rootStorage
 
         self.root = root
 
         # Registries
-        self.registry = self._setupRegistry("registry", registry, policy, "registryPath", root)
-        if 'needCalibRegistry' in policy and policy['needCalibRegistry']:
-            calibRegistry = self._setupRegistry("calibRegistry", calibRegistry, policy,
-                                                "calibRegistryPath", calibRoot)
+        self.registry = self._setupRegistry("registry", registry, policy, "registryPath", self.rootStorage,
+                                            searchParents=False, posixIfNoSql=(not parentRegistry))
+        if not self.registry:
+            self.registry = parentRegistry
+        needCalibRegistry = policy.get('needCalibRegistry', None)
+        if needCalibRegistry:
+            if calibStorage:
+                self.calibRegistry = self._setupRegistry("calibRegistry", calibRegistry, policy,
+                                                         "calibRegistryPath", calibStorage)
+            else:
+                raise RuntimeError(
+                    "'needCalibRegistry' is true in Policy, but was unable to locate a repo at " +
+                    "calibRoot ivar:%s or policy['calibRoot']:%s" %
+                    (calibRoot, policy.get('calibRoot', None)))
         else:
-            calibRegistry = None
+            self.calibRegistry = None
 
         # Dict of valid keys and their value types
         self.keyDict = dict()
 
-        self._initMappings(policy, root, calibRoot, calibRegistry, provided=None)
+        self._initMappings(policy, self.rootStorage, calibStorage, provided=None)
 
         # Camera geometry
         self.cameraDataLocation = None  # path to camera geometry config file
         self.camera = self._makeCamera(policy=policy, repositoryDir=repositoryDir)
 
-        # Defect registry and root
+        # Defect registry and root. Defects are stored with the camera and the registry is loaded from the
+        # camera package, which is on the local filesystem.
         self.defectRegistry = None
         if 'defects' in policy:
             self.defectPath = os.path.join(repositoryDir, policy['defects'])
@@ -290,7 +278,7 @@ class CameraMapper(dafPersist.Mapper):
 
         self.makeRawVisitInfo = self.MakeRawVisitInfoClass(log=self.log)
 
-    def _initMappings(self, policy, root=None, calibRoot=None, calibRegistry=None, provided=None):
+    def _initMappings(self, policy, rootStorage=None, calibStorage=None, provided=None):
         """Initialize mappings
 
         For each of the dataset types that we want to be able to read, there are
@@ -305,9 +293,8 @@ class CameraMapper(dafPersist.Mapper):
         the header of an image, retrieving only the size of a catalog.
 
         @param policy        (Policy) Policy with per-camera defaults already merged
-        @param root          (string) Root directory for data
-        @param calibRoot     (string) Root directory for calibrations
-        @param calibRegistry (string) Path to registry with calibrations' metadata
+        @param rootStorage   (Storage subclass instance) Interface to persisted repository data
+        @param calibRoot     (Storage subclass instance) Interface to persisted calib repository data
         @param provided      (list of strings) Keys provided by the mapper
         """
         # Sub-dictionaries (for exposure/calibration/dataset types)
@@ -367,10 +354,10 @@ class CameraMapper(dafPersist.Mapper):
                         continue
 
                     if name == "calibrations":
-                        mapping = cls(datasetType, subPolicy, self.registry, calibRegistry, calibRoot,
+                        mapping = cls(datasetType, subPolicy, self.registry, self.calibRegistry, calibStorage,
                                       provided=provided)
                     else:
-                        mapping = cls(datasetType, subPolicy, self.registry, root, provided=provided)
+                        mapping = cls(datasetType, subPolicy, self.registry, rootStorage, provided=provided)
                     self.keyDict.update(mapping.keys())
                     mappings[datasetType] = mapping
                     self.mappings[datasetType] = mapping
@@ -404,23 +391,27 @@ class CameraMapper(dafPersist.Mapper):
 
                     # Filename of dataset
                     setMethods("filename", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                               location.getLocations())
+                        [os.path.join(location.getStorage().root, p) for p in location.getLocations()])
 
                     # Metadata from FITS file
                     if subPolicy["storage"] == "FitsStorage":  # a FITS image
                         setMethods("md", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                   afwImage.readMetadata(location.getLocations()[0]))
+                                   afwImage.readMetadata(location.getLocationsWithRoot()[0]))
                         if name == "exposures":
                             setMethods("wcs", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                       afwImage.makeWcs(afwImage.readMetadata(location.getLocations()[0])))
+                                       afwImage.makeWcs(
+                                           afwImage.readMetadata(location.getLocationsWithRoot()[0])))
                             setMethods("calib", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                       afwImage.Calib(afwImage.readMetadata(location.getLocations()[0])))
+                                       afwImage.Calib(
+                                           afwImage.readMetadata(location.getLocationsWithRoot()[0])))
                             setMethods("visitInfo",
                                        bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                       afwImage.VisitInfo(afwImage.readMetadata(location.getLocations()[0])))
+                                       afwImage.VisitInfo(
+                                           afwImage.readMetadata(location.getLocationsWithRoot()[0])))
                     if subPolicy["storage"] == "FitsCatalogStorage":  # a FITS catalog
                         setMethods("md", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                   afwImage.readMetadata(location.getLocations()[0], 2))
+                                   afwImage.readMetadata(os.path.join(location.getStorage().root,
+                                                                      location.getLocations()[0]), 2))
 
                     # Sub-images
                     if subPolicy["storage"] == "FitsStorage":
@@ -450,13 +441,15 @@ class CameraMapper(dafPersist.Mapper):
                     if subPolicy["storage"] == "FitsCatalogStorage":
                         # Length of catalog
                         setMethods("len", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                   afwImage.readMetadata(location.getLocations()[0], 2).get("NAXIS2"))
+                                   afwImage.readMetadata(os.path.join(location.getStorage().root,
+                                                                      location.getLocations()[0]),
+                                                         2).get("NAXIS2"))
 
                         # Schema of catalog
                         if not datasetType.endswith("_schema") and datasetType + "_schema" not in datasets:
                             setMethods("schema", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                       afwTable.Schema.readFits(location.getLocations()[0]))
-
+                                       afwTable.Schema.readFits(os.path.join(location.getStorage().root,
+                                                                             location.getLocations()[0])))
 
     def _computeCcdExposureId(self, dataId):
         """Compute the 64-bit (long) identifier for a CCD exposure.
@@ -479,104 +472,28 @@ class CameraMapper(dafPersist.Mapper):
         """
         raise NotImplementedError()
 
-    @staticmethod
-    def getRepoPolicy(root, repos):
-        """Get the policy stored in a repo (specified by 'root'), if there is one.
+    def _search(self, path):
+        """Search for path in the associated repository's storage.
 
-        @param root (string) path to the root location of the repository
-        @param repos (string) path from the root of the repo to the folder containing a file named
-                              _policy.paf or _policy.yaml
-        @return (lsst.daf.persistence.Policy or None) A Policy instantiated with the policy found according to
-                                                      input variables, or None if a policy file was not found.
+        Parameters
+        ----------
+        path : string
+            Path that describes an object in the repository associated with
+            this mapper.
+            Path may contain an HDU indicator, e.g. 'foo.fits[1]'. The
+            indicator will be stripped when searching and so will match
+            filenames without the HDU indicator, e.g. 'foo.fits'. The path
+            returned WILL contain the indicator though, e.g. ['foo.fits[1]'].
+
+        Returns
+        -------
+        string
+            The path for this object in the repository. Will return None if the
+            object can't be found. If the input argument path contained an HDU
+            indicator, the returned path will also contain the HDU indicator.
         """
-        policy = None
-        if root is not None:
-            paths = CameraMapper.parentSearch(root, os.path.join(repos, '_policy.*'))
-            if paths is not None:
-                for postfix in ('.yaml', '.paf'):
-                    matches = [path for path in paths if (os.path.splitext(path))[1] == postfix]
-                    if len(matches) > 1:
-                        raise RuntimeError("More than 1 policy possibility for root:%s" % root)
-                    elif len(matches) == 1:
-                        policy = dafPersist.Policy(matches[0])
-                        break
-        return policy
-
-    def _parentSearch(self, path):
-        return CameraMapper.parentSearch(self.root, path)
-
-    @staticmethod
-    def parentSearch(root, path):
-        """Look for the given path in the current root or any of its parents
-        by following "_parent" symlinks; return None if it can't be found.  A
-        little tricky because the path may be in an alias of the root (e.g.
-        ".") and because the "_parent" links go between the root and the rest
-        of the path.
-        If the path contains an HDU indicator (a number in brackets before the
-        dot, e.g. 'foo.fits[1]', this will be stripped when searching and so
-        will match filenames without the HDU indicator, e.g. 'foo.fits'. The
-        path returned WILL contain the indicator though, e.g. ['foo.fits[1]'].
-        """
-        # Separate path into a root-equivalent prefix (in dir) and the rest
-        # (left in path)
-
-        rootDir = root
-        # First remove trailing slashes (#2527)
-        while len(rootDir) > 1 and rootDir[-1] == '/':
-            rootDir = rootDir[:-1]
-
-        if path.startswith(rootDir + "/"):
-            # Common case; we have the same root prefix string
-            path = path[len(rootDir)+1:]
-            dir = rootDir
-        elif rootDir == "/" and path.startswith("/"):
-            path = path[1:]
-            dir = rootDir
-        else:
-            # Search for prefix that is the same as root
-            pathPrefix = os.path.dirname(path)
-            while pathPrefix != "" and pathPrefix != "/":
-                if os.path.realpath(pathPrefix) == os.path.realpath(root):
-                    break
-                pathPrefix = os.path.dirname(pathPrefix)
-            if os.path.realpath(pathPrefix) != os.path.realpath(root):
-                # No prefix matching root, don't search for parents
-                paths = glob.glob(path)
-
-                # The contract states that `None` will be returned
-                #   if no matches are found.
-                # Thus we explicitly set up this if/else to return `None`
-                #   if `not paths` instead of `[]`.
-                # An argument could be made that the contract should be changed
-                if paths:
-                    return paths
-                else:
-                    return None
-            if pathPrefix == "/":
-                path = path[1:]
-            elif pathPrefix != "":
-                path = path[len(pathPrefix)+1:]
-            # If pathPrefix == "", then the current directory is the root
-            dir = pathPrefix
-
-        # Now search for the path in the root or its parents
-        # Strip off any cfitsio bracketed extension if present
-        strippedPath = path
-        pathStripped = None
-        firstBracket = path.find("[")
-        if firstBracket != -1:
-            strippedPath = path[:firstBracket]
-            pathStripped = path[firstBracket:]
-
-        while True:
-            paths = glob.glob(os.path.join(dir, strippedPath))
-            if len(paths) > 0:
-                if pathStripped is not None:
-                    paths = [p + pathStripped for p in paths]
-                return paths
-            dir = os.path.join(dir, "_parent")
-            if not os.path.exists(dir):
-                return None
+        # it would be better if storage was an instance, instead of having to demux the root URI every time.
+        return dafPersist.Storage.search(self.root, path)
 
     def backup(self, datasetType, dataId):
         """Rename any existing object with the given type and dataId.
@@ -590,6 +507,13 @@ class CameraMapper(dafPersist.Mapper):
         means that the same file will be stored twice if the previous version was
         found in an input repo.
         """
+
+        # Calling PosixStorage directly is not the long term solution in this
+        # function, this is work-in-progress on epic DM-6225. The plan is for
+        # parentSearch to be changed to 'search', and search only the storage
+        # associated with this mapper. All searching of parents will be handled
+        # by traversing the container of repositories in Butler.
+
         def firstElement(list):
             """Get the first element in the list, or None if that can't be done.
             """
@@ -598,19 +522,16 @@ class CameraMapper(dafPersist.Mapper):
         n = 0
         newLocation = self.map(datasetType, dataId, write=True)
         newPath = newLocation.getLocations()[0]
-        path = self._parentSearch(newPath)
+        path = dafPersist.PosixStorage.search(self.root, newPath, searchParents=True)
         path = firstElement(path)
         oldPaths = []
         while path is not None:
             n += 1
             oldPaths.append((n, path))
-            path = self._parentSearch("%s~%d" % (newPath, n))
+            path = dafPersist.PosixStorage.search(self.root, "%s~%d" % (newPath, n), searchParents=True)
             path = firstElement(path)
         for n, oldPath in reversed(oldPaths):
-            newDir, newFile = os.path.split(newPath)
-            if not os.path.exists(newDir):
-                os.makedirs(newDir)
-            shutil.copy(oldPath, "%s~%d" % (newPath, n))
+            self.rootStorage.copyFile(oldPath, "%s~%d" % (newPath, n))
 
     def keys(self):
         """Return supported keys.
@@ -677,7 +598,8 @@ class CameraMapper(dafPersist.Mapper):
             storageName="ConfigStorage",
             locationList=self.cameraDataLocation or "ignored",
             dataId=actualId,
-            mapper=self
+            mapper=self,
+            storage=self.rootStorage
         )
 
     def bypass_camera(self, datasetType, pythonType, butlerLocation, dataId):
@@ -697,7 +619,9 @@ class CameraMapper(dafPersist.Mapper):
         if defectFitsPath is None:
             raise RuntimeError("No defects available for dataId=%s" % (dataId,))
 
-        return dafPersist.ButlerLocation(None, None, None, defectFitsPath, dataId, self)
+        return dafPersist.ButlerLocation(None, None, None, defectFitsPath,
+                                         dataId, self,
+                                         storage=self.rootStorage)
 
     def bypass_defects(self, datasetType, pythonType, butlerLocation, dataId):
         """Return a defect based on the butler location returned by map_defects
@@ -734,6 +658,7 @@ class CameraMapper(dafPersist.Mapper):
             locationList="ignored",
             dataId=dataId,
             mapper=self,
+            storage=self.rootStorage
         )
 
     def bypass_expIdInfo(self, datasetType, pythonType, location, dataId):
@@ -765,7 +690,8 @@ class CameraMapper(dafPersist.Mapper):
     def map_skypolicy(self, dataId):
         """Map a sky policy."""
         return dafPersist.ButlerLocation("lsst.pex.policy.Policy", "Policy",
-                                         "Internal", None, None, self)
+                                         "Internal", None, None, self,
+                                         storage=self.rootStorage)
 
     def std_skypolicy(self, item, dataId):
         """Standardize a sky policy by returning the one we use."""
@@ -784,57 +710,86 @@ class CameraMapper(dafPersist.Mapper):
         """
         return ("ccd", self._extractDetectorName(dataId))
 
-    def _setupRegistry(self, name, path, policy, policyKey, root):
+    def _setupRegistry(self, name, path, policy, policyKey, storage, searchParents=True,
+                       posixIfNoSql=True):
         """Set up a registry (usually SQLite3), trying a number of possible
         paths.
-        @param name       (string) Name of registry
-        @param path       (string) Path for registry
-        @param policyKey  (string) Key in policy for registry path
-        @param root       (string) Root directory to look in
-        @return (lsst.daf.persistence.Registry) Registry object"""
 
+        Parameters
+        ----------
+        name : string
+            Name of registry.
+        path : string
+            Path for registry.
+        policy : string
+            Policy that contains the registry name, used if path is None.
+        policyKey : string
+            Key in policy for registry path.
+        storage : Storage subclass
+            Repository Storage to look in.
+        searchParents : bool, optional
+            True if the search for a registry should follow any Butler v1
+            _parent symlinks.
+        posixIfNoSql : bool, optional
+            If an sqlite registry is not found, will create a posix registry if
+            this is True.
+
+        Returns
+        -------
+        lsst.daf.persistence.Registry
+            Registry object
+        """
         if path is None and policyKey in policy:
             path = dafPersist.LogicalLocation(policy[policyKey]).locString()
-            if not os.path.exists(path):
-                if not os.path.isabs(path) and root is not None:
-                    newPath = self._parentSearch(os.path.join(root, path))
-                    newPath = newPath[0] if newPath is not None and len(newPath) else None
-                    if newPath is None:
-                        self.log.warn("Unable to locate registry at policy path (also looked in root): %s",
-                                      path)
-                    path = newPath
-                else:
-                    self.log.warn("Unable to locate registry at policy path: %s", path)
-                    path = None
+            if os.path.isabs(path):
+                raise RuntimeError("Policy should not indicate an absolute path for registry.")
+            if not storage.exists(path):
+                newPath = storage.instanceSearch(path)
+
+                newPath = newPath[0] if newPath is not None and len(newPath) else None
+                if newPath is None:
+                    self.log.warn("Unable to locate registry at policy path (also looked in root): %s",
+                                  path)
+                path = newPath
+            else:
+                self.log.warn("Unable to locate registry at policy path: %s", path)
+                path = None
+
+        # Old Butler API was to indicate the registry WITH the repo folder, New Butler expects the registry to
+        # be in the repo folder. To support Old API, check to see if path starts with root, and if so, strip
+        # root from path.
+        root = storage.root
+        if path and (path.startswith(root)):
+            path = path[len(root + '/'):]
 
         # determine if there is an sqlite registry and if not, try the posix registry.
         registry = None
 
-        if path is None and root is not None:
-            path = os.path.join(root, "%s.sqlite3" % name)
-            newPath = self._parentSearch(path)
+        if path is None:
+            path = "%s.sqlite3" % name
+            newPath = storage.instanceSearch(path)
             newPath = newPath[0] if newPath is not None and len(newPath) else None
             if newPath is None:
                 self.log.info("Unable to locate %s registry in root: %s", name, path)
             path = newPath
         if path is None:
             path = os.path.join(".", "%s.sqlite3" % name)
-            newPath = self._parentSearch(path)
+            newPath = storage.instanceSearch(path)
             newPath = newPath[0] if newPath is not None and len(newPath) else None
             if newPath is None:
                 self.log.info("Unable to locate %s registry in current dir: %s", name, path)
             path = newPath
         if path is not None:
-            if not os.path.exists(path):
-                newPath = self._parentSearch(path)
+            if not storage.exists(path):
+                newPath = storage.instanceSearch(path)
                 newPath = newPath[0] if newPath is not None and len(newPath) else None
                 if newPath is not None:
                     path = newPath
             self.log.debug("Loading %s registry from %s", name, path)
-            registry = dafPersist.Registry.create(path)
-        elif not registry and os.path.exists(root):
-            self.log.info("Loading Posix registry from %s", root)
-            registry = dafPersist.PosixRegistry(root)
+            registry = dafPersist.Registry.create(storage.getLocalFile(path))
+        elif not registry and posixIfNoSql:
+            self.log.info("Loading Posix registry from %s", storage.root)
+            registry = dafPersist.PosixRegistry(storage.root)
 
         return registry
 
@@ -1031,6 +986,15 @@ class CameraMapper(dafPersist.Mapper):
             shortNameFunc=self.getShortCcdName
         )
 
+    def getRegistry(self):
+        """Get the registry used by this mapper.
+
+        Returns
+        -------
+        Registry or None
+            The registry used by this mapper for this mapper's repository.
+        """
+        return self.registry
 
 def exposureFromImage(image):
     """Generate an Exposure from an image-like object
@@ -1060,3 +1024,4 @@ def exposureFromImage(image):
         exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image))
 
     return exposure
+

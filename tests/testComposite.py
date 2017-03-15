@@ -470,15 +470,16 @@ class TestInputOnly(unittest.TestCase):
         butler = dafPersist.Butler(inputs=self.firstRepoPath, outputs=repoArgs)
         objABPair = butler.get('basicPair', dataId={'id': 'foo', 'name': 'bar'})
 
-        butler.put(objABPair, 'basicPair', dataId={'id': 'foo', 'name': 'bar'})
-        # comparing the output files directly works so long as the storage is posix:
+        verificationButler = dafPersist.Butler(outputs={'root': os.path.join(self.testData, 'repo3'),
+                                                        'policy': self.policy,
+                                                        'mapper': 'lsst.obs.base.test.CompositeMapper',
+                                                        'mode': 'rw'})
+        verificationButler.put(objABPair, 'basicPair', dataId={'id': 'foo', 'name': 'bar'})
 
-        verificationButler = dafPersist.Butler(inputs=secondRepoPath)
         objA = verificationButler.get('basicObject1', {'id': 'foo'})
         self.assertEqual(objA, objABPair.objA)
         with self.assertRaises(RuntimeError):
-            objB = verificationButler.get('basicObject2', {'name': 'bar'}, immediate=True)
-
+            verificationButler.get('basicObject2', {'name': 'bar'}, immediate=True)
 
 
 class MemoryTester(lsst.utils.tests.MemoryTestCase):
