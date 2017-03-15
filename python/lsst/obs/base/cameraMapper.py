@@ -180,7 +180,12 @@ class CameraMapper(dafPersist.Mapper):
 
         self.log = lsstLog.Log.getLogger("CameraMapper")
 
-        self.root = root if root else repositoryCfg.root
+        if root:
+            self.root = root
+        elif repositoryCfg:
+            self.root = repositoryCfg.root
+        else:
+            self.root = None
         if isinstance(policy, pexPolicy.Policy):
             policy = dafPersist.Policy(policy)
 
