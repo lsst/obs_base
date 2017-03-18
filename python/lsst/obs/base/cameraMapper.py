@@ -219,13 +219,16 @@ class CameraMapper(dafPersist.Mapper):
 
         # If the calibRoot is passed in, use that. If not and it's indicated in the policy, use that. And
         # otherwise, the calibs are in the regular root.
-        if calibRoot is not None:
+        # If the location indicated by the calib root does not exist, do not create it.
+        calibStorage = None
+        if calibRoot is not None and dafPersist.Storage.storageExists(uri=calibRoot):
             calibStorage = dafPersist.Storage.makeFromURI(uri=calibRoot)
         elif 'calibRoot' in policy:
             calibRoot = policy['calibRoot']
             calibRoot = dafPersist.LogicalLocation(calibRoot).locString()
-            calibStorage = dafPersist.Storage.makeFromURI(uri=calibRoot)
-        else:
+            if dafPersist.Storage.exists(uri=calibRoot):
+                calibStorage = dafPersist.Storage.makeFromURI(uri=calibRoot)
+        if calibStorage is None:
             calibStorage = self.rootStorage
 
         self.root = root
