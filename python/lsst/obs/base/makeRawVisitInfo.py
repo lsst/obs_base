@@ -31,7 +31,7 @@ import astropy.units
 from lsst.log import Log
 from lsst.daf.base import DateTime
 from lsst.afw.geom import degrees
-from lsst.afw.image import makeVisitInfo
+from lsst.afw.image import VisitInfo
 
 __all__ = ["MakeRawVisitInfo"]
 
@@ -87,10 +87,10 @@ class MakeRawVisitInfo(object):
             if argDict[key] is None:
                 self.log.warn("argDict[{}] is None; stripping".format(key, argDict[key]))
                 del argDict[key]
-        return makeVisitInfo(**argDict)
+        return VisitInfo(**argDict)
 
     def setArgDict(self, md, argDict):
-        """Fill an argument dict with arguments for makeVisitInfo and pop associated metadata
+        """Fill an argument dict with arguments for VisitInfo and pop associated metadata
 
         Subclasses are expected to override this method, though the override
         may wish to call this default implementation, which:
