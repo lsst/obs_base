@@ -441,7 +441,19 @@ srcMatch:
     python: lsst.afw.table.BaseCatalog
     tables: raw
     template: ''
+srcMatchFull:  # Denormalized matches from CalibrateTask
+    persistable: BaseCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.BaseCatalog
+    tables: raw
+    template: ''
 deepCoadd_srcMatch:
+    persistable: BaseCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.BaseCatalog
+    tables: raw
+    template: ''
+deepCoadd_srcMatchFull:  # Denormalized matches from MeasureMergedCoaddSourcesTask
     persistable: BaseCatalog
     storage: FitsCatalogStorage
     python: lsst.afw.table.BaseCatalog
