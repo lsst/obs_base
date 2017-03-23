@@ -334,12 +334,6 @@ deepDiff_kernelSrc:
     persistable:   SourceCatalog
     storage:       FitsCatalogStorage
     tables:        'raw'
-deepCoadd_srcMatch:
-    template:      ''
-    python:        lsst.afw.table.BaseCatalog
-    persistable:   BaseCatalog
-    storage:       FitsCatalogStorage
-    tables:        'raw'
 isr_config:
     persistable: Config
     storage: ConfigStorage
