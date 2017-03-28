@@ -220,17 +220,20 @@ class CameraMapper(dafPersist.Mapper):
 
         self.rootStorage = dafPersist.Storage.makeFromURI(uri=root)
 
-        # If the calibRoot is passed in, use that. If not and it's indicated in the policy, use that. And
-        # otherwise, the calibs are in the regular root.
-        # If the location indicated by the calib root does not exist, do not create it.
+        # If the calibRoot is passed in, use that. If not and it's indicated in
+        # the policy, use that. And otherwise, the calibs are in the regular
+        # root.
+        # If the location indicated by the calib root does not exist, do not
+        # create it.
         calibStorage = None
-        if calibRoot is not None and dafPersist.Storage.storageExists(uri=calibRoot):
-            calibStorage = dafPersist.Storage.makeFromURI(uri=calibRoot)
-        elif 'calibRoot' in policy:
-            calibRoot = policy['calibRoot']
-            calibRoot = dafPersist.LogicalLocation(calibRoot).locString()
-            if dafPersist.Storage.exists(uri=calibRoot):
-                calibStorage = dafPersist.Storage.makeFromURI(uri=calibRoot)
+        if calibRoot is not None:
+            calibStorage = dafPersist.Storage.makeFromURI(uri=calibRoot,
+                                                          create=False)
+        else:
+            calibRoot = policy.get('calibRoot', None)
+            if calibRoot:
+                calibStorage = dafPersist.Storage.makeFromURI(uri=calibRoot,
+                                                              create=False)
         if calibStorage is None:
             calibStorage = self.rootStorage
 
@@ -499,8 +502,7 @@ class CameraMapper(dafPersist.Mapper):
             object can't be found. If the input argument path contained an HDU
             indicator, the returned path will also contain the HDU indicator.
         """
-        # it would be better if storage was an instance, instead of having to demux the root URI every time.
-        return dafPersist.Storage.search(self.root, path)
+        return self.rootStorage.search(path)
 
     def backup(self, datasetType, dataId):
         """Rename any existing object with the given type and dataId.
