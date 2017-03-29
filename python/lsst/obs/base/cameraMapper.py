@@ -414,7 +414,7 @@ class CameraMapper(dafPersist.Mapper):
                     if subPolicy["storage"] == "FitsCatalogStorage":  # a FITS catalog
                         setMethods("md", bypassImpl=lambda datasetType, pythonType, location, dataId:
                                    afwImage.readMetadata(os.path.join(location.getStorage().root,
-                                                                      location.getLocations()[0]), 2))
+                                                                      location.getLocations()[0]), hdu=1))
 
                     # Sub-images
                     if subPolicy["storage"] == "FitsStorage":
@@ -446,7 +446,7 @@ class CameraMapper(dafPersist.Mapper):
                         setMethods("len", bypassImpl=lambda datasetType, pythonType, location, dataId:
                                    afwImage.readMetadata(os.path.join(location.getStorage().root,
                                                                       location.getLocations()[0]),
-                                                         2).get("NAXIS2"))
+                                                         hdu=1).get("NAXIS2"))
 
                         # Schema of catalog
                         if not datasetType.endswith("_schema") and datasetType + "_schema" not in datasets:

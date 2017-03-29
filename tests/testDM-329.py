@@ -61,12 +61,11 @@ class DM329TestCase(unittest.TestCase):
     def testHdu(self):
         mapper = MinMapper2()
         butler = dafPersist.ButlerFactory(mapper=mapper).create()
-        # HDU 0 returns (header-only) primary array
-        # Note difference from afw Image constructor with hdu=0
-        # HDU 1 returns first image plane
-        # HDU 2 returns mask plane
-        # HDU 3 returns variance plane
-        for i in (1, 2, 3):
+        # HDU INT_MIN returns (header-only) primary array
+        # HDU 0 returns first image plane
+        # HDU 1 returns mask plane
+        # HDU 2 returns variance plane
+        for i in (0, 1, 2):
             loc = mapper.map("other", dict(ccd=35, hdu=i))
             expectedLocations = ["bar-35.fits[%d]" % (i,)]
             self.assertEqual(loc.getStorage().root, testDir)
@@ -75,8 +74,8 @@ class DM329TestCase(unittest.TestCase):
             self.assertIsInstance(image, lsst.afw.image.ImageF)
             self.assertEqual(image.getHeight(), 2024)
             self.assertEqual(image.getWidth(), 2248)
-            self.assertEqual(image.get(200, 25), (0.0, 20.0, 0.0)[i-1])
-            self.assertAlmostEqual(image.get(200, 26), (1.20544, 0.0, 5.82185)[i-1], places=5)
+            self.assertEqual(image.get(200, 25), (0.0, 20.0, 0.0)[i])
+            self.assertAlmostEqual(image.get(200, 26), (1.20544, 0.0, 5.82185)[i], places=5)
 
 
 class MemoryTester(lsst.utils.tests.MemoryTestCase):
