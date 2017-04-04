@@ -1,8 +1,6 @@
-#!/usr/bin/env python2
-from __future__ import absolute_import, division
 #
 # LSST Data Management System
-# Copyright 2016 LSST Corporation.
+# Copyright 2016-2017 LSST Corporation.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -21,9 +19,7 @@ from __future__ import absolute_import, division
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import math
 import unittest
 
