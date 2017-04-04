@@ -164,8 +164,8 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
             "DEG2": "45:30",
             "DEG3": "-310:12:32",
             "HR_1": -23.5,
-            "HR_1": "23:30",
-            "HR_1": "-13:15:16.7",
+            "HR_2": "23:30",
+            "HR_3": "-13:15:16.7",
             "STR": "FOO",
         }
 
