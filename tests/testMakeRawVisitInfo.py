@@ -1,8 +1,6 @@
-#!/usr/bin/env python2
-from __future__ import absolute_import, division
 #
 # LSST Data Management System
-# Copyright 2016 LSST Corporation.
+# Copyright 2016-2017 LSST Corporation.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -21,9 +19,7 @@ from __future__ import absolute_import, division
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import math
 import unittest
 
@@ -168,8 +164,8 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
             "DEG2": "45:30",
             "DEG3": "-310:12:32",
             "HR_1": -23.5,
-            "HR_1": "23:30",
-            "HR_1": "-13:15:16.7",
+            "HR_2": "23:30",
+            "HR_3": "-13:15:16.7",
             "STR": "FOO",
         }
 
@@ -184,7 +180,7 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
             desAngleDeg = astropy.coordinates.Angle(desValue, unit=units).deg
             md = getMetadata(dataDict)
             angle = self.makeRawVisitInfo.popAngle(md, key, units=units)
-            self.assertAnglesNearlyEqual(angle, desAngleDeg*degrees)
+            self.assertAnglesAlmostEqual(angle, desAngleDeg*degrees)
 
         badAngle = self.makeRawVisitInfo.popAngle(md, "STR")
         self.assertTrue(math.isnan(badAngle.asDegrees()))
@@ -272,7 +268,7 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
         LST = 90*degrees
         Longitude = 50*degrees
         era = self.makeRawVisitInfo.eraFromLstAndLongitude(LST, Longitude)
-        self.assertAnglesNearlyEqual(era, LST-Longitude)
+        self.assertAnglesAlmostEqual(era, LST-Longitude)
 
     def testEraFromLstAndLongitude_float_vs_Angle_fails(self):
         val1 = 90*degrees
@@ -285,7 +281,7 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
     def testAltitudeFromZenithDistance(self):
         for zdDeg in (0, 35.6, 89.999, 90.0):
             desAltDeg = 90-zdDeg
-            self.assertAnglesNearlyEqual(
+            self.assertAnglesAlmostEqual(
                 desAltDeg*degrees,
                 self.makeRawVisitInfo.altitudeFromZenithDistance(zdDeg*degrees),
             )
