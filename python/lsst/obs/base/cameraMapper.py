@@ -227,6 +227,7 @@ class CameraMapper(dafPersist.Mapper):
         # create it.
         calibStorage = None
         if calibRoot is not None:
+            calibRoot = dafPersist.Storage.absolutePath(root, calibRoot)
             calibStorage = dafPersist.Storage.makeFromURI(uri=calibRoot,
                                                           create=False)
         else:
