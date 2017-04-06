@@ -145,6 +145,9 @@ class CameraMapper(dafPersist.Mapper):
     # lsst.afw.image.VisitInfo from the FITS metadata of a raw image
     MakeRawVisitInfoClass = MakeRawVisitInfo
 
+    # a class or subclass of PupilFactory
+    PupilFactoryClass = afwCameraGeom.PupilFactory
+
     def __init__(self, policy, repositoryDir,
                  root=None, registry=None, calibRoot=None, calibRegistry=None,
                  provided=None, parentRegistry=None, repositoryCfg=None):
@@ -986,7 +989,8 @@ class CameraMapper(dafPersist.Mapper):
         return afwCameraGeom.makeCameraFromPath(
             cameraConfig=cameraConfig,
             ampInfoPath=ampInfoPath,
-            shortNameFunc=self.getShortCcdName
+            shortNameFunc=self.getShortCcdName,
+            pupilFactoryClass=self.PupilFactoryClass
         )
 
     def getRegistry(self):
@@ -1027,4 +1031,3 @@ def exposureFromImage(image):
         exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image))
 
     return exposure
-
