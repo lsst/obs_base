@@ -595,3 +595,41 @@ dcrMergedCoaddId_bits:
     storage: ignored
     python: lsst.daf.base.PropertySet
     template: ignored
+donutDriver_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.donut.donutDriver.DonutDriverConfig
+    template: config/DonutDriver.py
+processDonut_config:
+    persistable: Config
+    python: lsst.donut.processDonut.ProcessDonutConfig
+    storage: ConfigStorage
+    template: config/processDonut.py
+processDonut_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    tables: raw
+    template: metadata/processDonut.boost
+fitDonut_config:
+    persistable: Config
+    python: lsst.donut.fitDonut.FitDonutConfig
+    storage: ConfigStorage
+    template: config/fitDonut.py
+fitDonut_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    tables: raw
+    template: metadata/fitDonut.boost
+donutSrc:
+    persistable: SourceCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    tables: raw
+    template: ''
+donut_schema:
+    persistable: SourceCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: schema/donut.fits
