@@ -776,14 +776,16 @@ class CameraMapper(dafPersist.Mapper):
             newPath = storage.instanceSearch(path)
             newPath = newPath[0] if newPath is not None and len(newPath) else None
             if newPath is None:
-                self.log.info("Unable to locate %s registry in root: %s", name, path)
+                self.log.debug("Unable to locate %s registry in root: root=%s, path=%s",
+                        name, root, path)
             path = newPath
         if path is None:
             path = os.path.join(".", "%s.sqlite3" % name)
             newPath = storage.instanceSearch(path)
             newPath = newPath[0] if newPath is not None and len(newPath) else None
             if newPath is None:
-                self.log.info("Unable to locate %s registry in current dir: %s", name, path)
+                self.log.debug("Unable to locate %s registry in current dir: root=%s, path=%s",
+                        name, root, path)
             path = newPath
         if path is not None:
             if not storage.exists(path):
