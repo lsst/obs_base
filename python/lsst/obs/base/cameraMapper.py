@@ -234,14 +234,15 @@ class CameraMapper(dafPersist.Mapper):
         self.root = root
 
         # Registries
-        self.registry = self._setupRegistry("registry", registry, policy, "registryPath", self.rootStorage,
-                                            searchParents=False, posixIfNoSql=(not parentRegistry))
+        self.registry = self._setupRegistry("registry", "exposure", registry, policy, "registryPath",
+                                            self.rootStorage, searchParents=False,
+                                            posixIfNoSql=(not parentRegistry))
         if not self.registry:
             self.registry = parentRegistry
         needCalibRegistry = policy.get('needCalibRegistry', None)
         if needCalibRegistry:
             if calibStorage:
-                self.calibRegistry = self._setupRegistry("calibRegistry", calibRegistry, policy,
+                self.calibRegistry = self._setupRegistry("calibRegistry", "calib", calibRegistry, policy,
                                                          "calibRegistryPath", calibStorage)
             else:
                 raise RuntimeError(
@@ -713,7 +714,7 @@ class CameraMapper(dafPersist.Mapper):
         """
         return ("ccd", self._extractDetectorName(dataId))
 
-    def _setupRegistry(self, name, path, policy, policyKey, storage, searchParents=True,
+    def _setupRegistry(self, name, description, path, policy, policyKey, storage, searchParents=True,
                        posixIfNoSql=True):
         """Set up a registry (usually SQLite3), trying a number of possible
         paths.
@@ -722,6 +723,8 @@ class CameraMapper(dafPersist.Mapper):
         ----------
         name : string
             Name of registry.
+        description: `str`
+            Description of registry (for log messages)
         path : string
             Path for registry.
         policy : string
@@ -768,30 +771,43 @@ class CameraMapper(dafPersist.Mapper):
         # determine if there is an sqlite registry and if not, try the posix registry.
         registry = None
 
+        def search(filename, description):
+            """Search for file in storage
+
+            Parameters
+            ----------
+            filename : `str`
+                Filename to search for
+            description : `str`
+                Description of file, for error message.
+
+            Returns
+            -------
+            path : `str` or `None`
+                Path to file, or None
+            """
+            result = storage.instanceSearch(filename)
+            if result:
+                return result[0]
+            self.log.debug("Unable to locate %s: %s", description, filename)
+            return None
+
+        # Search for a suitable registry database
         if path is None:
-            path = "%s.sqlite3" % name
-            newPath = storage.instanceSearch(path)
-            newPath = newPath[0] if newPath is not None and len(newPath) else None
-            if newPath is None:
-                self.log.info("Unable to locate %s registry in root: %s", name, path)
-            path = newPath
+            path = search("%s.sqlite3" % name, "%s in root" % description)
         if path is None:
-            path = os.path.join(".", "%s.sqlite3" % name)
-            newPath = storage.instanceSearch(path)
-            newPath = newPath[0] if newPath is not None and len(newPath) else None
-            if newPath is None:
-                self.log.info("Unable to locate %s registry in current dir: %s", name, path)
-            path = newPath
+            path = search(os.path.join(".", "%s.sqlite3" % name), "%s in current dir" % description)
+
         if path is not None:
             if not storage.exists(path):
                 newPath = storage.instanceSearch(path)
                 newPath = newPath[0] if newPath is not None and len(newPath) else None
                 if newPath is not None:
                     path = newPath
-            self.log.debug("Loading %s registry from %s", name, path)
+            self.log.debug("Loading %s registry from %s", description, path)
             registry = dafPersist.Registry.create(storage.getLocalFile(path))
         elif not registry and posixIfNoSql:
-            self.log.info("Loading Posix registry from %s", storage.root)
+            self.log.info("Loading Posix %s registry from %s", description, storage.root)
             registry = dafPersist.PosixRegistry(storage.root)
 
         return registry
