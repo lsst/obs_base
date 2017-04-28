@@ -171,9 +171,11 @@ class CameraMapper(dafPersist.Mapper):
             Path to registry with calibrations' metadata.
         provided : list of string, optional
             Keys provided by the mapper.
-        parentRegistry : Registry subclass, optional
-            Registry from a parent repository that may be used to look up
-            data's metadata.
+        parentRegistry : dict, optional
+            Contains the registries from a parent repository that uses
+            CameraMapper that may be used to look up metadata. Keys are 'root'
+            for the root repository's registry, and 'calib' for the calib
+            repository's registry.
         repositoryCfg : daf_persistence.RepositoryCfg or None, optional
             The configuration information for the repository this mapper is
             being used with.
@@ -237,16 +239,22 @@ class CameraMapper(dafPersist.Mapper):
         self.root = root
 
         # Registries
+        parentRootRegistry = parentRegistry.get('root', None) if parentRegistry is not None else None
         self.registry = self._setupRegistry("registry", registry, policy, "registryPath", self.rootStorage,
-                                            searchParents=False, posixIfNoSql=(not parentRegistry))
-        if not self.registry:
-            self.registry = parentRegistry
+                                            searchParents=False, posixIfNoSql=(parentRootRegistry is None))
+        if self.registry is None and parentRegistry is not None:
+            self.registry = parentRootRegistry
         needCalibRegistry = policy.get('needCalibRegistry', None)
         if needCalibRegistry:
+            parentCalibRegistry = parentRegistry.get('calib', None) if parentRegistry is not None else None
             if calibStorage:
                 self.calibRegistry = self._setupRegistry("calibRegistry", calibRegistry, policy,
-                                                         "calibRegistryPath", calibStorage)
-            else:
+                                                         "calibRegistryPath", calibStorage,
+                                                         searchParents=False,
+                                                         posixIfNoSql=(parentCalibRegistry is None))
+            if self.calibRegistry is None and parentCalibRegistry is not None:
+                self.calibRegistry = parentCalibRegistry
+            if self.calibRegistry is None:
                 raise RuntimeError(
                     "'needCalibRegistry' is true in Policy, but was unable to locate a repo at " +
                     "calibRoot ivar:%s or policy['calibRoot']:%s" %
@@ -1001,7 +1009,8 @@ class CameraMapper(dafPersist.Mapper):
         Registry or None
             The registry used by this mapper for this mapper's repository.
         """
-        return self.registry
+        return {'root': self.registry, 'calib': self.calibRegistry}
+
 
 def exposureFromImage(image):
     """Generate an Exposure from an image-like object
