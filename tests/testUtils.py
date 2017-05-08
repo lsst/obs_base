@@ -43,7 +43,7 @@ class BboxFromIrafTestCase(lsst.utils.tests.TestCase):
             self.assertEqual(obsBase.bboxFromIraf(val), result)
 
 
-    def testInvalud(self):
+    def testInvalid(self):
         test_data = {
             "1:1084,1:1024": RuntimeError,
             "(1:1084,1:1024)": RuntimeError,
