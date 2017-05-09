@@ -794,6 +794,8 @@ class CameraMapper(dafPersist.Mapper):
 
         # Search for a suitable registry database
         if path is None:
+            path = search("%s.pgsql" % name, "%s in root" % description)
+        if path is None:
             path = search("%s.sqlite3" % name, "%s in root" % description)
         if path is None:
             path = search(os.path.join(".", "%s.sqlite3" % name), "%s in current dir" % description)
