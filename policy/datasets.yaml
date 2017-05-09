@@ -498,31 +498,11 @@ dcrCoadd_forced_src:
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
     template: dcrCoadd-results/%(filter)s%(subfilter)s/%(tract)d/%(patch)s/forced_src-%(filter)s%(subfilter)s-%(tract)d-%(patch)s.fits
-measureCoaddSources_metadata:
-    persistable: PropertySet
-    storage: BoostStorage
-    python: lsst.daf.base.PropertySet
-    template: dcrCoadd-results/%(filter)s%(subfilter)s/%(tract)d/%(patch)s/measMD-%(filter)s%(subfilter)s-%(tract)d-%(patch)s.boost
-mergeCoaddMeasurements_metadata:
-    persistable: PropertySet
-    storage: BoostStorage
-    python: lsst.daf.base.PropertySet
-    template: dcrCoadd-results/merged/%(tract)d/%(patch)s/mergeMeasMD-%(tract)d-%(patch)s.boost
 dcrCoadd_mergeDet_schema:
     persistable: SourceCatalog
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
     template: schema/dcrCoadd_mergeDet.fits
-brightObjectMask:
-    persistable: PurePythonClass
-    storage: FitsCatalogStorage
-    python: lsst.pipe.tasks.objectMasks.ObjectMaskCatalog
-    template: dcrCoadd/BrightObjectMasks/%(tract)d/BrightObjectMask-%(tract)d-%(patch)s-%(filter)s%(subfilter)s.reg
-detectCoaddSources_metadata:
-    persistable: PropertySet
-    storage: BoostStorage
-    python: lsst.daf.base.PropertySet
-    template: dcrCoadd-results/%(filter)s%(subfilter)s/%(tract)d/%(patch)s/detectMD-%(filter)s%(subfilter)s-%(tract)d-%(patch)s.boost
 dcrCoaddId_bits:
     persistable: ignored
     storage: ignored
