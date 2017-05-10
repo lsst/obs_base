@@ -15,12 +15,14 @@ deepDiff_differenceExp:
     python:        lsst.afw.image.ExposureF
     persistable:   ExposureF
     storage:       FitsStorage
+    level:         Ccd
     tables:        'raw'
 deepDiff_matchedExp:
     template:      ''
     python:        lsst.afw.image.ExposureF
     persistable:   ExposureF
     storage:       FitsStorage
+    level:         Ccd
     tables:        'raw'
 deepCoadd_tempExp:
     template:    ''
