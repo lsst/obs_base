@@ -890,6 +890,9 @@ class CameraMapper(dafPersist.Mapper):
         @param dataId (dict) Dataset identifier
         @param trimmed (bool) Should detector be marked as trimmed? (ignored)"""
 
+        if item.getDetector() is not None:
+            return
+
         detectorName = self._extractDetectorName(dataId)
         detector = self.camera[detectorName]
         item.setDetector(detector)
@@ -904,6 +907,9 @@ class CameraMapper(dafPersist.Mapper):
 
         if not (isinstance(item, afwImage.ExposureU) or isinstance(item, afwImage.ExposureI) or
                 isinstance(item, afwImage.ExposureF) or isinstance(item, afwImage.ExposureD)):
+            return
+
+        if item.getFilter() is not None:
             return
 
         actualId = mapping.need(['filter'], dataId)
