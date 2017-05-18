@@ -1037,17 +1037,15 @@ def exposureFromImage(image):
     @param[in] image  Image-like object (lsst.afw.image.DecoratedImage, Image, MaskedImage or Exposure)
     @return (lsst.afw.image.Exposure) Exposure containing input image
     """
-    if hasattr(image, "getVariance"):
-        # MaskedImage
+    if isinstance(image, afwImage.MaskedImage):
         exposure = afwImage.makeExposure(image)
-    elif hasattr(image, "getImage"):
-        # DecoratedImage
+    elif isinstance(image, afwImage.DecoratedImage):
         exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image.getImage()))
         metadata = image.getMetadata()
         wcs = afwImage.makeWcs(metadata, True)
         exposure.setWcs(wcs)
         exposure.setMetadata(metadata)
-    elif hasattr(image, "getMaskedImage"):
+    elif isinstance(image, afwImage.Exposure):
         # Exposure
         exposure = image
     else:
