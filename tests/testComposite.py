@@ -85,9 +85,6 @@ class TestCompositeTestCase(unittest.TestCase):
         components are loaded individually (verifies correct lookup in this case).
         2. Verify that when the individual components are put and when the composite is put (which
         disassembles into individual components) that the objects that are written are the same.
-        3. Verify object caching & reuse - that 2 components of the same datasetType and the same used dataId
-        are loaded from the same dataset the object is shared instead of loaded 2 times.
-        4. Verify release & garbage collection of the cached objects when they are no longer used.
         """
         secondRepoPath = os.path.join(self.testData, 'repo2')
         repoArgs = dafPersist.RepositoryArgs(root=secondRepoPath, policy=self.policy)
@@ -104,33 +101,18 @@ class TestCompositeTestCase(unittest.TestCase):
         self.assertIsNot(self.objA, objABPair.objA)
         self.assertIsNot(self.objB, objABPair.objB)
 
-        # Now, get a type 1 copy of objA and objB, and they should be the same instance as in the composite.
+        # Now, get a type 1 copy of objA and objB, and they should be equivalent to the instance in the
+        # composite.
         objA = butler.get('basicObject1', dataId={'id': 'foo'}, immediate=True)
         objB = butler.get('basicObject2', dataId={'name': 'bar'}, immediate=True)
-        self.assertIs(objA, objABPair.objA)
-        self.assertIs(objB, objABPair.objB)
+        self.assertEqual(objA, objABPair.objA)
+        self.assertEqual(objB, objABPair.objB)
 
         butler.put(objABPair, 'basicPair', dataId={'id': 'foo', 'name': 'bar'})
         verObjA = verificationButler.get('basicObject1', {'id': 'foo'})
         self.assertEqual(verObjA, objABPair.objA)
         verObjB = verificationButler.get('basicObject2', {'name': 'bar'})
         self.assertEqual(verObjB, objABPair.objB)
-
-        # check that objA and objB are cached
-        self.assertIn(objA, butler.objectCache.values())
-        self.assertIn(objB, butler.objectCache.values())
-        del objA
-        del objABPair
-        gc.collect()
-        # check that A is not cached but B is cached by verifying B is the only object in the cache
-        self.assertIs(len(butler.objectCache), 1)
-        self.assertIn(objB, butler.objectCache.values())
-        del objB
-        gc.collect()
-        # check that B is not cached
-        self.assertIs(len(butler.objectCache), 0)
-
-        del butler
 
     def testDottedDatasetType(self):
         """Verify that components of a composite can be loaded by dotted name in the form
