@@ -2,6 +2,7 @@ from __future__ import print_function, division, absolute_import
 
 from future.utils import with_metaclass
 
+
 __all__ = ("Field", "RegionField", "IntField", "StrField", "DateTimeField",
            "PythonTypeField", "ForeignKey", "ReverseForeignKey", "Alias",
            "UnitMeta", "Unit", "SpatialUnit",
@@ -12,7 +13,6 @@ class Field(object):
 
     def __init__(self, optional=False):
         self.name = None
-        self._parent = None
         self.optional = optional
 
     def __get__(self, instance, owner=None):
@@ -22,7 +22,6 @@ class Field(object):
 
     def attach(self, cls, name):
         self.name = name
-        self.parent = cls
         cls.fields[name] = self
 
 
@@ -39,7 +38,7 @@ class StrField(Field):
 
 
 class DateTimeField(Field):
-    sqlType = "DATETIME"
+    sqlType = "INTEGER"
 
 
 class PythonTypeField(Field):
@@ -59,13 +58,19 @@ class ForeignKey(Field):
             reverse = getattr(self.UnitClass, self._reverse)
             reverse.attach(self.UnitClass, self._reverse)
 
-    @property
-    def sqlType(self):
-        return "INTEGER REFERENCES {} (id)".format(self.UnitClass.__name__)
 
+class ReverseForeignKey(object):
 
-class ReverseForeignKey(Field):
-    sqlType = None
+    def __init__(self):
+        self.name = None
+
+    def __get__(self, instance, owner=None):
+        if instance is not None:
+            return instance._reversed.get(self.name, None)
+        return self
+
+    def attach(self, cls, name):
+        self.name = name
 
 
 class Alias(object):
@@ -92,10 +97,6 @@ class UnitMeta(type):
             for f in unique:
                 if not isinstance(f, Field):
                     raise ValueError("Unique constraints must be Fields")
-                elif isinstance(f, ReverseForeignKey):
-                    raise ValueError(
-                        "Unique constraints must not be ReverseForeignKey"
-                    )
 
 
 class Unit(with_metaclass(UnitMeta, object)):
@@ -106,6 +107,7 @@ class Unit(with_metaclass(UnitMeta, object)):
         if storage is None:
             storage = {}
         self._storage = storage
+        self._reversed = {}
         self.datasets = {}
 
     @property
