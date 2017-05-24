@@ -61,7 +61,7 @@ class ForeignKey(Field):
 
     @property
     def sqlType(self):
-        return "INTEGER FOREIGN KEY ({}.id)".format(self.UnitClass.__name__)
+        return "INTEGER REFERENCES {} (id)".format(self.UnitClass.__name__)
 
 
 class ReverseForeignKey(Field):
@@ -80,17 +80,6 @@ class Alias(object):
         return self
 
 
-class Tuple(object):
-
-    def __init__(self, *fields):
-        self.fields = tuple(fields)
-
-    def __get__(self, instance, owner=None):
-        if instance is not None:
-            return tuple(f.__get__(instance) for f in self.fields)
-        return self
-
-
 class UnitMeta(type):
 
     def __init__(self, name, bases, dct):
@@ -98,6 +87,15 @@ class UnitMeta(type):
         for k, v in dct.iteritems():
             if isinstance(v, Field):
                 v.attach(self, name=k)
+        unique = dct.get("unique", None)
+        if unique is not None:
+            for f in unique:
+                if not isinstance(f, Field):
+                    raise ValueError("Unique constraints must be Fields")
+                elif isinstance(f, ReverseForeignKey):
+                    raise ValueError(
+                        "Unique constraints must not be ReverseForeignKey"
+                    )
 
 
 class Unit(with_metaclass(UnitMeta, object)):
@@ -110,14 +108,18 @@ class Unit(with_metaclass(UnitMeta, object)):
         self._storage = storage
         self.datasets = {}
 
+    @property
+    def id(self):
+        return self._storage["id"]
+
     def __eq__(self, other):
-        return self.key == other.key
+        return type(self) == type(other) and self.id == other.id
 
     def __ne__(self, other):
         return not (self == other)
 
     def __hash__(self):
-        return hash(self.key)
+        return hash(type(self), self.id)
 
 
 class SpatialUnit(Unit):
@@ -138,15 +140,11 @@ def sqlCreateTable(UnitClass):
         if not v.optional:
             t.append("NOT NULL")
         items.append(" ".join(t))
-    if isinstance(UnitClass.key, Tuple):
-        items.append(
-            "UNIQUE ({})".format(
-                ", ".join(f.name for f in UnitClass.key.fields)
-            )
+    items.append(
+        "UNIQUE ({})".format(
+            ", ".join(f.name for f in UnitClass.unique)
         )
-    else:
-        assert isinstance(UnitClass.key, Field)
-        items.append("UNIQUE ({})".format(UnitClass.key.name))
+    )
     return "CREATE TABLE {} (\n    {}\n)".format(
         UnitClass.__name__, ",\n    ".join(items)
     )
