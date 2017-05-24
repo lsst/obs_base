@@ -4,7 +4,7 @@ from future.utils import with_metaclass
 
 
 __all__ = ("Field", "RegionField", "IntField", "StrField", "DateTimeField",
-           "PythonTypeField", "ForeignKey", "ReverseForeignKey", "Alias",
+           "ForeignKey", "ReverseForeignKey", "Alias",
            "UnitMeta", "Unit", "SpatialUnit",
            "sqlCreateTable")
 
@@ -39,10 +39,6 @@ class StrField(Field):
 
 class DateTimeField(Field):
     sqlType = "INTEGER"
-
-
-class PythonTypeField(Field):
-    sqlType = "TEXT"
 
 
 class ForeignKey(Field):

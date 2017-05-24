@@ -25,8 +25,7 @@ class SqliteBackend(Backend):
         base.IntField: "INTEGER",
         base.StrField: "TEXT",
         base.DateTimeField: "INTEGER",
-        base.PythonTypeField: "TEXT",
-        base.ForeignKey: "INTEGER"
+        base.ForeignKey: "INTEGER",
     }
 
     def __init__(self, dbname, config=None):

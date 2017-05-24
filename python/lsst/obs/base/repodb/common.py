@@ -8,7 +8,7 @@ __all__ = ("TractUnit", "PatchUnit", "FilterUnit", "VisitUnit", "SensorUnit",
 
 class TractUnit(base.SpatialUnit):
     number = base.IntField()
-    skymap = base.PythonTypeField()
+    skymap = base.StrField()
     patches = base.ReverseForeignKey()
     unique = (number, skymap)
 
@@ -23,7 +23,7 @@ class PatchUnit(base.SpatialUnit):
 
 class FilterUnit(base.Unit):
     name = base.StrField()
-    camera = base.PythonTypeField()
+    camera = base.StrField()
     visits = base.ReverseForeignKey()
     unique = (name, camera)
 
@@ -31,7 +31,7 @@ class FilterUnit(base.Unit):
 class VisitUnit(base.SpatialUnit):
     number = base.IntField()
     filter = base.ForeignKey(FilterUnit, reverse="visits")
-    camera = base.PythonTypeField()
+    camera = base.StrField()
     sensors = base.ReverseForeignKey()
     dateobs = base.DateTimeField()
     unique = (number, camera)
@@ -61,7 +61,7 @@ class MasterCalibrationUnit(base.Unit):
     begin = base.DateTimeField()
     end = base.DateTimeField()
     filter = base.ForeignKey(FilterUnit, reverse=None, optional=True)
-    camera = base.PythonTypeField()
+    camera = base.StrField()
     unique = (begin, end, filter, camera)
 
 
