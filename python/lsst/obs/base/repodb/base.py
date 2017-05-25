@@ -22,6 +22,9 @@ class Field(object):
         self.name = name
         cls.fields[name] = self
 
+    def finalize(self, instance, others):
+        pass
+
 
 class RegionField(Field):
     sqlType = "BLOB"
@@ -51,6 +54,16 @@ class ForeignKey(Field):
         if self._reverse is not None:
             reverse = getattr(self.UnitClass, self._reverse)
             reverse.attach(self.UnitClass, self._reverse)
+
+    def finalize(self, instance, others):
+        id = instance._storage.get(self.name, None)
+        if id is None:
+            assert self.optional
+            return
+        target = others[self.UnitClass][id]
+        instance._storage[self.name] = target
+        rev = target._reversed.setdefault(self._reverse, set())
+        rev.add(instance)
 
 
 class ReverseForeignKey(object):
@@ -83,9 +96,12 @@ class UnitMeta(type):
 
     def __init__(self, name, bases, dct):
         self.fields = {}
+        self.aliases = {}
         for k, v in dct.iteritems():
-            if isinstance(v, Field):
+            if isinstance(v, Field) or isinstance(v, ReverseForeignKey):
                 v.attach(self, name=k)
+            if isinstance(v, Alias):
+                self.aliases[k] = v
         unique = dct.get("unique", None)
         if unique is not None:
             for f in unique:
@@ -115,13 +131,20 @@ class Unit(with_metaclass(UnitMeta, object)):
         return not (self == other)
 
     def __hash__(self):
-        return hash(type(self), self.id)
+        return self.id
+
+    def __repr__(self):
+        items = ["id={}".format(self.id)]
+        if self.unique is not None:
+            for f in self.unique:
+                items.append("{}={}".format(f.name, repr(f.__get__(self))))
+        return "{}({})".format(type(self).__name__, ", ".join(items))
 
 
 class SpatialUnit(Unit):
 
     region = RegionField()
 
-    def __init__(self):
-        Unit.__init__(self)
+    def __init__(self, storage=None):
+        Unit.__init__(self, storage)
         self.overlapping = {}
