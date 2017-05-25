@@ -19,7 +19,7 @@ class GraphTestCase(unittest.TestCase):
         pass
 
     def testUnitUniverseGraph(self):
-        graph = self.backend.makeGraph(repodb.COMMON_UNITS, ())
+        graph = self.backend.makeGraph(repodb.COMMON_UNITS)
         self.assertItemsEqual(graph.units.keys(), repodb.COMMON_UNITS)
         for UnitClass, names, values in repodb.tests.EXAMPLE_UNITS:
             for unit, data in zip(graph.units[UnitClass], values):
@@ -38,6 +38,7 @@ class GraphTestCase(unittest.TestCase):
                             data[i],
                             msg="{}.{}".format(UnitClass.__name__, name)
                         )
+        # TODO: test various linkages
 
     def testNeededDatasets(self):
         universe = self.backend.makeGraph(repodb.COMMON_UNITS)
@@ -67,6 +68,27 @@ class GraphTestCase(unittest.TestCase):
                          universe.units[repodb.SensorUnit])
         # TODO: test various linkages
 
+    def testUserWhere(self):
+        universe = self.backend.makeGraph(repodb.COMMON_UNITS)
+        graph = self.backend.makeGraph(repodb.COMMON_UNITS,
+                                       where="FilterUnit.name in ('g', 'r')")
+        self.assertLess(
+            graph.units[repodb.FilterUnit],
+            universe.units[repodb.FilterUnit],
+        )
+        self.assertLess(
+            graph.units[repodb.SensorUnit],
+            universe.units[repodb.SensorUnit],
+        )
+        self.assertEqual(
+            set(filter.name for filter in graph.units[repodb.FilterUnit]),
+            set("gr")
+        )
+        self.assertEqual(
+            set(sensor.filter.name
+                for sensor in graph.units[repodb.SensorUnit]),
+            set("gr")
+        )
 
 if __name__ == "__main__":
     unittest.main()
