@@ -97,7 +97,7 @@ class UnitMeta(type):
     def __init__(self, name, bases, dct):
         self.fields = {}
         self.aliases = {}
-        for k, v in dct.iteritems():
+        for k, v in dct.items():
             if isinstance(v, Field) or isinstance(v, ReverseForeignKey):
                 v.attach(self, name=k)
             if isinstance(v, Alias):
