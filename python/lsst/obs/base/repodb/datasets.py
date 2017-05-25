@@ -16,6 +16,15 @@ class UnitProperty(object):
             return instance._storage.get(self.name, None)
         return self
 
+    def finalize(self, instance, units):
+        id = instance._storage.get(self.name, None)
+        assert isinstance(id, int)
+        assert id is not None
+        target = units[self.UnitClass][id]
+        instance._storage[self.name] = target
+        rev = target.datasets.setdefault(type(instance), set())
+        rev.add(instance)
+
 
 class DatasetMeta(type):
 
@@ -34,6 +43,7 @@ class DatasetMeta(type):
             return r
         d = {k: UnitProperty(k, v) for k, v in UnitClasses.items()}
         d["properties"] = d.copy()
+        d["name"] = name
         return type.__new__(cls, name, (Dataset,), d)
 
     def __init__(self, name, bases=None, dct=None, **UnitClasses):
@@ -46,34 +56,10 @@ class Dataset(with_metaclass(DatasetMeta, object)):
     def subclass(name, **UnitClasses):
         return DatasetMeta(name, **UnitClasses)
 
-    def __init__(self, **units):
-        self._storage = {}
-        for k, p in self.properties.items():
-            try:
-                v = units.pop(k)
-            except KeyError:
-                raise ValueError(
-                    "No value provided for {}.{}".format(
-                        type(self).__name__, k
-                    )
-                )
-            if not isinstance(v, p.UnitClass):
-                raise TypeError(
-                    "Invalid type (expected {}, got {}) for {}.{}".format(
-                        p.UnitClass.__name__,
-                        type(v),
-                        type(self).__name__,
-                        k
-                    )
-                )
-            self._storage[k] = v
-        if units:
-            raise ValueError(
-                "Unused values when constructing {}: {}".format(
-                    type(self).__name__,
-                    units.keys()
-                )
-            )
+    def __init__(self, storage=None):
+        if storage is None:
+            storage = {}
+        self._storage = storage
 
     def __eq__(self, other):
         return self._storage == other._storage

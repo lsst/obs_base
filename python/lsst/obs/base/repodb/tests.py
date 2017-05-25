@@ -4,17 +4,19 @@ import itertools
 import datetime
 
 from .backend import SqliteBackend
+from .datasets import Dataset
 from . import common
 
 
-__all__ = ("EXAMPLE_DATA", "makeBackend")
+__all__ = ("EXAMPLE_UNITS", "EXAMPLE_DATASETS",
+           "CalExp", "SrcCat", "makeBackend")
 
 
 def makeDateTime(hours):
     dt = datetime.datetime(2016, 5, 10, hours)
     return (dt - datetime.datetime(1970, 1, 1)).total_seconds()
 
-EXAMPLE_DATA = [(
+EXAMPLE_UNITS = [(
         common.TractUnit,
         ("id", "number", "skymap"),
         [(1, 8766, "RINGS_120"),
@@ -44,13 +46,32 @@ EXAMPLE_DATA = [(
          )]
     )]
 
+CalExp = Dataset.subclass("CalExp", sensor=common.SensorUnit)
+SrcCat = Dataset.subclass("SrcCat", sensor=common.SensorUnit)
+
+EXAMPLE_DATASETS = [(
+    CalExp,
+    ("sensor",),
+    [(n,) for n, number, visit in EXAMPLE_UNITS[-1][2] if visit < 3]
+), ]
+
 
 def makeBackend(filename=":memory:"):
     backend = SqliteBackend(filename)
     for UnitClass in common.COMMON_UNITS:
-        backend.createTable(UnitClass)
-    for UnitClass, names, values in EXAMPLE_DATA:
-        tableName = backend.getTableName(UnitClass)
+        backend.createUnitTable(UnitClass)
+    for DatasetClass in (CalExp, SrcCat):
+        backend.createDatasetTable(DatasetClass)
+    for UnitClass, names, values in EXAMPLE_UNITS:
+        tableName = backend.getUnitTableName(UnitClass)
+        sql = "INSERT INTO {} ({}) VALUES ({})".format(
+            tableName,
+            ", ".join(names),
+            ", ".join(["?"]*len(names))
+        )
+        backend.db.executemany(sql, values)
+    for DatasetClass, names, values in EXAMPLE_DATASETS:
+        tableName = backend.getDatasetTableName(DatasetClass)
         sql = "INSERT INTO {} ({}) VALUES ({})".format(
             tableName,
             ", ".join(names),
