@@ -19,7 +19,7 @@ class Backend(object):
     def createTable(self, UnitClass):
         raise NotImplementedError()
 
-    def makeGraph(self, UnitClasses):
+    def makeGraph(self, UnitClasses, DatasetClasses):
         raise NotImplementedError()
 
 
@@ -47,7 +47,7 @@ class SqliteBackend(Backend):
         self.db.execute(sql)
         self.db.commit()
 
-    def makeGraph(self, UnitClasses):
+    def makeGraph(self, UnitClasses, DatasetClasses):
         sql = self._buildGraphQuery(UnitClasses)
         cursor = self.db.execute(sql)
         units = self._makeGraphUnits(UnitClasses, cursor)
@@ -55,7 +55,8 @@ class SqliteBackend(Backend):
         # constructing Units, we have no more need for indexing by ID, and
         # we want the set of all Units in a dict to be immutable.
         units = {k: frozenset(v.values()) for k, v in units.items()}
-        return graph.RepoGraph(units=units)
+        datasets = {k: set() for k in DatasetClasses}
+        return graph.RepoGraph(units=units, datasets=datasets)
 
     def _buildCreateTable(self, UnitClass):
         items = ["{} INTEGER PRIMARY KEY".format(self.config["idcol"])]

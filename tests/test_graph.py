@@ -18,8 +18,8 @@ class GraphTestCase(unittest.TestCase):
     def testCreateTables(self):
         pass
 
-    def testUniverseGraph(self):
-        graph = self.backend.makeGraph(repodb.COMMON_UNITS)
+    def testUnitUniverseGraph(self):
+        graph = self.backend.makeGraph(repodb.COMMON_UNITS, ())
         self.assertItemsEqual(graph.units.keys(), repodb.COMMON_UNITS)
         for UnitClass, names, values in repodb.tests.EXAMPLE_DATA:
             for unit, data in zip(graph.units[UnitClass], values):
@@ -38,6 +38,17 @@ class GraphTestCase(unittest.TestCase):
                             data[i],
                             msg="{}.{}".format(UnitClass.__name__, name)
                         )
+
+    def testInMemoryDatasets(self):
+        CalExp = repodb.Dataset.subclass("CalExp", sensor=repodb.SensorUnit)
+        graph = self.backend.makeGraph(repodb.COMMON_UNITS, (CalExp,))
+        for sensor in graph.units[repodb.SensorUnit]:
+            graph.datasets[CalExp].add(CalExp(sensor=sensor))
+        self.assertEqual(
+            set(calexp.sensor.id for calexp in graph.datasets[CalExp]),
+            set(sensor.id for sensor in graph.units[repodb.SensorUnit])
+        )
+
 
 
 if __name__ == "__main__":
