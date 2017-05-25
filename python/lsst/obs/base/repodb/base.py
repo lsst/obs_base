@@ -2,11 +2,9 @@ from __future__ import print_function, division, absolute_import
 
 from future.utils import with_metaclass
 
-
 __all__ = ("Field", "RegionField", "IntField", "StrField", "DateTimeField",
            "ForeignKey", "ReverseForeignKey", "Alias",
-           "UnitMeta", "Unit", "SpatialUnit",
-           "sqlCreateTable")
+           "UnitMeta", "Unit", "SpatialUnit",)
 
 
 class Field(object):
@@ -127,22 +125,3 @@ class SpatialUnit(Unit):
     def __init__(self):
         Unit.__init__(self)
         self.overlapping = {}
-
-
-def sqlCreateTable(UnitClass):
-    items = ["id INTEGER PRIMARY KEY"]
-    for k, v in UnitClass.fields.items():
-        if v.sqlType is None:
-            continue
-        t = [k, v.sqlType]
-        if not v.optional:
-            t.append("NOT NULL")
-        items.append(" ".join(t))
-    items.append(
-        "UNIQUE ({})".format(
-            ", ".join(f.name for f in UnitClass.unique)
-        )
-    )
-    return "CREATE TABLE {} (\n    {}\n)".format(
-        UnitClass.__name__, ",\n    ".join(items)
-    )
