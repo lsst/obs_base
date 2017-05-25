@@ -26,7 +26,8 @@ class Backend(object):
     def createDatasetTable(self, DatasetClass):
         raise NotImplementedError()
 
-    def makeGraph(self, UnitClasses, DatasetClasses):
+    def makeGraph(self, UnitClasses, where=None,
+                  NeededDatasets=(), FutureDatasets=()):
         raise NotImplementedError()
 
 
@@ -101,8 +102,10 @@ class SqliteBackend(Backend):
         self.db.execute(sql)
         self.db.commit()
 
-    def makeGraph(self, UnitClasses, NeededDatasets=(), FutureDatasets=()):
-        temp = self._makeTemporaryGraphTable(UnitClasses, NeededDatasets)
+    def makeGraph(self, UnitClasses, where=None,
+                  NeededDatasets=(), FutureDatasets=()):
+        temp = self._makeTemporaryGraphTable(UnitClasses, NeededDatasets,
+                                             where=where)
         units = {}
         for UnitClass in UnitClasses:
             units[UnitClass] = self._readPartialUnits(UnitClass, temp)
@@ -118,10 +121,14 @@ class SqliteBackend(Backend):
         return graph.RepoGraph(units=units, datasets=datasets)
 
     def _makeTemporaryGraphTable(self, UnitClasses, NeededDatasets,
-                                 temp="graph"):
+                                 where=None, temp="graph"):
         columns = []
         tables = []
-        joins = []
+        if where is None:
+            where = []
+        else:
+            assert where
+            where = ["({})".format(where)]
         for UnitClass in UnitClasses:
             table = self.getUnitTableName(UnitClass)
             tables.append(table)
@@ -130,7 +137,7 @@ class SqliteBackend(Backend):
             )
             for f in UnitClass.fields.values():
                 if isinstance(f, base.ForeignKey):
-                    joins.append(
+                    where.append(
                         "({current}.{column} = {foreign}.{idcol})".format(
                             current=table,
                             column=f.name,
@@ -142,7 +149,7 @@ class SqliteBackend(Backend):
             table = self.getDatasetTableName(DatasetClass)
             tables.append(table)
             for p in DatasetClass.properties.values():
-                joins.append(
+                where.append(
                     "({current}.{column} = {foreign}.{idcol})".format(
                         current=table,
                         column=p.name,
@@ -151,11 +158,11 @@ class SqliteBackend(Backend):
                     )
                 )
         sql = ("CREATE TEMPORARY TABLE {temp} AS "
-               "SELECT {columns} FROM {tables} WHERE ({joins})").format(
+               "SELECT {columns} FROM {tables} WHERE ({where})").format(
             temp=temp,
             columns=", ".join(columns),
             tables=", ".join(tables),
-            joins=" AND ".join(joins)
+            where=" AND ".join(where)
         )
         self.db.execute(sql)
         return temp
