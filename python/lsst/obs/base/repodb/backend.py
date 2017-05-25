@@ -43,7 +43,8 @@ class SqliteBackend(Backend):
         self.db.row_factory = sqlite3.Row
 
     def createTable(self, UnitClass):
-        self.db.execute(self._buildCreateTable(UnitClass))
+        sql = self._buildCreateTable(UnitClass)
+        self.db.execute(sql)
         self.db.commit()
 
     def makeGraph(self, UnitClasses):
