@@ -37,6 +37,7 @@ def makeRepoDatabase(filename=":memory:"):
     db.create()
     db.addCamera(HSC)
     db.addSkyMap(DISCRETE_2, "DISCRETE_2")
+    db.addTracts("DISCRETE_2")
     db.registerDatasetType(Coadd)
     graph = db.makeGraph(db.UNIT_CLASSES)
     for filterUnit in graph.units[common.FilterUnit]:

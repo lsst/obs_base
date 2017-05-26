@@ -20,7 +20,7 @@ class RepoDatabase(object):
     def __init__(self, backend):
         self.backend = backend
         self._cameras = {}
-        self._skymaps = {}
+        self._skyMaps = {}
 
     def create(self):
         for UnitClass in self.UNIT_CLASSES:
@@ -40,9 +40,16 @@ class RepoDatabase(object):
         # isn't just mapped to the name of the class.
         skyMapUnit = common.SkyMapUnit(name=name)
         self.backend.insertUnit(skyMapUnit)
-        self._skymaps[name] = (skyMap, skyMapUnit)
+        self._skyMaps[name] = (skyMap, skyMapUnit)
+
+    def addTracts(self, skyMapName, only=None):
+        skyMap, skyMapUnit = self._skyMaps[skyMapName]
         allPatches = set()
-        for tract in skyMap:
+        if only is None:
+            iterable = skyMap
+        else:
+            iterable = (skyMap[t] for t in only)
+        for tract in iterable:
             tractUnit = common.TractUnit(number=tract.getId(),
                                          skymap=skyMapUnit)
             self.backend.insertUnit(tractUnit)
