@@ -24,6 +24,9 @@ class TractUnit(base.Unit):
     skymap = base.ForeignKey(SkyMapUnit, reverse="tracts")
     unique = (skymap, number)
 
+    def getDataIdValue(self):
+        return self.number
+
 
 class PatchUnit(base.Unit):
     skymap = base.ForeignKey(SkyMapUnit)
@@ -31,12 +34,18 @@ class PatchUnit(base.Unit):
     y = base.IntField()
     unique = (skymap, x, y)
 
+    def getDataIdValue(self):
+        return "{},{}".format(self.x, self.y)
+
 
 class FilterUnit(base.Unit):
     name = base.StrField()
     camera = base.ForeignKey(CameraUnit, reverse="filters")
     visits = base.ReverseForeignKey()
     unique = (camera, name)
+
+    def getDataIdValue(self):
+        return self.name
 
 
 class VisitUnit(base.Unit):
