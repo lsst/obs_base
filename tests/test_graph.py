@@ -75,11 +75,16 @@ class GraphTestCase(unittest.TestCase):
         )
 
     def testPickle(self):
-        import pickle
-        s = pickle.dumps(self.db, protocol=pickle.HIGHEST_PROTOCOL)
-        newdb = pickle.loads(s)
-        self.assertEqual(self.db._cameras.keys(), newdb._cameras.keys())
-        self.assertEqual(self.db._skyMaps.keys(), newdb._skyMaps.keys())
+        with lsst.utils.tests.getTempFilePath(".sqlite") as tmpFile:
+            import pickle
+            db1 = repodb.tests.makeRepoDatabase(tmpFile)
+            s = pickle.dumps(db1, protocol=pickle.HIGHEST_PROTOCOL)
+            db2 = pickle.loads(s)
+            self.assertEqual(db1._cameras.keys(), db2._cameras.keys())
+            self.assertEqual(db1._skyMaps.keys(), db2._skyMaps.keys())
+            graph1 = db1.makeGraph(db1.UNIT_CLASSES)
+            graph2 = db2.makeGraph(db2.UNIT_CLASSES)
+            self.assertEqual(graph1.units, graph2.units)
 
 
 if __name__ == "__main__":

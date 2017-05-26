@@ -83,8 +83,12 @@ class SqliteBackend(Backend):
         self.db = sqlite3.connect(dbname)
         self.db.row_factory = sqlite3.Row
 
-    def __getnewargs__(self):
+    def __getstate__(self):
         return (self.dbname, self.config)
+
+    def __setstate__(self, state):
+        dbname, config = state
+        self.__init__(dbname, config=config)
 
     def createUnitTable(self, UnitClass):
         items = ["{} INTEGER PRIMARY KEY".format(self.config["idcol"])]
