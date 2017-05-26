@@ -26,6 +26,9 @@ class Backend(object):
     def createDatasetTable(self, DatasetClass):
         raise NotImplementedError()
 
+    def insertUnit(self, unit):
+        raise NotImplementedError()
+
     def makeGraph(self, UnitClasses, where=None,
                   NeededDatasets=(), FutureDatasets=()):
         raise NotImplementedError()
@@ -45,8 +48,15 @@ class SqliteBackend(Backend):
         base.ForeignKey: "INTEGER",
     }
 
-    CONVERTERS = {
+    FROM_SQL = {
         base.DateTimeField: datetime.datetime.fromtimestamp,
+    }
+
+    TO_SQL = {
+        base.DateTimeField:
+            lambda dt: (dt - datetime.datetime(1970, 1, 1)).total_seconds(),
+        base.ForeignKey:
+            lambda x: x.id
     }
 
     def __init__(self, dbname, config=None):
@@ -101,6 +111,46 @@ class SqliteBackend(Backend):
         )
         self.db.execute(sql)
         self.db.commit()
+
+    def insertUnit(self, unit):
+        sql, columns, converters = self._buildUnitInsertQuery(type(unit))
+        values = tuple(convert(getattr(unit, k))
+                       for k, convert in zip(columns, converters))
+        cursor = self.db.cursor()
+        cursor.execute(sql, values)
+        if unit.id is None:
+            unit._storage["id"] = cursor.lastrowid
+        self.db.commit()
+
+    def _buildUnitInsertQuery(self, UnitClass):
+        columns = [self.config['idcol']]
+        converters = [noop]
+        for f in UnitClass.fields.values():
+            columns.append(f.name)
+            converters.append(self.TO_SQL.get(type(f), noop))
+        sql = "INSERT INTO {table} ({columns}) VALUES ({placeholders})".format(
+            table=self.getUnitTableName(UnitClass),
+            columns=", ".join(columns),
+            placeholders=", ".join(["?"] * len(columns))
+        )
+        return sql, columns, converters
+
+    def insertDataset(self, dataset):
+        sql, columns = self._buildDatasetInsertQuery(type(dataset))
+        values = tuple(getattr(dataset, k).id for k in columns)
+        self.db.execute(sql, values)
+        self.db.commit()
+
+    def _buildDatasetInsertQuery(self, DatasetClass):
+        columns = []
+        for f in DatasetClass.properties.values():
+            columns.append(f.name)
+        sql = "INSERT INTO {table} ({columns}) VALUES ({placeholders})".format(
+            table=self.getDatasetTableName(DatasetClass),
+            columns=", ".join(columns),
+            placeholders=", ".join(["?"] * len(columns))
+        )
+        return sql, columns
 
     def makeGraph(self, UnitClasses, where=None,
                   NeededDatasets=(), FutureDatasets=()):
@@ -176,7 +226,7 @@ class SqliteBackend(Backend):
                     idcol=self.config["idcol"],
                     temp=temp
                 )
-        converters = [self.CONVERTERS.get(type(f), noop)
+        converters = [self.FROM_SQL.get(type(f), noop)
                       for f in UnitClass.fields.values()]
         result = {}
         for row in self.db.execute(sql):
@@ -185,7 +235,7 @@ class SqliteBackend(Backend):
             storage = {"id": id}
             for f, converter in zip(UnitClass.fields.values(), converters):
                 storage[f.name] = converter(row[f.name])
-            result[id] = UnitClass(storage)
+            result[id] = UnitClass(**storage)
         return result
 
     def _finalizeUnits(self, units):
@@ -226,7 +276,7 @@ class SqliteBackend(Backend):
             storage = {}
             for p in DatasetClass.properties.values():
                 storage[p.name] = row[p.name]
-            result.add(DatasetClass(storage))
+            result.add(DatasetClass(**storage))
         return result
 
     def _finalizeDatasets(self, datasets, units):

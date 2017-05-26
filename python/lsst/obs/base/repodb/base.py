@@ -4,7 +4,7 @@ from future.utils import with_metaclass
 
 __all__ = ("Field", "RegionField", "IntField", "StrField", "DateTimeField",
            "ForeignKey", "ReverseForeignKey", "Alias",
-           "UnitMeta", "Unit", "SpatialUnit",)
+           "UnitMeta", "Unit",)
 
 
 class Field(object):
@@ -109,14 +109,17 @@ class UnitMeta(type):
                     raise ValueError("Unique constraints must be Fields")
 
 
+NO_COMPARE_MESSAGE = ("Cannot compare Units with no ID (to add an ID, "
+                      "insert it into a RepoDatabase)")
+
+
 class Unit(with_metaclass(UnitMeta, object)):
 
     __metaclass__ = UnitMeta
 
-    def __init__(self, storage=None):
-        if storage is None:
-            storage = {}
-        self._storage = storage
+    def __init__(self, **kwds):
+        self._storage = kwds
+        self._storage.setdefault("id", None)
         self._reversed = {}
         self.datasets = {}
 
@@ -125,12 +128,16 @@ class Unit(with_metaclass(UnitMeta, object)):
         return self._storage["id"]
 
     def __eq__(self, other):
+        if self.id is None:
+            raise ValueError(NO_COMPARE_MESSAGE)
         return type(self) == type(other) and self.id == other.id
 
     def __ne__(self, other):
         return not (self == other)
 
     def __hash__(self):
+        if self.id is None:
+            raise ValueError(NO_COMPARE_MESSAGE)
         return self.id
 
     def __repr__(self):
@@ -139,12 +146,3 @@ class Unit(with_metaclass(UnitMeta, object)):
             for f in self.unique:
                 items.append("{}={}".format(f.name, repr(f.__get__(self))))
         return "{}({})".format(type(self).__name__, ", ".join(items))
-
-
-class SpatialUnit(Unit):
-
-    region = RegionField()
-
-    def __init__(self, storage=None):
-        Unit.__init__(self, storage)
-        self.overlapping = {}

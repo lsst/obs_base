@@ -2,49 +2,56 @@ from __future__ import print_function, division, absolute_import
 
 from . import base
 
-__all__ = ("TractUnit", "PatchUnit", "FilterUnit", "VisitUnit", "SensorUnit",
-           "COMMON_UNITS")
+__all__ = ("CameraUnit", "SkyMapUnit", "TractUnit", "PatchUnit", "FilterUnit",
+           "VisitUnit", "SensorUnit")
 
 
-class TractUnit(base.SpatialUnit):
+class CameraUnit(base.Unit):
+    name = base.StrField()
+    filters = base.ReverseForeignKey()
+    visits = base.ReverseForeignKey()
+    unique = (name,)
+
+
+class SkyMapUnit(base.Unit):
+    name = base.StrField()
+    tracts = base.ReverseForeignKey()
+    unique = (name,)
+
+
+class TractUnit(base.Unit):
     number = base.IntField()
-    skymap = base.StrField()
-    patches = base.ReverseForeignKey()
-    unique = (number, skymap)
+    skymap = base.ForeignKey(SkyMapUnit, reverse="tracts")
+    unique = (skymap, number)
 
 
-class PatchUnit(base.SpatialUnit):
-    tract = base.ForeignKey(TractUnit, reverse="patches")
-    skymap = base.Alias(tract, TractUnit.skymap)
+class PatchUnit(base.Unit):
+    skymap = base.ForeignKey(SkyMapUnit)
     x = base.IntField()
     y = base.IntField()
-    unique = (tract, x, y)
+    unique = (skymap, x, y)
 
 
 class FilterUnit(base.Unit):
     name = base.StrField()
-    camera = base.StrField()
+    camera = base.ForeignKey(CameraUnit, reverse="filters")
     visits = base.ReverseForeignKey()
-    unique = (name, camera)
+    unique = (camera, name)
 
 
-class VisitUnit(base.SpatialUnit):
+class VisitUnit(base.Unit):
     number = base.IntField()
+    camera = base.ForeignKey(CameraUnit, reverse="visits")
     filter = base.ForeignKey(FilterUnit, reverse="visits")
-    camera = base.StrField()  # TODO: make Camera a new Unit
     sensors = base.ReverseForeignKey()
     dateobs = base.DateTimeField()
-    unique = (number, camera)
+    unique = (camera, number)
 
 
-class SensorUnit(base.SpatialUnit):
-    number = base.IntField()  # TODO: make Sensor number a new Unit
-    visit = base.ForeignKey(VisitUnit, reverse="sensors")
-    camera = base.Alias(visit, VisitUnit.camera)
-    filter = base.Alias(visit, VisitUnit.filter)
-    dateobs = base.Alias(visit, VisitUnit.dateobs)
-    raw = base.ReverseForeignKey()
-    unique = (visit, number)
+class SensorUnit(base.Unit):
+    number = base.IntField()
+    camera = base.ForeignKey(CameraUnit)
+    unique = (camera, number)
 
 
 if False:  # TODO: put these back in after relating them better to visit/sensor
@@ -64,6 +71,3 @@ if False:  # TODO: put these back in after relating them better to visit/sensor
         filter = base.ForeignKey(FilterUnit, reverse=None, optional=True)
         camera = base.StrField()
         unique = (begin, end, filter, camera)
-
-
-COMMON_UNITS = (TractUnit, PatchUnit, FilterUnit, VisitUnit, SensorUnit)

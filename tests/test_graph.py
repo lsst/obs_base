@@ -4,7 +4,6 @@ from __future__ import print_function, division, absolute_import
 
 
 import unittest
-import datetime
 
 import lsst.obs.base.repodb.tests
 from lsst.obs.base import repodb
@@ -13,82 +12,70 @@ from lsst.obs.base import repodb
 class GraphTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.backend = repodb.tests.makeBackend()
-
-    def testCreateTables(self):
-        pass
+        self.db = repodb.tests.makeRepoDatabase()
 
     def testUnitUniverseGraph(self):
-        graph = self.backend.makeGraph(repodb.COMMON_UNITS)
-        self.assertItemsEqual(graph.units.keys(), repodb.COMMON_UNITS)
-        for UnitClass, names, values in repodb.tests.EXAMPLE_UNITS:
-            for unit, data in zip(graph.units[UnitClass], values):
-                for i, name in enumerate(names):
-                    attr = getattr(unit, name)
-                    if isinstance(attr, repodb.Unit):
-                        self.assertEqual(attr.id, data[i])
-                    elif isinstance(attr, datetime.datetime):
-                        self.assertEqual(
-                            attr,
-                            datetime.datetime.fromtimestamp(data[i])
-                        )
-                    else:
-                        self.assertEqual(
-                            attr,
-                            data[i],
-                            msg="{}.{}".format(UnitClass.__name__, name)
-                        )
-        # TODO: test various linkages
+        graph = self.db.makeGraph(self.db.UNIT_CLASSES)
+        self.assertItemsEqual(graph.units.keys(), self.db.UNIT_CLASSES)
+        self.assertItemsEqual(
+            [unit.name for unit in graph.units[repodb.CameraUnit]],
+            ["HSC"]
+        )
+        self.assertItemsEqual(
+            [unit.name for unit in graph.units[repodb.SkyMapUnit]],
+            ["DISCRETE_2"]
+        )
+        self.assertItemsEqual(
+            [unit.name for unit in graph.units[repodb.FilterUnit]],
+            "grizy"
+        )
+        # Much more to test here
 
-    def testNeededDatasets(self):
-        universe = self.backend.makeGraph(repodb.COMMON_UNITS)
-        graph = self.backend.makeGraph(repodb.COMMON_UNITS,
-                                       NeededDatasets=(repodb.tests.CalExp,))
-        self.assertEqual(
-            set(calexp.sensor.id for calexp
-                in graph.datasets[repodb.tests.CalExp]),
-            set(sensor.id for sensor in graph.units[repodb.SensorUnit])
+    def tesDatasets(self):
+        universe = self.db.makeGraph(self.db.UNIT_CLASSES,
+                                     FutureDatasets=(repodb.tests.Coadd,))
+        restricted = self.db.makeGraph(self.db.UNIT_CLASSES,
+                                  NeededDatasets=(repodb.tests.Coadd,))
+        self.assertItemsEqual(
+            [unit.name for unit in restricted.units[repodb.FilterUnit]],
+            ["r"]
         )
         self.assertLess(
-            graph.units[repodb.SensorUnit],
-            universe.units[repodb.SensorUnit]
+            restricted.units[repodb.FilterUnit],
+            universe.units[repodb.FilterUnit]
         )
-        # TODO: test various linkages
-
-    def testFutureDatasets(self):
-        universe = self.backend.makeGraph(repodb.COMMON_UNITS)
-        graph = self.backend.makeGraph(repodb.COMMON_UNITS,
-                                       FutureDatasets=(repodb.tests.CalExp,))
         self.assertLess(
-            set(calexp.sensor.id for calexp
-                in graph.datasets[repodb.tests.CalExp]),
-            set(sensor.id for sensor in graph.units[repodb.SensorUnit])
+            restricted.datasets[repodb.tests.Coadd],
+            universe.datasets[repodb.tests.Coadd]
         )
-        self.assertEqual(graph.units[repodb.SensorUnit],
-                         universe.units[repodb.SensorUnit])
-        # TODO: test various linkages
+        self.assertItemsEqual(
+            [(d.tract, d.patch, d.filter.name)
+             for d in restricted.datasets[repodb.tests.Coadd]],
+            [(tract, patch, 'r')
+             for tract in restricted.units[repodb.TractUnit]
+             for patch in restricted.units[repodb.PatchUnit]]
+        )
+        self.assertItemsEqual(
+            [(d.tract, d.patch, d.filter.name)
+             for d in universe.datasets[repodb.tests.Coadd]],
+            [(tract, patch, 'r')
+             for tract in universe.units[repodb.TractUnit]
+             for patch in universe.units[repodb.PatchUnit]]
+        )
 
     def testUserWhere(self):
-        universe = self.backend.makeGraph(repodb.COMMON_UNITS)
-        graph = self.backend.makeGraph(repodb.COMMON_UNITS,
+        universe = self.db.makeGraph(self.db.UNIT_CLASSES)
+        restricted = self.db.makeGraph(self.db.UNIT_CLASSES,
                                        where="FilterUnit.name in ('g', 'r')")
         self.assertLess(
-            graph.units[repodb.FilterUnit],
+            restricted.units[repodb.FilterUnit],
             universe.units[repodb.FilterUnit],
         )
-        self.assertLess(
-            graph.units[repodb.SensorUnit],
-            universe.units[repodb.SensorUnit],
-        )
         self.assertEqual(
-            set(filter.name for filter in graph.units[repodb.FilterUnit]),
+            set(filter.name for filter in restricted.units[repodb.FilterUnit]),
             set("gr")
         )
-        self.assertEqual(
-            set(sensor.filter.name
-                for sensor in graph.units[repodb.SensorUnit]),
-            set("gr")
-        )
+
 
 if __name__ == "__main__":
     unittest.main()
