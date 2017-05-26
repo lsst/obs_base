@@ -4,3 +4,4 @@ from .base import *
 from .common import *
 from .backend import *
 from .datasets import *
+from .repodb import *
