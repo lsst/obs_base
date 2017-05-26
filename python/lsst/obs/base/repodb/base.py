@@ -146,3 +146,6 @@ class Unit(with_metaclass(UnitMeta, object)):
             for f in self.unique:
                 items.append("{}={}".format(f.name, repr(f.__get__(self))))
         return "{}({})".format(type(self).__name__, ", ".join(items))
+
+    def getDataIdValue(self):
+        raise NotImplementedError()

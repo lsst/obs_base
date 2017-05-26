@@ -73,3 +73,16 @@ class Dataset(with_metaclass(DatasetMeta, object)):
         for p in self.properties.values():
             items.append("{}={}".format(p.name, repr(p.__get__(self))))
         return "({}: {})".format(self.name, ", ".join(items))
+
+    def getDataId(self):
+        return {p.name: p.__get__(self).getDataIdValue()
+                for p in self.properties.values()}
+
+    def get(self, butler, **kwds):
+        return butler.get(self.name, self.getDataId(), **kwds)
+
+    def put(self, butler, value, **kwds):
+        return butler.put(value, self.name, self.getDataId(), **kwds)
+
+    def exists(self, butler):
+        return butler.datasetExists(self.name, self.getDataId())
