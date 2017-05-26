@@ -6,5 +6,6 @@ setupRequired(afw)
 setupRequired(skypix)
 setupRequired(pyfits)
 setupRequired(utils)
+setupRequired(skymap)
 
 envPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)

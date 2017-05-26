@@ -56,10 +56,8 @@ class Dataset(with_metaclass(DatasetMeta, object)):
     def subclass(name, **UnitClasses):
         return DatasetMeta(name, **UnitClasses)
 
-    def __init__(self, storage=None):
-        if storage is None:
-            storage = {}
-        self._storage = storage
+    def __init__(self, **kwds):
+        self._storage = kwds
 
     def __eq__(self, other):
         return self._storage == other._storage
