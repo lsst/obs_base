@@ -67,10 +67,10 @@ class RepoDatabase(object):
     def addDataset(self, dataset):
         self.backend.insertDataset(dataset)
 
-    def makeGraph(self, UnitClasses, where=None,
+    def makeGraph(self, UnitClasses=(), where=None,
                   NeededDatasets=(), FutureDatasets=()):
         return self.backend.makeGraph(
-            UnitClasses, where=where,
+            UnitClasses=UnitClasses, where=where,
             NeededDatasets=NeededDatasets,
             FutureDatasets=FutureDatasets
         )
