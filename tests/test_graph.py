@@ -74,6 +74,13 @@ class GraphTestCase(unittest.TestCase):
             set("gr")
         )
 
+    def testPickle(self):
+        import pickle
+        s = pickle.dumps(self.db, protocol=pickle.HIGHEST_PROTOCOL)
+        newdb = pickle.loads(s)
+        self.assertEqual(self.db._cameras.keys(), newdb._cameras.keys())
+        self.assertEqual(self.db._skyMaps.keys(), newdb._skyMaps.keys())
+
 
 if __name__ == "__main__":
     unittest.main()
