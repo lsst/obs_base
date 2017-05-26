@@ -32,10 +32,8 @@ class GraphTestCase(unittest.TestCase):
         # Much more to test here
 
     def tesDatasets(self):
-        universe = self.db.makeGraph(self.db.UNIT_CLASSES,
-                                     FutureDatasets=(repodb.tests.Coadd,))
-        restricted = self.db.makeGraph(self.db.UNIT_CLASSES,
-                                  NeededDatasets=(repodb.tests.Coadd,))
+        universe = self.db.makeGraph(FutureDatasets=(repodb.tests.Coadd,))
+        restricted = self.db.makeGraph(NeededDatasets=(repodb.tests.Coadd,))
         self.assertItemsEqual(
             [unit.name for unit in restricted.units[repodb.FilterUnit]],
             ["r"]

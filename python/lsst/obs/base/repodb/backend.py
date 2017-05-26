@@ -29,13 +29,31 @@ class Backend(object):
     def insertUnit(self, unit):
         raise NotImplementedError()
 
-    def makeGraph(self, UnitClasses, where=None,
+    def makeGraph(self, UnitClasses=(), where=None,
                   NeededDatasets=(), FutureDatasets=()):
         raise NotImplementedError()
 
 
 def noop(value):
     return value
+
+
+def expandUnitClasses(UnitClasses):
+    """Expand a Unit class sequence by recursively adding any
+    classes used as ForeignKeys.
+    """
+    incomplete = set(UnitClasses)
+    complete = set()
+    everything = set(UnitClasses)
+    while incomplete:
+        UnitClass = incomplete.pop()
+        for f in UnitClass.fields.values():
+            if (isinstance(f, base.ForeignKey) and
+                    f.UnitClass not in everything):
+                incomplete.add(f.UnitClass)
+                everything.add(f.UnitClass)
+        complete.add(UnitClass)
+    return everything
 
 
 class SqliteBackend(Backend):
@@ -152,8 +170,13 @@ class SqliteBackend(Backend):
         )
         return sql, columns
 
-    def makeGraph(self, UnitClasses, where=None,
+    def makeGraph(self, UnitClasses=(), where=None,
                   NeededDatasets=(), FutureDatasets=()):
+        UnitClasses = set(UnitClasses)
+        for DatasetClass in itertools.chain(NeededDatasets, FutureDatasets):
+            for p in DatasetClass.properties.values():
+                UnitClasses.add(p.UnitClass)
+        UnitClasses = expandUnitClasses(UnitClasses)
         temp = self._makeTemporaryGraphTable(UnitClasses, NeededDatasets,
                                              where=where)
         units = {}
