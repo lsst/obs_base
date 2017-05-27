@@ -191,6 +191,11 @@ class SqliteBackend(Backend):
         for UnitClass in UnitClasses:
             units[UnitClass] = self._readPartialUnits(UnitClass, temp)
         datasets = {}
+        for DatasetClass in FutureDatasets:
+            # This is probably a rather expensive way to ensure the table
+            # exists; might want to consider an in-memory set of Dataset
+            # classes that have tables in the DB.
+            self.createDatasetTable(DatasetClass)
         for DatasetClass in itertools.chain(NeededDatasets, FutureDatasets):
             datasets[DatasetClass] = self._readPartialDatasets(
                 DatasetClass,
@@ -227,10 +232,6 @@ class SqliteBackend(Backend):
                         )
                     )
         for DatasetClass in NeededDatasets:
-            # This is probably a rather expensive way to ensure it exists;
-            # might want to consider an in-memory set of Dataset classes that
-            # have tables in the DB.
-            self.createDatasetTable(DatasetClass)
             table = self.getDatasetTableName(DatasetClass)
             tables.append(table)
             for p in DatasetClass.properties.values():
