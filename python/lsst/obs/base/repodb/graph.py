@@ -41,5 +41,9 @@ class RepoGraph:
                     units.keys()
                 )
             )
-        # TODO
-        raise NotImplementedError()
+        dataset = DatasetClass(**storage)
+        for k, p in DatasetClass.properties.items():
+            unit = .__get__(dataset)
+            unit.datasets.setdefault(DatasetClass, set()).add(dataset)
+        self.datasets[DatasetClass].add(dataset)
+        return dataset
