@@ -132,7 +132,7 @@ class SqliteBackend(Backend):
                 ", ".join(k for k in DatasetClass.properties.keys())
             )
         )
-        sql = "CREATE TABLE {} (\n    {}\n)".format(
+        sql = "CREATE TABLE IF NOT EXISTS {} (\n    {}\n)".format(
             self.getDatasetTableName(DatasetClass), ",\n    ".join(items)
         )
         self.db.execute(sql)
