@@ -43,7 +43,7 @@ class RepoGraph:
             )
         dataset = DatasetClass(**storage)
         for k, p in DatasetClass.properties.items():
-            unit = .__get__(dataset)
+            unit = p.__get__(dataset)
             unit.datasets.setdefault(DatasetClass, set()).add(dataset)
         self.datasets[DatasetClass].add(dataset)
         return dataset
