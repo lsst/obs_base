@@ -39,12 +39,15 @@ class DatasetMeta(type):
             return type.__new__(cls, name, bases, dct)
         r = cls.registry.get(name, None)
         if r is not None:
-            assert {k: v.UnitClass for k, v in cls.properties} == UnitClasses
+            assert {k: v.UnitClass for k, v in r.properties.items()} \
+                == UnitClasses
             return r
         d = {k: UnitProperty(k, v) for k, v in UnitClasses.items()}
         d["properties"] = d.copy()
         d["name"] = name
-        return type.__new__(cls, name, (Dataset,), d)
+        r = type.__new__(cls, name, (Dataset,), d)
+        DatasetMeta.registry[name] = r
+        return r
 
     def __init__(self, name, bases=None, dct=None, **UnitClasses):
         pass
