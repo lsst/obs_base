@@ -6,14 +6,14 @@ import datetime
 from lsst.skymap import DiscreteSkyMap
 
 from .backend import SqliteBackend
-from .repodb import RepoDatabase, Camera
+from .repodb import RepoDatabase, CameraDataSpec
 from .datasets import Dataset
 from . import common
 
 __all__ = ("makeRepoDatabase", "Coadd")
 
 
-HSC = Camera("HSC", filters="grizy")
+HSC = CameraDataSpec("HSC", filters="grizy")
 
 DISCRETE_2 = DiscreteSkyMap(
     config=DiscreteSkyMap.ConfigClass(
