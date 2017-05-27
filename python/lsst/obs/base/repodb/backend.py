@@ -227,6 +227,10 @@ class SqliteBackend(Backend):
                         )
                     )
         for DatasetClass in NeededDatasets:
+            # This is probably a rather expensive way to ensure it exists;
+            # might want to consider an in-memory set of Dataset classes that
+            # have tables in the DB.
+            self.createDatasetTable(DatasetClass)
             table = self.getDatasetTableName(DatasetClass)
             tables.append(table)
             for p in DatasetClass.properties.values():
