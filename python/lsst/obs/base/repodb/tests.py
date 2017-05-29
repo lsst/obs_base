@@ -1,8 +1,5 @@
 from __future__ import print_function, division, absolute_import
 
-import itertools
-import datetime
-
 from lsst.skymap import DiscreteSkyMap
 
 from .backend import SqliteBackend
