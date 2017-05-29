@@ -8,6 +8,32 @@ from . import graph
 
 
 class Backend(object):
+    """An abstract base class that sets the interface between RepoDatabase
+    and a SQL database.
+
+    A Backend implementation should not depend on any concrete `Unit` or
+    `Dataset` classes, but it is expected to be aware of these base classes
+    and the set of descriptor classes used to define their subclasses.
+
+    Design Notes
+    ------------
+    The `Backend` interface is almost certainly incomplete, given the current
+    limitations of `RepoDatabase`.  It's also probably not quite the right
+    interface for the insulation layer it tries to provide, as its design has
+    been so far by a single implementation (`SqliteBackend`).
+
+    When its design is more complete, `Backend` *should* be the only interface
+    that needs to be reimplemented to enable the `RepoDatabase` system to work
+    with the monolithic production database.
+
+    Parameters
+    ----------
+    config : `dict`
+        A dict of configuration values shared by all backends.  At present the
+        only entry is `idcol`, which provides the string name used for integer
+        primary key fields in the database.
+
+    """
 
     def __init__(self, config=None):
         self.config = {"idcol": "id"}
@@ -15,26 +41,55 @@ class Backend(object):
             self.config.update(config)
 
     def getUnitTableName(self, UnitClass):
+        """Return the name to use for a SQL table or view containing instances
+        for the given `Unit` type.
+        """
         return UnitClass.__name__
 
     def getDatasetTableName(self, DatasetClass):
+        """Return the name to use for a SQL table or view containing instances
+        for the given `Dataset` type.
+        """
         return DatasetClass.name
 
     def createUnitTable(self, UnitClass):
+        """Create a table or view that can hold instances of the given `Unit`
+        type.
+        """
         raise NotImplementedError()
 
     def createDatasetTable(self, DatasetClass):
+        """Create a table or view that can hold instances of the given
+        `Dataset` type.
+
+        Must be a silent no-op if the table already exists.
+        """
         raise NotImplementedError()
 
     def insertUnit(self, unit):
+        """Insert a `Unit` instance into the appropriate table.
+        """
+        raise NotImplementedError()
+
+    def insertDataset(self, dataset):
+        """Insert a `Dataset` instance into the appropriate table.
+        """
         raise NotImplementedError()
 
     def makeGraph(self, UnitClasses=(), where=None,
                   NeededDatasets=(), FutureDatasets=()):
+        """Execute a multi-table SQL query and return the results
+        as a `RepoGraph`.
+
+        See `RepoDatabase.makeGraph` for more information.
+        """
         raise NotImplementedError()
 
 
 def noop(value):
+    """A simple pass-through function, used as a do-nothing converter
+    for trivial types when mapping Python types to SQL types or vice-versa.
+    """
     return value
 
 
@@ -57,7 +112,22 @@ def expandUnitClasses(UnitClasses):
 
 
 class SqliteBackend(Backend):
+    """A `Backend` implementation that utilizes a single SQLite database.
 
+    Because SqliteBackend assumes a single database for what could be a set
+    of multiple chained data repositories, it probably isn't usable long-term
+    as-is.
+
+    Parameters
+    ----------
+    dbname : `str`
+        Name of a SQLite database file, or `:memory:` for an in-memory database
+        (for e.g. testing purposes).
+    config : `dict`
+        Dictionary of configuration values passed to `Backend.__init__`.
+    """
+
+    # Mapping from Unit Field types to SQLite types.
     SQL_TYPES = {
         base.RegionField: "BLOB",
         base.IntField: "INTEGER",
@@ -66,10 +136,14 @@ class SqliteBackend(Backend):
         base.ForeignKey: "INTEGER",
     }
 
+    # Mapping from Unit Field type to a function that converts SQL types
+    # to Python types.
     FROM_SQL = {
         base.DateTimeField: datetime.datetime.fromtimestamp,
     }
 
+    # Mapping from Unit Field type to a function that converts Python types
+    # to SQL types.
     TO_SQL = {
         base.DateTimeField:
             lambda dt: (dt - datetime.datetime(1970, 1, 1)).total_seconds(),
@@ -91,6 +165,9 @@ class SqliteBackend(Backend):
         self.__init__(dbname, config=config)
 
     def createUnitTable(self, UnitClass):
+        """Create a table or view that can hold instances of the given `Unit`
+        type.
+        """
         items = ["{} INTEGER PRIMARY KEY".format(self.config["idcol"])]
         for k, v in UnitClass.fields.items():
             t = [k, self.SQL_TYPES[type(v)]]
@@ -116,6 +193,9 @@ class SqliteBackend(Backend):
         self.db.commit()
 
     def createDatasetTable(self, DatasetClass):
+        """Create a table or view that can hold instances of the given
+        `Dataset` type.
+        """
         items = []
         for k, v in DatasetClass.properties.items():
             t = [k, self.SQL_TYPES[base.ForeignKey]]
@@ -139,6 +219,8 @@ class SqliteBackend(Backend):
         self.db.commit()
 
     def insertUnit(self, unit):
+        """Insert a `Unit` instance into the appropriate table.
+        """
         sql, columns, converters = self._buildUnitInsertQuery(type(unit))
         values = tuple(convert(getattr(unit, k))
                        for k, convert in zip(columns, converters))
@@ -149,6 +231,13 @@ class SqliteBackend(Backend):
         self.db.commit()
 
     def _buildUnitInsertQuery(self, UnitClass):
+        """Build a SQL query string that inserts `Unit` instances into the
+        appropriate table.
+
+        In addition to the SQL query string, also returns a list of column
+        names and a list of converter functions that should be applied
+        to column values.
+        """
         columns = [self.config['idcol']]
         converters = [noop]
         for f in UnitClass.fields.values():
@@ -162,12 +251,20 @@ class SqliteBackend(Backend):
         return sql, columns, converters
 
     def insertDataset(self, dataset):
+        """Insert a `Dataset` instance into the appropriate table.
+        """
         sql, columns = self._buildDatasetInsertQuery(type(dataset))
         values = tuple(getattr(dataset, k).id for k in columns)
         self.db.execute(sql, values)
         self.db.commit()
 
     def _buildDatasetInsertQuery(self, DatasetClass):
+        """Build a SQL query string that inserts `Dataset` instances into the
+        appropriate table.
+
+        In addition to the SQL query string, also returns a list of column
+        names.
+        """
         columns = []
         for f in DatasetClass.properties.values():
             columns.append(f.name)
@@ -180,6 +277,11 @@ class SqliteBackend(Backend):
 
     def makeGraph(self, UnitClasses=(), where=None,
                   NeededDatasets=(), FutureDatasets=()):
+        """Execute a multi-table SQL query and return the results
+        as a `RepoGraph`.
+
+        See `RepoDatabase.makeGraph` for more information.
+        """
         UnitClasses = set(UnitClasses)
         for DatasetClass in itertools.chain(NeededDatasets, FutureDatasets):
             for p in DatasetClass.properties.values():
@@ -208,6 +310,10 @@ class SqliteBackend(Backend):
 
     def _makeTemporaryGraphTable(self, UnitClasses, NeededDatasets,
                                  where=None, temp="graph"):
+        """Create a temporary table containing the results of a SELECT
+        query that returns integer primary key values for all `Unit` classes
+        constrained by all joins and the user-provided WHERE clause.
+        """
         columns = []
         tables = []
         if where is None:
@@ -254,6 +360,10 @@ class SqliteBackend(Backend):
         return temp
 
     def _readPartialUnits(self, UnitClass, temp):
+        """Read 'partial' Units (with integer IDs for all ForeignKey fields)
+        by executing a query joined with the temporary table created by
+        _makeTemporaryGraphTable.
+        """
         sql = ("SELECT DISTINCT {idcol}, {columns} FROM {table} "
                "INNER JOIN {temp} ON ({table}.{idcol} = {temp}.{table}_id)"
                ).format(
@@ -287,6 +397,10 @@ class SqliteBackend(Backend):
         return {k: frozenset(v.values()) for k, v in units.items()}
 
     def _readPartialDatasets(self, DatasetClass, temp):
+        """Read 'partial' Datasets (with integer IDs for all UnitPropertys)
+        by executing a query joined with the temporary table created by
+        _makeTemporaryGraphTable.
+        """
         columns = []
         joins = []
         table = self.getDatasetTableName(DatasetClass)
@@ -316,9 +430,10 @@ class SqliteBackend(Backend):
         return result
 
     def _finalizeDatasets(self, datasets, units):
-        # Iterate over newly created Dataset instances, turning integer
-        # Unit IDs into Unit instances and adding references from the Units
-        # back to these Datasets.
+        """ Iterate over newly created Dataset instances, turning integer
+        Unit IDs into Unit instances and adding references from the Units
+        back to these Datasets.
+        """
         for DatasetClass, instances in datasets.items():
             for instance in instances:
                 for p in DatasetClass.properties.values():
