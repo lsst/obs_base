@@ -157,7 +157,7 @@ class OutputRootTestCase(unittest.TestCase):
                                    outputs=testOutput)
         self.assertTrue(os.path.exists(testOutput))
         self.assertTrue(os.path.isdir(testOutput))
-        cfg = dafPersist.Storage.getRepositoryCfg(testOutput)
+        cfg = dafPersist.Storage().getRepositoryCfg(testOutput)
         self.assertEqual(cfg.parents, [testPath])
         del butler
 
@@ -165,7 +165,7 @@ class OutputRootTestCase(unittest.TestCase):
                                    outputs=testOutput2)
         self.assertTrue(os.path.exists(testOutput2))
         self.assertTrue(os.path.isdir(testOutput2))
-        cfg = dafPersist.Storage.getRepositoryCfg(testOutput2)
+        cfg = dafPersist.Storage().getRepositoryCfg(testOutput2)
         self.assertEqual(cfg.parents, [testOutput])
         del butler
 

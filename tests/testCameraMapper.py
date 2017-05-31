@@ -78,7 +78,7 @@ class MinMapper2(lsst.obs.base.CameraMapper):
     def __init__(self, **kwargs):
         policy = dafPersist.Policy(os.path.join(testDir, "MinMapper2.paf"))
         lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir,
-                                            registry=os.path.join(testDir, "cfhtls.sqlite3"), **kwargs)
+                                            registry="cfhtls.sqlite3", **kwargs)
         return
 
     def _transformId(self, dataId):
