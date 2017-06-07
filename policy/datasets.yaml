@@ -441,6 +441,12 @@ srcMatchFull:  # Denormalized matches from CalibrateTask
     python: lsst.afw.table.BaseCatalog
     tables: raw
     template: ''
+photoCalib:
+    persistable: PhotoCalib
+    storage: FitsCatalogStorage
+    python: lsst.afw.image.PhotoCalib
+    tables: raw
+    template: ''
 deepCoadd_measMatch:  # Matches from MeasureMergedCoaddSourcesTask
     persistable: BaseCatalog
     storage: FitsCatalogStorage
