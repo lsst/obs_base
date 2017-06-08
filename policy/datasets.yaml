@@ -43,6 +43,12 @@ deep_assembleCoadd_config:
     storage: ConfigStorage
     python: lsst.pipe.tasks.assembleCoadd.AssembleCoaddConfig
     template: config/deep_assembleCoadd.py
+deep_coadditionTask_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.tasks.coaddition.CoadditionConfig
+    template: config/deep_coaddition.py
+
 deepCoadd_calexp_background:
     persistable: PurePythonClass
     storage: FitsCatalogStorage
@@ -58,6 +64,11 @@ deep_safeClipAssembleCoadd_config:
     storage: ConfigStorage
     python: lsst.pipe.tasks.assembleCoadd.SafeClipAssembleCoaddConfig
     template: config/deep_safeClipAssembleCoadd.py
+deep_robustAssembleCoadd_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.tasks.assembleCoadd.SafeClipAssembleCoaddConfig
+    template: config/deep_robustAssembleCoadd.py
 flat_config:
     persistable: Config
     storage: ConfigStorage
@@ -108,6 +119,11 @@ deep_assembleCoadd_metadata:
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
     template: deep_assembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.boost
+deep_coadditionTask_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    template: deep_coaddition_metadata/%(filter)s/%(tract)d/%(patch)s.boost
 deepCoadd_meas:
     persistable: ignored
     storage: FitsCatalogStorage
@@ -159,6 +175,11 @@ brightObjectMask:
     python: lsst.pipe.tasks.objectMasks.ObjectMaskCatalog
     template: deepCoadd/BrightObjectMasks/%(tract)d/BrightObjectMask-%(tract)d-%(patch)s-%(filter)s.reg
 deep_safeClipAssembleCoadd_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    template: deep_assembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.boost
+deep_robustAssembleCoadd_metadata:
     persistable: PropertySet
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
