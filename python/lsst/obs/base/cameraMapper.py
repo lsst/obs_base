@@ -403,8 +403,7 @@ class CameraMapper(dafPersist.Mapper):
 
                     # Filename of dataset
                     setMethods("filename", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                        [os.path.join(location.getStorage().root, p) for p in location.getLocations()])
-
+                               [os.path.join(location.getStorage().root, p) for p in location.getLocations()])
                     # Metadata from FITS file
                     if subPolicy["storage"] == "FitsStorage":  # a FITS image
                         setMethods("md", bypassImpl=lambda datasetType, pythonType, location, dataId:
@@ -419,6 +418,10 @@ class CameraMapper(dafPersist.Mapper):
                             setMethods("visitInfo",
                                        bypassImpl=lambda datasetType, pythonType, location, dataId:
                                        afwImage.VisitInfo(
+                                           afwImage.readMetadata(location.getLocationsWithRoot()[0])))
+                            setMethods("filter",
+                                       bypassImpl=lambda datasetType, pythonType, location, dataId:
+                                       afwImage.Filter(
                                            afwImage.readMetadata(location.getLocationsWithRoot()[0])))
                     if subPolicy["storage"] == "FitsCatalogStorage":  # a FITS catalog
                         setMethods("md", bypassImpl=lambda datasetType, pythonType, location, dataId:
