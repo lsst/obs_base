@@ -134,6 +134,23 @@ class TestCompositeTestCase(unittest.TestCase):
         verObjB = verificationButler.get('basicObject2', {'name': 'bar'})
         self.assertEqual(verObjB, componentObjB)
 
+    def testDatasetExists(self):
+        """Verify that Butler.datasetExists returns true for a composite dataset whose components exist."""
+        butler = dafPersist.Butler(inputs=self.firstRepoPath)
+        self.assertTrue(butler.datasetExists('basicPair', dataId={'id': 'foo', 'name': 'bar'}))
+
+    def testDatasetDoesNotExist(self):
+        """Verify that Butler.datasetExists returns false for a composite dataset where some of the
+        components do not exist."""
+        repoPath = os.path.join(self.testData, 'repo')
+        repoArgs = dafPersist.RepositoryArgs(root=repoPath, policy=self.policy,
+                                             mapper='lsst.obs.base.test.CompositeMapper')
+
+        butler = dafPersist.Butler(outputs=repoArgs)
+        self.objA = dpTest.TestObject("abc")
+        butler.put(self.objA, 'basicObject1', dataId={'id': 'foo'})
+        self.assertFalse(butler.datasetExists('basicPair', dataId={'id': 'foo', 'name': 'bar'}))
+
 
 class TestGenericAssembler(unittest.TestCase):
     """A test case for the generic assembler feature of composite datasets."""
@@ -303,7 +320,6 @@ class TestGenericAssembler(unittest.TestCase):
         verificationButler = dafPersist.Butler(inputs=self.secondRepoPath)
         componentObj = verificationButler.get('basicObject1', dataId={'id': 'foo'})
         self.assertEqual(componentObj, obj.get_foo())
-
 
     def testInferredNameCamelcase(self):
         """Test the case where the name of the setter & getter is inferred by the policy name by prepending
