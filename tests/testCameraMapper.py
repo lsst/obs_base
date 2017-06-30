@@ -28,6 +28,7 @@ import os
 import unittest
 
 import numpy as np
+import sqlalchemy
 
 import lsst.utils.tests
 import lsst.afw.geom as afwGeom
@@ -379,6 +380,7 @@ class Mapper3TestCase(unittest.TestCase):
         with self.assertRaises(ValueError):
             MinMapper3.getPackageName()
 
+
 class ParentRegistryTestCase(unittest.TestCase):
 
     def setUp(self):
@@ -387,8 +389,18 @@ class ParentRegistryTestCase(unittest.TestCase):
         self.repoARoot = os.path.join(self.testDir, 'a')
         args = dafPersist.RepositoryArgs(root=self.repoARoot, mapper=MinMapper1)
         butler = dafPersist.Butler(outputs=args)
-        with open(os.path.join(self.repoARoot, 'registry.sqlite3'), 'w') as f:
-            f.write('123')
+        self._makeRegistry(self.repoARoot)
+
+    def _makeRegistry(self, loc):
+        engine = sqlalchemy.create_engine(os.path.join('sqlite:///', loc, 'registry.sqlite3'))
+        metadata = sqlalchemy.MetaData()
+        raw = sqlalchemy.Table('raw', metadata,
+                               sqlalchemy.Column('id', sqlalchemy.Integer, primary_key=True),
+                               sqlalchemy.Column('visit', sqlalchemy.Integer),
+                               sqlalchemy.Column('filter', sqlalchemy.String))
+        metadata.create_all(engine)
+        ins = raw.insert().values(visit=1, filter='r')
+        engine.connect().execute(ins)
 
     def tearDown(self):
         if os.path.exists(self.testDir):
@@ -407,8 +419,7 @@ class ParentRegistryTestCase(unittest.TestCase):
         self.assertEqual(id(registryA), id(registryB))
         del butler
 
-        with open(os.path.join(repoBRoot, 'registry.sqlite3'), 'w') as f:
-            f.write('123')
+        self._makeRegistry(repoBRoot)
         butler = dafPersist.Butler(inputs=self.repoARoot, outputs=repoBRoot)
         # see above; don't copy this way of getting the registry.
         registryA = butler._repos.inputs()[0].repo._mapper.registry
