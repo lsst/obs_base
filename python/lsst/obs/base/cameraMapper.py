@@ -367,7 +367,7 @@ class CameraMapper(dafPersist.Mapper):
 
                     if name == "calibrations":
                         mapping = cls(datasetType, subPolicy, self.registry, self.calibRegistry, calibStorage,
-                                      provided=provided)
+                                      provided=provided, dataRoot=rootStorage)
                     else:
                         mapping = cls(datasetType, subPolicy, self.registry, rootStorage, provided=provided)
                     self.keyDict.update(mapping.keys())
