@@ -683,11 +683,7 @@ class CameraMapper(dafPersist.Mapper):
 
     def std_raw(self, item, dataId):
         """Standardize a raw dataset by converting it to an Exposure instead of an Image"""
-        exposure = exposureFromImage(item)
-        exposureId = self._computeCcdExposureId(dataId)
-        md = exposure.getMetadata()
-        visitInfo = self.makeRawVisitInfo(md=md, exposureId=exposureId)
-        exposure.getInfo().setVisitInfo(visitInfo)
+        exposure = exposureFromImage(item, dataId, logger=self.log)
         return self._standardizeExposure(self.exposures['raw'], exposure, dataId,
                                          trimmed=False)
 
@@ -926,9 +922,9 @@ class CameraMapper(dafPersist.Mapper):
         @param filter (bool) Set filter? Ignored if item is already an exposure
         @param trimmed (bool) Should detector be marked as trimmed?
         @return (lsst.afw.image.Exposure) the standardized Exposure"""
-        if not hasattr(item, "getMaskedImage"):
+        if not isinstance(item, afwImage.Exposure):
             try:
-                item = exposureFromImage(item)
+                item = exposureFromImage(item, dataId, logger=self.log)
             except Exception as e:
                 self.log.error("Could not turn item=%r into an exposure: %s" % (repr(item), e))
                 raise
@@ -1017,7 +1013,7 @@ class CameraMapper(dafPersist.Mapper):
         """
         return self.registry
 
-def exposureFromImage(image):
+def exposureFromImage(image, dataId=None, logger=None):
     """Generate an Exposure from an image-like object
 
     If the image is a DecoratedImage then also set its WCS and metadata
@@ -1027,6 +1023,7 @@ def exposureFromImage(image):
     @param[in] image  Image-like object (lsst.afw.image.DecoratedImage, Image, MaskedImage or Exposure)
     @return (lsst.afw.image.Exposure) Exposure containing input image
     """
+    metadata = None
     if hasattr(image, "getVariance"):
         # MaskedImage
         exposure = afwImage.makeExposure(image)
@@ -1040,9 +1037,19 @@ def exposureFromImage(image):
     elif hasattr(image, "getMaskedImage"):
         # Exposure
         exposure = image
+        metadata = exposure.getMetadata()
     else:
         # Image
         exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image))
+    #
+    # set VisitInfo if we can
+    #
+    if exposure.getInfo().getVisitInfo() is None:
+        if metadata is not None:
+            exposureId = self._computeCcdExposureId(dataId)
+            visitInfo = self.makeRawVisitInfo(md=metadata, exposureId=exposureId)
+
+            exposure.getInfo().setVisitInfo(visitInfo)
 
     return exposure
 
