@@ -693,11 +693,7 @@ class CameraMapper(dafPersist.Mapper):
 
     def std_raw(self, item, dataId):
         """Standardize a raw dataset by converting it to an Exposure instead of an Image"""
-        exposure = exposureFromImage(item, logger=self.log)
-        exposureId = self._computeCcdExposureId(dataId)
-        md = exposure.getMetadata()
-        visitInfo = self.makeRawVisitInfo(md=md, exposureId=exposureId)
-        exposure.getInfo().setVisitInfo(visitInfo)
+        exposure = exposureFromImage(item, dataId, mapper=self, logger=self.log)
         return self._standardizeExposure(self.exposures['raw'], exposure, dataId,
                                          trimmed=False)
 
@@ -951,7 +947,7 @@ class CameraMapper(dafPersist.Mapper):
         @return (lsst.afw.image.Exposure) the standardized Exposure"""
         if not hasattr(item, "getMaskedImage"):
             try:
-                item = exposureFromImage(item, logger=self.log)
+                item = exposureFromImage(item, dataId, mapper=self, logger=self.log)
             except Exception as e:
                 self.log.error("Could not turn item=%r into an exposure: %s" % (repr(item), e))
                 raise
@@ -1041,7 +1037,7 @@ class CameraMapper(dafPersist.Mapper):
         """
         return self.registry
 
-def exposureFromImage(image, logger=None):
+def exposureFromImage(image, dataId=None, mapper=None, logger=None):
     """Generate an Exposure from an image-like object
 
     If the image is a DecoratedImage then also set its WCS and metadata
@@ -1062,7 +1058,7 @@ def exposureFromImage(image, logger=None):
         except pexExcept.InvalidParameterError as e:
             # raised on failure to create a wcs (and possibly others)
             if logger is None:
-                logger = lsstLog.Log.getLogger("obs.base.cameraMapper")
+                logger = lsstLog.Log.getLogger("CameraMapper")
             logger.warn("wcs set to None; insufficient information found in metadata to create a valid wcs: "
                         "%s", e.args[0])
 
@@ -1073,5 +1069,19 @@ def exposureFromImage(image, logger=None):
     else:
         # Image
         exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image))
+    #
+    # set VisitInfo if we can
+    #
+    if exposure.getInfo().getVisitInfo() is None:
+        if metadata is not None:
+            if mapper is None:
+                if not logger:
+                    logger = lsstLog.Log.getLogger("CameraMapper")
+                logger.warn("I can only set the VisitInfo if you provide a mapper")
+            else:
+                exposureId = mapper._computeCcdExposureId(dataId)
+                visitInfo = mapper.makeRawVisitInfo(md=metadata, exposureId=exposureId)
+
+                exposure.getInfo().setVisitInfo(visitInfo)
 
     return exposure
