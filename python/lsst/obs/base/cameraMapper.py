@@ -1047,6 +1047,7 @@ def exposureFromImage(image, dataId=None, mapper=None, logger=None):
     @param[in] image  Image-like object (lsst.afw.image.DecoratedImage, Image, MaskedImage or Exposure)
     @return (lsst.afw.image.Exposure) Exposure containing input image
     """
+    metadata = None
     if isinstance(image, afwImage.MaskedImage):
         exposure = afwImage.makeExposure(image)
     elif isinstance(image, afwImage.DecoratedImage):
