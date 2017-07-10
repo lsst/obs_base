@@ -346,20 +346,23 @@ class CalibrationMapping(Mapping):
     calibration dataset tables containing the end of the validity range
     (default "validEnd") """
 
-    def __init__(self, datasetType, policy, registry, calibRegistry, calibRoot, **kwargs):
+    def __init__(self, datasetType, policy, registry, calibRegistry, calibRoot, dataRoot=None, **kwargs):
         """Constructor for Mapping class.
         @param datasetType    (string)
         @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
                               Mapping Policy
         @param registry       (lsst.obs.base.Registry) Registry for metadata lookups
         @param calibRegistry  (lsst.obs.base.Registry) Registry for calibration metadata lookups
-        @param calibRoot      (string) Path of calibration root directory"""
+        @param calibRoot      (string) Path of calibration root directory
+        @param dataRoot.      (string) Path of data root directory; used for outputs only
+        """
         if isinstance(policy, pexPolicy.Policy):
             policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, calibRegistry, calibRoot, **kwargs)
         self.reference = policy.asArray("reference") if "reference" in policy else None
         self.refCols = policy.asArray("refCols") if "refCols" in policy else None
         self.refRegistry = registry
+        self.dataRoot = dataRoot
         if "validRange" in policy and policy["validRange"]:
             self.range = ("?", policy["validStartName"], policy["validEndName"])
         if "columns" in policy:
@@ -369,6 +372,13 @@ class CalibrationMapping(Mapping):
         self.metadataKeys = None
         if "metadataKey" in policy:
             self.metadataKeys = policy.asArray("metadataKey")
+
+    def map(self, mapper, dataId, write=False):
+        location = Mapping.map(self, mapper, dataId, write=write)
+        # Want outputs to be in the output directory
+        if write and self.dataRoot:
+            location.storage = self.dataRoot
+        return location
 
     def lookup(self, properties, dataId):
         """Look up properties for in a metadata registry given a partial
