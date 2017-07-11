@@ -40,3 +40,10 @@ class CompositeMapper(CameraMapper):
         """Normally this makes a camera. For composite testing, we don't need a camera.
         """
         return None
+
+    def std_stdTestType(self, item, dataId):
+        item.standardized = True
+        return item
+
+    def bypass_bypassTestType(self, datasetType, pythonType, location, dataId):
+        return set(dataId.keys())
