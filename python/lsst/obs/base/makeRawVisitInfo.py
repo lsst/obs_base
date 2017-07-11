@@ -150,7 +150,7 @@ class MakeRawVisitInfo(object):
         """
         try:
             if not md.exists(key):
-                self.log.warn("Key=\"{}\" not in metadata".format(key))
+                self.log.warn("Key=\"{}\" not in medata".format(key))
                 return default
             val = md.get(key)
             md.remove(key)
