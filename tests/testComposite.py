@@ -62,9 +62,23 @@ class TestCompositeTestCase(unittest.TestCase):
                                                 'a': {'datasetType': 'basicObject1'},
                                                 'b': {'datasetType': 'basicObject2'}
                                             },
-                                            'assembler': 'lsst.daf.persistence.test.TestObjectPair.assembler',
-                                            'disassembler': 'lsst.daf.persistence.test.TestObjectPair.disassembler'
-
+                                            'assembler':
+                                                'lsst.daf.persistence.test.TestObjectPair.assembler',
+                                            'disassembler':
+                                                'lsst.daf.persistence.test.TestObjectPair.disassembler'},
+                                        'stdTestType': {
+                                            'python': 'lsst.daf.persistence.test.TestObjectPair',
+                                            'composite': {
+                                                'a': {'datasetType': 'basicObject1'},
+                                                'b': {'datasetType': 'basicObject2'}
+                                            }
+                                        },
+                                        'bypassTestType': {
+                                            'python': 'lsst.daf.persistence.test.TestObjectPair',
+                                            'composite': {
+                                                'a': {'datasetType': 'basicObject1'},
+                                                'b': {'datasetType': 'basicObject2'}
+                                            }
                                         }
                                     }})
 
@@ -150,6 +164,25 @@ class TestCompositeTestCase(unittest.TestCase):
         self.objA = dpTest.TestObject("abc")
         butler.put(self.objA, 'basicObject1', dataId={'id': 'foo'})
         self.assertFalse(butler.datasetExists('basicPair', dataId={'id': 'foo', 'name': 'bar'}))
+
+    def testStd(self):
+        """Verify that composite dataset types with a std_ function are passed to the std_ function after
+        being instantiated."""
+        secondRepoPath = os.path.join(self.testData, 'repo2')
+        repoArgs = dafPersist.RepositoryArgs(root=secondRepoPath, policy=self.policy)
+        butler = dafPersist.Butler(inputs=self.firstRepoPath, outputs=repoArgs)
+        objABPair = butler.get('stdTestType', dataId={'id': 'foo', 'name': 'bar'})
+        self.assertTrue(hasattr(objABPair, 'standardized'))
+        self.assertTrue(objABPair.standardized)
+
+    def testBypass(self):
+        """Verify that composite dataset types with a bypass_ function are passed to the bypass function after
+        being instantiated."""
+        secondRepoPath = os.path.join(self.testData, 'repo2')
+        repoArgs = dafPersist.RepositoryArgs(root=secondRepoPath, policy=self.policy)
+        butler = dafPersist.Butler(inputs=self.firstRepoPath, outputs=repoArgs)
+        bypassObject = butler.get('bypassTestType', dataId={'id': 'foo', 'name': 'bar'})
+        self.assertEqual(bypassObject, set(['id', 'name']))
 
 
 class TestGenericAssembler(unittest.TestCase):
