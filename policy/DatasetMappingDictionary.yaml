@@ -1,0 +1,25 @@
+
+policy:
+    schema:
+        datasets:
+            type: dict # the value of datasets must be a dict.
+            keyschema:
+                type: string # the key of datasets must be a string.
+            valueschema:
+                type: dict
+                allowed: [template, persistable, python, storage, tables]
+                schema:
+                    template:
+                        type: string
+                        required: true # the template key is required to exist.
+                        empty: false  # the value may not be an empty string.
+                    persistable:
+                        type: string # the value must be a string.
+                    python:
+                        type: string # etc.
+                    storage:
+                        type: string
+                    tables:
+                        type: string
+
+

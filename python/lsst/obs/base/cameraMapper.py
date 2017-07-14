@@ -21,11 +21,14 @@
 #
 
 from builtins import str
+import cerberus
 import copy
 import os
 import pyfits  # required by _makeDefectsDict until defects are written as AFW tables
 import re
 import weakref
+import yaml
+
 import lsst.daf.persistence as dafPersist
 from . import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping
 import lsst.afw.geom as afwGeom
@@ -203,6 +206,11 @@ class CameraMapper(dafPersist.Mapper):
         dictPolicy = dafPersist.Policy(defaultPolicyFile)
         policy.merge(dictPolicy)
 
+        schema = self._getPolicySchema(
+            dafPersist.Policy.defaultPolicyFile('obs_base', 'BaseDictionary.yaml', 'policy'),
+            dafPersist.Policy.defaultPolicyFile('obs_base', 'DatasetMappingDictionary.yaml', 'policy'))
+        self._validatePolicy(schema, policy)
+
         # Levels
         self.levels = dict()
         if 'levels' in policy:
@@ -289,6 +297,49 @@ class CameraMapper(dafPersist.Mapper):
             raise ValueError('class variable packageName must not be None')
 
         self.makeRawVisitInfo = self.MakeRawVisitInfoClass(log=self.log)
+
+    @classmethod
+    def _validatePolicy(cls, schema, policy):
+        """Validate policy against the schema expected for that policy.
+
+        Parameters
+        ----------
+        schema : lsst.daf.persistence.Policy or dict
+            The schema to which the policy must conform.
+        policy : lsst.daf.persistence.Policy or dict
+            The policy that must conform to the schema.
+
+        Raises
+        ------
+        RuntimeError
+            If there is an error in the schema of the policy a runtime error is raised.
+        """
+        v = cerberus.Validator(schema)
+        if not v.validate({'policy': policy}):
+            raise RuntimeError('dataset policy schema error:{} for policy:{} with schema:{}'.format(
+                v.errors, v.policy, schema))
+
+    @classmethod
+    def _getPolicySchema(cls, *pathList):
+        """Get the schema combined from a list of sources. If there are duplicate parameters, those from
+        sources later in pathList will overwrite those from sources earlier in pathList.
+
+        Parameters
+        ----------
+        *pathList list of string
+            A list of paths to yaml schema files used to validate policy.
+
+        Returns
+        -------
+        TYPE
+            Description
+        """
+        schema = dafPersist.Policy()
+        for path in pathList:
+            subSchema = dafPersist.Policy(path)
+            schema.update(subSchema)
+        return schema
+
 
     def _initMappings(self, policy, rootStorage=None, calibStorage=None, provided=None):
         """Initialize mappings
