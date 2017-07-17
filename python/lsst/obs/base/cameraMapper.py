@@ -815,8 +815,8 @@ class CameraMapper(dafPersist.Mapper):
                 newPath = newPath[0] if newPath is not None and len(newPath) else None
                 if newPath is not None:
                     path = newPath
-            self.log.debug("Loading %s registry from %s", description, path)
             localFileObj = storage.getLocalFile(path)
+            self.log.info("Loading %s registry from %s", description, localFileObj.name)
             registry = dafPersist.Registry.create(localFileObj.name)
         elif not registry and posixIfNoSql:
             try:
