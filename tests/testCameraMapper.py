@@ -172,7 +172,8 @@ class Mapper2TestCase(unittest.TestCase):
                               "forced_src_len","forced_src_schema",
                               "other_sub", "other_filename", "other_md", "other",
                               "someGz", "someGz_filename", "someFz", "someFz_filename", "someGz_md",
-                              "someFz_sub", "someFz_md", "someGz_sub"
+                              "someFz_sub", "someFz_md", "someGz_sub",
+                              "someGz_bbox", "someFz_bbox", "some_bbox", "other_bbox",
                               ])
         self.assertEqual(set(mapper.getDatasetTypes()),
                          set(expectedTypes))
@@ -251,6 +252,8 @@ class Mapper2TestCase(unittest.TestCase):
         butler = dafPersist.ButlerFactory(mapper=mapper).create()
         image = butler.get("some", ccd=35)
         self.assertEqual(image.getFilter().getName(), "r")
+
+        self.assertEqual(butler.get("some_bbox", ccd=35), image.getBBox())
 
         bbox = afwGeom.BoxI(afwGeom.Point2I(200, 100),
                             afwGeom.Extent2I(300, 400))
