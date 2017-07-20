@@ -423,6 +423,21 @@ class CameraMapper(dafPersist.Mapper):
                                        bypassImpl=lambda datasetType, pythonType, location, dataId:
                                        afwImage.Filter(
                                            afwImage.readMetadata(location.getLocationsWithRoot()[0])))
+                            setMethods("detector",
+                                       mapImpl=lambda dataId, write=False:
+                                           dafPersist.ButlerLocation(
+                                               pythonType="lsst.afw.cameraGeom.CameraConfig",
+                                               cppType="Config",
+                                               storageName="Internal",
+                                               locationList="ignored",
+                                               dataId=dataId,
+                                               mapper=self,
+                                               storage=None,
+                                           ),
+                                       bypassImpl=lambda datasetType, pythonType, location, dataId:
+                                           self.camera[self._extractDetectorName(dataId)]
+                                       )
+
                     if subPolicy["storage"] == "FitsCatalogStorage":  # a FITS catalog
                         setMethods("md", bypassImpl=lambda datasetType, pythonType, location, dataId:
                                    afwImage.readMetadata(os.path.join(location.getStorage().root,

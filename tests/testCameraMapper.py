@@ -85,7 +85,7 @@ class MinMapper2(lsst.obs.base.CameraMapper):
         return dataId
 
     def _extractDetectorName(self, dataId):
-        return "Detector"
+        return "ccd00"
 
     def std_x(self, item, dataId):
         return float(item)
@@ -257,6 +257,12 @@ class Mapper2TestCase(unittest.TestCase):
         image = butler.get("some_sub", ccd=35, bbox=bbox, imageOrigin="LOCAL", immediate=True)
         self.assertEqual(image.getHeight(), 400)
         self.assertEqual(image.getWidth(), 300)
+
+    def testDetector(self):
+        mapper = MinMapper2(root=testDir)
+        butler = dafPersist.ButlerFactory(mapper=mapper).create()
+        detector = butler.get("raw_detector", ccd=0)
+        self.assertEqual(detector.getName(), "ccd00")
 
     def testGzImage(self):
         mapper = MinMapper2(root=testDir)
