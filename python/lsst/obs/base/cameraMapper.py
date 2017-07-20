@@ -693,9 +693,8 @@ class CameraMapper(dafPersist.Mapper):
 
     def std_raw(self, item, dataId):
         """Standardize a raw dataset by converting it to an Exposure instead of an Image"""
-        exposure = exposureFromImage(item, dataId, mapper=self, logger=self.log)
-        return self._standardizeExposure(self.exposures['raw'], exposure, dataId,
-                                         trimmed=False)
+        return self._standardizeExposure(self.exposures['raw'], item, dataId,
+                                         trimmed=False, setVisitInfo=True)
 
     def map_skypolicy(self, dataId):
         """Map a sky policy."""
@@ -930,7 +929,7 @@ class CameraMapper(dafPersist.Mapper):
 
     # Default standardization function for exposures
     def _standardizeExposure(self, mapping, item, dataId, filter=True,
-                             trimmed=True):
+                             trimmed=True, setVisitInfo=True):
         """Default standardization function for images.
 
         This sets the Detector from the camera geometry
@@ -944,13 +943,13 @@ class CameraMapper(dafPersist.Mapper):
         @param dataId (dict) Dataset identifier
         @param filter (bool) Set filter? Ignored if item is already an exposure
         @param trimmed (bool) Should detector be marked as trimmed?
+        @param setVisitInfo (bool) Should Exposure have its VisitInfo filled out from the metadata?
         @return (lsst.afw.image.Exposure) the standardized Exposure"""
-        if not hasattr(item, "getMaskedImage"):
-            try:
-                item = exposureFromImage(item, dataId, mapper=self, logger=self.log)
-            except Exception as e:
-                self.log.error("Could not turn item=%r into an exposure: %s" % (repr(item), e))
-                raise
+        try:
+            item = exposureFromImage(item, dataId, mapper=self, logger=self.log, setVisitInfo=setVisitInfo)
+        except Exception as e:
+            self.log.error("Could not turn item=%r into an exposure: %s" % (repr(item), e))
+            raise
 
         if mapping.level.lower() == "amp":
             self._setAmpDetector(item, dataId, trimmed)
@@ -1037,7 +1036,7 @@ class CameraMapper(dafPersist.Mapper):
         """
         return self.registry
 
-def exposureFromImage(image, dataId=None, mapper=None, logger=None):
+def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo=True):
     """Generate an Exposure from an image-like object
 
     If the image is a DecoratedImage then also set its WCS and metadata
@@ -1067,13 +1066,14 @@ def exposureFromImage(image, dataId=None, mapper=None, logger=None):
     elif isinstance(image, afwImage.Exposure):
         # Exposure
         exposure = image
+        metadata = exposure.getMetadata()
     else:
         # Image
         exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image))
     #
     # set VisitInfo if we can
     #
-    if exposure.getInfo().getVisitInfo() is None:
+    if setVisitInfo and exposure.getInfo().getVisitInfo() is None:
         if metadata is not None:
             if mapper is None:
                 if not logger:
