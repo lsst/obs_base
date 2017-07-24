@@ -437,6 +437,14 @@ class CameraMapper(dafPersist.Mapper):
                                        bypassImpl=lambda datasetType, pythonType, location, dataId:
                                            self.camera[self._extractDetectorName(dataId)]
                                        )
+                            setMethods("bbox", bypassImpl=lambda dsType, pyType, location, dataId:
+                                       afwImage.bboxFromMetadata(
+                                           afwImage.readMetadata(location.getLocationsWithRoot()[0], hdu=1)))
+
+                        elif name == "images":
+                            setMethods("bbox", bypassImpl=lambda dsType, pyType, location, dataId:
+                                       afwImage.bboxFromMetadata(
+                                           afwImage.readMetadata(location.getLocationsWithRoot()[0])))
 
                     if subPolicy["storage"] == "FitsCatalogStorage":  # a FITS catalog
                         setMethods("md", bypassImpl=lambda datasetType, pythonType, location, dataId:
