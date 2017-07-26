@@ -85,8 +85,13 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertTrue(os.path.isdir(testOutput))
         self.assertTrue(os.path.exists(os.path.join(testOutput, "repositoryCfg.yaml")))
         cfg = dafPersist.PosixStorage.getRepositoryCfg(testOutput)
+        expectedCfg = dafPersist.RepositoryCfg(root=testPath,
+                                               mapper=MinMapper1,
+                                               mapperArgs=None,
+                                               parents=None,
+                                               policy=None)
         self.assertEqual(len(cfg.parents), 1)
-        self.assertEqual(cfg.parents[0], testPath)
+        self.assertEqual(cfg.parents[0], expectedCfg)
 
     def testParentNormal(self):
         """Test that an object can be found at root location and put into an output location.
@@ -158,7 +163,12 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertTrue(os.path.exists(testOutput))
         self.assertTrue(os.path.isdir(testOutput))
         cfg = dafPersist.Storage().getRepositoryCfg(testOutput)
-        self.assertEqual(cfg.parents, [testPath])
+        expectedCfg = dafPersist.RepositoryCfg(root=testPath,
+                                               mapper=MinMapper1,
+                                               mapperArgs=None,
+                                               parents=None,
+                                               policy=None)
+        self.assertEqual(cfg.parents, [expectedCfg])
         del butler
 
         butler = dafPersist.Butler(inputs={'root': testOutput, 'mapper': MinMapper1},
