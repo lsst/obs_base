@@ -89,6 +89,8 @@ class YamlCamera(cameraGeom.Camera):
             detectorConfig.pitchDeg = ccd['pitch']
             detectorConfig.yawDeg = ccd['yaw']
             detectorConfig.rollDeg = ccd['roll']
+            if 'crosstalk' in ccd:
+                detectorConfig.crosstalk = ccd['crosstalk']
 
         return detectorConfigs
 
