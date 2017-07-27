@@ -21,6 +21,7 @@
 #
 
 from builtins import str
+import collections
 import copy
 import os
 import pyfits  # required by _makeDefectsDict until defects are written as AFW tables
@@ -290,6 +291,53 @@ class CameraMapper(dafPersist.Mapper):
 
         self.makeRawVisitInfo = self.MakeRawVisitInfoClass(log=self.log)
 
+    policyKeyDictionary = collections.namedtuple('policyKeyDictionary', 'required allowed')
+
+    @classmethod
+    def getImagesKeys(cls):
+        return cls.policyKeyDictionary(
+            required = ['template', 'python', 'persistable'],
+            allowed = ['storage', 'tables', 'columns'])
+
+    @classmethod
+    def getExposuresKeys(cls):
+        return cls.policyKeyDictionary(
+            required = ['template', 'python', 'persistable'],
+            allowed = ['storage', 'level', 'columns', 'tables'])
+
+    @classmethod
+    def getCalibrationsKeys(cls):
+        return cls.policyKeyDictionary(
+            required = ['template', 'python', 'persistable', 'level'],
+            allowed = ['storage', 'tables', 'columns', 'validRange', 'reference', 'refCols', 'obsTimeName',
+                       'validStartName', 'validEndName', 'filter'])
+
+    @classmethod
+    def getDatasetsKeys(cls):
+        return cls.policyKeyDictionary(
+            required = ['template', 'python', 'persistable', 'storage'],
+            allowed = ['tables'])
+
+    @classmethod
+    def verifySubPolicy(cls, datasetTypeName, keyDictionary, subPolicy):
+        if (set(keyDictionary.required) <= subPolicy.keys()) is False:
+            raise RuntimeError("Subpolicy for {} is invalid; missing keys:{}".format(
+                datasetTypeName, set(keyDictionary.required) - subPolicy.keys()))
+            return set(keyDictionary.required) <= subPolicy.keys()
+        if (set(keyDictionary.required + keyDictionary.allowed)) < subPolicy.keys():
+            raise RuntimeError("Subpolicy for {} is invalid; contains extra keys:{}".format(
+                datasetTypeName, subPolicy.keys() - set(keyDictionary.required + keyDictionary.allowed)))
+
+        for k in keyDictionary.required + keyDictionary.allowed:
+            if k not in subPolicy:
+                continue
+            v = subPolicy.get(k)
+            if not v:  # here we want to catch empty strings, empty lists, None, etc.
+                if v == '':
+                    v = "(empty string)"
+                raise RuntimeError("Invalid value for policy '{}.{}': {}".format(datasetTypeName, k, v))
+        return None
+
     def _initMappings(self, policy, rootStorage=None, calibStorage=None, provided=None):
         """Initialize mappings
 
@@ -321,13 +369,13 @@ class CameraMapper(dafPersist.Mapper):
 
         # Mappings
         mappingList = (
-            ("images", imgMappingPolicy, ImageMapping),
-            ("exposures", expMappingPolicy, ExposureMapping),
-            ("calibrations", calMappingPolicy, CalibrationMapping),
-            ("datasets", dsMappingPolicy, DatasetMapping)
+            ("images", imgMappingPolicy, ImageMapping, self.getImagesKeys()),
+            ("exposures", expMappingPolicy, ExposureMapping, self.getExposuresKeys()),
+            ("calibrations", calMappingPolicy, CalibrationMapping, self.getCalibrationsKeys()),
+            ("datasets", dsMappingPolicy, DatasetMapping, self.getDatasetsKeys())
         )
         self.mappings = dict()
-        for name, defPolicy, cls in mappingList:
+        for name, defPolicy, cls, policyKeyDictionary, in mappingList:
             if name in policy:
                 datasets = policy[name]
 
@@ -364,6 +412,8 @@ class CameraMapper(dafPersist.Mapper):
                         setattr(self, "map_" + datasetType, compositeClosure)
                         # for now at least, don't set up any other handling for this dataset type.
                         continue
+
+                    self.verifySubPolicy(name + '.' + datasetType, policyKeyDictionary, subPolicy)
 
                     if name == "calibrations":
                         mapping = cls(datasetType, subPolicy, self.registry, self.calibRegistry, calibStorage,
