@@ -90,6 +90,10 @@ class Mapping(object):
         self.rootStorage = rootStorage
 
         self.template = policy['template']  # Template path
+        if self.template == '':
+            raise RuntimeError(
+                'Template may not be an empty string. Check the policy for datasetType {}'.format(
+                    datasetType))
         self.keyDict = dict([
             (k, _formatMap(v, k, datasetType))
             for k, v in
