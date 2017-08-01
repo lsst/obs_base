@@ -1,10 +1,11 @@
-#<?cfg paf policy ?>
+defaultLevel: sensor
 
-#   Mapper policy whose only dataset comes from the base mapper class
+camera: camera
 
-camera: "camera"
-defaultLevel: "sensor"
-datasets: {}
 exposures: {}
+
 calibrations: {}
+
+datasets: {}
+
 images: {}

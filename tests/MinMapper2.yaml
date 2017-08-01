@@ -1,81 +1,72 @@
-#<?cfg paf policy ?>
-
-# Minimal mapper configuration policy
-
-camera: "camera"
-
 needCalibRegistry: true
-calibRegistryPath: "tests/calibRegistry.sqlite3"
-levels: {
-    visit: "ccd"
-}
-defaultLevel: "ccd"
-defaultSubLevels: {
-    visit: "ccd"
-}
-exposures: {
-    raw: {
-        template:    "foo-%(ccd)02d.fits"
-        python:      "lsst.afw.image.ExposureU"
-        persistable: "ImageU"
-        level:       "Ccd"
-        tables:      "raw"
-    }
-}
-images: {
-    some: {
-        template:    "bar-%(ccd)02d.fits"
-        python:      "lsst.afw.image.ExposureF"
-        persistable: "ExposureF"
-        tables:      raw
-    }
-    other: {
-        template:    "bar-%(ccd)02d.fits[%(hdu)d]"
-        python:      "lsst.afw.image.ImageF"
-        persistable: "ImageF"
-        tables:      raw
-    }
-    someGz: {
-        template:    "gz/bar-%(ccd)02d.fits" # the file will end in ...fits.gz but butler will still find it.
-        python:      "lsst.afw.image.ExposureF"
-        persistable: "ExposureF"
-        tables:      raw
-    }
-        someFz: {
-        template:    "fz/bar-%(ccd)02d.fits" # the file will end in ...fits.fz but butler will still find it.
-        python:      "lsst.afw.image.ExposureF"
-        persistable: "ExposureF"
-        tables:      raw
-    }
-}
-calibrations: {
-    flat: {
-        template:    "flat-%(derivedRunId)s-f%(filter)s.fits"
-        python:      "lsst.afw.image.ExposureF"
-        persistable: "ExposureF"
-        level:       "Amp"
-        tables:      "flat"
-        validRange:  true
-        reference:   "raw"
-        refCols:     "ccd"
-        refCols:     "visit"
-        columns:     "filter"
-        columns:     "taiObs"
-    }
-}
-datasets: {
-    someCatalog: {
-        template:    "catalog-v%(visit)d-c%(ccd)02d.fits"
-        python:      "lsst.afw.table.BaseCatalog"
-        persistable: "BasesCatalog"
-        storage:     "FitsCatalogStorage"
-        tables:      "raw"
-    }
-    forced_src: {
-        template:    "%(tract)d/%(filter)s/forced_src-v%(visit)d-c%(ccd)02d.boost"
-        python:      "lsst.afw.table.SourceCatalog"
-        persistable: "SourceCatalog"
-        storage:     "FitsCatalogStorage"
-        tables:      "raw"
-    }
-}
+
+levels:
+  visit: ccd
+
+defaultLevel: ccd
+
+defaultSubLevels:
+  visit: ccd
+
+camera: camera
+
+exposures:
+  raw:
+    level: Ccd
+    persistable: ImageU
+    python: lsst.afw.image.ExposureU
+    tables: raw
+    template: foo-%(ccd)02d.fits
+
+calibrations:
+  flat:
+    columns:
+    - filter
+    - taiObs
+    level: Amp
+    persistable: ExposureF
+    python: lsst.afw.image.ExposureF
+    refCols:
+    - ccd
+    - visit
+    reference: raw
+    tables: flat
+    template: flat-%(derivedRunId)s-f%(filter)s.fits
+    validRange: true
+
+datasets:
+  forced_src:
+    persistable: SourceCatalog
+    python: lsst.afw.table.SourceCatalog
+    storage: FitsCatalogStorage
+    tables: raw
+    template: '%(tract)d/%(filter)s/forced_src-v%(visit)d-c%(ccd)02d.boost'
+  someCatalog:
+    persistable: BasesCatalog
+    python: lsst.afw.table.BaseCatalog
+    storage: FitsCatalogStorage
+    tables: raw
+    template: catalog-v%(visit)d-c%(ccd)02d.fits
+
+calibRegistryPath: tests/calibRegistry.sqlite3
+images:
+  other:
+    persistable: ImageF
+    python: lsst.afw.image.ImageF
+    tables: raw
+    template: bar-%(ccd)02d.fits[%(hdu)d]
+  some:
+    persistable: ExposureF
+    python: lsst.afw.image.ExposureF
+    tables: raw
+    template: bar-%(ccd)02d.fits
+  someFz:
+    persistable: ExposureF
+    python: lsst.afw.image.ExposureF
+    tables: raw
+    template: fz/bar-%(ccd)02d.fits
+  someGz:
+    persistable: ExposureF
+    python: lsst.afw.image.ExposureF
+    tables: raw
+    template: gz/bar-%(ccd)02d.fits

@@ -1,26 +1,23 @@
-#<?cfg paf policy ?>
+defaultLevel: sensor
 
-# Minimal mapper configuration policy
+camera: camera
 
-camera: "camera"
-
-defaultLevel: "sensor"
-datasets: {
-    x: {
-        template:    "foo-%(sensor)s.pickle"
-        python:      "lsst.afw.geom.BoxI"
-        persistable: "BoxI"
-	tables:      "x"
-        storage:     "PickleStorage"
-    }
-    badSourceHist: {
-        template:    "badSourceHist%(sensor)s.pickle"
-        python:      "lsst.afw.geom.BoxI"
-        persistable: "BoxI"
-	tables:      "x"
-        storage:     "PickleStorage"
-    }
-}
 exposures: {}
+
 calibrations: {}
+
+datasets:
+  badSourceHist:
+    persistable: BoxI
+    python: lsst.afw.geom.BoxI
+    storage: PickleStorage
+    tables: x
+    template: badSourceHist%(sensor)s.pickle
+  x:
+    persistable: BoxI
+    python: lsst.afw.geom.BoxI
+    storage: PickleStorage
+    tables: x
+    template: foo-%(sensor)s.pickle
+
 images: {}
