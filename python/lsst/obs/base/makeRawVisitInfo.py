@@ -23,6 +23,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 import math
+import numpy as np
 
 import astropy.coordinates
 import astropy.time
@@ -120,6 +121,28 @@ class MakeRawVisitInfo(object):
         return self.offsetDate(dateObs, 0.5*exposureTime)
         """
         raise NotImplementedError()
+
+    def getDarkTime(self, argDict):
+        """Get the darkTime from the DARKTIME keyword, else expTime, else NaN
+
+        Subclasses should call this function if desired, by putting:
+        argDict['darkTime'] = self.getDarkTime(argDict)
+        in their __init__() method of the derived class.
+
+        @param[in] argDict  argDict
+        @return darkTime darkTime, as inferred from the metadata
+
+        """
+        darkTime = argDict.get("darkTime", NaN)
+        if np.isfinite(darkTime):
+            return darkTime
+
+        self.log.info("darkTime is NaN/Inf; using exposureTime")
+        exposureTime = argDict.get("exposureTime", NaN)
+        if not np.isfinite(exposureTime):
+            raise RuntimeError("Tried to substitute exposureTime for darkTime but it is not available")
+
+        return exposureTime
 
     def offsetDate(self, date, offsetSec):
         """Return a date offset by a specified number of seconds
