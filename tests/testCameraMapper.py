@@ -48,7 +48,7 @@ class BaseMapper(lsst.obs.base.CameraMapper):
     packageName = 'base'
 
     def __init__(self):
-        policy = dafPersist.Policy(os.path.join(testDir, "BaseMapper.paf"))
+        policy = dafPersist.Policy(os.path.join(testDir, "BaseMapper.yaml"))
         lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir, root=testDir)
         return
 
@@ -57,7 +57,7 @@ class MinMapper1(lsst.obs.base.CameraMapper):
     packageName = 'larry'
 
     def __init__(self, **kwargs):
-        policy = dafPersist.Policy(os.path.join(testDir, "MinMapper1.paf"))
+        policy = dafPersist.Policy(os.path.join(testDir, "MinMapper1.yaml"))
         lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir, **kwargs)
         return
 
@@ -76,7 +76,7 @@ class MinMapper2(lsst.obs.base.CameraMapper):
     # CalibRoot in policy
     # needCalibRegistry
     def __init__(self, **kwargs):
-        policy = dafPersist.Policy(os.path.join(testDir, "MinMapper2.paf"))
+        policy = dafPersist.Policy(os.path.join(testDir, "MinMapper2.yaml"))
         lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir,
                                             registry="cfhtls.sqlite3", **kwargs)
         return
@@ -100,7 +100,7 @@ class MinMapper2(lsst.obs.base.CameraMapper):
 class MinMapper3(lsst.obs.base.CameraMapper):
 
     def __init__(self, **kwargs):
-        policy = dafPersist.Policy(os.path.join(testDir, "MinMapper1.paf"))
+        policy = dafPersist.Policy(os.path.join(testDir, "MinMapper1.yaml"))
         lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir, root=testDir)
         return
 

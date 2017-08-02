@@ -41,7 +41,7 @@ class MinMapper2(lsst.obs.base.CameraMapper):
     packageName = 'larry'
 
     def __init__(self):
-        policy = pexPolicy.Policy.createPolicy(os.path.join(testDir, 'MinMapper2.paf'))
+        policy = dafPersist.Policy(os.path.join(testDir, 'MinMapper2.yaml'))
         lsst.obs.base.CameraMapper.__init__(self,
                                             policy=policy,
                                             repositoryDir=testDir,
