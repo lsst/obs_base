@@ -89,6 +89,8 @@ class Mapping(object):
         self.registry = registry
         self.rootStorage = rootStorage
 
+        self._verifyPolicy(policy)
+
         self.template = policy['template']  # Template path
         self.keyDict = dict([
             (k, _formatMap(v, k, datasetType))
@@ -111,6 +113,44 @@ class Mapping(object):
         self.range = None
         self.columns = None
         self.obsTimeName = policy['obsTimeName'] if 'obsTimeName' in policy else None
+
+    def _verifyPolicy(self, policy):
+        """Used to verify that policy for this mapping conforms to all the requirements of this mapping.
+        Mapping subclasses should override this function if they need to check policy constraints.
+
+        Parameters
+        ----------
+        policy : lsst.daf.persistence.Policy
+            Policy to be verfiied.
+
+        Raises
+        ------
+        RuntimeError
+            If the policy does not conform to the requirements of this mapping a RuntimeError is raised.
+        """
+        pass
+
+    def _verifyPolicyKeysPopulated(self, policy, keys):
+        """Helper function for verifying keys are set in a policy and that they are populated and not None or
+        an empty string.
+
+        Parameters
+        ----------
+        policy : lsst.daf.persistence.Policy
+            Policy to be verfiied.
+        keys : list of string
+            Policy keys that must exist and not be None or an empty string.
+
+        Raises
+        ------
+        RuntimeError
+            If the policy does not conform to the requirements of this mapping a RuntimeError is raised.
+        """
+        for key in keys:
+            if policy.get(key) in ('', None):
+                raise RuntimeError(
+                    ("{} policy verificaiton failed; the template paramater must be populated. Check the " +
+                     "policy for {}.").format(type(self), self.datasetType))
 
     def keys(self):
         """Return the dict of keys and value types required for this mapping."""
@@ -219,7 +259,10 @@ class Mapping(object):
                 # format of self.range is ('?', isBetween-lowKey, isBetween-highKey)
                 # here we transform that to {(lowKey, highKey): value}
                 lookupDataId[(self.range[1], self.range[2])] = dataId[self.obsTimeName]
-            result = self.registry.lookup(properties, self.tables, lookupDataId, template=self.template)
+            try:
+                result = self.registry.lookup(properties, self.tables, lookupDataId, template=self.template)
+            except:
+                import pdb; pdb.set_trace()
         if not removed:
             return result
         # Iterate over the query results, re-inserting the skymap entries.
@@ -278,7 +321,6 @@ def _formatMap(ch, k, datasetType):
                            " for field %s in template for dataset %s" %
                            (ch, k, datasetType))
 
-
 class ImageMapping(Mapping):
     """ImageMapping is a Mapping subclass for non-camera images."""
 
@@ -293,6 +335,9 @@ class ImageMapping(Mapping):
             policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
         self.columns = policy.asArray('columns') if 'columns' in policy else None
+
+    def _verifyPolicy(self, policy):
+        self._verifyPolicyKeysPopulated(policy, ['template'])
 
 
 class ExposureMapping(Mapping):
@@ -312,6 +357,9 @@ class ExposureMapping(Mapping):
 
     def standardize(self, mapper, item, dataId):
         return mapper._standardizeExposure(self, item, dataId)
+
+    def _verifyPolicy(self, policy):
+        self._verifyPolicyKeysPopulated(policy, ['template'])
 
 
 class CalibrationMapping(Mapping):
@@ -450,3 +498,10 @@ class DatasetMapping(Mapping):
             policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
         self.storage = policy["storage"]  # Storage type
+
+    def _verifyPolicy(self, policy):
+        self._verifyPolicyKeysPopulated(policy, ['template', 'storage'])
+        if 'level' in policy:
+            raise RuntimeError(
+                ("{} policy verificaiton failed; the 'level' paramater is not allowed. Check the " +
+                 "policy for {}.").format(type(self), self.datasetType))
