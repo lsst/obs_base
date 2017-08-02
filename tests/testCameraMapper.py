@@ -425,6 +425,23 @@ class ParentRegistryTestCase(unittest.TestCase):
         self.assertNotEqual(id(registryA), id(registryB))
 
 
+class PolicyVerificationMapper(lsst.obs.base.CameraMapper):
+
+    def __init__(self, policy):
+        lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir)
+        return
+
+
+class PolicyVerificationTestCase(unittest.TestCase):
+
+    def testEmptyString(self):
+        """Test that a required parameter that is populated with an empty string raises a RuntimeError."""
+        policy = dafPersist.Policy(os.path.join(testDir, "MinMapper2.yaml"))
+        policy['exposures.raw.template'] = ''
+        with self.assertRaises(RuntimeError):
+            PolicyVerificationMapper(policy)
+
+
 class MemoryTester(lsst.utils.tests.MemoryTestCase):
     pass
 
