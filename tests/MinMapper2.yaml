@@ -17,6 +17,64 @@ exposures:
     python: lsst.afw.image.ExposureU
     tables: raw
     template: foo-%(ccd)02d.fits
+  wcs:
+    template: ignored
+  icExp:
+    template: ignored
+  deepDiff_matchedExp:
+    template: ignored
+  deepDiff_metadata:
+    template: ignored
+  deepDiff_diaSrc:
+    template: ignored
+  deepDiff_kernelSrc:
+    template: ignored
+  deepDiff_differenceExp:
+    template: ignored
+  isr_metadata:
+    template: ignored
+  icSrc:
+    template: ignored
+  icExpBackground:
+    template: ignored
+  processCcd_metadata:
+    template: ignored
+  characterizeImage_metadata:
+    template: ignored
+  calibrate_metadata:
+    template: ignored
+  forcedPhotCcd_metadata:
+    template: ignored
+  src:
+    template: ignored
+  calexpBackground:
+    template: ignored
+  srcMatch:
+    template: ignored
+  srcMatchFull:
+    template: ignored
+  photoCalib:
+    template: ignored
+  deepCoadd_measMatch:
+    template: ignored
+  deepCoadd_measMatchFull:
+    template: ignored
+  donutSrc:
+    template: ignored
+  deepCoadd_directWarp:
+    template: ignored
+  postISRCCD:
+    template: ignored
+  deepCoadd_psfMatchedWarp:
+    template: ignored
+  dcrCoadd_directWarp:
+    template: ignored
+  deepCoadd_directWarp:
+    template: ignored
+  calexp:
+    template: ignored
+
+
 
 calibrations:
   flat:
