@@ -441,6 +441,13 @@ class PolicyVerificationTestCase(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             PolicyVerificationMapper(policy)
 
+    def testMissingPar(self):
+        """Test that a required parameter that is not declared raises a RuntimeError."""
+        policy = dafPersist.Policy(os.path.join(testDir, "MinMapper2.yaml"))
+        del(policy['exposures.raw.template'])
+        with self.assertRaises(RuntimeError):
+            PolicyVerificationMapper(policy)
+
 
 class MemoryTester(lsst.utils.tests.MemoryTestCase):
     pass
