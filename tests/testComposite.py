@@ -81,7 +81,7 @@ class TestCompositeTestCase(unittest.TestCase):
                                             }
                                         }
                                     }})
-
+        self.policy.merge(dafPersist.Policy(os.path.join(packageDir, 'tests', "MinMapper1.yaml")))
         repoArgs = dafPersist.RepositoryArgs(root=self.firstRepoPath, policy=self.policy,
                                              mapper='lsst.obs.base.test.CompositeMapper')
         butler = dafPersist.Butler(outputs=repoArgs)
@@ -264,7 +264,7 @@ class TestGenericAssembler(unittest.TestCase):
                                             }
                                         }
                                     }})
-
+        self.policy.merge(dafPersist.Policy(os.path.join(packageDir, 'tests', "MinMapper1.yaml")))
         repoArgs = dafPersist.RepositoryArgs(root=self.firstRepoPath, policy=self.policy,
                                              mapper='lsst.obs.base.test.CompositeMapper')
         butler = dafPersist.Butler(outputs=repoArgs)
@@ -407,7 +407,7 @@ class TestSubset(unittest.TestCase):
                                             'assembler': subsetAssembler
                                         },
                                     }})
-
+        self.policy.merge(dafPersist.Policy(os.path.join(packageDir, 'tests', "MinMapper1.yaml")))
         repoArgs = dafPersist.RepositoryArgs(root=self.firstRepoPath, policy=self.policy,
                                              mapper='lsst.obs.base.test.CompositeMapper')
         butler = dafPersist.Butler(outputs=repoArgs)
@@ -417,11 +417,9 @@ class TestSubset(unittest.TestCase):
         del butler
         del repoArgs
 
-
     def tearDown(self):
         if os.path.exists(self.testData):
             shutil.rmtree(self.testData)
-
 
     def test(self):
         """Verify that the generic assembler and disassembler work for objects that conform to the generic
@@ -478,7 +476,7 @@ class TestInputOnly(unittest.TestCase):
 
                                         }
                                     }})
-
+        self.policy.merge(dafPersist.Policy(os.path.join(packageDir, 'tests', "MinMapper1.yaml")))
         repoArgs = dafPersist.RepositoryArgs(root=self.firstRepoPath,
                                              mapper='lsst.obs.base.test.CompositeMapper',
                                              policy=self.policy)
