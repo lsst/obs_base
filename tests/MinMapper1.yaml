@@ -11,13 +11,26 @@ exposures:
     template: ignored
   deepDiff_matchedExp:
     template: ignored
+  deepDiff_differenceExp:
+    template: ignored
+  deepCoadd_directWarp:
+    template: ignored
+  deepCoadd_psfMatchedWarp:
+    template: ignored
+  postISRCCD:
+    template: ignored
+  calexp:
+    template: ignored
+  dcrCoadd_directWarp:
+    template: ignored
+
+
+datasets:
   deepDiff_metadata:
     template: ignored
   deepDiff_diaSrc:
     template: ignored
   deepDiff_kernelSrc:
-    template: ignored
-  deepDiff_differenceExp:
     template: ignored
   isr_metadata:
     template: ignored
@@ -32,6 +45,8 @@ exposures:
   calibrate_metadata:
     template: ignored
   forcedPhotCcd_metadata:
+    template: ignored
+  forced_src:
     template: ignored
   src:
     template: ignored
@@ -49,22 +64,16 @@ exposures:
     template: ignored
   donutSrc:
     template: ignored
-  deepCoadd_directWarp:
-    template: ignored
-  postISRCCD:
-    template: ignored
-  deepCoadd_psfMatchedWarp:
-    template: ignored
-  dcrCoadd_directWarp:
-    template: ignored
-  deepCoadd_directWarp:
-    template: ignored
-  calexp:
-    template: ignored
 
-calibrations: {}
 
-datasets:
+
+
+
+
+
+
+
+
   badSourceHist:
     persistable: BoxI
     python: lsst.afw.geom.BoxI
@@ -77,5 +86,7 @@ datasets:
     storage: PickleStorage
     tables: x
     template: foo-%(sensor)s.pickle
+
+calibrations: {}
 
 images: {}

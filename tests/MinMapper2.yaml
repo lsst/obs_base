@@ -105,6 +105,42 @@ datasets:
     storage: FitsCatalogStorage
     tables: raw
     template: catalog-v%(visit)d-c%(ccd)02d.fits
+  deepDiff_metadata:
+    template: ignored
+  deepDiff_diaSrc:
+    template: ignored
+  deepDiff_kernelSrc:
+    template: ignored
+  isr_metadata:
+    template: ignored
+  icSrc:
+    template: ignored
+  icExpBackground:
+    template: ignored
+  processCcd_metadata:
+    template: ignored
+  characterizeImage_metadata:
+    template: ignored
+  calibrate_metadata:
+    template: ignored
+  forcedPhotCcd_metadata:
+    template: ignored
+  src:
+    template: ignored
+  calexpBackground:
+    template: ignored
+  srcMatch:
+    template: ignored
+  srcMatchFull:
+    template: ignored
+  photoCalib:
+    template: ignored
+  deepCoadd_measMatch:
+    template: ignored
+  deepCoadd_measMatchFull:
+    template: ignored
+  donutSrc:
+    template: ignored
 
 calibRegistryPath: tests/calibRegistry.sqlite3
 images:
