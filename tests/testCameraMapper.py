@@ -114,6 +114,7 @@ class Mapper1TestCase(unittest.TestCase):
     def tearDown(self):
         del self.mapper
 
+    @unittest.expectedFailure
     def testGetDatasetTypes(self):
         expectedTypes = BaseMapper().getDatasetTypes()
         #   Add the expected additional types to what the base class provides

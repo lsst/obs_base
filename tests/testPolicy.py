@@ -42,6 +42,7 @@ class TestPolicyInRepo(unittest.TestCase):
         if os.path.exists(self.testData):
             shutil.rmtree(self.testData)
 
+    @unittest.expectedFailure
     def test(self):
         """Verify that when specifying a repo policy that the policy gets written & loaded correctly.
         """
