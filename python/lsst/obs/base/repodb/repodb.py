@@ -47,30 +47,30 @@ class RepoDatabase(object):
     multiple cameras (via `CameraDataSpec`) and multiple skymaps (via
     `lsst.skymap` objects).
 
-    The ideal relationship between `RepoDatabase` and `Mapper` is a yet clear.
-    At least at first, `RepoDatabase` can work with the existing `Mappers`
-    without requiring them to be changed.  In that mode, a `RepoDatabase`
-    would sit "next to" a `Mapper` (or, more generally, the set of `Mapper`s
-    in that repos parent chain), and generate `Dataset`s that can be
-    translated to `datasetType` strings and dictionary-style data IDs for use
-    by the `Mapper`.  But as `RepoDatabase` becomes more capable, we probably
-    want to retire the existing registry databases, and it would probably make
-    sense to have `Mapper` use `RepoDatabase`'s in that role instead:
-    dictionary-style data IDs would be expaneded into fully-qualified
+    The ideal relationship between `RepoDatabase` and `Mapper` is as yet
+    unclear. At least at first, `RepoDatabase` can work with the existing
+    `Mappers` without requiring them to be changed.  In that mode, a
+    `RepoDatabase` would sit "next to" a `Mapper` (or, more generally, the set
+    of `Mapper`s in that repo's parent chain), and generate `Dataset`s that can
+    be translated to `datasetType` strings and dictionary-style data IDs for
+    use by the `Mapper`.  But as `RepoDatabase` becomes more capable, we
+    probably want to retire the existing registry databases, and it would
+    probably make sense to have `Mapper` use `RepoDatabase`'s in that role
+    instead: dictionary-style data IDs would be expanded into fully-qualified
     `Datasets` by queries against a `RepoDatabase`, and these would be used
     directly to map to a location and storage for actual retrieval.  This
     *could* ultimately eliminate the need to specialize `Mapper` for each
     camera; all camera-specific content could move to `CameraDataSpec`.  I
     think it's more likely that we'll want to keep camera-specific `Mapper`s
-    but trim them down to just YAML configurations that override
-    the locations for a few datasets, with all camera-specific *code* moved
-    to `CameraDataSpec`.
+    but trim them down to just YAML configurations that override the locations
+    for a few datasets, with all camera-specific *code* moved to
+    `CameraDataSpec`.
 
     At present, `RepoDatabase` just uses `lsst.skymap` objects directly, and
-    considers that packages `TractInfo` and `PatchInfo` classes to be a
+    considers that package's `TractInfo` and `PatchInfo` classes to be a
     parallel description of what's in it's own `TractUnit` and `PatchUnit`
     classes.  That redundancy is more confusing than helpful, though, and once
-    the rest of the `RepoDatabase` desing settles down, it'd make sense to
+    the rest of the `RepoDatabase` design settles down, it'd make sense to
     unify the tract and patch classes.  A particular `SkyMap` class would then
     just be responsible for generating a set of `TractUnit` and `PatchUnit`
     classes that support the full functionality of `TractInfo` and

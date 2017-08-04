@@ -337,7 +337,7 @@ class Unit(with_metaclass(UnitMeta, object)):
     `Unit`s are used to represent concepts that can be used to label
     `Dataset`s within a repository, such as a visit (an observation with a
     particular camera) or a patch (an area of sky defined by a skymap). There
-    are also `Unit` classes to repserent cameras and skymaps themselves,
+    are also `Unit` classes to represent cameras and skymaps themselves,
     allowing multiple cameras and skymaps to coexist within the same
     repository.  The set of available `Unit` types is static: it may not be
     modified at runtime.
@@ -353,9 +353,9 @@ class Unit(with_metaclass(UnitMeta, object)):
     The creation of `Unit` *instances* is also restricted: while `SuperTask`s
     will almost always create new `Dataset`s in a repository, they cannot in
     general create new `Unit`s with which to label them. Instead, `Unit`s are
-    added by *ingestion* commands, not pipeline processing commands.  This
+    added by *registration* commands, not pipeline processing commands.  This
     includes both the familiar process of ingesting raw data and the process
-    of "ingesting" a new skymap for deep-sky data products.
+    of registering a new skymap for deep-sky data products.
 
     The `RepoDatabase` provides an interface to the `Unit`s in a repository
     (as well as the `Datasets`), and is responsible for loading `Unit`s from
