@@ -3,8 +3,8 @@ from __future__ import print_function, division, absolute_import
 from future.utils import with_metaclass
 
 __all__ = ("Field", "RegionField", "IntField", "StrField", "DateTimeField",
-           "ForeignKey", "ReverseForeignKey", "Alias",
-           "UnitMeta", "Unit",)
+           "ForeignKey", "ReverseForeignKey",
+           "UnitMeta", "Unit")
 
 
 class Field(object):
@@ -268,36 +268,6 @@ class ReverseForeignKey(object):
         self.name = name
 
 
-class Alias(object):
-    """A descriptor for `Unit` classes that makes an attribute of a another
-    `Unit` class (related via e.g. `ForeignKey`) available for convenience.
-
-    `Alias` does not result in any extra database fields, and is hence not a
-    true `Field`.
-
-    Parameters
-    ----------
-    local : descriptor
-        A `Field` or other `Unit` descriptor instance in the same class as
-        the `Alias` (typically a`ForeignKey`) that can be used to retrieve an
-        instance of a different `Unit` class.
-    remote : descriptor
-        A `Field` or other `Unit` descriptor instance that retrieves the
-        a value from an instance of the `Unit` class retreived by `local`.
-
-    TODO: point to an example in common.py when we have one.
-    """
-
-    def __init__(self, local, remote):
-        self.local = local
-        self.remote = remote
-
-    def __get__(self, instance, owner=None):
-        if instance is not None:
-            return self.remote.__get__(self.local.__get__(instance))
-        return self
-
-
 class UnitMeta(type):
     """A custom metaclass for `Unit` and all types derived from it.
 
@@ -314,12 +284,8 @@ class UnitMeta(type):
 
     def __init__(self, name, bases, dct):
         self.fields = {}
-        self.aliases = {}
         for k, v in dct.items():
             if isinstance(v, Field) or isinstance(v, ReverseForeignKey):
-                v.attach(self, name=k)
-            if isinstance(v, Alias):
-                self.aliases[k] = v
         unique = dct.get("unique", None)
         if unique is not None:
             for f in unique:
