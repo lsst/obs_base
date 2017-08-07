@@ -1,12 +1,10 @@
 from __future__ import print_function, division, absolute_import
 
 import os
-import numpy as np
 
 from lsst.skymap import DiscreteSkyMap
 
-from .base import IntField, StrField
-from .common import VisitUnit, SensorUnit, CameraUnit, AbstractFilterUnit, PhysicalFilterUnit
+from .common import SensorUnit, CameraUnit, AbstractFilterUnit, PhysicalFilterUnit
 from .backend import SqliteBackend
 from .repodb import RepoDatabase
 from .datasets import Dataset

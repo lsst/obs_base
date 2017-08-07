@@ -1,6 +1,5 @@
 from __future__ import print_function, division, absolute_import
 
-from . import base
 from . import common
 
 __all__ = ("RepoDatabase",)

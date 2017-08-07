@@ -3,7 +3,8 @@ from __future__ import print_function, division, absolute_import
 import sqlite3
 import datetime
 import itertools
-from . import base
+from .unit import Unit
+from . import fields
 from . import graph
 
 
@@ -45,7 +46,7 @@ class Backend(object):
         for the given `Unit` type.
         """
         name = UnitClass.__name__
-        while UnitClass != base.Unit:
+        while UnitClass != Unit:
             name = UnitClass.__name__
             UnitClass = UnitClass.__bases__[0]
         return name
@@ -111,7 +112,7 @@ def expandUnitClasses(UnitClasses):
     while incomplete:
         UnitClass = incomplete.pop()
         for f in UnitClass.fields.values():
-            if (isinstance(f, base.ForeignKey) and
+            if (isinstance(f, fields.ForeignKey) and
                     f.UnitClass not in everything):
                 incomplete.add(f.UnitClass)
                 everything.add(f.UnitClass)
@@ -137,25 +138,25 @@ class SqliteBackend(Backend):
 
     # Mapping from Unit Field types to SQLite types.
     SQL_TYPES = {
-        base.RegionField: "BLOB",
-        base.IntField: "INTEGER",
-        base.StrField: "TEXT",
-        base.DateTimeField: "INTEGER",
-        base.ForeignKey: "INTEGER",
+        fields.RegionField: "BLOB",
+        fields.IntField: "INTEGER",
+        fields.StrField: "TEXT",
+        fields.DateTimeField: "INTEGER",
+        fields.ForeignKey: "INTEGER",
     }
 
     # Mapping from Unit Field type to a function that converts SQL types
     # to Python types.
     FROM_SQL = {
-        base.DateTimeField: datetime.datetime.fromtimestamp,
+        fields.DateTimeField: datetime.datetime.fromtimestamp,
     }
 
     # Mapping from Unit Field type to a function that converts Python types
     # to SQL types.
     TO_SQL = {
-        base.DateTimeField:
+        fields.DateTimeField:
             lambda dt: (dt - datetime.datetime(1970, 1, 1)).total_seconds(),
-        base.ForeignKey:
+        fields.ForeignKey:
             lambda x: x.id
     }
 
@@ -187,7 +188,7 @@ class SqliteBackend(Backend):
             return
         idColDef = "{} INTEGER PRIMARY KEY".format(self.config["idcol"])
         BaseClass = UnitClass.__bases__[0]
-        if BaseClass != base.Unit:
+        if BaseClass != Unit:
             idColDef += " REFERENCES {} ({})".format(
                 self.getUnitTableName(BaseClass),
                 self.config["idcol"]
@@ -195,7 +196,7 @@ class SqliteBackend(Backend):
         items = [idColDef]
         for k, v in UnitClass.fields.items():
             t = [k, self.SQL_TYPES[type(v)]]
-            if isinstance(v, base.ForeignKey):
+            if isinstance(v, fields.ForeignKey):
                 t.append(
                     "REFERENCES {} ({})".format(
                         self.getUnitTableName(v.UnitClass),
@@ -223,7 +224,7 @@ class SqliteBackend(Backend):
         """
         items = []
         for k, v in DatasetClass.properties.items():
-            t = [k, self.SQL_TYPES[base.ForeignKey]]
+            t = [k, self.SQL_TYPES[fields.ForeignKey]]
             t.append(
                 "REFERENCES {} ({})".format(
                     self.getUnitTableName(v.UnitClass),
@@ -354,7 +355,7 @@ class SqliteBackend(Backend):
                 "{}.{} AS {}_id".format(table, self.config["idcol"], table)
             )
             for f in UnitClass.fields.values():
-                if isinstance(f, base.ForeignKey):
+                if isinstance(f, fields.ForeignKey):
                     where.append(
                         "({current}.{column} = {foreign}.{idcol})".format(
                             current=table,
