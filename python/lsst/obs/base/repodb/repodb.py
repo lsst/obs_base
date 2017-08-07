@@ -2,7 +2,32 @@ from __future__ import print_function, division, absolute_import
 
 from . import common
 
-__all__ = ("RepoDatabase",)
+__all__ = ("RepoDatabase", "Camera", "SkyMap")
+
+
+class Camera(object):
+
+    def __init__(self, name):
+        self.name = name
+
+    def register(self, repodb):
+        raise NotImplementedError()
+
+
+class SkyMap(object):
+
+    def __init__(self, name, target):
+        self.name = name
+        self.target = target
+
+    def __reduce__(self):
+        return (SkyMap, (self.name, self.target))
+
+    def __getattr__(self, name):
+        return getattr(self.target, name)
+
+    def __iter__(self):
+        return iter(self.target)
 
 
 class RepoDatabase(object):
@@ -113,8 +138,7 @@ class RepoDatabase(object):
        a `RepoDatabase` is intrinsically aware of.
     """
 
-    DEFAULT_UNIT_CLASSES = (common.CameraUnit, common.SkyMapUnit,
-                            common.TractUnit, common.PatchUnit,
+    DEFAULT_UNIT_CLASSES = (common.TractUnit, common.PatchUnit,
                             common.AbstractFilterUnit, common.PhysicalFilterUnit,
                             common.VisitUnit, common.SensorUnit)
 
@@ -136,19 +160,18 @@ class RepoDatabase(object):
         """Add a `CameraUnit` and its associated `FilterUnits` and
         `SensorUnits`.
         """
-        self.insertUnit(camera)
+        self.backend.addLabeledObject("camera", camera.name, camera)
         self._cameras[camera.name] = camera
         camera.register(self)
 
     def insertUnit(self, unit):
         self.backend.insertUnit(unit)
 
-    def addSkyMap(self, skyMap, name):
-        """Add `Unit`s to the `RepoDatabase defined by a `SkyMap`.
+    def addSkyMap(self, skyMap):
+        """Register a SkyMap with the repository.
 
-        This adds a `SkyMapUnit` to the databse, enabling the user
-        to call `addTracts` to actually add `TractUnit` and `PatchUnit`
-        instances to the database.
+        This enables the user to call `addTracts` to actually add
+        `TractUnit` and `PatchUnit` instances to the database.
 
         Parameters
         ----------
@@ -160,9 +183,8 @@ class RepoDatabase(object):
             the skymap *instance* (i.e. including configuration), not just
             its type.
         """
-        skyMapUnit = common.SkyMapUnit(name=name)
-        self.insertUnit(skyMapUnit)
-        self._skyMaps[name] = (skyMap, skyMapUnit)
+        self.backend.addLabeledObject("skymap", skyMap.name, skyMap)
+        self._skyMaps[skyMap.name] = skyMap
 
     def addTracts(self, skyMapName, only=None):
         """Add `TractUnit` and `PatchUnit` instances to the database.
@@ -176,7 +198,7 @@ class RepoDatabase(object):
             A list of `lsst.skymap` tract IDs (i.e. `TractUnit.number`) values
             to limit which tracts to add.  `None` (default) adds all tracts.
         """
-        skyMap, skyMapUnit = self._skyMaps[skyMapName]
+        skyMap = self._skyMaps[skyMapName]
         allPatches = set()
         if only is None:
             iterable = skyMap
@@ -184,13 +206,13 @@ class RepoDatabase(object):
             iterable = (skyMap[t] for t in only)
         for tract in iterable:
             tractUnit = common.TractUnit(number=tract.getId(),
-                                         skymap=skyMapUnit)
+                                         skymap=skyMap)
             self.insertUnit(tractUnit)
             for patch in tract:
                 x, y = patch.getIndex()
                 allPatches.add((x, y))
         for x, y in allPatches:
-            patchUnit = common.PatchUnit(x=x, y=y, skymap=skyMapUnit)
+            patchUnit = common.PatchUnit(x=x, y=y, skymap=skyMap)
             self.insertUnit(patchUnit)
         # TODO: tract-patch join table
 

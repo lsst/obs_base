@@ -15,17 +15,8 @@ class GraphTestCase(unittest.TestCase):
         self.db = repodb.tests.makeRepoDatabase()
 
     def testUnitUniverseGraph(self):
-        graph = self.db.makeGraph([repodb.CameraUnit, repodb.SkyMapUnit, repodb.AbstractFilterUnit])
-        self.assertItemsEqual(graph.units.keys(), [repodb.CameraUnit, repodb.SkyMapUnit,
-                                                   repodb.AbstractFilterUnit])
-        self.assertItemsEqual(
-            [unit.name for unit in graph.units[repodb.CameraUnit]],
-            ["HSC"]
-        )
-        self.assertItemsEqual(
-            [unit.name for unit in graph.units[repodb.SkyMapUnit]],
-            ["DISCRETE_2"]
-        )
+        graph = self.db.makeGraph([repodb.AbstractFilterUnit])
+        self.assertItemsEqual(graph.units.keys(), [repodb.AbstractFilterUnit])
         self.assertItemsEqual(
             [unit.name for unit in graph.units[repodb.AbstractFilterUnit]],
             "ugrizy"

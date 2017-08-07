@@ -1,7 +1,7 @@
 from __future__ import print_function, division, absolute_import
 
 __all__ = ("Field", "RegionField", "IntField", "StrField", "DateTimeField",
-           "ForeignKey", "ReverseForeignKey")
+           "LabeledObjectField", "ForeignKey", "ReverseForeignKey")
 
 
 class Field(object):
@@ -62,7 +62,7 @@ class Field(object):
         self.name = name
         cls.fields[name] = self
 
-    def finalize(self, instance, others):
+    def finalize(self, instance, otherUnits, labeledObjects):
         """Complete initialization of a `Unit` instance holding this field.
 
         Should only be called by `Backend` implementations when constructing a
@@ -74,13 +74,17 @@ class Field(object):
         ----------
         instance : `Unit`
             An instance of the `Unit` subclass to which this `Field` is
-            attaached.  The instance will have a `_storage` dict will all
-            field keys present, and `finalize` may modify the dictonaries
+            attaached.  The instance will have a `_storage` dict with all
+            field keys present, and `finalize` may modify the dictonary's
             values to coerce them to the types needed by the `Field` or
             otherwise complete their initialization.
-        others : nested `dict` of `{UnitClass: {`int`: `Unit`}}`
+        otherUnits : nested `dict` of `{UnitClass: {`int`: `Unit`}}`
             A nested dictionary containing other partially-initialized `Units`
             instances, indexed first by class type and then by integer ID.
+        labeledObjects : nested `dict` of `{label: {category: instance}}`
+            A dictionary of objects not stored by the database, for use by
+            LabeledObjectField.
+        }
         """
         pass
 
@@ -144,6 +148,33 @@ class DateTimeField(Field):
     pass
 
 
+class LabeledObjectField(Field):
+    """A Field class that uses an in-database string to identify to an
+    out-of-database Python object.
+
+    Parameters
+    ----------
+    category : `str`
+        A string category to use as the first key when looking for the
+        label in a nested dictionary.
+    optional : `bool`
+        If True, the field's value may be `None` in Python or NULL in a
+        database.
+    """
+
+    def __init__(self, category, optional=False):
+        Field.__init__(self, optional=optional)
+        self.category = category
+
+    def finalize(self, instance, otherUnits, labeledObjects):
+        label = instance._storage.get(self.name, None)
+        if label is None:
+            assert self.optional
+            return
+        target = labeledObjects[self.category][label]
+        instance._storage[self.name] = target
+
+
 class ForeignKey(Field):
     """A Field class that represents a link to another Unit type.
 
@@ -199,7 +230,7 @@ class ForeignKey(Field):
             reverse = getattr(self.UnitClass, self._reverse)
             reverse.attach(self.UnitClass, self._reverse)
 
-    def finalize(self, instance, others):
+    def finalize(self, instance, otherUnits, labeledObjects):
         """
         Complete initialization of a `Unit` instance holding this field.
 
@@ -217,7 +248,7 @@ class ForeignKey(Field):
         if id is None:
             assert self.optional
             return
-        target = others[self.UnitClass][id]
+        target = otherUnits[self.UnitClass][id]
         instance._storage[self.name] = target
         rev = target._reversed.setdefault(self._reverse, set())
         rev.add(instance)
@@ -263,4 +294,3 @@ class ReverseForeignKey(object):
             to set the descriptor's internal name attribute'
         """
         self.name = name
-

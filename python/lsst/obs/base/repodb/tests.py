@@ -4,9 +4,9 @@ import os
 
 from lsst.skymap import DiscreteSkyMap
 
-from .common import SensorUnit, CameraUnit, AbstractFilterUnit, PhysicalFilterUnit
+from .common import SensorUnit, AbstractFilterUnit, PhysicalFilterUnit
 from .backend import SqliteBackend
-from .repodb import RepoDatabase
+from .repodb import RepoDatabase, Camera, SkyMap
 from .datasets import Dataset
 from . import common
 
@@ -15,7 +15,7 @@ __all__ = ("makeRepoDatabase", "Coadd")
 DATA_DIR = os.path.join(os.path.split(__file__)[0], "..", "..", "..", "..", "..", "tests", "data")
 
 
-class HscCameraUnit(CameraUnit):
+class HscCameraUnit(Camera):
 
     def register(self, repodb):
         # Add physical filters, associating them we globally-defined abstract filters.
@@ -34,11 +34,14 @@ class HscCameraUnit(CameraUnit):
 HSC = HscCameraUnit(name="HSC")
 
 
-DISCRETE_2 = DiscreteSkyMap(
-    config=DiscreteSkyMap.ConfigClass(
-        raList=[40.0, 15.0],
-        decList=[60.0, 26.0],
-        radiusList=[0.3, 0.3]
+DISCRETE_2 = SkyMap(
+    name="DISCRETE_2",
+    target=DiscreteSkyMap(
+        config=DiscreteSkyMap.ConfigClass(
+            raList=[40.0, 15.0],
+            decList=[60.0, 26.0],
+            radiusList=[0.3, 0.3]
+        )
     )
 )
 
@@ -57,7 +60,7 @@ def makeRepoDatabase(filename=":memory:"):
     for b in "ugrizy":
         db.insertUnit(AbstractFilterUnit(name=b))
     db.addCamera(HSC)
-    db.addSkyMap(DISCRETE_2, "DISCRETE_2")
+    db.addSkyMap(DISCRETE_2)
     db.addTracts("DISCRETE_2")
     db.registerDatasetType(Coadd)
     graph = db.makeGraph(FutureDatasets=[Coadd])

@@ -41,6 +41,9 @@ class Backend(object):
         if config is not None:
             self.config.update(config)
 
+    def addLabeledObject(self, category, label, obj):
+        raise NotImplementedError()
+
     def getUnitTableName(self, UnitClass):
         """Return the name to use for a SQL table or view containing instances
         for the given `Unit` type.
@@ -141,6 +144,7 @@ class SqliteBackend(Backend):
         fields.RegionField: "BLOB",
         fields.IntField: "INTEGER",
         fields.StrField: "TEXT",
+        fields.LabeledObjectField: "TEXT",
         fields.DateTimeField: "INTEGER",
         fields.ForeignKey: "INTEGER",
     }
@@ -157,21 +161,28 @@ class SqliteBackend(Backend):
         fields.DateTimeField:
             lambda dt: (dt - datetime.datetime(1970, 1, 1)).total_seconds(),
         fields.ForeignKey:
-            lambda x: x.id
+            lambda x: x.id,
+        fields.LabeledObjectField:
+            lambda x: x.name
     }
 
     def __init__(self, dbname, config=None):
         Backend.__init__(self, config)
+        self.labeledObjects = {}
         self.dbname = dbname
         self.db = sqlite3.connect(dbname)
         self.db.row_factory = sqlite3.Row
 
+    def addLabeledObject(self, category, label, obj):
+        self.labeledObjects.setdefault(category, {})[label] = obj
+
     def __getstate__(self):
-        return (self.dbname, self.config)
+        return (self.dbname, self.config, self.labeledObjects)
 
     def __setstate__(self, state):
-        dbname, config = state
+        dbname, config, labeledObjects = state
         self.__init__(dbname, config=config)
+        self.labeledObjects.update(labeledObjects)
 
     def createUnitTable(self, UnitClass):
         """Create a table or view that can hold instances of the given `Unit`
@@ -418,7 +429,7 @@ class SqliteBackend(Backend):
         for UnitClass, instances in units.items():
             for instance in instances.values():
                 for f in UnitClass.fields.values():
-                    f.finalize(instance, units)
+                    f.finalize(instance, units, self.labeledObjects)
         # Convert from dict to frozenset: want the set of Units to
         # be immutable, and we don't need to look up by ID after
         # dereferencing all the foreign keys.

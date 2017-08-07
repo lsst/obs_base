@@ -1,33 +1,16 @@
 from __future__ import print_function, division, absolute_import
 
 from .unit import Unit
-from .fields import StrField, IntField, ForeignKey, ReverseForeignKey, DateTimeField
+from .fields import StrField, IntField, ForeignKey, ReverseForeignKey, DateTimeField, LabeledObjectField
 
-__all__ = ("CameraUnit", "SkyMapUnit", "TractUnit", "PatchUnit",
+__all__ = ("TractUnit", "PatchUnit",
            "AbstractFilterUnit", "PhysicalFilterUnit",
            "VisitUnit", "SensorUnit")
 
 
-class CameraUnit(Unit):
-    name = StrField()
-    filters = ReverseForeignKey()
-    visits = ReverseForeignKey()
-    sensors = ReverseForeignKey()
-    unique = (name,)
-
-    def register(self, repodb):
-        raise NotImplementedError()
-
-
-class SkyMapUnit(Unit):
-    name = StrField()
-    tracts = ReverseForeignKey()
-    unique = (name,)
-
-
 class TractUnit(Unit):
     number = IntField()
-    skymap = ForeignKey(SkyMapUnit, reverse="tracts")
+    skymap = LabeledObjectField("skymap")
     unique = (skymap, number)
 
     def getDataIdValue(self):
@@ -35,7 +18,7 @@ class TractUnit(Unit):
 
 
 class PatchUnit(Unit):
-    skymap = ForeignKey(SkyMapUnit)
+    skymap = LabeledObjectField("skymap")
     x = IntField()
     y = IntField()
     unique = (skymap, x, y)
@@ -56,7 +39,7 @@ class AbstractFilterUnit(Unit):
 class PhysicalFilterUnit(Unit):
     name = StrField()
     abstract = ForeignKey(AbstractFilterUnit, reverse="physical")
-    camera = ForeignKey(CameraUnit, reverse="filters")
+    camera = LabeledObjectField("camera")
     visits = ReverseForeignKey()
     unique = (camera, name)
 
@@ -65,7 +48,7 @@ class PhysicalFilterUnit(Unit):
 
 
 class VisitUnit(Unit):
-    camera = ForeignKey(CameraUnit, reverse="visits")
+    camera = LabeledObjectField("camera")
     number = IntField()
     filter = ForeignKey(PhysicalFilterUnit, reverse="visits")
     sensors = ReverseForeignKey()
@@ -73,5 +56,5 @@ class VisitUnit(Unit):
 
 
 class SensorUnit(Unit):
-    camera = ForeignKey(CameraUnit, reverse="sensors")
+    camera = LabeledObjectField("camera")
     number = IntField()
