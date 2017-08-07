@@ -283,15 +283,21 @@ class UnitMeta(type):
     """
 
     def __init__(self, name, bases, dct):
-        self.fields = {}
+        if len(bases) > 1:
+            raise TypeError("Multiple inheritance is not supported for Units")
+        if bases[0] is not object and bases[0] is Unit:
+            self.fields = {}
         for k, v in dct.items():
             if isinstance(v, Field) or isinstance(v, ReverseForeignKey):
+                if bases[0] is Unit:
+                    v.attach(self, name=k)
+                else:
+                    raise ValueError("Only direct subclasses of Unit may have fields")
         unique = dct.get("unique", None)
         if unique is not None:
             for f in unique:
                 if not isinstance(f, Field):
                     raise ValueError("Unique constraints must be Fields")
-
 
 NO_COMPARE_MESSAGE = ("Cannot compare Units with no ID (to add an ID, "
                       "insert it into a RepoDatabase)")
@@ -361,6 +367,8 @@ class Unit(with_metaclass(UnitMeta, object)):
     `RepoGraph`).  The keys of the `datasets` dictionary are `Dataset` class
     types, and values are `set`s of `Dataset` instances.
     """
+
+    unique = None
 
     def __init__(self, **kwds):
         self._storage = kwds
