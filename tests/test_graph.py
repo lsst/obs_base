@@ -15,8 +15,9 @@ class GraphTestCase(unittest.TestCase):
         self.db = repodb.tests.makeRepoDatabase()
 
     def testUnitUniverseGraph(self):
-        graph = self.db.makeGraph(self.db.UNIT_CLASSES)
-        self.assertItemsEqual(graph.units.keys(), self.db.UNIT_CLASSES)
+        graph = self.db.makeGraph([repodb.CameraUnit, repodb.SkyMapUnit, repodb.AbstractFilterUnit])
+        self.assertItemsEqual(graph.units.keys(), [repodb.CameraUnit, repodb.SkyMapUnit,
+                                                   repodb.AbstractFilterUnit])
         self.assertItemsEqual(
             [unit.name for unit in graph.units[repodb.CameraUnit]],
             ["HSC"]
@@ -26,23 +27,23 @@ class GraphTestCase(unittest.TestCase):
             ["DISCRETE_2"]
         )
         self.assertItemsEqual(
-            [unit.name for unit in graph.units[repodb.FilterUnit]],
-            "grizy"
+            [unit.name for unit in graph.units[repodb.AbstractFilterUnit]],
+            "ugrizy"
         )
         # Much more to test here
 
-    def tesDatasets(self):
+    def testDatasets(self):
         universe = self.db.makeGraph(FutureDatasets=(repodb.tests.Coadd,))
         restricted = self.db.makeGraph(NeededDatasets=(repodb.tests.Coadd,))
         self.assertItemsEqual(
-            [unit.name for unit in restricted.units[repodb.FilterUnit]],
+            [unit.name for unit in restricted.units[repodb.AbstractFilterUnit]],
             ["r"]
         )
         self.assertLess(
-            restricted.units[repodb.FilterUnit],
-            universe.units[repodb.FilterUnit]
+            restricted.units[repodb.AbstractFilterUnit],
+            universe.units[repodb.AbstractFilterUnit]
         )
-        self.assertLess(
+        self.assertEqual(
             restricted.datasets[repodb.tests.Coadd],
             universe.datasets[repodb.tests.Coadd]
         )
@@ -62,15 +63,15 @@ class GraphTestCase(unittest.TestCase):
         )
 
     def testUserWhere(self):
-        universe = self.db.makeGraph(self.db.UNIT_CLASSES)
-        restricted = self.db.makeGraph(self.db.UNIT_CLASSES,
-                                       where="FilterUnit.name in ('g', 'r')")
+        universe = self.db.makeGraph([repodb.AbstractFilterUnit])
+        restricted = self.db.makeGraph([repodb.AbstractFilterUnit],
+                                       where="AbstractFilterUnit.name in ('g', 'r')")
         self.assertLess(
-            restricted.units[repodb.FilterUnit],
-            universe.units[repodb.FilterUnit],
+            restricted.units[repodb.AbstractFilterUnit],
+            universe.units[repodb.AbstractFilterUnit],
         )
         self.assertEqual(
-            set(filter.name for filter in restricted.units[repodb.FilterUnit]),
+            set(filter.name for filter in restricted.units[repodb.AbstractFilterUnit]),
             set("gr")
         )
 
@@ -82,8 +83,8 @@ class GraphTestCase(unittest.TestCase):
             db2 = pickle.loads(s)
             self.assertEqual(db1._cameras.keys(), db2._cameras.keys())
             self.assertEqual(db1._skyMaps.keys(), db2._skyMaps.keys())
-            graph1 = db1.makeGraph(db1.UNIT_CLASSES)
-            graph2 = db2.makeGraph(db2.UNIT_CLASSES)
+            graph1 = db1.makeGraph(db1.DEFAULT_UNIT_CLASSES)
+            graph2 = db2.makeGraph(db2.DEFAULT_UNIT_CLASSES)
             self.assertEqual(graph1.units, graph2.units)
 
 

@@ -2,7 +2,8 @@ from __future__ import print_function, division, absolute_import
 
 from . import base
 
-__all__ = ("CameraUnit", "SkyMapUnit", "TractUnit", "PatchUnit", "FilterUnit",
+__all__ = ("CameraUnit", "SkyMapUnit", "TractUnit", "PatchUnit",
+           "AbstractFilterUnit", "PhysicalFilterUnit",
            "VisitUnit", "SensorUnit")
 
 
@@ -10,7 +11,11 @@ class CameraUnit(base.Unit):
     name = base.StrField()
     filters = base.ReverseForeignKey()
     visits = base.ReverseForeignKey()
+    sensors = base.ReverseForeignKey()
     unique = (name,)
+
+    def register(self, repodb):
+        raise NotImplementedError()
 
 
 class SkyMapUnit(base.Unit):
@@ -38,8 +43,18 @@ class PatchUnit(base.Unit):
         return "{},{}".format(self.x, self.y)
 
 
-class FilterUnit(base.Unit):
+class AbstractFilterUnit(base.Unit):
     name = base.StrField()
+    physical = base.ReverseForeignKey()
+    unique = (name,)
+
+    def getDataIdValue(self):
+        return self.name
+
+
+class PhysicalFilterUnit(base.Unit):
+    name = base.StrField()
+    abstract = base.ForeignKey(AbstractFilterUnit, reverse="physical")
     camera = base.ForeignKey(CameraUnit, reverse="filters")
     visits = base.ReverseForeignKey()
     unique = (camera, name)
@@ -51,32 +66,11 @@ class FilterUnit(base.Unit):
 class VisitUnit(base.Unit):
     number = base.IntField()
     camera = base.ForeignKey(CameraUnit, reverse="visits")
-    filter = base.ForeignKey(FilterUnit, reverse="visits")
+    filter = base.ForeignKey(PhysicalFilterUnit, reverse="visits")
     sensors = base.ReverseForeignKey()
     dateobs = base.DateTimeField()
-    unique = (camera, number)
 
 
 class SensorUnit(base.Unit):
-    number = base.IntField()
-    camera = base.ForeignKey(CameraUnit)
-    unique = (camera, number)
+    camera = base.ForeignKey(CameraUnit, reverse="sensors")
 
-
-if False:  # TODO: put these back in after relating them better to visit/sensor
-
-    class RawUnit(base.Unit):
-        sensor = base.ForeignKey(SensorUnit, reverse="raw")
-        visit = base.Alias(sensor, SensorUnit.visit)
-        camera = base.Alias(sensor, SensorUnit.camera)
-        filter = base.Alias(sensor, SensorUnit.filter)
-        dateobs = base.Alias(sensor, SensorUnit.dateobs)
-        name = base.StrField()
-        unique = (sensor, name)
-
-    class MasterCalibrationUnit(base.Unit):
-        begin = base.DateTimeField()
-        end = base.DateTimeField()
-        filter = base.ForeignKey(FilterUnit, reverse=None, optional=True)
-        camera = base.StrField()
-        unique = (begin, end, filter, camera)

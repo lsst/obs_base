@@ -4,7 +4,7 @@ from future.utils import with_metaclass
 
 __all__ = ("Field", "RegionField", "IntField", "StrField", "DateTimeField",
            "ForeignKey", "ReverseForeignKey", "Alias",
-           "UnitMeta", "Unit",)
+           "UnitMeta", "Unit", "categorizeUnit")
 
 
 class Field(object):
@@ -325,6 +325,10 @@ class UnitMeta(type):
             for f in unique:
                 if not isinstance(f, Field):
                     raise ValueError("Unique constraints must be Fields")
+        if len(bases) > 1:
+            raise TypeError("Multiple inheritance is not supported for Units")
+        if bases[0] is not object and bases[0] is not Unit and bases[0].__bases__[0] is not Unit:
+            raise TypeError("Unit classes must inherit directly or at one remove from Unit.")
 
 
 NO_COMPARE_MESSAGE = ("Cannot compare Units with no ID (to add an ID, "
@@ -396,6 +400,8 @@ class Unit(with_metaclass(UnitMeta, object)):
     types, and values are `set`s of `Dataset` instances.
     """
 
+    unique = None
+
     def __init__(self, **kwds):
         self._storage = kwds
         self._storage.setdefault("id", None)
@@ -440,3 +446,28 @@ class Unit(with_metaclass(UnitMeta, object)):
         unnecessary.
         """
         raise NotImplementedError()
+
+
+def categorizeUnit(UnitClass):
+    """Categorize a Unit classes.
+
+    Returns
+    -------
+    BaseClass : `type`
+        The immediate base class of the given `Unit` type, or None if the
+        immediate base class is `Unit` itself.
+    hasTable : `bool`
+        Whether the class requires its own table in a SQL representation of
+        the Unit.
+
+    Classes that inherit directly from Unit are "primary" units, and always
+    have `hasTable==True`, even if they have no fields (besides the automatic
+    primary key).  "Derived" units, which inherit from a primary unit, may or
+    may not have a table; if they do, they must have a one-to-one relationship
+    with the primary unit's table.  Units that inherit from a derived unit and
+    multiple inheritance are not supported.
+    """
+    BaseClass = UnitClass.__bases__[0]
+    if BaseClass is Unit:
+        return (None, True)
+    return (BaseClass, len(UnitClass.fields) > 0)

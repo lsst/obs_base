@@ -1,26 +1,9 @@
 from __future__ import print_function, division, absolute_import
 
+from . import base
 from . import common
 
-__all__ = ("CameraDataSpec", "RepoDatabase")
-
-
-class CameraDataSpec(object):
-    """An object that specializes Units for a particular instrument.
-
-    Design Notes
-    ------------
-    This class may become abstract, with derived classes for each camera in
-    the future.  It should probably be integrated with the afw.cameraGeom
-    (which also describes the layout of sensors on the focal plane).  Unlike
-    afw.cameraGeom, it should contain only static information (i.e. it will
-    not be versioned when e.g. electronics details change or positions are
-    perturbed slightly).
-    """
-
-    def __init__(self, name, filters):
-        self.name = name
-        self.filters = filters
+__all__ = ("RepoDatabase",)
 
 
 class RepoDatabase(object):
@@ -131,14 +114,31 @@ class RepoDatabase(object):
        a `RepoDatabase` is intrinsically aware of.
     """
 
-    UNIT_CLASSES = (common.CameraUnit, common.SkyMapUnit,
-                    common.TractUnit, common.PatchUnit,
-                    common.FilterUnit,)
+    DEFAULT_UNIT_CLASSES = (common.CameraUnit, common.SkyMapUnit,
+                            common.TractUnit, common.PatchUnit,
+                            common.AbstractFilterUnit, common.PhysicalFilterUnit,
+                            common.VisitUnit, common.SensorUnit)
 
     def __init__(self, backend):
         self.backend = backend
         self._cameras = {}
         self._skyMaps = {}
+        self.UnitClasses = set(self.DEFAULT_UNIT_CLASSES)
+        self.DatasetClasses = set()
+
+    def registerUnitClass(self, UnitClass):
+        RootUnit, hasTable = base.categorizeUnit(UnitClass)
+        if RootUnit and RootUnit not in self.UnitClasses:
+            self.backend.createUnitTable(RootUnit)
+            self.UnitClasses.add(RootUnit)
+        if hasTable and UnitClass not in self.UnitClasses:
+            self.backend.createUnitTable(UnitClass)
+            self.UnitClasses.add(UnitClass)
+
+    def registerDatasetClass(self, DatasetClass):
+        if DatasetClass not in self.DatasetClasses:
+            self.backend.createUnitTable(DatasetClass)
+            self.DatasetClasses.add(DatasetClass)
 
     def create(self):
         """Create all `Unit` tables required by the `RepoDatabase`.
@@ -146,36 +146,20 @@ class RepoDatabase(object):
         This should only be once when a `RepoDatabase` is first constructed
         (not merely unpersisted).
         """
-        for UnitClass in self.UNIT_CLASSES:
+        for UnitClass in self.DEFAULT_UNIT_CLASSES:
             self.backend.createUnitTable(UnitClass)
 
     def addCamera(self, camera):
-        """Add `Units` to the `RepoDatabase` defined by a `CameraDataSpec`.
-
-        This adds all `FilterUnit` instances used by the camera to the
-        database.
-
-        Parameters
-        ----------
-        camera : `CameraDataSpec`
-            Object describing camera-specific aspects of the data model.
-
-        Design Notes
-        ------------
-        In the future, this should also add sensor `Unit`s that are not
-        attached to visit `Unit`s.
-
-        In the future, this should add tables for camera-specific labels for
-        visit, sensor, and filter `Unit`s (and possibly calibration `Unit`s
-        as well).
+        """Add a `CameraUnit` and its associated `FilterUnits` and
+        `SensorUnits`.
         """
-        cameraUnit = common.CameraUnit(name=camera.name)
-        self.backend.insertUnit(cameraUnit)
-        self._cameras[camera.name] = (camera, cameraUnit)
-        for f in camera.filters:
-            filterUnit = common.FilterUnit(name=f, camera=cameraUnit)
-            self.backend.insertUnit(filterUnit)
-        # TODO: add table for raw Dataset type
+        self.registerUnitClass(type(camera))
+        self.insertUnit(camera)
+        self._cameras[camera.name] = camera
+        camera.register(self)
+
+    def insertUnit(self, unit):
+        self.backend.insertUnit(unit)
 
     def addSkyMap(self, skyMap, name):
         """Add `Unit`s to the `RepoDatabase defined by a `SkyMap`.
@@ -195,7 +179,7 @@ class RepoDatabase(object):
             its type.
         """
         skyMapUnit = common.SkyMapUnit(name=name)
-        self.backend.insertUnit(skyMapUnit)
+        self.insertUnit(skyMapUnit)
         self._skyMaps[name] = (skyMap, skyMapUnit)
 
     def addTracts(self, skyMapName, only=None):
@@ -219,13 +203,13 @@ class RepoDatabase(object):
         for tract in iterable:
             tractUnit = common.TractUnit(number=tract.getId(),
                                          skymap=skyMapUnit)
-            self.backend.insertUnit(tractUnit)
+            self.insertUnit(tractUnit)
             for patch in tract:
                 x, y = patch.getIndex()
                 allPatches.add((x, y))
         for x, y in allPatches:
             patchUnit = common.PatchUnit(x=x, y=y, skymap=skyMapUnit)
-            self.backend.insertUnit(patchUnit)
+            self.insertUnit(patchUnit)
         # TODO: tract-patch join table
 
     def registerDatasetType(self, DatasetClass):

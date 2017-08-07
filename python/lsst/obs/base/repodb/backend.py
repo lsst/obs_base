@@ -55,6 +55,10 @@ class Backend(object):
     def createUnitTable(self, UnitClass):
         """Create a table or view that can hold instances of the given `Unit`
         type.
+
+        If the given unit type does not inherit from `Unit`, any intermediate
+        base classes with one or more `Fields` must already have associated
+        tables.
         """
         raise NotImplementedError()
 
@@ -167,8 +171,24 @@ class SqliteBackend(Backend):
     def createUnitTable(self, UnitClass):
         """Create a table or view that can hold instances of the given `Unit`
         type.
+
+        If the given unit type does not inherit from `Unit`, any intermediate
+        base classes with one or more `Fields` must already have associated
+        tables.
         """
-        items = ["{} INTEGER PRIMARY KEY".format(self.config["idcol"])]
+        if len(UnitClass.__bases__) > 1:
+            raise ValueError("Unit classes with multiple base classes are not supported.")
+        if len(UnitClass.fields) == 0:
+            # Do nothing for derived classes that don't add any fields.
+            return
+        idColDef = "{} INTEGER PRIMARY KEY".format(self.config["idcol"])
+        BaseClass = UnitClass.__bases__[0]
+        if BaseClass != base.Unit:
+            idColDef += " REFERENCES {} ({})".format(
+                self.getUnitTableName(BaseClass),
+                self.config["idcol"]
+            )
+        items = [idColDef]
         for k, v in UnitClass.fields.items():
             t = [k, self.SQL_TYPES[type(v)]]
             if isinstance(v, base.ForeignKey):
@@ -181,11 +201,12 @@ class SqliteBackend(Backend):
             if not v.optional:
                 t.append("NOT NULL")
             items.append(" ".join(t))
-        items.append(
-            "UNIQUE ({})".format(
-                ", ".join(f.name for f in UnitClass.unique)
+        if UnitClass.unique is not BaseClass.unique and UnitClass.unique is not None:
+            items.append(
+                "UNIQUE ({})".format(
+                    ", ".join(f.name for f in UnitClass.unique)
+                )
             )
-        )
         sql = "CREATE TABLE {} (\n    {}\n)".format(
             self.getUnitTableName(UnitClass), ",\n    ".join(items)
         )
@@ -221,16 +242,22 @@ class SqliteBackend(Backend):
     def insertUnit(self, unit):
         """Insert a `Unit` instance into the appropriate table.
         """
-        sql, columns, converters = self._buildUnitInsertQuery(type(unit))
-        values = tuple(convert(getattr(unit, k))
-                       for k, convert in zip(columns, converters))
-        cursor = self.db.cursor()
-        cursor.execute(sql, values)
-        if unit.id is None:
-            unit._storage["id"] = cursor.lastrowid
+        def insertDirect(UnitClass):
+            sql, columns, converters = self._buildUnitInsertQuery(UnitClass, id=unit.id)
+            values = tuple(convert(getattr(unit, k))
+                           for k, convert in zip(columns, converters))
+            cursor = self.db.cursor()
+            cursor.execute(sql, values)
+            if unit.id is None:
+                unit._storage["id"] = cursor.lastrowid
+        RootUnit, hasTable = base.categorizeUnit(type(unit))
+        if RootUnit:
+            insertDirect(RootUnit)
+        if hasTable:
+            insertDirect(type(unit))
         self.db.commit()
 
-    def _buildUnitInsertQuery(self, UnitClass):
+    def _buildUnitInsertQuery(self, UnitClass, id=None):
         """Build a SQL query string that inserts `Unit` instances into the
         appropriate table.
 
@@ -322,11 +349,16 @@ class SqliteBackend(Backend):
             assert where
             where = ["({})".format(where)]
         for UnitClass in UnitClasses:
+            BaseClass, hasTable = base.categorizeUnit(UnitClass)
+            if not hasTable:
+                break
             table = self.getUnitTableName(UnitClass)
             tables.append(table)
-            columns.append(
-                "{}.{} AS {}_id".format(table, self.config["idcol"], table)
-            )
+            if BaseClass is not None:
+                # Only add ID fields for primary units, not derived units
+                columns.append(
+                    "{}.{} AS {}_id".format(table, self.config["idcol"], table)
+                )
             for f in UnitClass.fields.values():
                 if isinstance(f, base.ForeignKey):
                     where.append(
@@ -350,12 +382,13 @@ class SqliteBackend(Backend):
                     )
                 )
         sql = ("CREATE TEMPORARY TABLE {temp} AS "
-               "SELECT {columns} FROM {tables} WHERE ({where})").format(
+               "SELECT {columns} FROM {tables}").format(
             temp=temp,
             columns=", ".join(columns),
             tables=", ".join(tables),
-            where=" AND ".join(where)
         )
+        if where:
+            sql += " WHERE {}".format(" AND ".join(where))
         self.db.execute(sql)
         return temp
 
