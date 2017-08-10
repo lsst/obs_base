@@ -706,3 +706,76 @@ transmission_atmosphere:  # wavelength-dependent throughput due to the atmospher
     python: lsst.afw.image.TransmissionCurve
     storage: FitsCatalogStorage
     level: None
+fgcmBuildStars_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.fgcm.fgcmBuildStars.FgcmBuildStarsConfig
+    template: config/fgcmBuildStars.py
+fgcmMakeLut_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.fgcm.fgcmMakeLut.FgcmMakeLutConfig
+    template: config/fgcmMakeLut.py
+fgcmFitCycle_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.fgcm.fgcmFitCycle.FgcmFitCycleConfig
+    template: config/fgcmFitCycle-%(fgcmcycle)02d.fits
+fgcmVisitCatalog:
+    persistable: BaseCatalog
+    storage: FitsCatalogStorage
+    tables: raw
+    python: lsst.afw.table.BaseCatalog
+    template: fgcm-process/fgcmVisitCatalog.fits
+fgcmStarObservations:
+    storage: FitsCatalogStorage
+    tables: raw
+    python: lsst.afw.table.BaseCatalog
+    template: fgcm-process/fgcmStarObservations.fits
+fgcmStarIds:
+    storage: FitsCatalogStorage
+    tables: raw
+    python: lsst.afw.table.BaseCatalog
+    template: fgcm-process/fgcmStarIds.fits
+fgcmStarIndices:
+    persistable: BaseCatalog
+    storage: FitsCatalogStorage
+    tables: raw
+    python: lsst.afw.table.BaseCatalog
+    template: fgcm-process/fgcmStarIndices.fits
+fgcmLookUpTable:
+    persistable: BaseCatalog
+    storage: FitsCatalogStorage
+    tables: raw
+    python: lsst.afw.table.BaseCatalog
+    template: fgcm-process/fgcmLookUpTable.fits
+fgcmZeropoints:
+    persistable: BaseCatalog
+    storage: FitsCatalogStorage
+    tables: raw
+    python: lsst.afw.table.BaseCatalog
+    template: fgcm-process/fgcmZeropoints-%(fgcmcycle)02d.fits
+fgcmAtmosphereParameters:
+    persistable: BaseCatalog
+    storage: FitsCatalogStorage
+    tables: raw
+    python: lsst.afw.table.BaseCatalog
+    template: fgcm-process/fgcmAtmosphereParameters-%(fgcmcycle)%02d.fits
+fgcmFitParameters:
+    persistable: BaseCatalog
+    storage: FitsCatalogStorage
+    tables: raw
+    python: lsst.afw.table.BaseCatalog
+    template: fgcm-process/fgcmFitParameters-%(fgcmcycle)%02d.fits
+fgcmFlaggedStars:
+    persistable: BaseCatalog
+    storage: FitsCatalogStorage
+    tables: raw
+    python: lsst.afw.table.BaseCatalog
+    template: fgcm-process/fgcmFlaggedStars-%(fgcmcycle)%02d.fits
+fgcmStandardStars:
+    persistable: BaseCatalog
+    storage: FitsCatalogStorage
+    tables: raw
+    python: lsst.afw.table.BaseCatalog
+    template: fgcm-process/fgcmStandardStars-%(fgcmcycle)%02d.fits
