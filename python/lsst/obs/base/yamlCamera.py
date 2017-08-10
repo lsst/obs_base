@@ -40,8 +40,8 @@ class YamlCamera(cameraGeom.Camera):
 
         plateScale = afwGeom.Angle(cameraParams["plateScale"], afwGeom.arcseconds)
         radialCoeffs = np.array(cameraParams["radialCoeffs"])/plateScale.asRadians()
-        focalPlaneToPupil = afwGeom.RadialXYTransform(radialCoeffs)
-        pupilToFocalPlane = afwGeom.InvertedXYTransform(focalPlaneToPupil)
+        focalPlaneToPupil = afwGeom.makeRadialTransform(radialCoeffs)
+        pupilToFocalPlane = focalPlaneToPupil.getInverse()
         cameraTransformMap = cameraGeom.CameraTransformMap(cameraGeom.FOCAL_PLANE,
                                                            {cameraGeom.PUPIL: pupilToFocalPlane})
         detectorList = self._makeDetectorList(cameraParams["CCDs"], pupilToFocalPlane, plateScale)
