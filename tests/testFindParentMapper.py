@@ -22,16 +22,13 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-import filecmp
 import os
 import shutil
 import unittest
 import tempfile
 import lsst.utils.tests
 from lsst.utils import getPackageDir
-
 import lsst.daf.persistence as dafPersist
-import lsst.daf.persistence.test as dpTest
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
 
@@ -63,13 +60,14 @@ class TestFindParentMapperV1Butler(unittest.TestCase):
             f.write('lsst.obs.base.test.CompositeMapper')
 
         # this should not raise an error, no error indicates that the mapper can not be found.
-        butler = dafPersist.Butler(root=self.childRepoDir)
+        dafPersist.Butler(root=self.childRepoDir)
 
     def testNoMapper(self):
         # Since in this case the _mapper file does not exist in the parent repo, this should raise an error
         # indicating that the mapper can not be found.
         with self.assertRaises(RuntimeError):
-            butler = dafPersist.Butler(self.childRepoDir, policyDir=self.testDir)
+            dafPersist.Butler(self.childRepoDir, policyDir=self.testDir)
+
 
 class MemoryTester(lsst.utils.tests.MemoryTestCase):
     pass

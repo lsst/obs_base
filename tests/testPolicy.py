@@ -48,10 +48,10 @@ class TestPolicyInRepo(unittest.TestCase):
         """
 
         objA = dpTest.TestObject("abc")
-        objB = dpTest.TestObject("def")
+        dpTest.TestObject("def")
 
         firstRepoPath = os.path.join(self.testData, 'repo1')
-        secondRepoPath = os.path.join(self.testData, 'repo2')
+        os.path.join(self.testData, 'repo2')
 
         policy = dafPersist.Policy({'camera': 'lsst.afw.cameraGeom.Camera',
                                     'datasets': {
@@ -59,7 +59,7 @@ class TestPolicyInRepo(unittest.TestCase):
                                             'python': 'lsst.daf.persistence.test.TestObject',
                                             'template': 'basic/id%(id)s.pickle',
                                             'storage': 'PickleStorage'},
-                                        }
+                                    }
                                     })
 
         firstRepoPath = os.path.join(self.testData, 'repo1')
@@ -71,7 +71,7 @@ class TestPolicyInRepo(unittest.TestCase):
         with open(os.path.join(firstRepoPath, 'repositoryCfg.yaml')) as f:
             cfg = yaml.load(f)
         self.assertEqual(cfg.policy, policy)
-        butler.put(objA, 'basicObject1', {'id':1})
+        butler.put(objA, 'basicObject1', {'id': 1})
 
         del butler
         del repoArgs
@@ -79,9 +79,8 @@ class TestPolicyInRepo(unittest.TestCase):
         # Test that a newly-initialized butler can find the policy in the repositoryCfg.
         repoArgs = dafPersist.RepositoryArgs(root=firstRepoPath)
         butler = dafPersist.Butler(inputs=repoArgs)
-        reloadedObjA = butler.get('basicObject1', {'id':1})
+        reloadedObjA = butler.get('basicObject1', {'id': 1})
         self.assertEqual(reloadedObjA, objA)
-
 
 
 class MemoryTester(lsst.utils.tests.MemoryTestCase):

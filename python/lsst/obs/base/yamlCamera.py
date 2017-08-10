@@ -19,7 +19,6 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
-from builtins import range
 import yaml
 
 import numpy as np
@@ -28,6 +27,7 @@ import lsst.afw.geom as afwGeom
 from lsst.afw.table import AmpInfoCatalog, AmpInfoTable
 from lsst.afw.cameraGeom.cameraFactory import makeDetector
 
+
 class YamlCamera(cameraGeom.Camera):
     """The Commissioning Camera (comCam)
     """
@@ -35,7 +35,7 @@ class YamlCamera(cameraGeom.Camera):
     def __init__(self, cameraYamlFile):
         """Construct a Camera
         """
-        with file(cameraYamlFile) as fd:
+        with open(cameraYamlFile) as fd:
             cameraParams = yaml.load(fd, Loader=yaml.Loader)
 
         plateScale = afwGeom.Angle(cameraParams["plateScale"], afwGeom.arcseconds)
@@ -89,7 +89,7 @@ class YamlCamera(cameraGeom.Camera):
             detectorConfig.pitchDeg = ccd['pitch']
             detectorConfig.yawDeg = ccd['yaw']
             detectorConfig.rollDeg = ccd['roll']
-        
+
         return detectorConfigs
 
     @staticmethod
@@ -97,7 +97,7 @@ class YamlCamera(cameraGeom.Camera):
         """Given a list [(x0, y0), (xsize, ysize)], probably from a yaml file, return a BoxI
             """
         (x0, y0), (xsize, ysize) = ylist
-        return  afwGeom.BoxI(afwGeom.PointI(x0, y0), afwGeom.ExtentI(xsize, ysize))
+        return afwGeom.BoxI(afwGeom.PointI(x0, y0), afwGeom.ExtentI(xsize, ysize))
 
     def _makeAmpInfoCatalog(self, ccd):
         """Construct an amplifier info catalog
@@ -106,9 +106,9 @@ class YamlCamera(cameraGeom.Camera):
         assert len(ccd['amplifiers']) > 0
         amp = ccd['amplifiers'].values()[0]
 
-        rawBBox = self._makeBBoxFromList(amp['rawBBox']) # total in file
+        rawBBox = self._makeBBoxFromList(amp['rawBBox'])  # total in file
         xRawExtent, yRawExtent = rawBBox.getDimensions()
-        
+
         from lsst.afw.table import LL, LR, UL, UR
         readCorners = dict(LL = LL, LR = LR, UL = UL, UR = UR)
 
@@ -121,7 +121,7 @@ class YamlCamera(cameraGeom.Camera):
         # end placeholder
         self.ampInfoDict = {}
         ampCatalog = AmpInfoCatalog(schema)
-        for name, amp in sorted(ccd['amplifiers'].items(), key=lambda x : x[1]['hdu']):
+        for name, amp in sorted(ccd['amplifiers'].items(), key=lambda x: x[1]['hdu']):
             record = ampCatalog.addNew()
             record.setName(name)
             record.set(hduKey, amp['hdu'])
@@ -133,7 +133,7 @@ class YamlCamera(cameraGeom.Camera):
             else:
                 x0, y0 = ix*xRawExtent, iy*yRawExtent
 
-            rawDataBBox = self._makeBBoxFromList(amp['rawDataBBox']) # Photosensitive area
+            rawDataBBox = self._makeBBoxFromList(amp['rawDataBBox'])  # Photosensitive area
             xDataExtent, yDataExtent = rawDataBBox.getDimensions()
             record.setBBox(afwGeom.BoxI(
                 afwGeom.PointI(ix*xDataExtent, iy*yDataExtent), rawDataBBox.getDimensions()))
@@ -141,7 +141,7 @@ class YamlCamera(cameraGeom.Camera):
             rawBBox = self._makeBBoxFromList(amp['rawBBox'])
             rawBBox.shift(afwGeom.ExtentI(x0, y0))
             record.setRawBBox(rawBBox)
-            
+
             rawDataBBox = self._makeBBoxFromList(amp['rawDataBBox'])
             rawDataBBox.shift(afwGeom.ExtentI(x0, y0))
             record.setRawDataBBox(rawDataBBox)
