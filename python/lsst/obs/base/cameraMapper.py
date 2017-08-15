@@ -26,8 +26,11 @@ import os
 import pyfits  # required by _makeDefectsDict until defects are written as AFW tables
 import re
 import weakref
+import yaml
+import collections
 import lsst.daf.persistence as dafPersist
 from . import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping
+import lsst.daf.base as dafBase
 import lsst.afw.geom as afwGeom
 import lsst.afw.image as afwImage
 import lsst.afw.table as afwTable
@@ -264,6 +267,7 @@ class CameraMapper(dafPersist.Mapper):
         self.keyDict = dict()
 
         self._initMappings(policy, self.rootStorage, calibStorage, provided=None)
+        self._initWriteRecipes()
 
         # Camera geometry
         self.cameraDataLocation = None  # path to camera geometry config file
@@ -409,6 +413,12 @@ class CameraMapper(dafPersist.Mapper):
                     if subPolicy["storage"] == "FitsStorage":  # a FITS image
                         setMethods("md", bypassImpl=lambda datasetType, pythonType, location, dataId:
                                    afwImage.readMetadata(location.getLocationsWithRoot()[0]))
+
+                        # Add support for configuring FITS compression
+                        addName = "add_" + datasetType
+                        if not hasattr(self, addName):
+                            setattr(self, addName, self.getImageCompressionSettings)
+
                         if name == "exposures":
                             setMethods("wcs", bypassImpl=lambda datasetType, pythonType, location, dataId:
                                        afwImage.makeWcs(
@@ -625,6 +635,11 @@ class CameraMapper(dafPersist.Mapper):
         if cls.packageName is None:
             raise ValueError('class variable packageName must not be None')
         return cls.packageName
+
+    @classmethod
+    def getPackageDir(cls):
+        """Return the base directory of this package"""
+        return getPackageDir(cls.getPackageName())
 
     def map_camera(self, dataId, write=False):
         """Map a camera dataset."""
@@ -1062,6 +1077,112 @@ class CameraMapper(dafPersist.Mapper):
         """
         return self.registry
 
+    def getImageCompressionSettings(self, datasetType, dataId):
+        """Stuff image compression settings into a daf.base.PropertySet
+
+        This goes into the ButlerLocation's "additionalData", which gets
+        passed into the boost::persistence framework.
+
+        Parameters
+        ----------
+        datasetType : `str`
+            Type of dataset for which to get the image compression settings.
+        dataId : `dict`
+            Dataset identifier.
+
+        Returns
+        -------
+        additionalData : `lsst.daf.base.PropertySet`
+            Image compression settings.
+        """
+        mapping = self.mappings[datasetType]
+        recipeName = mapping.recipe
+        storageType = mapping.storage
+        if storageType not in self._writeRecipes:
+            return lsst.daf.base.PropertySet()
+        if recipeName not in self._writeRecipes[storageType]:
+            raise RuntimeError("Unrecognized write recipe for datasetType %s (storage type %s): %s" %
+                               (datasetType, storageType, recipeName))
+        recipe = self._writeRecipes[storageType][recipeName].deepCopy()
+        seed = hash(tuple(dataId.items())) % 2**31
+        for plane in ("image", "mask", "variance"):
+            if recipe.exists(plane + ".scaling.seed") and recipe.get(plane + ".scaling.seed") == 0:
+                recipe.set(plane + ".scaling.seed", seed)
+        return recipe
+
+    def _initWriteRecipes(self):
+        """Read the recipes for writing files
+
+        These recipes are currently used for configuring FITS compression,
+        but they could have wider uses for configuring different flavors
+        of the storage types. A recipe is referred to by a symbolic name,
+        which has associated settings. These settings are stored as a
+        `PropertySet` so they can easily be passed down to the
+        boost::persistence framework as the "additionalData" parameter.
+
+        The list of recipes is written in YAML. A default recipe and
+        some other convenient recipes are in obs_base/policy/writeRecipes.yaml
+        and these may be overridden or supplemented by the individual obs_*
+        packages' own policy/writeRecipes.yaml files.
+
+        Recipes are grouped by the storage type. Currently, only the
+        ``FitsStorage`` storage type uses recipes, which uses it to
+        configure FITS image compression.
+
+        Each ``FitsStorage`` recipe for FITS compression should define
+        "image", "mask" and "variance" entries, each of which may contain
+        "compression" and "scaling" entries. Defaults will be provided for
+        any missing elements under "compression" and "scaling".
+
+        The allowed entries under "compression" are:
+
+        * algorithm (string): compression algorithm to use
+        * rows (int): number of rows per tile (0 = entire dimension)
+        * columns (int): number of columns per tile (0 = entire dimension)
+        * quantizeLevel (float): cfitsio quantization level
+
+        The allowed entries under "scaling" are:
+
+        * algorithm (string): scaling algorithm to use
+        * bitpix (int): bits per pixel (0,8,16,32,64,-32,-64)
+        * fuzz (bool): fuzz the values when quantising floating-point values?
+        * seed (long): seed for random number generator when fuzzing
+        * maskPlanes (list of string): mask planes to ignore when doing statistics
+        * quantizeLevel: divisor of the standard deviation for STDEV_* scaling
+        * quantizePad: number of stdev to allow on the low side (for STDEV_POSITIVE/NEGATIVE)
+        * bscale: manually specified BSCALE (for MANUAL scaling)
+        * bzero: manually specified BSCALE (for MANUAL scaling)
+
+        A very simple example YAML recipe:
+
+            FitsStorage:
+              default:
+                image: &default
+                  compression:
+                    algorithm: GZIP_SHUFFLE
+                mask: *default
+                variance: *default
+        """
+        recipesFile = os.path.join(getPackageDir("obs_base"), "policy", "writeRecipes.yaml")
+        recipes = dafPersist.Policy(recipesFile)
+        supplementsFile = os.path.join(self.getPackageDir(), "policy", "writeRecipes.yaml")
+        if os.path.exists(supplementsFile) and supplementsFile != recipesFile:
+            supplements = dafPersist.Policy(supplementsFile)
+            # Don't allow overrides, only supplements
+            intersection = set(recipes.names()).intersection(set(supplements.names()))
+            if intersection:
+                raise RuntimeError("Recipes provided in %s may not override those in %s: %s" %
+                                   (supplementsFile, recipesFile, intersection))
+            recipes.update(overrides)
+
+        self._writeRecipes = {}
+        validationMenu = {'FitsStorage': validateRecipeFitsStorage,}
+        for storageType in recipes.names(True):
+            if "default" not in recipes[storageType]:
+                raise RuntimeError("No 'default' recipe defined for storage type %s in %s" %
+                                   (storageType, recipesFile))
+            self._writeRecipes[storageType] = validationMenu[storageType](recipes[storageType])
+
 
 def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo=True):
     """Generate an Exposure from an image-like object
@@ -1113,3 +1234,77 @@ def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo
                 exposure.getInfo().setVisitInfo(visitInfo)
 
     return exposure
+
+
+def validateRecipeFitsStorage(recipes):
+    """Validate recipes for FitsStorage
+
+    The recipes are supplemented with default values where appropriate.
+
+    TODO: replace this custom validation code with Cerberus (DM-11846)
+
+    Parameters
+    ----------
+    recipes : `lsst.daf.persistence.Policy`
+        FitsStorage recipes to validate.
+
+    Returns
+    -------
+    validated : `lsst.daf.base.PropertySet`
+        Validated FitsStorage recipe.
+
+    Raises
+    ------
+    `RuntimeError`
+        If validation fails.
+    """
+    # Schemas define what should be there, and the default values (and by the default
+    # value, the expected type).
+    compressionSchema = {
+        "algorithm": "NONE",
+        "rows": 1,
+        "columns": 0,
+        "quantizeLevel": 0.0,
+    }
+    scalingSchema = {
+        "algorithm": "NONE",
+        "bitpix": 0,
+        "maskPlanes": ["NO_DATA"],
+        "seed": 0,
+        "quantizeLevel": 4.0,
+        "quantizePad": 5.0,
+        "fuzz": True,
+        "bscale": 1.0,
+        "bzero": 0.0,
+    }
+
+    def checkUnrecognized(entry, allowed, description):
+        """Check to see if the entry contains unrecognised keywords"""
+        unrecognized = set(entry.keys()) - set(allowed)
+        if unrecognized:
+            raise RuntimeError(
+                "Unrecognized entries when parsing image compression recipe %s: %s" %
+                (description, unrecognized))
+
+    validated = {}
+    for name in recipes.names(True):
+        checkUnrecognized(recipes[name], ["image", "mask", "variance"], name)
+        rr = dafBase.PropertySet()
+        validated[name] = rr
+        for plane in ("image", "mask", "variance"):
+            checkUnrecognized(recipes[name][plane], ["compression", "scaling"],
+                              name + "->" + plane)
+
+            for settings, schema in (("compression", compressionSchema),
+                                     ("scaling", scalingSchema)):
+                prefix = plane + "." + settings
+                if settings not in recipes[name][plane]:
+                    for key in schema:
+                        rr.set(prefix + "." + key, schema[key])
+                    continue
+                entry = recipes[name][plane][settings]
+                checkUnrecognized(entry, schema.keys(), name + "->" + plane + "->" + settings)
+                for key in schema:
+                    value = type(schema[key])(entry[key]) if key in entry else schema[key]
+                    rr.set(prefix + "." + key, value)
+    return validated

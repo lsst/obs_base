@@ -77,4 +77,8 @@ definitions: {
         default: false
         maxOccurs: 1
     }
+    recipe: {
+        type: policy
+        description: "Recipe name for writing"
+    }
 }

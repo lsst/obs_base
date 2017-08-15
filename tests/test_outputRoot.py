@@ -54,6 +54,10 @@ class MinMapper1(lsst.obs.base.CameraMapper):
     def std_x(self, item, dataId):
         return float(item)
 
+    @classmethod
+    def getPackageDir(cls):
+        return "/path/to/nowhere"
+
 
 class OutputRootTestCase(unittest.TestCase):
     """A test case for output roots."""

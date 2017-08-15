@@ -25,6 +25,7 @@ from builtins import object
 from collections import OrderedDict
 import os
 import re
+from lsst.daf.base import PropertySet
 from lsst.daf.persistence import ButlerLocation, NoResults
 from lsst.daf.persistence.policy import Policy
 import lsst.pex.policy as pexPolicy
@@ -119,6 +120,7 @@ class Mapping(object):
         self.range = None
         self.columns = None
         self.obsTimeName = policy['obsTimeName'] if 'obsTimeName' in policy else None
+        self.recipe = policy['recipe'] if 'recipe' in policy else 'default'
 
     @property
     def template(self):
@@ -161,14 +163,16 @@ class Mapping(object):
         addFunc = "add_" + self.datasetType  # Name of method for additionalData
         if hasattr(mapper, addFunc):
             addFunc = getattr(mapper, addFunc)
-            additionalData = addFunc(actualId)
-            assert isinstance(additionalData, dict), "Bad type for returned data"
+            additionalData = addFunc(self.datasetType, actualId)
+            assert isinstance(additionalData, PropertySet), \
+                   "Bad type for returned data: %s" (type(additionalData),)
         else:
-            additionalData = actualId.copy()
+            additionalData = None
 
         return ButlerLocation(pythonType=self.python, cppType=self.persistable, storageName=self.storage,
-                              locationList=path, dataId=additionalData, mapper=mapper,
-                              storage=self.rootStorage, usedDataId=usedDataId, datasetType=self.datasetType)
+                              locationList=path, dataId=actualId.copy(), mapper=mapper,
+                              storage=self.rootStorage, usedDataId=usedDataId, datasetType=self.datasetType,
+                              additionalData=additionalData)
 
     def lookup(self, properties, dataId):
         """Look up properties for in a metadata registry given a partial
