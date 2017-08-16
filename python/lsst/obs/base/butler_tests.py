@@ -48,7 +48,8 @@ class ButlerGetTests(with_metaclass(abc.ABCMeta)):
                          raw_subsets=None,
                          good_detectorIds=None,
                          bad_detectorIds=None,
-                         linearizer_type=None
+                         linearizer_type=None,
+                         ccd_key_name=None
                          ):
         """
         Set up the necessary variables for butlerGet tests.
@@ -87,6 +88,9 @@ class ButlerGetTests(with_metaclass(abc.ABCMeta)):
             dict of detectorId (usually `int`): LinearizerType
             (e.g. lsst.ip.isr.LinearizeLookupTable.LinearityType),
             or unittest.SkipTest to skip all linearizer tests.
+         ccd_key_name : `str`
+             name of ccd dataId key (e.g., "ccd" for most cameras, "ccdnum" for
+             decam), to lookup linearizer.
         """
 
         fields = ['ccdExposureId_bits',
@@ -101,7 +105,8 @@ class ButlerGetTests(with_metaclass(abc.ABCMeta)):
                   'raw_subsets',
                   'good_detectorIds',
                   'bad_detectorIds',
-                  'linearizer_type'
+                  'linearizer_type',
+                  'ccd_key_name'
                   ]
         ButlerGet = collections.namedtuple("ButlerGetData", fields)
 
@@ -117,7 +122,8 @@ class ButlerGetTests(with_metaclass(abc.ABCMeta)):
                                          raw_subsets=raw_subsets,
                                          good_detectorIds=good_detectorIds,
                                          bad_detectorIds=bad_detectorIds,
-                                         linearizer_type=linearizer_type
+                                         linearizer_type=linearizer_type,
+                                         ccd_key_name=ccd_key_name
                                          )
 
     def test_exposureId_bits(self):
@@ -145,14 +151,16 @@ class ButlerGetTests(with_metaclass(abc.ABCMeta)):
         # on various implementation details.
         self.assertEqual(exp.hasWcs(), True)
         origin = exp.getWcs().getSkyOrigin()
-        self.assertEqual(exp.getInfo().getVisitInfo().getExposureTime(), self.butler_get_data.exptimes['raw'])
         self.assertCoordsNearlyEqual(origin, self.butler_get_data.sky_origin)
+        self.assertEqual(exp.getInfo().getVisitInfo().getExposureTime(), self.butler_get_data.exptimes["raw"])
 
     def test_bias(self):
         self._test_exposure('bias')
 
     def test_dark(self):
-        self._test_exposure('dark')
+        exp = self._test_exposure('dark')
+        self.assertEqual(exp.getInfo().getVisitInfo().getExposureTime(),
+                         self.butler_get_data.exptimes["dark"])
 
     def test_flat(self):
         self._test_exposure('flat')
@@ -177,17 +185,24 @@ class ButlerGetTests(with_metaclass(abc.ABCMeta)):
             self.skipTest('Skipping %s as requested' % (inspect.currentframe().f_code.co_name))
 
         camera = self.butler.get("camera")
+        ccd_key_name = self.butler_get_data.ccd_key_name
         for detectorId in self.butler_get_data.good_detectorIds:
             detector = camera[detectorId]
-            linearizer = self.butler.get("linearizer", dataId=dict(ccd=detectorId), immediate=True)
+            linearizer = self.butler.get("linearizer", dataId={ccd_key_name: detectorId}, immediate=True)
             self.assertEqual(linearizer.LinearityType, self.butler_get_data.linearizer_type)
-            linearizer.checkDetector(detector)
+            # TODO: ip_isr.linearize.LinearizeBase is not consistent about which
+            # subclasses contain checkDetector()
+            if getattr(linearizer, "checkDetector", None) is not None:
+                linearizer.checkDetector(detector)
 
     def test_get_linearizer_bad_detectorIds(self):
         """Do bad detectorIds raise?"""
         if self.butler_get_data.linearizer_type is unittest.SkipTest:
             self.skipTest('Skipping %s as requested' % (inspect.currentframe().f_code.co_name))
 
+        ccd_key_name = self.butler_get_data.ccd_key_name
         for badccd in self.butler_get_data.bad_detectorIds:
+            # TODO: What is the correct behavior here? It's not consistent between obs_decam and obs_hsc.
+            # TODO: should it raise RuntimeError, NotFoundError, KeyError, or something else?
             with self.assertRaises(RuntimeError):
-                self.butler.get("linearizer", dataId=dict(ccd=badccd), immediate=True)
+                self.butler.get("linearizer", dataId={ccd_key_name: badccd}, immediate=True)
