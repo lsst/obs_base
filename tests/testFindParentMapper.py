@@ -26,13 +26,14 @@ import filecmp
 import os
 import shutil
 import unittest
+import tempfile
 import lsst.utils.tests
 from lsst.utils import getPackageDir
 
 import lsst.daf.persistence as dafPersist
 import lsst.daf.persistence.test as dpTest
-import lsst.utils.tests
-from lsst.utils import getPackageDir
+
+ROOT = os.path.abspath(os.path.dirname(__file__))
 
 
 class TestFindParentMapperV1Butler(unittest.TestCase):
@@ -41,9 +42,7 @@ class TestFindParentMapperV1Butler(unittest.TestCase):
     """
 
     def setUp(self):
-        packageDir = getPackageDir('obs_base')
-        self.testDir = os.path.join(packageDir, 'tests', 'findParentMapper')
-
+        self.testDir = tempfile.mkdtemp(dir=ROOT, prefix='TestFindParentMapperV1Butler-')
         self.parentRepoDir = os.path.join(self.testDir, 'parentRepo')
         os.makedirs(self.parentRepoDir)
 

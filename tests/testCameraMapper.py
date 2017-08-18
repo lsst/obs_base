@@ -26,6 +26,7 @@ from builtins import range
 import collections
 import os
 import unittest
+import tempfile
 
 import numpy as np
 
@@ -34,10 +35,9 @@ import lsst.afw.geom as afwGeom
 import lsst.afw.table as afwTable
 import lsst.daf.persistence as dafPersist
 import lsst.obs.base
-from lsst.utils import getPackageDir
 import shutil
 
-testDir = os.path.relpath(os.path.join(getPackageDir('obs_base'), 'tests'))
+ROOT = os.path.abspath(os.path.dirname(__file__))
 
 
 def setup_module(module):
@@ -48,8 +48,8 @@ class BaseMapper(lsst.obs.base.CameraMapper):
     packageName = 'base'
 
     def __init__(self):
-        policy = dafPersist.Policy(os.path.join(testDir, "BaseMapper.paf"))
-        lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir, root=testDir)
+        policy = dafPersist.Policy(os.path.join(ROOT, "BaseMapper.paf"))
+        lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=ROOT, root=ROOT)
         return
 
 
@@ -57,8 +57,8 @@ class MinMapper1(lsst.obs.base.CameraMapper):
     packageName = 'larry'
 
     def __init__(self, **kwargs):
-        policy = dafPersist.Policy(os.path.join(testDir, "MinMapper1.paf"))
-        lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir, **kwargs)
+        policy = dafPersist.Policy(os.path.join(ROOT, "MinMapper1.paf"))
+        lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=ROOT, **kwargs)
         return
 
     def std_x(self, item, dataId):
@@ -76,8 +76,8 @@ class MinMapper2(lsst.obs.base.CameraMapper):
     # CalibRoot in policy
     # needCalibRegistry
     def __init__(self, **kwargs):
-        policy = dafPersist.Policy(os.path.join(testDir, "MinMapper2.paf"))
-        lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir,
+        policy = dafPersist.Policy(os.path.join(ROOT, "MinMapper2.paf"))
+        lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=ROOT,
                                             registry="cfhtls.sqlite3", **kwargs)
         return
 
@@ -100,8 +100,8 @@ class MinMapper2(lsst.obs.base.CameraMapper):
 class MinMapper3(lsst.obs.base.CameraMapper):
 
     def __init__(self, **kwargs):
-        policy = dafPersist.Policy(os.path.join(testDir, "MinMapper1.paf"))
-        lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=testDir, root=testDir)
+        policy = dafPersist.Policy(os.path.join(ROOT, "MinMapper1.paf"))
+        lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=ROOT, root=ROOT)
         return
 
 
@@ -109,7 +109,7 @@ class Mapper1TestCase(unittest.TestCase):
     """A test case for the mapper used by the data butler."""
 
     def setUp(self):
-        self.mapper = MinMapper1(root=testDir)
+        self.mapper = MinMapper1(root=ROOT)
 
     def tearDown(self):
         del self.mapper
@@ -126,7 +126,7 @@ class Mapper1TestCase(unittest.TestCase):
         self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
         self.assertEqual(loc.getCppType(), "BoxI")
         self.assertEqual(loc.getStorageName(), "PickleStorage")
-        expectedRoot = testDir
+        expectedRoot = ROOT
         expectedLocations = ["foo-1,1.pickle"]
         self.assertEqual(loc.getStorage().root, expectedRoot)
         self.assertEqual(loc.getLocations(), expectedLocations)
@@ -160,7 +160,7 @@ class Mapper2TestCase(unittest.TestCase):
     """A test case for the mapper used by the data butler."""
 
     def testGetDatasetTypes(self):
-        mapper = MinMapper2(root=testDir)
+        mapper = MinMapper2(root=ROOT)
         expectedTypes = BaseMapper().getDatasetTypes()
         #   Add the expected additional types to what the base class provides
         expectedTypes.extend(["flat", "flat_md", "flat_filename", "flat_sub",
@@ -179,13 +179,13 @@ class Mapper2TestCase(unittest.TestCase):
                          set(expectedTypes))
 
     def testMap(self):
-        mapper = MinMapper2(root=testDir)
+        mapper = MinMapper2(root=ROOT)
         loc = mapper.map("raw", {"ccd": 13}, write=True)
         self.assertEqual(loc.getPythonType(), "lsst.afw.image.ExposureU")
         self.assertEqual(loc.getCppType(), "ImageU")
         self.assertEqual(loc.getStorageName(), "FitsStorage")
         self.assertEqual(loc.getLocations(), ["foo-13.fits"])
-        self.assertEqual(loc.getStorage().root, testDir)
+        self.assertEqual(loc.getStorage().root, ROOT)
         self.assertEqual(loc.getAdditionalData().toString(), "ccd = 13\n")
 
     def testSubMap(self):
@@ -197,13 +197,13 @@ class Mapper2TestCase(unittest.TestCase):
             # new afw (post-#1556) interface
             bbox = afwGeom.BoxI(afwGeom.Point2I(200, 100),
                                 afwGeom.Extent2I(300, 400))
-        mapper = MinMapper2(root=testDir)
+        mapper = MinMapper2(root=ROOT)
         loc = mapper.map("raw_sub", {"ccd": 13, "bbox": bbox}, write=True)
         self.assertEqual(loc.getPythonType(), "lsst.afw.image.ExposureU")
         self.assertEqual(loc.getCppType(), "ImageU")
         self.assertEqual(loc.getStorageName(), "FitsStorage")
         self.assertEqual(loc.getLocations(), ["foo-13.fits"])
-        self.assertEqual(loc.getStorage().root, testDir)
+        self.assertEqual(loc.getStorage().root, ROOT)
         self.assertEqual(loc.getAdditionalData().toString(),
                          'ccd = 13\nheight = 400\nllcX = 200\nllcY = 100\nwidth = 300\n')
 
@@ -212,13 +212,13 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getCppType(), "ImageU")
         self.assertEqual(loc.getStorageName(), "FitsStorage")
         self.assertEqual(loc.getLocations(), ["foo-13.fits"])
-        self.assertEqual(loc.getStorage().root, testDir)
+        self.assertEqual(loc.getStorage().root, ROOT)
         self.assertEqual(loc.getAdditionalData().toString(),
                          'ccd = 13\nheight = 400\nimageOrigin = "PARENT"\n'
                          'llcX = 200\nllcY = 100\nwidth = 300\n')
 
     def testCatalogExtras(self):
-        butler = dafPersist.Butler(root=testDir, mapper=MinMapper2)
+        butler = dafPersist.Butler(root=ROOT, mapper=MinMapper2)
         schema = afwTable.Schema()
         aa = schema.addField("a", type=np.int32, doc="a")
         bb = schema.addField("b", type=np.float64, doc="b")
@@ -243,10 +243,10 @@ class Mapper2TestCase(unittest.TestCase):
                 print("Warning: could not remove file %r: %s" % (filename, exc))
 
     def testImage(self):
-        mapper = MinMapper2(root=testDir)
+        mapper = MinMapper2(root=ROOT)
         loc = mapper.map("some", dict(ccd=35))
         expectedLocations = ["bar-35.fits"]
-        self.assertEqual(loc.getStorage().root, testDir)
+        self.assertEqual(loc.getStorage().root, ROOT)
         self.assertEqual(loc.getLocations(), expectedLocations)
 
         butler = dafPersist.ButlerFactory(mapper=mapper).create()
@@ -262,16 +262,16 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(image.getWidth(), 300)
 
     def testDetector(self):
-        mapper = MinMapper2(root=testDir)
+        mapper = MinMapper2(root=ROOT)
         butler = dafPersist.ButlerFactory(mapper=mapper).create()
         detector = butler.get("raw_detector", ccd=0)
         self.assertEqual(detector.getName(), "ccd00")
 
     def testGzImage(self):
-        mapper = MinMapper2(root=testDir)
+        mapper = MinMapper2(root=ROOT)
         loc = mapper.map("someGz", dict(ccd=35))
         expectedLocations = [os.path.join("gz", "bar-35.fits.gz")]
-        self.assertEqual(loc.getStorage().root, testDir)
+        self.assertEqual(loc.getStorage().root, ROOT)
         self.assertEqual(loc.getLocations(), expectedLocations)
 
         butler = dafPersist.ButlerFactory(mapper=mapper).create()
@@ -285,9 +285,9 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(image.getWidth(), 300)
 
     def testFzImage(self):
-        mapper = MinMapper2(root=testDir)
+        mapper = MinMapper2(root=ROOT)
         loc = mapper.map("someFz", dict(ccd=35))
-        expectedRoot = testDir
+        expectedRoot = ROOT
         expectedLocations = [os.path.join("fz", "bar-35.fits.fz")]
         self.assertEqual(loc.getStorage().root, expectedRoot)
         self.assertEqual(loc.getLocations(), expectedLocations)
@@ -303,7 +303,7 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(image.getWidth(), 300)
 
     def testButlerQueryMetadata(self):
-        mapper = MinMapper2(root=testDir)
+        mapper = MinMapper2(root=ROOT)
         butler = dafPersist.ButlerFactory(mapper=mapper).create()
         kwargs = {"ccd": 35, "filter": "r", "visit": 787731,
                   "taiObs": "2005-04-02T09:24:49.933440000"}
@@ -316,22 +316,22 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(butler.queryMetadata("raw", "ccd", ccd=36, filter="r", visit=787731), [])
 
     def testQueryMetadata(self):
-        mapper = MinMapper2(root=testDir)
+        mapper = MinMapper2(root=ROOT)
         self.assertEqual(mapper.queryMetadata("raw", ["ccd"], None),
                          [(x,) for x in range(36) if x != 3])
 
     def testStandardize(self):
-        mapper = MinMapper2(root=testDir)
+        mapper = MinMapper2(root=ROOT)
         self.assertEqual(mapper.canStandardize("raw"), True)
         self.assertEqual(mapper.canStandardize("notPresent"), False)
 
     def testCalib(self):
-        mapper = MinMapper2(root=testDir)
+        mapper = MinMapper2(root=ROOT)
         loc = mapper.map("flat", {"visit": 787650, "ccd": 13}, write=True)
         self.assertEqual(loc.getPythonType(), "lsst.afw.image.ExposureF")
         self.assertEqual(loc.getCppType(), "ExposureF")
         self.assertEqual(loc.getStorageName(), "FitsStorage")
-        expectedRoot = testDir
+        expectedRoot = ROOT
         expectedLocations = ["flat-05Am03-fi.fits"]
         self.assertEqual(loc.getStorage().root, expectedRoot)
         self.assertEqual(loc.getLocations(), expectedLocations)
@@ -344,29 +344,29 @@ class Mapper2TestCase(unittest.TestCase):
 
     @unittest.expectedFailure
     def testParentSearch(self):
-        mapper = MinMapper2(root=testDir)
-        paths = mapper.parentSearch(os.path.join(testDir, 'testParentSearch'),
-                                    os.path.join(testDir, os.path.join('testParentSearch', 'bar.fits')))
-        self.assertEqual(paths, [os.path.join(testDir, os.path.join('testParentSearch', 'bar.fits'))])
-        paths = mapper.parentSearch(os.path.join(testDir, 'testParentSearch'),
-                                    os.path.join(testDir,
+        mapper = MinMapper2(root=ROOT)
+        paths = mapper.parentSearch(os.path.join(ROOT, 'testParentSearch'),
+                                    os.path.join(ROOT, os.path.join('testParentSearch', 'bar.fits')))
+        self.assertEqual(paths, [os.path.join(ROOT, os.path.join('testParentSearch', 'bar.fits'))])
+        paths = mapper.parentSearch(os.path.join(ROOT, 'testParentSearch'),
+                                    os.path.join(ROOT,
                                                  os.path.join('testParentSearch', 'bar.fits[1]')))
-        self.assertEqual(paths, [os.path.join(testDir, os.path.join('testParentSearch', 'bar.fits[1]'))])
+        self.assertEqual(paths, [os.path.join(ROOT, os.path.join('testParentSearch', 'bar.fits[1]'))])
 
-        paths = mapper.parentSearch(os.path.join(testDir, 'testParentSearch'),
-                                    os.path.join(testDir, os.path.join('testParentSearch', 'baz.fits')))
-        self.assertEqual(paths, [os.path.join(testDir,
+        paths = mapper.parentSearch(os.path.join(ROOT, 'testParentSearch'),
+                                    os.path.join(ROOT, os.path.join('testParentSearch', 'baz.fits')))
+        self.assertEqual(paths, [os.path.join(ROOT,
                                               os.path.join('testParentSearch', '_parent', 'baz.fits'))])
-        paths = mapper.parentSearch(os.path.join(testDir, 'testParentSearch'),
-                                    os.path.join(testDir,
+        paths = mapper.parentSearch(os.path.join(ROOT, 'testParentSearch'),
+                                    os.path.join(ROOT,
                                                  os.path.join('testParentSearch', 'baz.fits[1]')))
-        self.assertEqual(paths, [os.path.join(testDir,
+        self.assertEqual(paths, [os.path.join(ROOT,
                                               os.path.join('testParentSearch', '_parent', 'baz.fits[1]'))])
 
     def testSkymapLookups(self):
         """Test that metadata lookups don't try to get skymap data ID values from the registry.
         """
-        mapper = MinMapper2(root=testDir)
+        mapper = MinMapper2(root=ROOT)
         butler = dafPersist.Butler(mapper=mapper)
         with self.assertRaises(RuntimeError) as manager:
             butler.dataRef("forced_src", visit=787650, ccd=13)
@@ -391,22 +391,21 @@ class Mapper3TestCase(unittest.TestCase):
 class ParentRegistryTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.testDir = os.path.join(testDir, "ParentRegistryTestCase")
-        self.tearDown()
-        self.repoARoot = os.path.join(self.testDir, 'a')
+        self.ROOT = tempfile.mkdtemp(dir=ROOT, prefix="ParentRegistryTestCase-")
+        self.repoARoot = os.path.join(self.ROOT, 'a')
         args = dafPersist.RepositoryArgs(root=self.repoARoot, mapper=MinMapper1)
         butler = dafPersist.Butler(outputs=args)
         with open(os.path.join(self.repoARoot, 'registry.sqlite3'), 'w') as f:
             f.write('123')
 
     def tearDown(self):
-        if os.path.exists(self.testDir):
-            shutil.rmtree(self.testDir)
+        if os.path.exists(self.ROOT):
+            shutil.rmtree(self.ROOT)
 
     def test(self):
         """Verify that when the child repo does not have a registry it is assigned the registry from the
         parent."""
-        repoBRoot = os.path.join(self.testDir, 'b')
+        repoBRoot = os.path.join(self.ROOT, 'b')
         butler = dafPersist.Butler(inputs=self.repoARoot, outputs=repoBRoot)
         # This way of getting the registry from the mapping is obviously going way into private members and
         # the python lambda implementation code. It is very brittle and should not be duplicated in user code
