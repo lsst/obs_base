@@ -24,29 +24,28 @@
 
 
 import unittest
-import lsst.utils.tests
+import os
 
+import lsst.utils.tests
 import lsst.afw.image
 import lsst.daf.persistence as dafPersist
 import lsst.obs.base
 import lsst.pex.policy as pexPolicy
-from lsst.utils import getPackageDir
 
-import os
 
-testDir = os.path.relpath(os.path.join(getPackageDir('obs_base'), 'tests'))
+ROOT = os.path.abspath(os.path.dirname(__file__))
 
 
 class MinMapper2(lsst.obs.base.CameraMapper):
     packageName = 'larry'
 
     def __init__(self):
-        policy = pexPolicy.Policy.createPolicy(os.path.join(testDir, 'MinMapper2.paf'))
+        policy = pexPolicy.Policy.createPolicy(os.path.join(ROOT, 'MinMapper2.paf'))
         lsst.obs.base.CameraMapper.__init__(self,
                                             policy=policy,
-                                            repositoryDir=testDir,
-                                            root=testDir,
-                                            registry=os.path.join(testDir, 'cfhtls.sqlite3'))
+                                            repositoryDir=ROOT,
+                                            root=ROOT,
+                                            registry=os.path.join(ROOT, 'cfhtls.sqlite3'))
         return
 
     def _transformId(self, dataId):
@@ -69,7 +68,7 @@ class DM329TestCase(unittest.TestCase):
         for i in (1, 2, 3):
             loc = mapper.map("other", dict(ccd=35, hdu=i))
             expectedLocations = ["bar-35.fits[%d]" % (i,)]
-            self.assertEqual(loc.getStorage().root, testDir)
+            self.assertEqual(loc.getStorage().root, ROOT)
             self.assertEqual(loc.getLocations(), expectedLocations)
             image = butler.get("other", ccd=35, hdu=i, immediate=True)
             self.assertIsInstance(image, lsst.afw.image.ImageF)

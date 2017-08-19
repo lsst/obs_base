@@ -26,22 +26,20 @@ import gc
 import os
 import shutil
 import unittest
-import lsst.utils.tests
-from lsst.utils import getPackageDir
+import tempfile
 
+import lsst.utils.tests
 import lsst.daf.persistence as dafPersist
 import lsst.daf.persistence.test as dpTest
-import lsst.utils.tests
-from lsst.utils import getPackageDir
+
+ROOT = os.path.abspath(os.path.dirname(__file__))
 
 
 class TestCompositeTestCase(unittest.TestCase):
     """A test case for composite object i/o."""
 
     def setUp(self):
-        packageDir = getPackageDir('obs_base')
-        self.testData = os.path.join(packageDir, 'tests', 'composite')
-        self.tearDown()
+        self.testData = tempfile.mkdtemp(dir=ROOT, prefix='TestCompositeTestCase-')
         self.firstRepoPath = os.path.join(self.testData, 'repo1')
         self.objA = dpTest.TestObject("abc")
         self.objB = dpTest.TestObject("def")
@@ -189,9 +187,7 @@ class TestGenericAssembler(unittest.TestCase):
     """A test case for the generic assembler feature of composite datasets."""
 
     def setUp(self):
-        packageDir = getPackageDir('obs_base')
-        self.testData = os.path.join(packageDir, 'tests', 'genericAssembler')
-        self.tearDown()
+        self.testData = tempfile.mkdtemp(dir=ROOT, prefix='TestGenericAssembler-')
         self.firstRepoPath = os.path.join(self.testData, 'repo1')
         self.secondRepoPath = os.path.join(self.testData, 'repo2')
         self.objA = dpTest.TestObject("abc")
@@ -379,8 +375,7 @@ class TestSubset(unittest.TestCase):
     """A test case for composite object subset keyword."""
 
     def setUp(self):
-        packageDir = getPackageDir('obs_base')
-        self.testData = os.path.join(packageDir, 'tests', 'compositeSubset')
+        self.testData = tempfile.mkdtemp(dir=ROOT, prefix='TestSubset-')
         self.firstRepoPath = os.path.join(self.testData, 'repo1')
         self.objA1 = dpTest.TestObject("abc")
         self.objA2 = dpTest.TestObject("ABC")
@@ -446,8 +441,7 @@ class TestInputOnly(unittest.TestCase):
     """A test case for composite input keyword."""
 
     def setUp(self):
-        packageDir = getPackageDir('obs_base')
-        self.testData = os.path.join(packageDir, 'tests', 'composite')
+        self.testData = tempfile.mkdtemp(dir=ROOT, prefix='TestInputOnly-')
         self.firstRepoPath = os.path.join(self.testData, 'repo1')
         self.objA = dpTest.TestObject("abc")
         self.objB = dpTest.TestObject("def")

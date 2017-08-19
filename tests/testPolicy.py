@@ -23,20 +23,21 @@
 #
 
 import unittest
+import tempfile
 import lsst.utils.tests
 
 import lsst.daf.persistence as dafPersist
 import lsst.daf.persistence.test as dpTest
-from lsst.utils import getPackageDir
 import os
 import shutil
 import yaml
 
+ROOT = os.path.abspath(os.path.dirname(__file__))
+
 
 class TestPolicyInRepo(unittest.TestCase):
     def setUp(self):
-        packageDir = getPackageDir('obs_base')
-        self.testData = os.path.join(packageDir, 'tests', 'TestPolicyInRepo')
+        self.testData = tempfile.mkdtemp(dir=ROOT, prefix='TestPolicyInRepo-')
 
     def tearDown(self):
         if os.path.exists(self.testData):
