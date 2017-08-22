@@ -424,6 +424,63 @@ class ParentRegistryTestCase(unittest.TestCase):
         self.assertNotEqual(id(registryA), id(registryB))
 
 
+class MissingPolicyKeyTestCase(unittest.TestCase):
+
+    def testGetRaises(self):
+        butler = dafPersist.Butler(inputs={'root': ROOT, 'mapper': MinMapper1})
+        # MinMapper1 does not specify a template for the raw dataset type so trying to use it for get should
+        # raise
+        with self.assertRaises(RuntimeError) as contextManager:
+            butler.get('raw')
+        # This test demonstrates and verifies that simple use of the incomplete dataset type returns a helpful
+        # (I hope) error message.
+        self.assertEqual(
+            str(contextManager.exception),
+            'Template is not defined for the raw dataset type, ' +
+            'it must be set before it can be used.')
+        with self.assertRaises(RuntimeError) as contextManager:
+            butler.queryMetadata('raw', 'unused', {})
+
+    def testQueryMetadataRaises(self):
+        butler = dafPersist.Butler(inputs={'root': ROOT, 'mapper': MinMapper1})
+        # MinMapper1 does not specify a template for the raw dataset type so trying to use it for
+        # queryMetadata should raise
+        with self.assertRaises(RuntimeError) as contextManager:
+            butler.queryMetadata('raw', 'unused', {})
+        # This test demonstrates and verifies that simple use of the incomplete dataset type returns a helpful
+        # (I hope) error message.
+        self.assertEqual(
+            str(contextManager.exception),
+            'Template is not defined for the raw dataset type, ' +
+            'it must be set before it can be used.')
+
+    def testFilenameRaises(self):
+        butler = dafPersist.Butler(inputs={'root': ROOT, 'mapper': MinMapper1})
+        # MinMapper1 does not specify a template for the raw dataset type so trying to use it for
+        # <datasetType>_filename should raise
+        with self.assertRaises(RuntimeError) as contextManager:
+            butler.get('raw_filename')
+        # This test demonstrates and verifies that simple use of the incomplete dataset type returns a helpful
+        # (I hope) error message.
+        self.assertEqual(
+            str(contextManager.exception),
+            'Template is not defined for the raw dataset type, ' +
+            'it must be set before it can be used.')
+
+    def testWcsRaises(self):
+        butler = dafPersist.Butler(inputs={'root': ROOT, 'mapper': MinMapper1})
+        # MinMapper1 does not specify a template for the raw dataset type so trying to use it for
+        # <datasetType>_wcs should raise
+        with self.assertRaises(RuntimeError) as contextManager:
+            butler.get('raw_wcs')
+        # This test demonstrates and verifies that simple use of the incomplete dataset type returns a helpful
+        # (I hope) error message.
+        self.assertEqual(
+            str(contextManager.exception),
+            'Template is not defined for the raw dataset type, ' +
+            'it must be set before it can be used.')
+
+
 class MemoryTester(lsst.utils.tests.MemoryTestCase):
     pass
 
