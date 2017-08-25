@@ -90,6 +90,11 @@ class Mapping(object):
         self.rootStorage = rootStorage
 
         self._template = policy['template']  # Template path
+        # in most cases, the template can not be used if it is empty, and is accessed via a property that will
+        # raise if it is used while `not self._template`. In this case we *do* allow it to be empty, for the
+        # purpose of fetching the key dict so that the mapping can be constructed, so that it can raise if
+        # it's invalid. I know it's a little odd, but it allows this template check to be introduced without a
+        # major refactor.
         if self._template:
             self.keyDict = dict([
                 (k, _formatMap(v, k, datasetType))
