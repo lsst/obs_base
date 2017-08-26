@@ -89,12 +89,20 @@ class Mapping(object):
         self.registry = registry
         self.rootStorage = rootStorage
 
-        self.template = policy['template']  # Template path
-        self.keyDict = dict([
-            (k, _formatMap(v, k, datasetType))
-            for k, v in
-            re.findall(r'\%\((\w+)\).*?([diouxXeEfFgGcrs])', self.template)
-        ])
+        self._template = policy['template']  # Template path
+        # in most cases, the template can not be used if it is empty, and is accessed via a property that will
+        # raise if it is used while `not self._template`. In this case we *do* allow it to be empty, for the
+        # purpose of fetching the key dict so that the mapping can be constructed, so that it can raise if
+        # it's invalid. I know it's a little odd, but it allows this template check to be introduced without a
+        # major refactor.
+        if self._template:
+            self.keyDict = dict([
+                (k, _formatMap(v, k, datasetType))
+                for k, v in
+                re.findall(r'\%\((\w+)\).*?([diouxXeEfFgGcrs])', self.template)
+            ])
+        else:
+            self.keyDict = {}
         if provided is not None:
             for p in provided:
                 if p in self.keyDict:
@@ -111,6 +119,14 @@ class Mapping(object):
         self.range = None
         self.columns = None
         self.obsTimeName = policy['obsTimeName'] if 'obsTimeName' in policy else None
+
+    @property
+    def template(self):
+        if self._template:  # template must not be an empty string or None
+            return self._template
+        else:
+            raise RuntimeError("Template is not defined for the {} dataset type, ".format(self.datasetType) +
+                               "it must be set before it can be used.")
 
     def keys(self):
         """Return the dict of keys and value types required for this mapping."""
