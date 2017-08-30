@@ -616,17 +616,6 @@ donutDriver_config:
     storage: ConfigStorage
     python: lsst.donut.donutDriver.DonutDriverConfig
     template: config/DonutDriver.py
-processDonut_config:
-    persistable: Config
-    python: lsst.donut.processDonut.ProcessDonutConfig
-    storage: ConfigStorage
-    template: config/processDonut.py
-processDonut_metadata:
-    persistable: PropertySet
-    storage: BoostStorage
-    python: lsst.daf.base.PropertySet
-    tables: raw
-    template: metadata/processDonut.boost
 fitDonut_config:
     persistable: Config
     python: lsst.donut.fitDonut.FitDonutConfig
