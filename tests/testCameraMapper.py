@@ -24,6 +24,7 @@
 
 from builtins import range
 import collections
+import gc
 import os
 import sqlite3
 import unittest
@@ -419,6 +420,11 @@ class ParentRegistryTestCase(unittest.TestCase):
         del butler
 
     def tearDown(self):
+        # the butler sql registry closes its database connection in __del__. To trigger __del__ we explicitly
+        # collect the garbage here. If we find having or closing the open database connection is a problem in
+        # production code, we may need to add api to butler to explicity release database connections (and
+        # maybe other things like in-memory cached objects).
+        gc.collect()
         if os.path.exists(self.ROOT):
             shutil.rmtree(self.ROOT)
 
