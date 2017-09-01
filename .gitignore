@@ -1,3 +1,4 @@
+pytest_session.txt
 _build.*
 .sconsign.dblite
 config.log
