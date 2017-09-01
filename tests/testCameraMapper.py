@@ -424,7 +424,7 @@ class ParentRegistryTestCase(unittest.TestCase):
         self.assertNotEqual(id(registryA), id(registryB))
         del registryA
         del registryB
-        del butler._repos.output()[0]
+        del butler._repos
         del butler
 
 
