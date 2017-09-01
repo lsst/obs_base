@@ -840,6 +840,7 @@ class CameraMapper(dafPersist.Mapper):
             localFileObj = storage.getLocalFile(path)
             self.log.info("Loading %s registry from %s", description, localFileObj.name)
             registry = dafPersist.Registry.create(localFileObj.name)
+            localFileObj.close()
         elif not registry and posixIfNoSql:
             try:
                 self.log.info("Loading Posix %s registry from %s", description, storage.root)
