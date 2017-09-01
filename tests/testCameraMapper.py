@@ -433,6 +433,8 @@ class ParentRegistryTestCase(unittest.TestCase):
         registryA = butler._repos.inputs()[0].repo._mapper.registry
         registryB = butler._repos.outputs()[0].repo._mapper.registry
         self.assertEqual(id(registryA), id(registryB))
+        del registryA
+        del registryB
         del butler
 
         self._createRegistry(os.path.join(repoBRoot, 'registry.sqlite3'))
@@ -441,6 +443,8 @@ class ParentRegistryTestCase(unittest.TestCase):
         registryA = butler._repos.inputs()[0].repo._mapper.registry
         registryB = butler._repos.outputs()[0].repo._mapper.registry
         self.assertNotEqual(id(registryA), id(registryB))
+        del registryA
+        del registryB
         del butler
 
 class MissingPolicyKeyTestCase(unittest.TestCase):
