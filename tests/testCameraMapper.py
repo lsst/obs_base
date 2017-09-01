@@ -25,6 +25,7 @@
 from builtins import range
 import collections
 import os
+import sqlite3
 import unittest
 import tempfile
 
@@ -390,13 +391,32 @@ class Mapper3TestCase(unittest.TestCase):
 
 class ParentRegistryTestCase(unittest.TestCase):
 
+    @staticmethod
+    def _createRegistry(path):
+        cmd = """CREATE TABLE x(
+           id INT,
+           visit INT,
+           filter TEXT,
+           snap INT,
+           raft TEXT,
+           sensor TEXT,
+           channel TEXT,
+           taiObs TEXT,
+           expTime REAL
+           );
+        """
+        conn = sqlite3.connect(path)
+        conn.cursor().execute(cmd)
+        conn.commit()
+        conn.close()
+
     def setUp(self):
         self.ROOT = tempfile.mkdtemp(dir=ROOT, prefix="ParentRegistryTestCase-")
         self.repoARoot = os.path.join(self.ROOT, 'a')
         args = dafPersist.RepositoryArgs(root=self.repoARoot, mapper=MinMapper1)
         butler = dafPersist.Butler(outputs=args)
-        with open(os.path.join(self.repoARoot, 'registry.sqlite3'), 'w') as f:
-            f.write('123')
+        self._createRegistry(os.path.join(self.repoARoot, 'registry.sqlite3'))
+        del butler
 
     def tearDown(self):
         if os.path.exists(self.ROOT):
@@ -415,14 +435,13 @@ class ParentRegistryTestCase(unittest.TestCase):
         self.assertEqual(id(registryA), id(registryB))
         del butler
 
-        with open(os.path.join(repoBRoot, 'registry.sqlite3'), 'w') as f:
-            f.write('123')
+        self._createRegistry(os.path.join(repoBRoot, 'registry.sqlite3'))
         butler = dafPersist.Butler(inputs=self.repoARoot, outputs=repoBRoot)
         # see above; don't copy this way of getting the registry.
         registryA = butler._repos.inputs()[0].repo._mapper.registry
         registryB = butler._repos.outputs()[0].repo._mapper.registry
         self.assertNotEqual(id(registryA), id(registryB))
-
+        del butler
 
 class MissingPolicyKeyTestCase(unittest.TestCase):
 
