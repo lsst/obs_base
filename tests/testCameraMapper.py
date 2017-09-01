@@ -36,12 +36,27 @@ import lsst.afw.table as afwTable
 import lsst.daf.persistence as dafPersist
 import lsst.obs.base
 import shutil
+import time
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
 
 
 def setup_module(module):
     lsst.utils.tests.init()
+
+
+def rmtree_wrapper(path):
+    max_iter=4
+    for i in range(max_iter):
+        try:
+            shutil.rmtree(path)
+            return
+        except OSError:
+            if i<max_iter-1:
+                time.sleep(i+1)
+                pass
+            else:
+                raise
 
 
 class BaseMapper(lsst.obs.base.CameraMapper):
@@ -400,7 +415,7 @@ class ParentRegistryTestCase(unittest.TestCase):
 
     def tearDown(self):
         if os.path.exists(self.ROOT):
-            shutil.rmtree(self.ROOT)
+            rmtree_wrapper(self.ROOT)
 
     def test(self):
         """Verify that when the child repo does not have a registry it is assigned the registry from the
