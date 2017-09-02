@@ -343,7 +343,8 @@ class CameraMapper(dafPersist.Mapper):
                     subPolicy.merge(defPolicy)
 
                     if not hasattr(self, "map_" + datasetType) and 'composite' in subPolicy:
-                        def compositeClosure(dataId, write=False, mapper=None, mapping=None, subPolicy=subPolicy):
+                        def compositeClosure(dataId, write=False, mapper=None, mapping=None,
+                                             subPolicy=subPolicy):
                             components = subPolicy.get('composite')
                             assembler = subPolicy['assembler'] if 'assembler' in subPolicy else None
                             disassembler = subPolicy['disassembler'] if 'disassembler' in subPolicy else None
@@ -470,6 +471,7 @@ class CameraMapper(dafPersist.Mapper):
                                 loc.additionalData.set('imageOrigin',
                                                        dataId['imageOrigin'])
                             return loc
+
                         def querySubClosure(key, format, dataId, mapping=mapping):
                             subId = dataId.copy()
                             del subId['bbox']
@@ -1059,6 +1061,7 @@ class CameraMapper(dafPersist.Mapper):
             The registry used by this mapper for this mapper's repository.
         """
         return self.registry
+
 
 def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo=True):
     """Generate an Exposure from an image-like object

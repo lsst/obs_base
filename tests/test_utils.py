@@ -23,7 +23,6 @@
 
 from __future__ import absolute_import, division, print_function
 
-import sys
 import unittest
 
 import lsst.utils.tests
@@ -42,7 +41,6 @@ class BboxFromIrafTestCase(lsst.utils.tests.TestCase):
         for val, result in test_data.items():
             self.assertEqual(obsBase.bboxFromIraf(val), result)
 
-
     def testInvalid(self):
         test_data = {
             "1:1084,1:1024": RuntimeError,
@@ -59,6 +57,7 @@ class MemoryTester(lsst.utils.tests.MemoryTestCase):
 
 def setup_module(module):
     lsst.utils.tests.init()
+
 
 if __name__ == '__main__':
     lsst.utils.tests.init()

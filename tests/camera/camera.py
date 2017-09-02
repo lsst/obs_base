@@ -5,17 +5,14 @@ assert type(config) == lsst.afw.cameraGeom.cameraConfig.CameraConfig, 'config is
 config.plateScale = 13.7
 config.transformDict.nativeSys = 'FocalPlane'
 config.transformDict.transforms = {}
-config.transformDict.transforms['Pupil'] = lsst.afw.geom.transformConfig.TransformConfig()
-config.transformDict.transforms['Pupil'].transform['multi'].transformDict = None
-config.transformDict.transforms['Pupil'].transform['affine'].translation = [0.0, 0.0]
-config.transformDict.transforms['Pupil'].transform['affine'].linear = [1.0, 0.0, 0.0, 1.0]
-config.transformDict.transforms['Pupil'].transform['radial'].coeffs = None
-import lsst.afw.geom.xyTransformFactory
-config.transformDict.transforms['Pupil'].transform['inverted'].transform.retarget(
-    target=lsst.afw.geom.xyTransformFactory.makeRadialXYTransform, ConfigClass=lsst.afw.geom.xyTransformFactory.RadialXYTransformConfig)
-config.transformDict.transforms['Pupil'].transform[
-    'inverted'].transform.coeffs = [0.0, 14805.4, 13619.3, 426637.0]
-config.transformDict.transforms['Pupil'].transform.name = 'inverted'
+config.transformDict.transforms['FieldAngle'] = lsst.afw.geom.transformConfig.TransformConfig()
+config.transformDict.transforms['FieldAngle'].transform['multi'].transformDict = None
+config.transformDict.transforms['FieldAngle'].transform['affine'].translation = [0.0, 0.0]
+config.transformDict.transforms['FieldAngle'].transform['affine'].linear = [1.0, 0.0, 0.0, 1.0]
+config.transformDict.transforms['FieldAngle'].transform['radial'].coeffs = None
+config.transformDict.transforms['FieldAngle'].transform['inverted'].transform.retarget(target=lsst.afw.geom.transformRegistry['radial'])
+config.transformDict.transforms['FieldAngle'].transform['inverted'].transform.coeffs = [0.0, 14805.4, 13619.3, 426637.0]
+config.transformDict.transforms['FieldAngle'].transform.name = 'inverted'
 config.detectorList = {}
 config.detectorList[0] = lsst.afw.cameraGeom.cameraConfig.DetectorConfig()
 config.detectorList[0].bbox_y0 = 0

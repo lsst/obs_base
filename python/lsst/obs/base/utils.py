@@ -23,6 +23,7 @@
 import re
 import lsst.afw.geom as afwGeom
 
+
 def bboxFromIraf(irafBBoxStr):
     """Return a Box2I corresponding to an IRAF-style BBOX
 
