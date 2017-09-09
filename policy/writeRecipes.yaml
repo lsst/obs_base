@@ -1,0 +1,42 @@
+# FITS images
+FitsStorage:
+  # Default: no compression
+  default:
+    image: &default
+      compression:
+        algorithm: NONE
+      scaling:
+        algorithm: NONE
+    mask:
+      <<: *default
+    variance:
+      <<: *default
+
+  # Lossless compression
+  lossless:
+    image: &lossless
+      compression:
+        algorithm: GZIP_SHUFFLE
+      scaling:
+        algorithm: NONE
+    mask:
+      <<: *lossless
+    variance:
+      <<: *lossless
+
+  # Basic lossy (quantizing) compression
+  lossyBasic:
+    image: &lossyBasic
+      compression:
+        algorithm: RICE
+      scaling:
+        algorithm: STDEV_POSITIVE
+        maskPlanes: ["NO_DATA"]
+        bitpix: 32
+        quantizeLevel: 10.0
+        quantizePad: 10.0
+    mask:
+      <<: *lossless
+    variance:
+      <<: *lossyBasic
+

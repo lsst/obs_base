@@ -31,4 +31,8 @@ definitions: {
         type: string
         description: "Tables to use for queries of the registry"
     }
+    recipe: {
+        type: policy
+        description: "Recipe name for writing"
+    }
 }

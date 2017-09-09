@@ -54,6 +54,9 @@ class BaseMapper(lsst.obs.base.CameraMapper):
         lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=ROOT, root=ROOT)
         return
 
+    @classmethod
+    def getPackageDir(cls):
+        return "/path/to/nowhere"
 
 class MinMapper1(lsst.obs.base.CameraMapper):
     packageName = 'larry'
@@ -70,6 +73,10 @@ class MinMapper1(lsst.obs.base.CameraMapper):
     def getCameraName(cls):
         """Return the name of the camera that this CameraMapper is for."""
         return "min"
+
+    @classmethod
+    def getPackageDir(cls):
+        return "/path/to/nowhere"
 
 
 class MinMapper2(lsst.obs.base.CameraMapper):
@@ -97,6 +104,10 @@ class MinMapper2(lsst.obs.base.CameraMapper):
         """Return the name of the camera that this CameraMapper is for."""
         return "min"
 
+    @classmethod
+    def getPackageDir(cls):
+        return "/path/to/nowhere"
+
 
 # does not assign packageName
 class MinMapper3(lsst.obs.base.CameraMapper):
@@ -105,6 +116,35 @@ class MinMapper3(lsst.obs.base.CameraMapper):
         policy = dafPersist.Policy(os.path.join(ROOT, "MinMapper1.paf"))
         lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=ROOT, root=ROOT)
         return
+
+    @classmethod
+    def getPackageDir(cls):
+        return "/path/to/nowhere"
+
+
+def checkCompression(testCase, additionalData):
+    """Check that compression settings are present
+
+    We check that we can access the required settings, and that
+    the seed is non-zero (zero causes lsst.afw.math.Random to fail).
+    """
+    for plane in ("image", "mask", "variance"):
+        for entry in ("compression.algorithm",
+                      "compression.columns",
+                      "compression.rows",
+                      "compression.quantizeLevel",
+                      "scaling.algorithm",
+                      "scaling.bitpix",
+                      "scaling.maskPlanes",
+                      "scaling.seed",
+                      "scaling.quantizeLevel",
+                      "scaling.quantizePad",
+                      "scaling.fuzz",
+                      "scaling.bscale",
+                      "scaling.bzero",
+                      ):
+            additionalData.get(plane + "." + entry)
+        testCase.assertNotEqual(additionalData.get(plane + ".scaling.seed"), 0)
 
 
 class Mapper1TestCase(unittest.TestCase):
@@ -188,7 +228,8 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getStorageName(), "FitsStorage")
         self.assertEqual(loc.getLocations(), ["foo-13.fits"])
         self.assertEqual(loc.getStorage().root, ROOT)
-        self.assertEqual(loc.getAdditionalData().toString(), "ccd = 13\n")
+        self.assertEqual(loc.getAdditionalData().get("ccd"), 13)
+        checkCompression(self, loc.getAdditionalData())
 
     def testSubMap(self):
         if hasattr(afwGeom, 'makePointI'):
@@ -206,8 +247,12 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getStorageName(), "FitsStorage")
         self.assertEqual(loc.getLocations(), ["foo-13.fits"])
         self.assertEqual(loc.getStorage().root, ROOT)
-        self.assertEqual(loc.getAdditionalData().toString(),
-                         'ccd = 13\nheight = 400\nllcX = 200\nllcY = 100\nwidth = 300\n')
+        self.assertEqual(loc.getAdditionalData().get("ccd"), 13)
+        self.assertEqual(loc.getAdditionalData().get("width"), 300)
+        self.assertEqual(loc.getAdditionalData().get("height"), 400)
+        self.assertEqual(loc.getAdditionalData().get("llcX"), 200)
+        self.assertEqual(loc.getAdditionalData().get("llcY"), 100)
+        checkCompression(self, loc.getAdditionalData())
 
         loc = mapper.map("raw_sub", {"ccd": 13, "bbox": bbox, "imageOrigin": "PARENT"}, write=True)
         self.assertEqual(loc.getPythonType(), "lsst.afw.image.ExposureU")
@@ -215,9 +260,13 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getStorageName(), "FitsStorage")
         self.assertEqual(loc.getLocations(), ["foo-13.fits"])
         self.assertEqual(loc.getStorage().root, ROOT)
-        self.assertEqual(loc.getAdditionalData().toString(),
-                         'ccd = 13\nheight = 400\nimageOrigin = "PARENT"\n'
-                         'llcX = 200\nllcY = 100\nwidth = 300\n')
+        self.assertEqual(loc.getAdditionalData().get("ccd"), 13)
+        self.assertEqual(loc.getAdditionalData().get("width"), 300)
+        self.assertEqual(loc.getAdditionalData().get("height"), 400)
+        self.assertEqual(loc.getAdditionalData().get("llcX"), 200)
+        self.assertEqual(loc.getAdditionalData().get("llcY"), 100)
+        self.assertEqual(loc.getAdditionalData().get("imageOrigin"), "PARENT")
+        checkCompression(self, loc.getAdditionalData())
 
     def testCatalogExtras(self):
         butler = dafPersist.Butler(root=ROOT, mapper=MinMapper2)
@@ -337,8 +386,11 @@ class Mapper2TestCase(unittest.TestCase):
         expectedLocations = ["flat-05Am03-fi.fits"]
         self.assertEqual(loc.getStorage().root, expectedRoot)
         self.assertEqual(loc.getLocations(), expectedLocations)
-        self.assertEqual(loc.getAdditionalData().toString(),
-                         'ccd = 13\nderivedRunId = "05Am03"\nfilter = "i"\nvisit = 787650\n')
+        self.assertEqual(loc.getAdditionalData().get("ccd"), 13)
+        self.assertEqual(loc.getAdditionalData().get("visit"), 787650)
+        self.assertEqual(loc.getAdditionalData().get("derivedRunId"), "05Am03")
+        self.assertEqual(loc.getAdditionalData().get("filter"), "i")
+        checkCompression(self, loc.getAdditionalData())
 
     def testNames(self):
         self.assertEqual(MinMapper2.getCameraName(), "min")

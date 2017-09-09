@@ -54,6 +54,10 @@ class MinMapper2(lsst.obs.base.CameraMapper):
     def _extractDetectorName(self, dataId):
         return "Detector"
 
+    @classmethod
+    def getPackageDir(cls):
+        return "/path/to/nowhere"
+
 
 class DM329TestCase(unittest.TestCase):
 

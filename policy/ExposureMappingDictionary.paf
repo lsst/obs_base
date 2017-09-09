@@ -41,4 +41,8 @@ definitions: {
         type: string
         description: "Columns to use for queries of the registry"
     }
+    recipe: {
+        type: policy
+        description: "Recipe name for writing"
+    }
 }
