@@ -39,26 +39,30 @@ class YamlCamera(cameraGeom.Camera):
             cameraParams = yaml.load(fd, Loader=yaml.Loader)
 
         plateScale = afwGeom.Angle(cameraParams["plateScale"], afwGeom.arcseconds)
+        # radial coefficients of the form [0, no units, 1/rad but usually 0, 1/rad^2, …]
+        # Radial distortion is modeled as a radial polynomial that converts from focal plane radius (in mm)
+        # to field angle (in radians). The coefficients are divided by the plate scale (in mm/radians)
+        # meaning that C1 is always 1.
         radialCoeffs = np.array(cameraParams["radialCoeffs"])/plateScale.asRadians()
-        focalPlaneToPupil = afwGeom.makeRadialTransform(radialCoeffs)
-        pupilToFocalPlane = focalPlaneToPupil.getInverse()
-        cameraTransformMap = cameraGeom.CameraTransformMap(cameraGeom.FOCAL_PLANE,
-                                                           {cameraGeom.PUPIL: pupilToFocalPlane})
-        detectorList = self._makeDetectorList(cameraParams["CCDs"], pupilToFocalPlane, plateScale)
+        fieldAngleToFocalPlane = afwGeom.makeRadialTransform(radialCoeffs)
+        focalPlaneToFieldAngle = fieldAngleToFocalPlane.getInverse()
+        cameraTransformMap = cameraGeom.TransformMap(cameraGeom.FOCAL_PLANE,
+                                                    {cameraGeom.FIELD_ANGLE: focalPlaneToFieldAngle})
+        detectorList = self._makeDetectorList(cameraParams["CCDs"], focalPlaneToFieldAngle)
         cameraGeom.Camera.__init__(self, cameraParams["name"], detectorList, cameraTransformMap)
 
-    def _makeDetectorList(self, ccdParams, focalPlaneToPupil, plateScale):
+    def _makeDetectorList(self, ccdParams, focalPlaneToFieldAngle):
         """!Make a list of detectors
         @param[in] ccdParams  Dict of YAML descriptions of CCDs
-        @param[in] focalPlaneToPupil  lsst.afw.geom.XYTransform from FOCAL_PLANE to PUPIL coordinates
-        @param[in] plateScale  plate scale, in angle on sky/mm
+        @param[in] focalPlaneToFieldAngle  lsst.afw.geom.TransformPoint2ToPoint2
+                   from FOCAL_PLANE to FIELD_ANGLE coordinates
         @return a list of detectors (lsst.afw.cameraGeom.Detector)
         """
         detectorList = []
         detectorConfigList = self._makeDetectorConfigList(ccdParams)
         for ccd, detectorConfig in zip(ccdParams.values(), detectorConfigList):
             ampInfoCatalog = self._makeAmpInfoCatalog(ccd)
-            detector = makeDetector(detectorConfig, ampInfoCatalog, focalPlaneToPupil)
+            detector = makeDetector(detectorConfig, ampInfoCatalog, focalPlaneToFieldAngle)
             detectorList.append(detector)
         return detectorList
 
