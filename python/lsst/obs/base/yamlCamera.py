@@ -40,17 +40,18 @@ class YamlCamera(cameraGeom.Camera):
 
         plateScale = afwGeom.Angle(cameraParams["plateScale"], afwGeom.arcseconds)
         radialCoeffs = np.array(cameraParams["radialCoeffs"])/plateScale.asRadians()
-        focalPlaneToPupil = afwGeom.makeRadialTransform(radialCoeffs)
-        pupilToFocalPlane = focalPlaneToPupil.getInverse()
-        cameraTransformMap = cameraGeom.CameraTransformMap(cameraGeom.FOCAL_PLANE,
-                                                           {cameraGeom.PUPIL: pupilToFocalPlane})
-        detectorList = self._makeDetectorList(cameraParams["CCDs"], pupilToFocalPlane, plateScale)
+        focalPlaneToFieldAngle = afwGeom.makeRadialTransform(radialCoeffs)
+        fieldAngleToFocalPlane = focalPlaneToFieldAngle.getInverse()
+        cameraTransformMap = cameraGeom.TransformMap(cameraGeom.FOCAL_PLANE,
+                                                    {cameraGeom.FIELD_ANGLE: fieldAngleToFocalPlane})
+        detectorList = self._makeDetectorList(cameraParams["CCDs"], fieldAngleToFocalPlane, plateScale)
         cameraGeom.Camera.__init__(self, cameraParams["name"], detectorList, cameraTransformMap)
 
-    def _makeDetectorList(self, ccdParams, focalPlaneToPupil, plateScale):
+    def _makeDetectorList(self, ccdParams, focalPlaneToFieldAngle, plateScale):
         """!Make a list of detectors
         @param[in] ccdParams  Dict of YAML descriptions of CCDs
-        @param[in] focalPlaneToPupil  lsst.afw.geom.XYTransform from FOCAL_PLANE to PUPIL coordinates
+        @param[in] focalPlaneToFieldAngle  lsst.afw.geom.TransformPoint2ToPoint2
+                   from FOCAL_PLANE to FIELD_ANGLE coordinates
         @param[in] plateScale  plate scale, in angle on sky/mm
         @return a list of detectors (lsst.afw.cameraGeom.Detector)
         """
@@ -58,7 +59,7 @@ class YamlCamera(cameraGeom.Camera):
         detectorConfigList = self._makeDetectorConfigList(ccdParams)
         for ccd, detectorConfig in zip(ccdParams.values(), detectorConfigList):
             ampInfoCatalog = self._makeAmpInfoCatalog(ccd)
-            detector = makeDetector(detectorConfig, ampInfoCatalog, focalPlaneToPupil)
+            detector = makeDetector(detectorConfig, ampInfoCatalog, focalPlaneToFieldAngle)
             detectorList.append(detector)
         return detectorList
 
