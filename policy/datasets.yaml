@@ -58,6 +58,11 @@ deep_safeClipAssembleCoadd_config:
     storage: ConfigStorage
     python: lsst.pipe.tasks.assembleCoadd.SafeClipAssembleCoaddConfig
     template: config/deep_safeClipAssembleCoadd.py
+deep_compareWarpAssembleCoadd_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.tasks.assembleCoadd.SafeClipAssembleCoaddConfig
+    template: config/deep_compareWarpAssembleCoadd.py
 flat_config:
     persistable: Config
     storage: ConfigStorage
@@ -159,6 +164,11 @@ brightObjectMask:
     python: lsst.pipe.tasks.objectMasks.ObjectMaskCatalog
     template: deepCoadd/BrightObjectMasks/%(tract)d/BrightObjectMask-%(tract)d-%(patch)s-%(filter)s.reg
 deep_safeClipAssembleCoadd_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    template: deep_assembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.boost
+deep_compareWarpAssembleCoadd_metadata:
     persistable: PropertySet
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
