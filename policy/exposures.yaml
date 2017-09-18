@@ -4,6 +4,12 @@ deepCoadd:
     python: lsst.afw.image.ExposureF
     template: deepCoadd/%(filter)s/%(tract)d/%(patch)s.fits
     level: Skytile
+deepCoadd_nImage:
+    persistable: ImageU
+    storage: FitsStorage
+    python: lsst.afw.image.ImageU
+    template: deepCoadd/%(filter)s/%(tract)d/%(patch)s_nImage.fits
+    level: Skytile
 deepCoaddPsfMatched:
     persistable: ExposureF
     storage: FitsStorage
