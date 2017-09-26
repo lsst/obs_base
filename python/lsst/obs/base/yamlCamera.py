@@ -39,7 +39,7 @@ class YamlCamera(cameraGeom.Camera):
             cameraParams = yaml.load(fd, Loader=yaml.Loader)
 
         plateScale = afwGeom.Angle(cameraParams["plateScale"], afwGeom.arcseconds)
-        # radial coefficients of the form [0, no units, 1/rad but usually 0, 1/rad^2, …]
+        # radial coefficients of the form [0, no units, 1/rad but usually 0, 1/rad^2, ...]
         # Radial distortion is modeled as a radial polynomial that converts from focal plane radius (in mm)
         # to field angle (in radians). The coefficients are divided by the plate scale (in mm/radians)
         # meaning that C1 is always 1.
