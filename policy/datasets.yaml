@@ -640,16 +640,16 @@ donut_schema:
     template: schema/donut.fits
 qaTableCoadd:
     persistable: None
-    python: __builtin__.str
+    python: builtins.str
     storage: TextStorage
     template: plots/%(filter)s/tract-%(tract)d/%(description)s.parq
 qaTableColor:
     persistable: None
-    python: __builtin__.str
+    python: builtins.str
     storage: TextStorage
     template: plots/color/tract-%(tract)d/%(description)s.parq
 qaTableVisit:
     persistable: None
-    python: __builtin__.str
+    python: builtins.str
     storage: TextStorage
     template: ''
