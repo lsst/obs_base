@@ -47,7 +47,7 @@ class YamlCamera(cameraGeom.Camera):
         fieldAngleToFocalPlane = afwGeom.makeRadialTransform(radialCoeffs)
         focalPlaneToFieldAngle = fieldAngleToFocalPlane.getInverse()
         cameraTransformMap = cameraGeom.TransformMap(cameraGeom.FOCAL_PLANE,
-                                                    {cameraGeom.FIELD_ANGLE: focalPlaneToFieldAngle})
+                                                     {cameraGeom.FIELD_ANGLE: focalPlaneToFieldAngle})
         detectorList = self._makeDetectorList(cameraParams["CCDs"], focalPlaneToFieldAngle)
         cameraGeom.Camera.__init__(self, cameraParams["name"], detectorList, cameraTransformMap)
 
@@ -116,7 +116,7 @@ class YamlCamera(cameraGeom.Camera):
         xRawExtent, yRawExtent = rawBBox.getDimensions()
 
         from lsst.afw.table import LL, LR, UL, UR
-        readCorners = dict(LL = LL, LR = LR, UL = UL, UR = UR)
+        readCorners = dict(LL=LL, LR=LR, UL=UL, UR=UR)
 
         schema = AmpInfoTable.makeMinimalSchema()
 

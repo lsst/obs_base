@@ -44,41 +44,41 @@ class TestCompositeTestCase(unittest.TestCase):
         self.objA = dpTest.TestObject("abc")
         self.objB = dpTest.TestObject("def")
         self.policy = dafPersist.Policy(
-                                   {'camera': 'lsst.afw.cameraGeom.Camera',
-                                    'datasets': {
-                                        'basicObject1': {
-                                            'python': 'lsst.daf.persistence.test.TestObject',
-                                            'template': 'basic/id%(id)s.pickle',
-                                            'storage': 'PickleStorage'},
-                                        'basicObject2': {
-                                            'python': 'lsst.daf.persistence.test.TestObject',
-                                            'template': 'basic/name%(name)s.pickle',
-                                            'storage': 'PickleStorage'},
-                                        'basicPair': {
-                                            'python': 'lsst.daf.persistence.test.TestObjectPair',
-                                            'composite': {
-                                                'a': {'datasetType': 'basicObject1'},
-                                                'b': {'datasetType': 'basicObject2'}
-                                            },
-                                            'assembler':
-                                                'lsst.daf.persistence.test.TestObjectPair.assembler',
-                                            'disassembler':
-                                                'lsst.daf.persistence.test.TestObjectPair.disassembler'},
-                                        'stdTestType': {
-                                            'python': 'lsst.daf.persistence.test.TestObjectPair',
-                                            'composite': {
-                                                'a': {'datasetType': 'basicObject1'},
-                                                'b': {'datasetType': 'basicObject2'}
-                                            }
-                                        },
-                                        'bypassTestType': {
-                                            'python': 'lsst.daf.persistence.test.TestObjectPair',
-                                            'composite': {
-                                                'a': {'datasetType': 'basicObject1'},
-                                                'b': {'datasetType': 'basicObject2'}
-                                            }
-                                        }
-                                    }})
+            {'camera': 'lsst.afw.cameraGeom.Camera',
+             'datasets': {
+                 'basicObject1': {
+                     'python': 'lsst.daf.persistence.test.TestObject',
+                     'template': 'basic/id%(id)s.pickle',
+                     'storage': 'PickleStorage'},
+                 'basicObject2': {
+                     'python': 'lsst.daf.persistence.test.TestObject',
+                     'template': 'basic/name%(name)s.pickle',
+                     'storage': 'PickleStorage'},
+                 'basicPair': {
+                     'python': 'lsst.daf.persistence.test.TestObjectPair',
+                     'composite': {
+                         'a': {'datasetType': 'basicObject1'},
+                         'b': {'datasetType': 'basicObject2'}
+                     },
+                     'assembler':
+                     'lsst.daf.persistence.test.TestObjectPair.assembler',
+                     'disassembler':
+                     'lsst.daf.persistence.test.TestObjectPair.disassembler'},
+                 'stdTestType': {
+                     'python': 'lsst.daf.persistence.test.TestObjectPair',
+                     'composite': {
+                         'a': {'datasetType': 'basicObject1'},
+                         'b': {'datasetType': 'basicObject2'}
+                     }
+                 },
+                 'bypassTestType': {
+                     'python': 'lsst.daf.persistence.test.TestObjectPair',
+                     'composite': {
+                         'a': {'datasetType': 'basicObject1'},
+                         'b': {'datasetType': 'basicObject2'}
+                     }
+                 }
+             }})
 
         repoArgs = dafPersist.RepositoryArgs(root=self.firstRepoPath, policy=self.policy,
                                              mapper='lsst.obs.base.test.CompositeMapper')
@@ -193,73 +193,73 @@ class TestGenericAssembler(unittest.TestCase):
         self.objA = dpTest.TestObject("abc")
         self.objB = dpTest.TestObject("def")
         self.policy = dafPersist.Policy(
-                                   {'camera': 'lsst.afw.cameraGeom.Camera',
-                                    'datasets': {
-                                        'basicObject1': {
-                                            'python': 'lsst.daf.persistence.test.TestObject',
-                                            'template': 'basic/id%(id)s.pickle',
-                                            'storage': 'PickleStorage'
-                                        },
-                                        'basicObject2': {
-                                            'python': 'lsst.daf.persistence.test.TestObject',
-                                            'template': 'basic/name%(name)s.pickle',
-                                            'storage': 'PickleStorage'
-                                        },
-                                        'basicPair': {
-                                            'python': 'lsst.daf.persistence.test.TestObjectPair',
-                                            'composite': {
-                                                'a': {'datasetType': 'basicObject1'},
-                                                'b': {'datasetType': 'basicObject2'}
-                                            },
-                                            # note, no assembler or disassembler specified here, will use
-                                            # setter names inferred by component name.
-                                        },
-                                        # "generic assembler default constructor pair"
-                                        'gaDefCtorPair': { # dataset defition that uses the default ctor
-                                            'python': 'lsst.daf.persistence.test.TestObjectPair',
-                                            'composite': {
-                                                # note that the component names are the same as the argument
-                                                # names in the TestObjectPair.__init__ func.
-                                                'objA': {'datasetType': 'basicObject1',
-                                                         'getter': 'get_a'},
-                                                'objB': {'datasetType': 'basicObject2',
-                                                         'getter': 'get_b'}
-                                            },
-                                            # note, no assembler or disassembler specified here.
-                                        },
-                                        # "generic assembler default "
-                                        'gaPairWithSetter': {
-                                            'python': 'lsst.daf.persistence.test.TestObjectPair',
-                                            'composite': {
-                                                # note that the component names do not match argument names
-                                                # in the TestObjectPair.__init__ func or the set functions
-                                                # in the python object.
-                                                'z': {'datasetType': 'basicObject1',
-                                                      'setter': 'set_a',
-                                                      'getter': 'get_a'
-                                                },
-                                                'x': {'datasetType': 'basicObject2',
-                                                      'setter': 'set_b',
-                                                      'getter': 'get_b'
-                                                }
-                                            }
-                                        },
-                                        # simple object where setter and getter is named with underscore
-                                        # separator
-                                        'underscoreSetter': {
-                                            'python': 'lsst.daf.persistence.test.TestObjectUnderscoreSetter',
-                                            'composite': {
-                                                'foo': {'datasetType': 'basicObject1'}
-                                            }
-                                        },
-                                        # simple object where setter and getter is named with camelcase
-                                        'camelCaseSetter': {
-                                            'python': 'lsst.daf.persistence.test.TestObjectCamelCaseSetter',
-                                            'composite': {
-                                                'foo': {'datasetType': 'basicObject1'}
-                                            }
-                                        }
-                                    }})
+            {'camera': 'lsst.afw.cameraGeom.Camera',
+             'datasets': {
+                 'basicObject1': {
+                     'python': 'lsst.daf.persistence.test.TestObject',
+                     'template': 'basic/id%(id)s.pickle',
+                     'storage': 'PickleStorage'
+                 },
+                 'basicObject2': {
+                     'python': 'lsst.daf.persistence.test.TestObject',
+                     'template': 'basic/name%(name)s.pickle',
+                     'storage': 'PickleStorage'
+                 },
+                 'basicPair': {
+                     'python': 'lsst.daf.persistence.test.TestObjectPair',
+                     'composite': {
+                         'a': {'datasetType': 'basicObject1'},
+                         'b': {'datasetType': 'basicObject2'}
+                     },
+                     # note, no assembler or disassembler specified here, will use
+                     # setter names inferred by component name.
+                 },
+                 # "generic assembler default constructor pair"
+                 'gaDefCtorPair': { # dataset defition that uses the default ctor
+                     'python': 'lsst.daf.persistence.test.TestObjectPair',
+                     'composite': {
+                         # note that the component names are the same as the argument
+                         # names in the TestObjectPair.__init__ func.
+                         'objA': {'datasetType': 'basicObject1',
+                                  'getter': 'get_a'},
+                         'objB': {'datasetType': 'basicObject2',
+                                  'getter': 'get_b'}
+                     },
+                     # note, no assembler or disassembler specified here.
+                 },
+                 # "generic assembler default "
+                 'gaPairWithSetter': {
+                     'python': 'lsst.daf.persistence.test.TestObjectPair',
+                     'composite': {
+                         # note that the component names do not match argument names
+                         # in the TestObjectPair.__init__ func or the set functions
+                         # in the python object.
+                         'z': {'datasetType': 'basicObject1',
+                               'setter': 'set_a',
+                               'getter': 'get_a'
+                               },
+                         'x': {'datasetType': 'basicObject2',
+                               'setter': 'set_b',
+                               'getter': 'get_b'
+                               }
+                     }
+                 },
+                 # simple object where setter and getter is named with underscore
+                 # separator
+                 'underscoreSetter': {
+                     'python': 'lsst.daf.persistence.test.TestObjectUnderscoreSetter',
+                     'composite': {
+                         'foo': {'datasetType': 'basicObject1'}
+                     }
+                 },
+                 # simple object where setter and getter is named with camelcase
+                 'camelCaseSetter': {
+                     'python': 'lsst.daf.persistence.test.TestObjectCamelCaseSetter',
+                     'composite': {
+                         'foo': {'datasetType': 'basicObject1'}
+                     }
+                 }
+             }})
 
         repoArgs = dafPersist.RepositoryArgs(root=self.firstRepoPath, policy=self.policy,
                                              mapper='lsst.obs.base.test.CompositeMapper')
@@ -371,6 +371,7 @@ def subsetAssembler(dataId, componentInfo, cls):
     obj.set_a(componentInfo['a'].obj)
     return obj
 
+
 class TestSubset(unittest.TestCase):
     """A test case for composite object subset keyword."""
 
@@ -381,27 +382,27 @@ class TestSubset(unittest.TestCase):
         self.objA2 = dpTest.TestObject("ABC")
         self.objB = dpTest.TestObject("def")
         self.policy = dafPersist.Policy(
-                                   {'camera': 'lsst.afw.cameraGeom.Camera',
-                                    'datasets': {
-                                        'basicObject1': {
-                                            'python': 'lsst.daf.persistence.test.TestObject',
-                                            'template': 'basic/id%(id)s.pickle',
-                                            'storage': 'PickleStorage'},
-                                        'basicObject2': {
-                                            'python': 'lsst.daf.persistence.test.TestObject',
-                                            'template': 'basic/name%(name)s.pickle',
-                                            'storage': 'PickleStorage'},
-                                        'basicPair': {
-                                            'python': 'lsst.daf.persistence.test.TestObjectPair',
-                                            'composite': {
-                                                'a': {
-                                                    'datasetType': 'basicObject1',
-                                                    'subset': True
-                                                }
-                                            },
-                                            'assembler': subsetAssembler
-                                        },
-                                    }})
+            {'camera': 'lsst.afw.cameraGeom.Camera',
+             'datasets': {
+                 'basicObject1': {
+                     'python': 'lsst.daf.persistence.test.TestObject',
+                     'template': 'basic/id%(id)s.pickle',
+                     'storage': 'PickleStorage'},
+                 'basicObject2': {
+                     'python': 'lsst.daf.persistence.test.TestObject',
+                     'template': 'basic/name%(name)s.pickle',
+                     'storage': 'PickleStorage'},
+                 'basicPair': {
+                     'python': 'lsst.daf.persistence.test.TestObjectPair',
+                     'composite': {
+                         'a': {
+                             'datasetType': 'basicObject1',
+                             'subset': True
+                         }
+                     },
+                     'assembler': subsetAssembler
+                 },
+             }})
 
         repoArgs = dafPersist.RepositoryArgs(root=self.firstRepoPath, policy=self.policy,
                                              mapper='lsst.obs.base.test.CompositeMapper')
@@ -412,11 +413,9 @@ class TestSubset(unittest.TestCase):
         del butler
         del repoArgs
 
-
     def tearDown(self):
         if os.path.exists(self.testData):
             shutil.rmtree(self.testData)
-
 
     def test(self):
         """Verify that the generic assembler and disassembler work for objects that conform to the generic
@@ -446,32 +445,32 @@ class TestInputOnly(unittest.TestCase):
         self.objA = dpTest.TestObject("abc")
         self.objB = dpTest.TestObject("def")
         self.policy = dafPersist.Policy(
-                                   {'camera': 'lsst.afw.cameraGeom.Camera',
-                                    'datasets': {
-                                        'basicObject1': {
-                                            'python': 'lsst.daf.persistence.test.TestObject',
-                                            'template': 'basic/id%(id)s.pickle',
-                                            'storage': 'PickleStorage'},
-                                        'basicObject2': {
-                                            'python': 'lsst.daf.persistence.test.TestObject',
-                                            'template': 'basic/name%(name)s.pickle',
-                                            'storage': 'PickleStorage'},
-                                        'basicPair': {
-                                            'python': 'lsst.daf.persistence.test.TestObjectPair',
-                                            'composite': {
-                                                'a': {
-                                                    'datasetType': 'basicObject1'
-                                                },
-                                                'b': {
-                                                    'datasetType': 'basicObject2',
-                                                    'inputOnly' : True
-                                                }
-                                            },
-                                            'assembler': 'lsst.daf.persistence.test.TestObjectPair.assembler',
-                                            'disassembler': 'lsst.daf.persistence.test.TestObjectPair.disassembler'
+            {'camera': 'lsst.afw.cameraGeom.Camera',
+             'datasets': {
+                 'basicObject1': {
+                     'python': 'lsst.daf.persistence.test.TestObject',
+                     'template': 'basic/id%(id)s.pickle',
+                     'storage': 'PickleStorage'},
+                 'basicObject2': {
+                     'python': 'lsst.daf.persistence.test.TestObject',
+                     'template': 'basic/name%(name)s.pickle',
+                     'storage': 'PickleStorage'},
+                 'basicPair': {
+                     'python': 'lsst.daf.persistence.test.TestObjectPair',
+                     'composite': {
+                         'a': {
+                             'datasetType': 'basicObject1'
+                         },
+                         'b': {
+                             'datasetType': 'basicObject2',
+                             'inputOnly': True
+                         }
+                     },
+                     'assembler': 'lsst.daf.persistence.test.TestObjectPair.assembler',
+                     'disassembler': 'lsst.daf.persistence.test.TestObjectPair.disassembler'
 
-                                        }
-                                    }})
+                 }
+             }})
 
         repoArgs = dafPersist.RepositoryArgs(root=self.firstRepoPath,
                                              mapper='lsst.obs.base.test.CompositeMapper',

@@ -58,6 +58,7 @@ class BaseMapper(lsst.obs.base.CameraMapper):
     def getPackageDir(cls):
         return "/path/to/nowhere"
 
+
 class MinMapper1(lsst.obs.base.CameraMapper):
     packageName = 'larry'
 
@@ -211,7 +212,7 @@ class Mapper2TestCase(unittest.TestCase):
                               "someCatalog", "someCatalog_md", "someCatalog_filename",
                               "someCatalog_len", "someCatalog_schema",
                               "forced_src", "forced_src_md", "forced_src_filename",
-                              "forced_src_len","forced_src_schema",
+                              "forced_src_len", "forced_src_schema",
                               "other_sub", "other_filename", "other_md", "other",
                               "someGz", "someGz_filename", "someFz", "someFz_filename", "someGz_md",
                               "someFz_sub", "someFz_md", "someGz_sub",
@@ -442,6 +443,7 @@ class Mapper3TestCase(unittest.TestCase):
         with self.assertRaises(ValueError):
             MinMapper3.getPackageName()
 
+
 class ParentRegistryTestCase(unittest.TestCase):
 
     @staticmethod
@@ -498,6 +500,7 @@ class ParentRegistryTestCase(unittest.TestCase):
         registryA = butler._repos.inputs()[0].repo._mapper.registry
         registryB = butler._repos.outputs()[0].repo._mapper.registry
         self.assertNotEqual(id(registryA), id(registryB))
+
 
 class MissingPolicyKeyTestCase(unittest.TestCase):
 

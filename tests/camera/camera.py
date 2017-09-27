@@ -10,8 +10,10 @@ config.transformDict.transforms['FieldAngle'].transform['multi'].transformDict =
 config.transformDict.transforms['FieldAngle'].transform['affine'].translation = [0.0, 0.0]
 config.transformDict.transforms['FieldAngle'].transform['affine'].linear = [1.0, 0.0, 0.0, 1.0]
 config.transformDict.transforms['FieldAngle'].transform['radial'].coeffs = None
-config.transformDict.transforms['FieldAngle'].transform['inverted'].transform.retarget(target=lsst.afw.geom.transformRegistry['radial'])
-config.transformDict.transforms['FieldAngle'].transform['inverted'].transform.coeffs = [0.0, 14805.4, 13619.3, 426637.0]
+config.transformDict.transforms['FieldAngle'].transform['inverted'].transform.retarget(
+    target=lsst.afw.geom.transformRegistry['radial'])
+config.transformDict.transforms['FieldAngle'].transform['inverted'].transform.coeffs = [
+    0.0, 14805.4, 13619.3, 426637.0]
 config.transformDict.transforms['FieldAngle'].transform.name = 'inverted'
 config.detectorList = {}
 config.detectorList[0] = lsst.afw.cameraGeom.cameraConfig.DetectorConfig()
