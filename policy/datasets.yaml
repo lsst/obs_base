@@ -638,3 +638,18 @@ donut_schema:
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
     template: schema/donut.fits
+qaTableCoadd:
+    persistable: None
+    python: __builtin__.str
+    storage: TextStorage
+    template: plots/%(filter)s/tract-%(tract)d/%(description)s.parq
+qaTableColor:
+    persistable: None
+    python: __builtin__.str
+    storage: TextStorage
+    template: plots/color/tract-%(tract)d/%(description)s.parq
+qaTableVisit:
+    persistable: None
+    python: __builtin__.str
+    storage: TextStorage
+    template: ''
