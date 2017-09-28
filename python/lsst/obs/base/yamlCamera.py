@@ -19,6 +19,8 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
+from __future__ import division
+from builtins import zip
 import yaml
 
 import numpy as np
@@ -110,7 +112,7 @@ class YamlCamera(cameraGeom.Camera):
         """
         # Much of this will need to be filled in when we know it.
         assert len(ccd['amplifiers']) > 0
-        amp = ccd['amplifiers'].values()[0]
+        amp = list(ccd['amplifiers'].values())[0]
 
         rawBBox = self._makeBBoxFromList(amp['rawBBox'])  # total in file
         xRawExtent, yRawExtent = rawBBox.getDimensions()
