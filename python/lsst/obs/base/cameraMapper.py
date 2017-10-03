@@ -26,8 +26,6 @@ import os
 import pyfits  # required by _makeDefectsDict until defects are written as AFW tables
 import re
 import weakref
-import yaml
-import collections
 import lsst.daf.persistence as dafPersist
 from . import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping
 import lsst.daf.base as dafBase
@@ -1099,7 +1097,7 @@ class CameraMapper(dafPersist.Mapper):
         recipeName = mapping.recipe
         storageType = mapping.storage
         if storageType not in self._writeRecipes:
-            return lsst.daf.base.PropertySet()
+            return dafBase.PropertySet()
         if recipeName not in self._writeRecipes[storageType]:
             raise RuntimeError("Unrecognized write recipe for datasetType %s (storage type %s): %s" %
                                (datasetType, storageType, recipeName))
