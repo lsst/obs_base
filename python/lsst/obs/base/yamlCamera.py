@@ -19,6 +19,8 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
+from __future__ import division, print_function
+from builtins import zip
 import yaml
 
 import numpy as np
@@ -47,7 +49,7 @@ class YamlCamera(cameraGeom.Camera):
         fieldAngleToFocalPlane = afwGeom.makeRadialTransform(radialCoeffs)
         focalPlaneToFieldAngle = fieldAngleToFocalPlane.getInverse()
         cameraTransformMap = cameraGeom.TransformMap(cameraGeom.FOCAL_PLANE,
-                                                    {cameraGeom.FIELD_ANGLE: focalPlaneToFieldAngle})
+                                                     {cameraGeom.FIELD_ANGLE: focalPlaneToFieldAngle})
         detectorList = self._makeDetectorList(cameraParams["CCDs"], focalPlaneToFieldAngle)
         cameraGeom.Camera.__init__(self, cameraParams["name"], detectorList, cameraTransformMap)
 
@@ -110,13 +112,13 @@ class YamlCamera(cameraGeom.Camera):
         """
         # Much of this will need to be filled in when we know it.
         assert len(ccd['amplifiers']) > 0
-        amp = ccd['amplifiers'].values()[0]
+        amp = list(ccd['amplifiers'].values())[0]
 
         rawBBox = self._makeBBoxFromList(amp['rawBBox'])  # total in file
         xRawExtent, yRawExtent = rawBBox.getDimensions()
 
         from lsst.afw.table import LL, LR, UL, UR
-        readCorners = dict(LL = LL, LR = LR, UL = UL, UR = UR)
+        readCorners = dict(LL=LL, LR=LR, UL=UL, UR=UR)
 
         schema = AmpInfoTable.makeMinimalSchema()
 

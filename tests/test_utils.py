@@ -33,6 +33,7 @@ import lsst.obs.base as obsBase
 
 class BboxFromIrafTestCase(lsst.utils.tests.TestCase):
     """Demonstrate that we can correctly parse IRAF-style BBOXes"""
+
     def testValid(self):
         test_data = {
             "[1:1084,1:1024]": afwGeom.BoxI(afwGeom.PointI(0, 0), afwGeom.PointI(1083, 1023)),

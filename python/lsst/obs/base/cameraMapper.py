@@ -1176,7 +1176,7 @@ class CameraMapper(dafPersist.Mapper):
             recipes.update(overrides)
 
         self._writeRecipes = {}
-        validationMenu = {'FitsStorage': validateRecipeFitsStorage,}
+        validationMenu = {'FitsStorage': validateRecipeFitsStorage, }
         for storageType in recipes.names(True):
             if "default" not in recipes[storageType]:
                 raise RuntimeError("No 'default' recipe defined for storage type %s in %s" %

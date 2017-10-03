@@ -204,8 +204,8 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
                     continue
 
                 lsstSys = dict(
-                    UTC = DateTime.UTC,
-                    TAI = DateTime.TAI,
+                    UTC=DateTime.UTC,
+                    TAI=DateTime.TAI,
                 ).get(timesys, DateTime.UTC)
 
                 # lsstDateStr = dateStr with trailing Z if UTC, else no trailing Z,
@@ -246,8 +246,8 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
                     continue
 
                 lsstSys = dict(
-                    UTC = DateTime.UTC,
-                    TAI = DateTime.TAI,
+                    UTC=DateTime.UTC,
+                    TAI=DateTime.TAI,
                 ).get(timesys, DateTime.UTC)
 
                 desDate = DateTime(mjdDate, DateTime.MJD, lsstSys)
