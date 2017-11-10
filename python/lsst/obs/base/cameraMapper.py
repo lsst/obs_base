@@ -1165,17 +1165,18 @@ class CameraMapper(dafPersist.Mapper):
         recipesFile = os.path.join(getPackageDir("obs_base"), "policy", "writeRecipes.yaml")
         recipes = dafPersist.Policy(recipesFile)
         supplementsFile = os.path.join(self.getPackageDir(), "policy", "writeRecipes.yaml")
+        validationMenu = {'FitsStorage': validateRecipeFitsStorage,}
         if os.path.exists(supplementsFile) and supplementsFile != recipesFile:
             supplements = dafPersist.Policy(supplementsFile)
             # Don't allow overrides, only supplements
-            intersection = set(recipes.names()).intersection(set(supplements.names()))
-            if intersection:
-                raise RuntimeError("Recipes provided in %s may not override those in %s: %s" %
-                                   (supplementsFile, recipesFile, intersection))
-            recipes.update(overrides)
+            for entry in validationMenu:
+                intersection = set(recipes[entry].names()).intersection(set(supplements.names()))
+                if intersection:
+                    raise RuntimeError("Recipes provided in %s section %s may not override those in %s: %s" %
+                                       (supplementsFile, entry, recipesFile, intersection))
+            recipes.update(supplements)
 
         self._writeRecipes = {}
-        validationMenu = {'FitsStorage': validateRecipeFitsStorage, }
         for storageType in recipes.names(True):
             if "default" not in recipes[storageType]:
                 raise RuntimeError("No 'default' recipe defined for storage type %s in %s" %
