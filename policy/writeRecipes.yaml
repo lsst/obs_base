@@ -42,4 +42,4 @@ FitsStorage:
 
   # Set the default
   default:
-    <<: *noCompression
+    <<: *lossless
