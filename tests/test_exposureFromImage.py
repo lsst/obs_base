@@ -64,7 +64,7 @@ class ExposureFromImageTestCase(lsst.utils.tests.TestCase):
 
     def testDecoratedImageBadWcs(self):
         """Test that exposureFromImage() attaches a None wcs to the exposure
-        when makeWcs() raises an invalidParameter error
+        when the WCS cannot be constructed
         """
         image = self.maskedImage.getImage()
         decoImage = afwImage.DecoratedImageF(image)

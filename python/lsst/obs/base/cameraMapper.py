@@ -420,7 +420,7 @@ class CameraMapper(dafPersist.Mapper):
 
                         if name == "exposures":
                             setMethods("wcs", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                       afwImage.makeWcs(
+                                       afwGeom.makeSkyWcs(
                                            afwImage.readMetadata(location.getLocationsWithRoot()[0])))
                             setMethods("calib", bypassImpl=lambda datasetType, pythonType, location, dataId:
                                        afwImage.Calib(
@@ -1201,9 +1201,9 @@ def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo
         exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image.getImage()))
         metadata = image.getMetadata()
         try:
-            wcs = afwImage.makeWcs(metadata, True)
+            wcs = afwGeom.makeSkyWcs(metadata, strip=True)
             exposure.setWcs(wcs)
-        except pexExcept.InvalidParameterError as e:
+        except pexExcept.TypeError as e:
             # raised on failure to create a wcs (and possibly others)
             if logger is None:
                 logger = lsstLog.Log.getLogger("CameraMapper")
