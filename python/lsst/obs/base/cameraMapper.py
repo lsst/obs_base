@@ -1165,7 +1165,7 @@ class CameraMapper(dafPersist.Mapper):
         recipesFile = os.path.join(getPackageDir("obs_base"), "policy", "writeRecipes.yaml")
         recipes = dafPersist.Policy(recipesFile)
         supplementsFile = os.path.join(self.getPackageDir(), "policy", "writeRecipes.yaml")
-        validationMenu = {'FitsStorage': validateRecipeFitsStorage,}
+        validationMenu = {'FitsStorage': validateRecipeFitsStorage, }
         if os.path.exists(supplementsFile) and supplementsFile != recipesFile:
             supplements = dafPersist.Policy(supplementsFile)
             # Don't allow overrides, only supplements
