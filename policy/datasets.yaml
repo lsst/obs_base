@@ -64,6 +64,11 @@ deep_compareWarpAssembleCoadd_config:
     storage: ConfigStorage
     python: lsst.pipe.tasks.assembleCoadd.CompareWarpAssembleCoaddConfig
     template: config/deep_compareWarpAssembleCoadd.py
+deep_dcrAssembleCoadd_config:  # Configuration for DCR-aware coadds
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.tasks.dcrAssembleCoadd.DcrAssembleCoaddConfig
+    template: config/deep_dcrAssembleCoadd.py
 flat_config:
     persistable: Config
     storage: ConfigStorage
@@ -184,6 +189,11 @@ deep_safeClipAssembleCoadd_metadata:
     python: lsst.daf.base.PropertySet
     template: deep_assembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.boost
 deep_compareWarpAssembleCoadd_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    template: deep_assembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.boost
+deep_dcrAssembleCoadd_metadata:  # Temporary metadata for DCR-aware coadds
     persistable: PropertySet
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
