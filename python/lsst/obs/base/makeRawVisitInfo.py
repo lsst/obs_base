@@ -319,10 +319,10 @@ class MakeRawVisitInfo(object):
         if np.isnan(value):
             retVal = defaultValue
         else:
-            if minimum is not None:
-                if value < minimum:
-                    retVal = defaultValue
-            if maximum is not None:
-                if value > maximum:
-                    retVal = defaultValue
+            if minimum is not None and value < minimum:
+                retVal = defaultValue
+            elif maximum is not None and value > maximum:
+                retVal = defaultValue
+            else:
+                retVal = value
         return retVal
