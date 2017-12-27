@@ -306,3 +306,23 @@ class MakeRawVisitInfo(object):
         """Convert pressure from torr to Pascals
         """
         return torr*PascalPerTorr
+
+    @staticmethod
+    def defaultMetadata(value, defaultValue, minimum=None, maximum=None):
+        """Check metadata for valid values against defaults.
+
+        @param[in] value  metadata value returned by popItem, popFloat, or popAngle
+        @param[in] defaultValue  default value to use if the metadata value is invalid
+        @param[in] minimum  Minimum possible valid value, optional
+        @param[in] maximum  Maximum possible valid value, optional
+        """
+        if np.isnan(value):
+            retVal = defaultValue
+        else:
+            if minimum is not None:
+                if value < minimum:
+                    retVal = defaultValue
+            if maximum is not None:
+                if value > maximum:
+                    retVal = defaultValue
+        return retVal
