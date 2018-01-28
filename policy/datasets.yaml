@@ -679,3 +679,30 @@ verify_job:  # Dataset to hold metrics, specs and measurements from lsst_verify 
     template: verify/job.json
     persistable: ignored # Not persistable yet
     storage: ignored
+# TransmissionCurve datasets below should ideally be calibrations so they can have temporal
+# dependence, but we can defer that to Gen. 3 Butler since the concrete ones we have don't
+# have any temporal dependence yet.
+transmission_filter:  # wavelength-dependent throughput due to the filter itself, in focal plane coordinates
+    template: 'transmission/filter-%(filter)s.fits'
+    persistable: TransmissionCurve
+    python: lsst.afw.image.TransmissionCurve
+    storage: FitsCatalogStorage
+    level: None
+transmission_sensor:  # wavelength-dependent throughput due to the sensor, in post-ISR CCD coordinates
+    template: ''
+    persistable: TransmissionCurve
+    python: lsst.afw.image.TransmissionCurve
+    storage: FitsCatalogStorage
+    level: None
+transmission_optics:  # wavelength-dependent throughput due to the optics, in focal-plane coordinates
+    template: 'transmission/optics.fits'
+    persistable: TransmissionCurve
+    python: lsst.afw.image.TransmissionCurve
+    storage: FitsCatalogStorage
+    level: None
+transmission_atmosphere:  # wavelength-dependent throughput due to the atmosphere (spatially constant)
+    template: 'transmission/atmosphere.fits'
+    persistable: TransmissionCurve
+    python: lsst.afw.image.TransmissionCurve
+    storage: FitsCatalogStorage
+    level: None
