@@ -72,6 +72,7 @@ raw:
     tables: raw
     template: ''
 wcs:
+    description: "Astrometric calibration produced by jointcal, saved as a WCS inside an Exposure."
     persistable: ExposureI
     storage: FitsStorage
     python: lsst.afw.image.ExposureI

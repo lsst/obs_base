@@ -452,6 +452,7 @@ srcMatchFull:  # Denormalized matches from CalibrateTask
     tables: raw
     template: ''
 photoCalib:
+    description: "Photometric calibration produced by jointcal."
     persistable: PhotoCalib
     storage: FitsCatalogStorage
     python: lsst.afw.image.PhotoCalib
