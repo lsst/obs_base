@@ -61,7 +61,7 @@ deep_safeClipAssembleCoadd_config:
 deep_compareWarpAssembleCoadd_config:
     persistable: Config
     storage: ConfigStorage
-    python: lsst.pipe.tasks.assembleCoadd.SafeClipAssembleCoaddConfig
+    python: lsst.pipe.tasks.assembleCoadd.CompareWarpAssembleCoaddConfig
     template: config/deep_compareWarpAssembleCoadd.py
 flat_config:
     persistable: Config
