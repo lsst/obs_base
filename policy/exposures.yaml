@@ -78,7 +78,7 @@ wcs:
     python: lsst.afw.image.ExposureI
     level: Ccd
     tables: raw
-    template: ''
+    template: 'jointcal-results/%(tract)d/%(filter)s/wcs-%(visit)d-%(ccd)03d.fits'
 icExp:
     persistable: ExposureF
     storage: FitsStorage

@@ -457,7 +457,7 @@ photoCalib:
     storage: FitsCatalogStorage
     python: lsst.afw.image.PhotoCalib
     tables: raw
-    template: ''
+    template: 'jointcal-results/%(tract)d/%(filter)s/photoCalib-%(visit)d-%(ccd)03d.fits'
 deepCoadd_measMatch:  # Matches from MeasureMergedCoaddSourcesTask
     persistable: BaseCatalog
     storage: FitsCatalogStorage
