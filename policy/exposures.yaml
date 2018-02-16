@@ -71,6 +71,7 @@ raw:
     level: Ccd
     tables: raw
     template: ''
+# old meas_mosaic/jointcal output; deprecated in favor of jointcal_wcs, but still need to read old outputs
 wcs:
     persistable: ExposureI
     storage: FitsStorage
