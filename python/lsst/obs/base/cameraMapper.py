@@ -32,6 +32,7 @@ import lsst.daf.base as dafBase
 import lsst.afw.geom as afwGeom
 import lsst.afw.image as afwImage
 import lsst.afw.table as afwTable
+from lsst.afw.fits import readMetadata
 import lsst.afw.cameraGeom as afwCameraGeom
 import lsst.log as lsstLog
 import lsst.pex.policy as pexPolicy
@@ -411,7 +412,7 @@ class CameraMapper(dafPersist.Mapper):
                     # Metadata from FITS file
                     if subPolicy["storage"] == "FitsStorage":  # a FITS image
                         setMethods("md", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                   afwImage.readMetadata(location.getLocationsWithRoot()[0]))
+                                   readMetadata(location.getLocationsWithRoot()[0]))
 
                         # Add support for configuring FITS compression
                         addName = "add_" + datasetType
@@ -420,19 +421,15 @@ class CameraMapper(dafPersist.Mapper):
 
                         if name == "exposures":
                             setMethods("wcs", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                       afwImage.makeWcs(
-                                           afwImage.readMetadata(location.getLocationsWithRoot()[0])))
+                                       afwGeom.makeSkyWcs(readMetadata(location.getLocationsWithRoot()[0])))
                             setMethods("calib", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                       afwImage.Calib(
-                                           afwImage.readMetadata(location.getLocationsWithRoot()[0])))
+                                       afwImage.Calib(readMetadata(location.getLocationsWithRoot()[0])))
                             setMethods("visitInfo",
                                        bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                       afwImage.VisitInfo(
-                                           afwImage.readMetadata(location.getLocationsWithRoot()[0])))
+                                       afwImage.VisitInfo(readMetadata(location.getLocationsWithRoot()[0])))
                             setMethods("filter",
                                        bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                       afwImage.Filter(
-                                           afwImage.readMetadata(location.getLocationsWithRoot()[0])))
+                                       afwImage.Filter(readMetadata(location.getLocationsWithRoot()[0])))
                             setMethods("detector",
                                        mapImpl=lambda dataId, write=False:
                                            dafPersist.ButlerLocation(
@@ -449,17 +446,17 @@ class CameraMapper(dafPersist.Mapper):
                                        )
                             setMethods("bbox", bypassImpl=lambda dsType, pyType, location, dataId:
                                        afwImage.bboxFromMetadata(
-                                           afwImage.readMetadata(location.getLocationsWithRoot()[0], hdu=1)))
+                                           readMetadata(location.getLocationsWithRoot()[0], hdu=1)))
 
                         elif name == "images":
                             setMethods("bbox", bypassImpl=lambda dsType, pyType, location, dataId:
                                        afwImage.bboxFromMetadata(
-                                           afwImage.readMetadata(location.getLocationsWithRoot()[0])))
+                                           readMetadata(location.getLocationsWithRoot()[0])))
 
                     if subPolicy["storage"] == "FitsCatalogStorage":  # a FITS catalog
                         setMethods("md", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                   afwImage.readMetadata(os.path.join(location.getStorage().root,
-                                                                      location.getLocations()[0]), hdu=1))
+                                   readMetadata(os.path.join(location.getStorage().root,
+                                                             location.getLocations()[0]), hdu=1))
 
                     # Sub-images
                     if subPolicy["storage"] == "FitsStorage":
@@ -490,9 +487,9 @@ class CameraMapper(dafPersist.Mapper):
                     if subPolicy["storage"] == "FitsCatalogStorage":
                         # Length of catalog
                         setMethods("len", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                   afwImage.readMetadata(os.path.join(location.getStorage().root,
-                                                                      location.getLocations()[0]),
-                                                         hdu=1).get("NAXIS2"))
+                                   readMetadata(os.path.join(location.getStorage().root,
+                                                             location.getLocations()[0]),
+                                                hdu=1).get("NAXIS2"))
 
                         # Schema of catalog
                         if not datasetType.endswith("_schema") and datasetType + "_schema" not in datasets:
@@ -1165,7 +1162,7 @@ class CameraMapper(dafPersist.Mapper):
         recipesFile = os.path.join(getPackageDir("obs_base"), "policy", "writeRecipes.yaml")
         recipes = dafPersist.Policy(recipesFile)
         supplementsFile = os.path.join(self.getPackageDir(), "policy", "writeRecipes.yaml")
-        validationMenu = {'FitsStorage': validateRecipeFitsStorage,}
+        validationMenu = {'FitsStorage': validateRecipeFitsStorage, }
         if os.path.exists(supplementsFile) and supplementsFile != recipesFile:
             supplements = dafPersist.Policy(supplementsFile)
             # Don't allow overrides, only supplements
@@ -1201,9 +1198,9 @@ def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo
         exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image.getImage()))
         metadata = image.getMetadata()
         try:
-            wcs = afwImage.makeWcs(metadata, True)
+            wcs = afwGeom.makeSkyWcs(metadata, strip=True)
             exposure.setWcs(wcs)
-        except pexExcept.InvalidParameterError as e:
+        except pexExcept.TypeError as e:
             # raised on failure to create a wcs (and possibly others)
             if logger is None:
                 logger = lsstLog.Log.getLogger("CameraMapper")
