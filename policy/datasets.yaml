@@ -706,3 +706,76 @@ transmission_atmosphere:  # wavelength-dependent throughput due to the atmospher
     python: lsst.afw.image.TransmissionCurve
     storage: FitsCatalogStorage
     level: None
+fgcmBuildStars_config: # Configuration for fgcmBuildStars
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.fgcm.fgcmBuildStars.FgcmBuildStarsConfig
+    template: config/fgcmBuildStars.py
+fgcmMakeLut_config: # Configuration for fgcmMakeLut (look-up-table)
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.fgcm.fgcmMakeLut.FgcmMakeLutConfig
+    template: config/fgcmMakeLut.py
+fgcmFitCycle_config: # Configuration for fgcmFitCycle
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.fgcm.fgcmFitCycle.FgcmFitCycleConfig
+    template: config/fgcmFitCycle-%(fgcmcycle)02d.fits
+fgcmVisitCatalog: # Catalog of visit information used in FGCM global fit
+    persistable: BaseCatalog
+    storage: FitsCatalogStorage
+    tables: raw
+    python: lsst.afw.table.BaseCatalog
+    template: fgcm-process/fgcmVisitCatalog.fits
+fgcmStarObservations: # Catalog of star observations used in FGCM global fit
+    storage: FitsCatalogStorage
+    tables: raw
+    python: lsst.afw.table.BaseCatalog
+    template: fgcm-process/fgcmStarObservations.fits
+fgcmStarIds: # Catalog of FGCM star ids used in FGCM global fit
+    storage: FitsCatalogStorage
+    tables: raw
+    python: lsst.afw.table.BaseCatalog
+    template: fgcm-process/fgcmStarIds.fits
+fgcmStarIndices: # Quick look-up index to FGCM star ids used in global fit
+    persistable: BaseCatalog
+    storage: FitsCatalogStorage
+    tables: raw
+    python: lsst.afw.table.BaseCatalog
+    template: fgcm-process/fgcmStarIndices.fits
+fgcmLookUpTable: # Atmosphere/instrument look-up-table for FGCM throughput and chromatic corrections
+    persistable: BaseCatalog
+    storage: FitsCatalogStorage
+    tables: raw
+    python: lsst.afw.table.BaseCatalog
+    template: fgcm-process/fgcmLookUpTable.fits
+fgcmZeropoints: # Catalog of exposure zeropoints and associated quality flags for FGCM global fit
+    persistable: BaseCatalog
+    storage: FitsCatalogStorage
+    tables: raw
+    python: lsst.afw.table.BaseCatalog
+    template: fgcm-process/fgcmZeropoints-%(fgcmcycle)02d.fits
+fgcmAtmosphereParameters: # Catalog of atmosphere model parameters for each visit in FGCM global fit
+    persistable: BaseCatalog
+    storage: FitsCatalogStorage
+    tables: raw
+    python: lsst.afw.table.BaseCatalog
+    template: fgcm-process/fgcmAtmosphereParameters-%(fgcmcycle)02d.fits
+fgcmFitParameters: # Internal catalog of fit parameters in FGCM global fit, used for input to next fit cycle
+    persistable: BaseCatalog
+    storage: FitsCatalogStorage
+    tables: raw
+    python: lsst.afw.table.BaseCatalog
+    template: fgcm-process/fgcmFitParameters-%(fgcmcycle)02d.fits
+fgcmFlaggedStars: # Catalog of stars flagged (bad/reserved stars), used for input to next fit cycle
+    persistable: BaseCatalog
+    storage: FitsCatalogStorage
+    tables: raw
+    python: lsst.afw.table.BaseCatalog
+    template: fgcm-process/fgcmFlaggedStars-%(fgcmcycle)02d.fits
+fgcmStandardStars: # Catalog of standard stars with magnitudes as generated from FGCM global fit
+    persistable: BaseCatalog
+    storage: FitsCatalogStorage
+    tables: raw
+    python: lsst.afw.table.BaseCatalog
+    template: fgcm-process/fgcmStandardStars-%(fgcmcycle)02d.fits
