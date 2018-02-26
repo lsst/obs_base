@@ -72,12 +72,13 @@ raw:
     tables: raw
     template: ''
 wcs:
+    description: "Astrometric calibration produced by jointcal, saved as a WCS inside an Exposure."
     persistable: ExposureI
     storage: FitsStorage
     python: lsst.afw.image.ExposureI
     level: Ccd
     tables: raw
-    template: ''
+    template: 'jointcal-results/%(tract)d/%(filter)s/wcs-%(visit)d-%(ccd)03d.fits'
 icExp:
     persistable: ExposureF
     storage: FitsStorage
