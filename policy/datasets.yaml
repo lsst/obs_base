@@ -779,3 +779,17 @@ fgcmStandardStars: # Catalog of standard stars with magnitudes as generated from
     tables: raw
     python: lsst.afw.table.BaseCatalog
     template: fgcm-process/fgcmStandardStars-%(fgcmcycle)02d.fits
+bf_config:  # Configuration for the brighter-fatter coefficient calculation code
+    persistable: Config
+    python: lsst.cp.pipe.bfCoeffCalc.BfTaskConfig
+    storage: ConfigStorage
+    tables:
+    - raw
+    - raw_visit
+    template: config/processBf.py
+bf_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    tables: raw
+    template: bf_metadata/bf_metadata.boost
