@@ -451,7 +451,19 @@ srcMatchFull:  # Denormalized matches from CalibrateTask
     python: lsst.afw.table.BaseCatalog
     tables: raw
     template: ''
-photoCalib:
+jointcal_wcs:  # Astrometric calibration produced by meas_mosaic/jointcal
+    persistable: SkyWcs
+    storage: FitsCatalogStorage
+    python: lsst.afw.geom.SkyWcs
+    tables: raw
+    template: ''
+jointcal_photoCalib:  # Photometric calibration produced by meas_mosaic/jointcal
+    persistable: PhotoCalib
+    storage: FitsCatalogStorage
+    python: lsst.afw.image.PhotoCalib
+    tables: raw
+    template: ''
+photoCalib:  # old meas_mosaic/jointcal output; deprecated in favor of jointcal_photoCalib
     persistable: PhotoCalib
     storage: FitsCatalogStorage
     python: lsst.afw.image.PhotoCalib
