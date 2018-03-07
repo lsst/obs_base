@@ -3,7 +3,6 @@ setupRequired(log)
 setupRequired(pex_policy)
 setupRequired(daf_persistence)
 setupRequired(afw)
-setupRequired(skypix)
 setupRequired(pyfits)
 setupRequired(utils)
 
