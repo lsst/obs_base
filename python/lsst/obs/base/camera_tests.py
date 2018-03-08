@@ -58,6 +58,8 @@ class CameraTests(with_metaclass(abc.ABCMeta)):
             name of the first detector in this camera
         plate_scale : `lsst.afw.geom.Angle`
             plate scale at center of focal plane, as angle-on-sky/mm
+        camera_size : `lsst.afw.Extent2I`
+            dimensions of the chips in this camera
         """
         fields = ['camera_name',
                   'n_detectors',
