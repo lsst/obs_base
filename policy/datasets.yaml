@@ -793,3 +793,13 @@ bf_metadata:
     python: lsst.daf.base.PropertySet
     tables: raw
     template: bf_metadata/bf_metadata.boost
+bfKernelNew:
+    persistable: ignored
+    storage: PickleStorage
+    python: numpy.array
+    template: ''
+#bfKernel:
+#    persistable: ignored
+#    python: numpy.ndarray
+#    storage: PickleStorage
+#    template: calibrations/bfKernel%(ccd)s.pickle
