@@ -41,7 +41,7 @@ from .exposureIdInfo import ExposureIdInfo
 from .makeRawVisitInfo import MakeRawVisitInfo
 from lsst.utils import getPackageDir
 
-"""This module defines the CameraMapper base class."""
+__all__ = ["CameraMapper", "exposureFromImage"]
 
 
 class CameraMapper(dafPersist.Mapper):

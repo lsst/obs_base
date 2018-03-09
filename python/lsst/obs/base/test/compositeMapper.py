@@ -27,6 +27,8 @@ from lsst.obs.base import CameraMapper
 from lsst.utils import getPackageDir
 import os
 
+__all__ = ["CompositeMapper"]
+
 
 class CompositeMapper(CameraMapper):
     packageName = "obs_base"

@@ -30,6 +30,8 @@ import lsst.daf.persistence
 import lsst.afw.image
 import collections
 
+__all__ = ["MapperTests"]
+
 
 class MapperTests(with_metaclass(abc.ABCMeta)):
     """

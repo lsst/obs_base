@@ -33,6 +33,8 @@ from . import butler_tests
 from . import mapper_tests
 from . import camera_tests
 
+__all__ = ["ObsTests"]
+
 
 class ObsTests(butler_tests.ButlerGetTests, mapper_tests.MapperTests,
                camera_tests.CameraTests):

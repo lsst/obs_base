@@ -26,6 +26,8 @@ import inspect
 import unittest
 import collections
 
+__all__ = ["ButlerGetTests"]
+
 
 class ButlerGetTests(with_metaclass(abc.ABCMeta)):
     """
