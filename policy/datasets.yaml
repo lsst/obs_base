@@ -44,6 +44,7 @@ deep_assembleCoadd_config:
     python: lsst.pipe.tasks.assembleCoadd.AssembleCoaddConfig
     template: config/deep_assembleCoadd.py
 deepCoadd_calexp_background:
+    description: "The background model for a deepCoadd_calexp."
     persistable: PurePythonClass
     storage: FitsCatalogStorage
     python: lsst.afw.math.BackgroundList
@@ -99,6 +100,9 @@ deepCoadd_ref_schema:
     python: lsst.afw.table.SourceCatalog
     template: schema/deepCoadd_ref.fits
 deepCoaddId:
+    description: >
+      A unique identifier for a coadd of a single patch.
+      This is overridden by the CameraMapper and not a persisted dataset.
     persistable: ignored
     storage: ignored
     python: lsst.daf.base.PropertySet
@@ -114,6 +118,10 @@ deep_assembleCoadd_metadata:
     python: lsst.daf.base.PropertySet
     template: deep_assembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.boost
 deepCoadd_meas:
+    description: >
+        Catalog of source measurements on the deepCoadd.
+        Footprints are deblended and fit (shapes, positions, fluxes) per filter,
+        using peaks produced by MeasureMergedCoaddSourcesTask.
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
@@ -124,6 +132,9 @@ deepCoadd_forced_config:
     python: lsst.meas.base.forcedPhotCoadd.ForcedPhotCoaddConfig
     template: config/forcedPhotCoadd.py
 deepCoadd_forced_src:
+    description: >
+        Catalog of forced measurements (shape and position parameters held fixed) on the deepCoadd.
+        Use deepCoadd_ref as the reference catalog by default.
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
@@ -159,6 +170,10 @@ deepCoadd_mergeDet_schema:
     python: lsst.afw.table.SourceCatalog
     template: schema/deepCoadd_mergeDet.fits
 brightObjectMask:
+    description: >
+      Bright object mask produced with external catalogs to be applied
+      to the mask plane BRIGHT_OBJECT by AssembleCoaddTask.
+      Not output by any Task currently.
     persistable: PurePythonClass
     storage: FitsCatalogStorage
     python: lsst.pipe.tasks.objectMasks.ObjectMaskCatalog
@@ -179,6 +194,9 @@ transformed_src_schema:
     python: lsst.afw.table.BaseCatalog
     template: schema/transformed_src.fits
 deepMergedCoaddId:
+    description: >
+      A unique identifier for a band-merged catalog of a single patch.
+      This is overridden by the CameraMapper and not a persisted dataset.
     persistable: ignored
     storage: ignored
     python: lsst.daf.base.PropertySet
@@ -199,6 +217,10 @@ deepCoaddId_bits:
     python: lsst.daf.base.PropertySet
     template: ignored
 deepCoadd_ref:
+    description: >
+        Catalog marking the primary detection (which band provides a good shape and position)
+        for each detection in deepCoadd_mergeDet.
+        Produced by mergeCoaddMeasurements.
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
@@ -239,11 +261,17 @@ deep_makeDiscreteSkyMap_metadata:
     python: lsst.daf.base.PropertySet
     template: metadata/deep_makeDiscreteSkyMap.boost
 deepCoadd_mergeDet:
+    description: >
+        Catalog containing the union of footprints (and peaks) detected on all filters (from deepCoadd_det).
+        Produced by MergeDetectionsTask.
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
     template: deepCoadd-results/merged/%(tract)d/%(patch)s/mergeDet-%(tract)d-%(patch)s.fits
 ccdExposureId:
+    description: >
+      A unique identifier for single ccd exposure.
+      This is overridden by the CameraMapper and not a persisted dataset.
     persistable: ignored
     storage: ignored
     python: lsst.daf.base.PropertySet
@@ -259,11 +287,13 @@ deepCoadd_meas_schema:
     python: lsst.afw.table.SourceCatalog
     template: schema/deepCoadd_meas.fits
 deepCoadd_skyMap:
+    description: "The standard reference system for use when projecting single epoch images on to the coadd."
     persistable: ignored
     storage: PickleStorage
     python: lsst.skymap.BaseSkyMap
     template: deepCoadd/skyMap.pickle
 deepCoadd_det:
+    description: "Source catalog of footprints detected on coadds, produced by DetectCoaddSourcesTask."
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
@@ -309,6 +339,7 @@ ccdExposureId_bits:
     python: lsst.daf.base.PropertySet
     template: ignored
 ref_cat:
+    description: "An external reference catalog, read by LoadIndexedReferenceObjectsTask."
     persistable: SourceCatalog
     python: lsst.afw.table.SourceCatalog
     storage: FitsCatalogStorage
@@ -327,6 +358,7 @@ deepDiff_metadata:
     storage:       BoostStorage
     tables:        'raw'
 deepDiff_diaSrc:
+    description: "Catalog of sources detected on deepDiff_differenceExp."
     template:      ''
     python:        lsst.afw.table.SourceCatalog
     persistable:   SourceCatalog
@@ -339,6 +371,7 @@ deepDiff_diaSrc_schema:
     storage:       FitsCatalogStorage
     tables:        'raw'
 deepDiff_kernelSrc:
+    description: "Source catalog of stars that were used to compute the matching kernel in ImageDifferenceTask."
     template:      ''
     python:        lsst.afw.table.SourceCatalog
     persistable:   SourceCatalog
@@ -356,12 +389,18 @@ isr_metadata:
     tables: raw
     template: ''
 icSrc:
+    description: >
+        High signal-to-noise source catalog produced by CharacterizeImageTask (a subset of `src`).
+        Provides the sources that refined the PSF and background model.
     persistable: SourceCatalog
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
     tables: raw
     template: ''
 icExpBackground:
+    description: >
+        Background model produced by CharacterizeImageTask.
+        The icExp is stored with the background (defined here) already subtracted.
     persistable: PurePythonClass
     storage: FitsCatalogStorage
     python: lsst.afw.math.BackgroundList
@@ -428,54 +467,71 @@ deepCoadd_forced_src_schema:
     python: lsst.afw.table.SourceCatalog
     template: schema/deepCoadd_forced_src.fits
 src:
+    description: "Full depth source catalog produced by ProcessCcdTask."
     persistable: SourceCatalog
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
     tables: raw
     template: ''
 calexpBackground:
+    description: >
+        Background model produced by ProcessCcdTask.
+        The calexp is stored with the background (defined here) already subtracted.
     persistable: PurePythonClass
     storage: FitsCatalogStorage
     python: lsst.afw.math.BackgroundList
     tables: raw
     template: ''
 srcMatch:
+    description: >
+      Catalog of sources matched with the reference catalog that were used in CalibrateTask.
+      Contains only the catalog ids of the respective catalogs.
     persistable: BaseCatalog
     storage: FitsCatalogStorage
     python: lsst.afw.table.BaseCatalog
     tables: raw
     template: ''
-srcMatchFull:  # Denormalized matches from CalibrateTask
+srcMatchFull:
+    description: "An optional copy of srcMatch containing all fields from the original src."
     persistable: BaseCatalog
     storage: FitsCatalogStorage
     python: lsst.afw.table.BaseCatalog
     tables: raw
     template: ''
-jointcal_wcs:  # Astrometric calibration produced by meas_mosaic/jointcal
+jointcal_wcs:
+    description: "Astrometric calibration produced by meas_mosaic/jointcal."
     persistable: SkyWcs
     storage: FitsCatalogStorage
     python: lsst.afw.geom.SkyWcs
     tables: raw
     template: ''
-jointcal_photoCalib:  # Photometric calibration produced by meas_mosaic/jointcal
+jointcal_photoCalib:
+    description: "Photometric calibration produced by meas_mosaic/jointcal."
     persistable: PhotoCalib
     storage: FitsCatalogStorage
     python: lsst.afw.image.PhotoCalib
     tables: raw
     template: ''
-photoCalib:  # old meas_mosaic/jointcal output; deprecated in favor of jointcal_photoCalib
+photoCalib:
+    description: "old meas_mosaic/jointcal output; deprecated in favor of jointcal_photoCalib."
     persistable: PhotoCalib
     storage: FitsCatalogStorage
     python: lsst.afw.image.PhotoCalib
     tables: raw
     template: ''
-deepCoadd_measMatch:  # Matches from MeasureMergedCoaddSourcesTask
+deepCoadd_measMatch:
+    description: >
+        Catalog of matches between deepCoadd_meas catalog and reference catalog (used for calibration).
+        Produced by MeasureMergedCoaddSourcesTask.
     persistable: BaseCatalog
     storage: FitsCatalogStorage
     python: lsst.afw.table.BaseCatalog
     tables: raw
     template: ''
-deepCoadd_measMatchFull:  # Denormalized matches from MeasureMergedCoaddSourcesTask
+deepCoadd_measMatchFull:
+    description: >
+        Denormalized deepCoadd_measMatch. Contains all columns from deepCoadd_meas and reference catalog.
+        Produced by from MeasureMergedCoaddSourcesTask.
     persistable: BaseCatalog
     storage: FitsCatalogStorage
     python: lsst.afw.table.BaseCatalog
@@ -507,6 +563,9 @@ dcrCoadd_ref_schema:
     python: lsst.afw.table.SourceCatalog
     template: schema/dcrCoadd_ref.fits
 dcrCoaddId:
+    description: >
+      A unique identifier for a (Ian fill this in!).
+      This is overridden by the CameraMapper and not a persisted dataset.
     persistable: ignored
     storage: ignored
     python: lsst.daf.base.PropertySet
@@ -609,6 +668,9 @@ dcr_safeClipAssembleCoadd_metadata:
     python: lsst.daf.base.PropertySet
     template: dcr_assembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.boost
 dcrMergedCoaddId:
+    description: >
+      A unique identifier for a (Ian fill this in!).
+      This is overridden by the CameraMapper and not a persisted dataset.
     persistable: ignored
     storage: ignored
     python: lsst.daf.base.PropertySet
