@@ -399,9 +399,9 @@ class MakeRawVisitInfo(object):
 
         Parameters
         ----------
-        value : `object`
+        value : `float`
             metadata value returned by popItem, popFloat, or popAngle
-        defaultValue : `object``
+        defaultValue : `float``
             default value to use if the metadata value is invalid
         minimum : `float`
             Minimum possible valid value, optional
@@ -410,7 +410,7 @@ class MakeRawVisitInfo(object):
 
         Returns
         -------
-        `object`
+        `float`
             The "validated" value.
         """
         if np.isnan(value):
