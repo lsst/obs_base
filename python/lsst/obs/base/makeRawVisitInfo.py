@@ -48,12 +48,13 @@ BadDate = DateTime()
 
 
 class MakeRawVisitInfo(object):
-    """Base class functor to make a VisitInfo from the FITS header of a raw image
+    """Base class functor to make a VisitInfo from the FITS header of a raw image.
 
-    A subclass will be wanted for each camera. Subclasses should override
-    - setArgDict: the override can call the base implementation,
-                    which simply sets exposure time and date of observation
-    - setDateAvg
+    A subclass will be wanted for each camera. Subclasses should override:
+
+    - `setArgDict`, The override can call the base implementation,
+        which simply sets exposure time and date of observation
+    - `getDateAvg`
 
     The design philosophy is to make a best effort and log warnings of problems,
     rather than raising exceptions, in order to extract as much VisitInfo information as possible
@@ -62,24 +63,34 @@ class MakeRawVisitInfo(object):
     However, the methods that transform units are less forgiving; they assume
     the user provides proper data types, since type errors in arguments to those
     are almost certainly due to coding mistakes.
+
+    Parameters
+    ----------
+    log : `lsst.log.Log` or None
+        Logger to use for messages.
+        (None to use ``Log.getLogger("MakeRawVisitInfo")``).
     """
 
     def __init__(self, log=None):
-        """Construct a MakeRawVisitInfo
-        """
         if log is None:
             log = Log.getLogger("MakeRawVisitInfo")
         self.log = log
 
     def __call__(self, md, exposureId):
-        """Construct a VisitInfo and strip associated data from the metadata
+        """Construct a VisitInfo and strip associated data from the metadata.
 
-        @param[in,out] md  metadata, as an lsst.daf.base.PropertyList or PropertySet;
-            items that are used are stripped from the metadata
-            (except TIMESYS, because it may apply to more than one other keyword).
-        @param[in] exposureId  exposure ID
+        Parameters
+        ----------
+        md : `lsst.daf.base.PropertyList` or `lsst.daf.base.PropertySet`
+            Metadata to pull from.
+            Items that are used are stripped from the metadata (except TIMESYS,
+            because it may apply to other keywords).
+        exposureId : `int`
+            exposure ID
 
-        The basic implementation sets date and exposureTime using typical values
+        Notes
+        -----
+        The basic implementation sets `date` and `exposureTime` using typical values
         found in FITS files and logs a warning if neither can be set.
         """
         argDict = dict(exposureId=exposureId)
@@ -95,43 +106,64 @@ class MakeRawVisitInfo(object):
 
         Subclasses are expected to override this method, though the override
         may wish to call this default implementation, which:
+
         - sets exposureTime from "EXPTIME"
         - sets date by calling getDateAvg
 
-        @param[in,out] md  metadata, as an lsst.daf.base.PropertyList or PropertySet;
-            items that are used are stripped from the metadata
-            (except TIMESYS, because it may apply to more than one other keyword).
-        @param[in,out] argdict  a dict of arguments
+        Parameters
+        ----------
+        md : `lsst.daf.base.PropertyList` or `PropertySet`
+            Metadata to pull from.
+            Items that are used are stripped from the metadata (except TIMESYS,
+            because it may apply to other keywords).
+        argdict : `dict`
+            dict of arguments
 
+        Notes
+        -----
         Subclasses should expand this or replace it.
         """
         argDict["exposureTime"] = self.popFloat(md, "EXPTIME")
         argDict["date"] = self.getDateAvg(md=md, exposureTime=argDict["exposureTime"])
 
     def getDateAvg(self, md, exposureTime):
-        """Return date at the middle of the exposure
+        """Return date at the middle of the exposure.
 
-        @param[in,out] md  metadata, as an lsst.daf.base.PropertyList or PropertySet;
-            items that are used are stripped from the metadata
-            (except TIMESYS, because it may apply to more than one other keyword).
-        @param[in] exposureTime  exposure time (sec)
+        Parameters
+        ----------
+        md : `lsst.daf.base.PropertyList` or `PropertySet`
+            Metadata to pull from.
+            Items that are used are stripped from the metadata (except TIMESYS,
+            because it may apply to other keywords).
+        exposureTime : `float`
+            Exposure time (sec)
 
-        Subclasses must override. Here is a typical implementation:
-        dateObs = self.popIsoDate(md, "DATE-OBS")
-        return self.offsetDate(dateObs, 0.5*exposureTime)
+        Notes
+        -----
+        Subclasses must override. Here is a typical implementation::
+
+            dateObs = self.popIsoDate(md, "DATE-OBS")
+            return self.offsetDate(dateObs, 0.5*exposureTime)
         """
         raise NotImplementedError()
 
     def getDarkTime(self, argDict):
-        """Get the darkTime from the DARKTIME keyword, else expTime, else NaN
+        """Get the darkTime from the DARKTIME keyword, else expTime, else NaN,
 
-        Subclasses should call this function if desired, by putting:
-        argDict['darkTime'] = self.getDarkTime(argDict)
-        in their __init__() method of the derived class.
+        If dark time is available then subclasses should call this method by
+        putting the following in their `__init__` method::
 
-        @param[in] argDict  argDict
-        @return darkTime darkTime, as inferred from the metadata
+            argDict['darkTime'] = self.getDarkTime(argDict)
 
+        Parameters
+        ----------
+        argdict : `dict`
+            Dict of arguments.
+
+        Returns
+        -------
+        `float`
+            Dark time, as inferred from the metadata.
         """
         darkTime = argDict.get("darkTime", NaN)
         if np.isfinite(darkTime):
@@ -145,11 +177,17 @@ class MakeRawVisitInfo(object):
         return exposureTime
 
     def offsetDate(self, date, offsetSec):
-        """Return a date offset by a specified number of seconds
+        """Return a date offset by a specified number of seconds.
 
-        @param[in] date  date (an lsst.daf.base.DateTime)
-        @param[in] offsetSec  offset, in seconds (float)
-        @return the offset date (an lsst.daf.base.DateTime)
+        date : `lsst.daf.base.DateTime`
+            Date baseline to offset from.
+        offsetSec : `float`
+            Offset, in seconds.
+
+        Returns
+        -------
+        `lsst.daf.base.DateTime`
+            The offset date.
         """
         if not date.isValid():
             self.log.warn("date is invalid; cannot offset it")
@@ -161,15 +199,24 @@ class MakeRawVisitInfo(object):
         return DateTime(dateNSec + int(offsetSec*1.0e9), DateTime.TAI)
 
     def popItem(self, md, key, default=None):
-        """Remove an item of metadata and return the value
+        """Remove an item of metadata and return the value.
 
-        @param[in,out] md  metadata, as an lsst.daf.base.PropertyList or PropertySet;
-            the popped key is removed
-        @param[in] key  metadata key
-        @param[in] default  default value to return if key not found; ignored if doRaise true
-        @return the value of the specified key, using whatever type md.get(key) returns
+        Log a warning if the key is not found.
 
-        Log a warning if the key is not found
+        Parameters
+        ----------
+        md : `lsst.daf.base.PropertyList` or `PropertySet`
+            Metadata to pull `key` from and remove.
+        key : `str`
+            Metadata key to extract.
+        default : `object`
+            Value to return if key not found.
+
+        Returns
+        -------
+        `object`
+            The value of the specified key, using whatever type md.get(key)
+            returns.
         """
         try:
             if not md.exists(key):
@@ -184,11 +231,20 @@ class MakeRawVisitInfo(object):
         return default
 
     def popFloat(self, md, key):
-        """Pop a float with a default of Nan
+        """Pop a float with a default of NaN.
 
-        @param[in,out] md  metadata, as an lsst.daf.base.PropertyList or PropertySet
-        @param[in] key  date key to read and remove from md
-        @return the value of the specified key as a float; float("nan") if the key is not found
+        Parameters
+        ----------
+        md : `lsst.daf.base.PropertyList` or `PropertySet`
+            Metadata to pull `key` from and remove.
+        key : `str`
+            Key to read and remove from md.
+
+        Returns
+        -------
+        `float`
+            Value of the requested key as a float; float("nan") if the key is
+            not found.
         """
         val = self.popItem(md, key, default=NaN)
         try:
@@ -202,9 +258,18 @@ class MakeRawVisitInfo(object):
 
         The angle may be specified as a float or sexagesimal string with 1-3 fields.
 
-        @param[in,out] md  metadata, as an lsst.daf.base.PropertyList or PropertySet
-        @param[in] key  date key to read and remove from md
-        @return angle, as an lsst.afw.geom.Angle; Angle(NaN) if the key is not found
+        Parameters
+        ----------
+        md : `lsst.daf.base.PropertyList` or `PropertySet`
+            Metadata to pull `key` from and remove.
+        key : `str`
+            Key to read and remove from md.
+
+        Returns
+        -------
+        `lsst.afw.geom.Angle`
+            Value of the requested key as an angle; Angle(NaN) if the key is
+            not found.
         """
         angleStr = self.popItem(md, key, default=None)
         if angleStr is not None:
@@ -217,12 +282,21 @@ class MakeRawVisitInfo(object):
     def popIsoDate(self, md, key, timesys=None):
         """Pop a FITS ISO date as an lsst.daf.base.DateTime
 
-        @param[in,out] md  metadata, as an lsst.daf.base.PropertyList or PropertySet
-        @param[in] key  date key to read and remove from md
-        @param[in] timesys  time system as a string (not case sensitive), e.g. "UTC" or None;
-                    if None then look for TIMESYS (but do NOT pop it, since it may be used
-                    for more than one date) and if not found, use UTC
-        @return date as an lsst.daf.base.DateTime; DateTime() if the key is not found
+        Parameters
+        ----------
+        md : `lsst.daf.base.PropertyList` or `PropertySet`
+            Metadata to pull `key` from and remove.
+        key : `str`
+            Date key to read and remove from md.
+        timesys : `str`
+            Time system as a string (not case sensitive), e.g. "UTC" or None;
+            if None then look for TIMESYS (but do NOT pop it, since it may be
+            used for more than one date) and if not found, use UTC.
+
+        Returns
+        -------
+        `lsst.daf.base.DateTime`
+            Value of the requested date; `DateTime()` if the key is not found.
         """
         isoDateStr = self.popItem(md=md, key=key)
         if isoDateStr is not None:
@@ -241,14 +315,23 @@ class MakeRawVisitInfo(object):
         return BadDate
 
     def popMjdDate(self, md, key, timesys=None):
-        """Get a FITS MJD date as an lsst.daf.base.DateTime
+        """Get a FITS MJD date as an ``lsst.daf.base.DateTime``.
 
-        @param[in,out] md  metadata, as an lsst.daf.base.PropertyList or PropertySet
-        @param[in] dateKey  date key to read and remove from md
-        @param[in] timesys  time system as a string, e.g. "UTC" or None;
-                    if None then look for TIMESYS (but do NOT pop it, since it may be used
-                    for more than one date) and if not found, use UTC
-        @return date as an lsst.daf.base.DateTime; DateTime() if the key is not found
+        Parameters
+        ----------
+        md : `lsst.daf.base.PropertyList` or `PropertySet`
+            Metadata to pull `key` from and remove.
+        key : `str`
+            Date key to read and remove from md.
+        timesys : `str`
+            Time system as a string (not case sensitive), e.g. "UTC" or None;
+            if None then look for TIMESYS (but do NOT pop it, since it may be
+            used for more than one date) and if not found, use UTC.
+
+        Returns
+        -------
+        `lsst.daf.base.DateTime`
+            Value of the requested date; `DateTime()` if the key is not found.
         """
         mjdDate = self.popFloat(md, key)
         try:
@@ -295,7 +378,9 @@ class MakeRawVisitInfo(object):
     def pascalFromMmHg(mmHg):
         """Convert pressure from mm Hg to Pascals
 
-        @note could use the following, but astropy.units.cds is not fully compatible with Python 2
+        Notes
+        -----
+        Could use the following, but astropy.units.cds is not fully compatible with Python 2
         as of astropy 1.2.1 (see https://github.com/astropy/astropy/issues/5350#issuecomment-248612824):
         astropy.units.cds.mmHg.to(astropy.units.pascal, mmHg)
         """
@@ -309,12 +394,24 @@ class MakeRawVisitInfo(object):
 
     @staticmethod
     def defaultMetadata(value, defaultValue, minimum=None, maximum=None):
-        """Check metadata for valid values against defaults.
+        """Return the value if it is not NaN and within min/max, otherwise
+        return defaultValue.
 
-        @param[in] value  metadata value returned by popItem, popFloat, or popAngle
-        @param[in] defaultValue  default value to use if the metadata value is invalid
-        @param[in] minimum  Minimum possible valid value, optional
-        @param[in] maximum  Maximum possible valid value, optional
+        Parameters
+        ----------
+        value : `object`
+            metadata value returned by popItem, popFloat, or popAngle
+        defaultValue : `object``
+            default value to use if the metadata value is invalid
+        minimum : `float`
+            Minimum possible valid value, optional
+        maximum : `float`
+            Maximum possible valid value, optional
+
+        Returns
+        -------
+        `object`
+            The "validated" value.
         """
         if np.isnan(value):
             retVal = defaultValue
