@@ -196,7 +196,7 @@ class Mapping(object):
 
         Parameters
         ----------
-        properties : `list` of `str
+        properties : `list` of `str`
             What to look up.
         dataId : `dict`
             Dataset identifier
