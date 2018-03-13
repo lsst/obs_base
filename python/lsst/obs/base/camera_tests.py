@@ -28,6 +28,8 @@ import math
 import lsst.afw.geom
 from lsst.afw.cameraGeom import FOCAL_PLANE, FIELD_ANGLE
 
+__all__ = ["CameraTests"]
+
 
 class CameraTests(with_metaclass(abc.ABCMeta)):
     """

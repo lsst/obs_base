@@ -27,17 +27,22 @@ __all__ = ["ExposureIdInfo"]
 
 
 class ExposureIdInfo(object):
-    """!Exposure ID and number of bits used
+    """Exposure ID and number of bits used.
 
     Attributes include:
-    - expId  exposure ID as a long int
-    - expBits  maximum number of bits allowed for exposure IDs
-    - maxBits  maximum number of bits available for values that combine exposure ID
+
+    expId
+        exposure ID as a long int
+    expBits
+        maximum number of bits allowed for exposure IDs
+    maxBits
+        maximum number of bits available for values that combine exposure ID
         with other information, such as source ID
-    - unusedBits  maximum number of bits available for non-exposure info (maxBits - expBits)
+    unusedBits
+        maximum number of bits available for non-exposure info (maxBits - expBits)
 
     One common use is creating an ID factory for making a source table.
-    For example, given a data butler `butler` and a data ID `dataId`:
+    For example, given a data butler `butler` and a data ID `dataId`::
 
         from lsst.afw.table import IdFactory, SourceTable
         exposureIdInfo = butler.get("expIdInfo", dataId)
@@ -51,7 +56,7 @@ class ExposureIdInfo(object):
     """
 
     def __init__(self, expId=0, expBits=1, maxBits=64):
-        """!Construct an ExposureIdInfo
+        """Construct an ExposureIdInfo
 
         See the class doc string for an explanation of the arguments.
         """

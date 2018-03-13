@@ -32,11 +32,14 @@ from lsst.afw.cameraGeom.cameraFactory import makeDetector
 
 class YamlCamera(cameraGeom.Camera):
     """The Commissioning Camera (comCam)
+
+    Parameters
+    ----------
+    cameraYamlFile : `str`
+        Camera description YAML file.
     """
 
     def __init__(self, cameraYamlFile):
-        """Construct a Camera
-        """
         with open(cameraYamlFile) as fd:
             cameraParams = yaml.load(fd, Loader=yaml.Loader)
 
@@ -54,11 +57,19 @@ class YamlCamera(cameraGeom.Camera):
         cameraGeom.Camera.__init__(self, cameraParams["name"], detectorList, cameraTransformMap)
 
     def _makeDetectorList(self, ccdParams, focalPlaneToFieldAngle):
-        """!Make a list of detectors
-        @param[in] ccdParams  Dict of YAML descriptions of CCDs
-        @param[in] focalPlaneToFieldAngle  lsst.afw.geom.TransformPoint2ToPoint2
-                   from FOCAL_PLANE to FIELD_ANGLE coordinates
-        @return a list of detectors (lsst.afw.cameraGeom.Detector)
+        """Make a list of detectors
+
+        Parameters
+        ----------
+        ccdParams : `dict`
+            Dict of YAML descriptions of CCDs.
+        focalPlaneToFieldAngle : `lsst.afw.geom.TransformPoint2ToPoint2`
+            Angle from FOCAL_PLANE to FIELD_ANGLE coordinates.
+
+        Returns
+        -------
+        `list` of `lsst.afw.cameraGeom.Detector`
+            list of detectors in this camera.
         """
         detectorList = []
         detectorConfigList = self._makeDetectorConfigList(ccdParams)
@@ -69,9 +80,12 @@ class YamlCamera(cameraGeom.Camera):
         return detectorList
 
     def _makeDetectorConfigList(self, ccdParams):
-        """!Make a list of detector configs
+        """Make a list of detector configs
 
-        @return a list of detector configs (lsst.afw.cameraGeom.DetectorConfig)
+        Returns
+        -------
+        `list` of `lsst.afw.cameraGeom.DetectorConfig`
+            A list of detector configs.
         """
         detectorConfigs = []
         for name, ccd in ccdParams.items():
@@ -102,8 +116,9 @@ class YamlCamera(cameraGeom.Camera):
 
     @staticmethod
     def _makeBBoxFromList(ylist):
-        """Given a list [(x0, y0), (xsize, ysize)], probably from a yaml file, return a BoxI
-            """
+        """Given a list [(x0, y0), (xsize, ysize)], probably from a yaml file,
+        return a BoxI
+        """
         (x0, y0), (xsize, ysize) = ylist
         return afwGeom.BoxI(afwGeom.PointI(x0, y0), afwGeom.ExtentI(xsize, ysize))
 
