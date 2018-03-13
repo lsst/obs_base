@@ -30,7 +30,7 @@ from lsst.daf.persistence import ButlerLocation, NoResults
 from lsst.daf.persistence.policy import Policy
 import lsst.pex.policy as pexPolicy
 
-"""This module defines the Mapping base class."""
+__all__ = ["Mapping", "ImageMapping", "ExposureMapping", "CalibrationMapping", "DatasetMapping"]
 
 
 class Mapping(object):
@@ -68,17 +68,23 @@ class Mapping(object):
 
     tables (string, optional): a whitespace-delimited list of tables in the
     registry that can be NATURAL JOIN-ed to look up additional
-    information.  """
+    information.
+
+    Parameters
+    ----------
+    datasetType : `str`
+        Butler dataset type to be mapped.
+    policy : `daf_persistence.Policy` or `pexPolicy.Policy`
+        Mapping Policy.  (pexPolicy only for backward compatibility)
+    registry : `lsst.obs.base.Registry`
+        Registry for metadata lookups.
+    rootStorage : Storage subclass instance
+        Interface to persisted repository data.
+    provided : `list` of `str`
+        Keys provided by the mapper.
+    """
 
     def __init__(self, datasetType, policy, registry, rootStorage, provided=None):
-        """Constructor for Mapping class.
-        @param datasetType    (string)
-        @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
-                              Mapping Policy
-        @param registry       (lsst.obs.base.Registry) Registry for metadata lookups
-        @param rootStorage    (Storage subclass instance) Interface to persisted repository data
-        @param provided       (list of strings) Keys provided by the mapper
-        """
 
         if policy is None:
             raise RuntimeError("No policy provided for mapping")
@@ -136,9 +142,19 @@ class Mapping(object):
 
     def map(self, mapper, dataId, write=False):
         """Standard implementation of map function.
-        @param mapper (lsst.daf.persistence.Mapper)
-        @param dataId (dict) Dataset identifier
-        @return (lsst.daf.persistence.ButlerLocation)"""
+
+        Parameters
+        ----------
+        mapper: `lsst.daf.persistence.Mapper`
+            Object to be mapped.
+        dataId: `dict`
+            Dataset identifier.
+
+        Returns
+        -------
+        lsst.daf.persistence.ButlerLocation
+            Location of object that was mapped.
+        """
         actualId = self.need(iter(self.keyDict.keys()), dataId)
         usedDataId = {key: actualId[key] for key in self.keyDict.keys()}
         path = mapper._mapActualToPath(self.template, actualId)
@@ -177,10 +193,19 @@ class Mapping(object):
     def lookup(self, properties, dataId):
         """Look up properties for in a metadata registry given a partial
         dataset identifier.
-        @param properties (list of strings)
-        @param dataId     (dict) Dataset identifier
-        @return (list of tuples) values of properties"""
 
+        Parameters
+        ----------
+        properties : `list` of `str
+            What to look up.
+        dataId : `dict`
+            Dataset identifier
+
+        Returns
+        -------
+        `list` of `tuple`
+            Values of properties.
+        """
         if self.registry is None:
             raise RuntimeError("No registry for lookup")
 
@@ -250,9 +275,19 @@ class Mapping(object):
     def have(self, properties, dataId):
         """Returns whether the provided data identifier has all
         the properties in the provided list.
-        @param properties (list of strings) Properties required
-        @parm dataId      (dict) Dataset identifier
-        @return (bool) True if all properties are present"""
+
+        Parameters
+        ----------
+        properties : `list of `str`
+            Properties required.
+        dataId : `dict`
+            Dataset identifier.
+
+        Returns
+        -------
+        bool
+            True if all properties are present.
+        """
         for prop in properties:
             if prop not in dataId:
                 return False
@@ -263,9 +298,18 @@ class Mapping(object):
         the data identifier, looking them up as needed.  This is only
         possible for the case where the data identifies a single
         exposure.
-        @param properties (list of strings) Properties required
-        @param dataId     (dict) Partial dataset identifier
-        @return (dict) copy of dataset identifier with enhanced values
+
+        Parameters
+        ----------
+        properties : `list` of `str`
+            Properties required.
+        dataId : `dict`
+            Partial dataset identifier
+
+        Returns
+        -------
+        `dict`
+            Copy of dataset identifier with enhanced values.
         """
         newId = dataId.copy()
         newProps = []                    # Properties we don't already have
@@ -300,15 +344,21 @@ def _formatMap(ch, k, datasetType):
 
 
 class ImageMapping(Mapping):
-    """ImageMapping is a Mapping subclass for non-camera images."""
+    """ImageMapping is a Mapping subclass for non-camera images.
+
+    Parameters
+    ----------
+    datasetType : `str`
+        Butler dataset type to be mapped.
+    policy : `daf_persistence.Policy` `pexPolicy.Policy`
+        Mapping Policy. (pexPolicy only for backward compatibility)
+    registry : `lsst.obs.base.Registry`
+        Registry for metadata lookups
+    root : `str`
+        Path of root directory
+    """
 
     def __init__(self, datasetType, policy, registry, root, **kwargs):
-        """Constructor for Mapping class.
-        @param datasetType    (string)
-        @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
-                              Mapping Policy
-        @param registry       (lsst.obs.base.Registry) Registry for metadata lookups
-        @param root           (string) Path of root directory"""
         if isinstance(policy, pexPolicy.Policy):
             policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
@@ -316,15 +366,21 @@ class ImageMapping(Mapping):
 
 
 class ExposureMapping(Mapping):
-    """ExposureMapping is a Mapping subclass for normal exposures."""
+    """ExposureMapping is a Mapping subclass for normal exposures.
+
+    Parameters
+    ----------
+    datasetType : `str`
+        Butler dataset type to be mapped.
+    policy : `daf_persistence.Policy` or `pexPolicy.Policy`
+        Mapping Policy (pexPolicy only for backward compatibility)
+    registry : `lsst.obs.base.Registry`
+        Registry for metadata lookups
+    root : `str`
+        Path of root directory
+    """
 
     def __init__(self, datasetType, policy, registry, root, **kwargs):
-        """Constructor for Mapping class.
-        @param datasetType    (string)
-        @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
-                              Mapping Policy
-        @param registry       (lsst.obs.base.Registry) Registry for metadata lookups
-        @param root           (string) Path of root directory"""
         if isinstance(policy, pexPolicy.Policy):
             policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
@@ -342,40 +398,53 @@ class CalibrationMapping(Mapping):
 
     CalibrationMapping Policies can contain the following:
 
-    reference (string, optional): a list of tables for finding missing dataset
-    identifier components (including the observation time, if a validity range
-    is required) in the exposure registry; note that the "tables" entry refers
-    to the calibration registry
+    reference (string, optional)
+        a list of tables for finding missing dataset
+        identifier components (including the observation time, if a validity range
+        is required) in the exposure registry; note that the "tables" entry refers
+        to the calibration registry
 
-    refCols (string, optional): a list of dataset properties required from the
-    reference tables for lookups in the calibration registry
+    refCols (string, optional)
+        a list of dataset properties required from the
+        reference tables for lookups in the calibration registry
 
-    validRange (bool): true if the calibration dataset has a validity range
-    specified by a column in the tables of the reference dataset in the
-    exposure registry) and two columns in the tables of this calibration
-    dataset in the calibration registry)
+    validRange (bool)
+        true if the calibration dataset has a validity range
+        specified by a column in the tables of the reference dataset in the
+        exposure registry) and two columns in the tables of this calibration
+        dataset in the calibration registry)
 
-    obsTimeName (string, optional): the name of the column in the reference
-    dataset tables containing the observation time (default "taiObs")
+    obsTimeName (string, optional)
+        the name of the column in the reference
+        dataset tables containing the observation time (default "taiObs")
 
-    validStartName (string, optional): the name of the column in the
-    calibration dataset tables containing the start of the validity range
-    (default "validStart")
+    validStartName (string, optional)
+        the name of the column in the
+        calibration dataset tables containing the start of the validity range
+        (default "validStart")
 
-    validEndName (string, optional): the name of the column in the
-    calibration dataset tables containing the end of the validity range
-    (default "validEnd") """
+    validEndName (string, optional)
+        the name of the column in the
+        calibration dataset tables containing the end of the validity range
+        (default "validEnd")
+
+    Parameters
+    ----------
+    datasetType : `str`
+        Butler dataset type to be mapped.
+    policy : `daf_persistence.Policy` or `pexPolicy.Policy`
+        Mapping Policy (pexPolicy only for backward compatibility)
+    registry : `lsst.obs.base.Registry`
+        Registry for metadata lookups
+    calibRegistry : `lsst.obs.base.Registry`
+        Registry for calibration metadata lookups.
+    calibRoot : `str`
+        Path of calibration root directory.
+    dataRoot : `str`
+        Path of data root directory; used for outputs only.
+    """
 
     def __init__(self, datasetType, policy, registry, calibRegistry, calibRoot, dataRoot=None, **kwargs):
-        """Constructor for Mapping class.
-        @param datasetType    (string)
-        @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
-                              Mapping Policy
-        @param registry       (lsst.obs.base.Registry) Registry for metadata lookups
-        @param calibRegistry  (lsst.obs.base.Registry) Registry for calibration metadata lookups
-        @param calibRoot      (string) Path of calibration root directory
-        @param dataRoot.      (string) Path of data root directory; used for outputs only
-        """
         if isinstance(policy, pexPolicy.Policy):
             policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, calibRegistry, calibRoot, **kwargs)
@@ -403,9 +472,19 @@ class CalibrationMapping(Mapping):
     def lookup(self, properties, dataId):
         """Look up properties for in a metadata registry given a partial
         dataset identifier.
-        @param properties (list of strings)
-        @param dataId     (dict) Dataset identifier
-        @return (list of tuples) values of properties"""
+
+        Parameters
+        ----------
+        properties : `list` of `str`
+            Properties to look up.
+        dataId : `dict`
+            Dataset identifier.
+
+        Returns
+        -------
+        `list` of `tuple`
+            Values of properties.
+        """
 
 # Either look up taiObs in reference and then all in calibRegistry
 # Or look up all in registry
@@ -456,16 +535,21 @@ class DatasetMapping(Mapping):
     Exposure standardization is performed.
 
     The "storage" entry in the Policy is mandatory; the "tables" entry is
-    optional; no "level" entry is allowed.  """
+    optional; no "level" entry is allowed.
+
+    Parameters
+    ----------
+    datasetType : `str`
+        Butler dataset type to be mapped.
+    policy : `daf_persistence.Policy` `pexPolicy.Policy`
+        Mapping Policy. (pexPolicy only for backward compatibility)
+    registry : `lsst.obs.base.Registry`
+        Registry for metadata lookups
+    root : `str`
+        Path of root directory
+    """
 
     def __init__(self, datasetType, policy, registry, root, **kwargs):
-        """Constructor for DatasetMapping class.
-        @param[in,out] mapper (lsst.daf.persistence.Mapper) Mapper object
-        @param policy         (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
-                              Mapping Policy
-        @param datasetType    (string)
-        @param registry       (lsst.obs.base.Registry) Registry for metadata lookups
-        @param root           (string) Path of root directory"""
         if isinstance(policy, pexPolicy.Policy):
             policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
