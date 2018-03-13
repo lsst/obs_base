@@ -136,10 +136,13 @@ class CameraMapper(dafPersist.Mapper):
     Implementations of map_camera and bypass_camera that should typically be
     sufficient are provided in this base class.
 
-    @todo
-    * Handle defects the same was as all other calibration products, using the calibration registry
-    * Instead of auto-loading the camera at construction time, load it from the calibration registry
-    * Rewrite defects as AFW tables so we don't need pyfits to unpersist them; then remove all mention
+    Notes
+    -----
+    TODO:
+
+    - Handle defects the same was as all other calibration products, using the calibration registry
+    - Instead of auto-loading the camera at construction time, load it from the calibration registry
+    - Rewrite defects as AFW tables so we don't need pyfits to unpersist them; then remove all mention
       of pyfits from this package.
     """
     packageName = None
@@ -308,10 +311,16 @@ class CameraMapper(dafPersist.Mapper):
         additional, derived datasets for additional conveniences, e.g., reading
         the header of an image, retrieving only the size of a catalog.
 
-        @param policy        (Policy) Policy with per-camera defaults already merged
-        @param rootStorage   (Storage subclass instance) Interface to persisted repository data
-        @param calibRoot     (Storage subclass instance) Interface to persisted calib repository data
-        @param provided      (list of strings) Keys provided by the mapper
+        Parameters
+        ----------
+        policy : `lsst.daf.persistence.Policy`
+            Policy with per-camera defaults already merged
+        rootStorage : `Storage subclass instance`
+            Interface to persisted repository data.
+        calibRoot : `Storage subclass instance`
+            Interface to persisted calib repository data
+        provided : `list` of `str`
+            Keys provided by the mapper
         """
         # Sub-dictionaries (for exposure/calibration/dataset types)
         imgMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
@@ -502,7 +511,10 @@ class CameraMapper(dafPersist.Mapper):
 
         Subclasses must override
 
-        @param dataId (dict) Data identifier with visit, ccd
+        Parameters
+        ----------
+        dataId : `dict`
+            Data identifier with visit, ccd.
         """
         raise NotImplementedError()
 
@@ -511,10 +523,13 @@ class CameraMapper(dafPersist.Mapper):
 
         Subclasses must override
 
-        @param dataId (dict)       Data identifier with tract and patch.
-        @param singleFilter (bool) True means the desired ID is for a single-
-                                   filter coadd, in which case dataId
-                                   must contain filter.
+        Parameters
+        ----------
+        dataId  : `dict`
+            Data identifier with tract and patch.
+        singleFilter  : `bool`
+            True means the desired ID is for a single-filter coadd, in which
+            case dataIdmust contain filter.
         """
         raise NotImplementedError()
 
@@ -544,9 +559,11 @@ class CameraMapper(dafPersist.Mapper):
         """Rename any existing object with the given type and dataId.
 
         The CameraMapper implementation saves objects in a sequence of e.g.:
-          foo.fits
-          foo.fits~1
-          foo.fits~2
+
+        - foo.fits
+        - foo.fits~1
+        - foo.fits~2
+
         All of the backups will be placed in the output repo, however, and will
         not be removed if they are found elsewhere in the _parent chain.  This
         means that the same file will be stored twice if the previous version was
@@ -580,16 +597,32 @@ class CameraMapper(dafPersist.Mapper):
 
     def keys(self):
         """Return supported keys.
-        @return (iterable) List of keys usable in a dataset identifier"""
+
+        Returns
+        -------
+        iterable
+            List of keys usable in a dataset identifier
+        """
         return iter(self.keyDict.keys())
 
     def getKeys(self, datasetType, level):
         """Return a dict of supported keys and their value types for a given dataset
         type at a given level of the key hierarchy.
 
-        @param datasetType (str) dataset type or None for all dataset types
-        @param level (str) level or None for all levels or '' for the default level for the camera
-        @return (dict) dict keys are strings usable in a dataset identifier; values are their value types"""
+        Parameters
+        ----------
+        datasetType :  `str`
+            Dataset type or None for all dataset types.
+        level :  `str` or None
+            Level or None for all levels or '' for the default level for the
+            camera.
+
+        Returns
+        -------
+        `dict`
+            Keys are strings usable in a dataset identifier, values are their
+            value types.
+        """
 
         # not sure if this is how we want to do this. what if None was intended?
         if level == '':
@@ -662,7 +695,10 @@ class CameraMapper(dafPersist.Mapper):
     def map_defects(self, dataId, write=False):
         """Map defects dataset.
 
-        @return a very minimal ButlerLocation containing just the locationList field
+        Returns
+        -------
+        `lsst.daf.butler.ButlerLocation`
+            Minimal ButlerLocation containing just the locationList field
             (just enough information that bypass_defects can use it).
         """
         defectFitsPath = self._defectLookup(dataId=dataId)
@@ -676,8 +712,12 @@ class CameraMapper(dafPersist.Mapper):
     def bypass_defects(self, datasetType, pythonType, butlerLocation, dataId):
         """Return a defect based on the butler location returned by map_defects
 
-        @param[in] butlerLocation: a ButlerLocation with locationList = path to defects FITS file
-        @param[in] dataId: the usual data ID; "ccd" must be set
+        Parameters
+        ----------
+        butlerLocation : `lsst.daf.persistence.ButlerLocation`
+            locationList = path to defects FITS file
+        dataId : `dict`
+            Butler data ID; "ccd" must be set.
 
         Note: the name "bypass_XXX" means the butler makes no attempt to convert the ButlerLocation
         into an object, which is what we want for now, since that conversion is a bit tricky.
@@ -871,8 +911,16 @@ class CameraMapper(dafPersist.Mapper):
         - ccd: CCD name (in LSST this is a combination of raft and sensor)
         The default implementation returns a copy of its input.
 
-        @param dataId[in] (dict) Dataset identifier; this must not be modified
-        @return (dict) Transformed dataset identifier"""
+        Parameters
+        ----------
+        dataId : `dict`
+            Dataset identifier; this must not be modified
+
+        Returns
+        -------
+        `dict`
+            Transformed dataset identifier.
+        """
 
         return dataId.copy()
 
@@ -880,9 +928,19 @@ class CameraMapper(dafPersist.Mapper):
         """Convert a template path to an actual path, using the actual data
         identifier.  This implementation is usually sufficient but can be
         overridden by the subclass.
-        @param template (string) Template path
-        @param actualId (dict) Dataset identifier
-        @return (string) Pathname"""
+
+        Parameters
+        ----------
+        template : `str`
+            Template path
+        actualId : `dict`
+            Dataset identifier
+
+        Returns
+        -------
+        `str`
+            Pathname
+        """
 
         try:
             transformedId = self._transformId(actualId)
@@ -903,39 +961,69 @@ class CameraMapper(dafPersist.Mapper):
 
         The name in question is the detector name used by lsst.afw.cameraGeom.
 
-        @param dataId (dict) Dataset identifier
-        @return (string) Detector name
+        Parameters
+        ----------
+        dataId : `dict`
+            Dataset identifier.
+
+        Returns
+        -------
+        `str`
+            Detector name
         """
         raise NotImplementedError("No _extractDetectorName() function specified")
 
     def _extractAmpId(self, dataId):
         """Extract the amplifier identifer from a dataset identifier.
 
-        @warning this is deprecated; DO NOT USE IT
+        .. note:: Deprecated in 11_0
 
         amplifier identifier has two parts: the detector name for the CCD
         containing the amplifier and index of the amplifier in the detector.
-        @param dataId (dict) Dataset identifer
-        @return (tuple) Amplifier identifier"""
+
+        Parameters
+        ----------
+        dataId : `dict`
+            Dataset identifer
+
+        Returns
+        -------
+        `tuple`
+            Amplifier identifier
+        """
 
         trDataId = self._transformId(dataId)
         return (trDataId["ccd"], int(trDataId['amp']))
 
     def _setAmpDetector(self, item, dataId, trimmed=True):
         """Set the detector object in an Exposure for an amplifier.
+
         Defects are also added to the Exposure based on the detector object.
-        @param[in,out] item (lsst.afw.image.Exposure)
-        @param dataId (dict) Dataset identifier
-        @param trimmed (bool) Should detector be marked as trimmed? (ignored)"""
+
+        Parameters
+        ----------
+        item : `lsst.afw.image.Exposure`
+            Exposure to set the detector in.
+        dataId : `dict`
+            Dataset identifier
+        trimmed : `bool`
+            Should detector be marked as trimmed? (ignored)
+        """
 
         return self._setCcdDetector(item=item, dataId=dataId, trimmed=trimmed)
 
     def _setCcdDetector(self, item, dataId, trimmed=True):
         """Set the detector object in an Exposure for a CCD.
-        @param[in,out] item (lsst.afw.image.Exposure)
-        @param dataId (dict) Dataset identifier
-        @param trimmed (bool) Should detector be marked as trimmed? (ignored)"""
 
+        Parameters
+        ----------
+        item : `lsst.afw.image.Exposure`
+            Exposure to set the detector in.
+        dataId : `dict`
+            Dataset identifier
+        trimmed : `bool`
+            Should detector be marked as trimmed? (ignored)
+        """
         if item.getDetector() is not None:
             return
 
@@ -947,9 +1035,16 @@ class CameraMapper(dafPersist.Mapper):
         """Set the filter object in an Exposure.  If the Exposure had a FILTER
         keyword, this was already processed during load.  But if it didn't,
         use the filter from the registry.
-        @param mapping (lsst.obs.base.Mapping)
-        @param[in,out] item (lsst.afw.image.Exposure)
-        @param dataId (dict) Dataset identifier"""
+
+        Parameters
+        ----------
+        mapping : `lsst.obs.base.Mapping`
+            Where to get the filter from.
+        item : `lsst.afw.image.Exposure`
+            Exposure to set the filter in.
+        dataId : `dict`
+            Dataset identifier.
+        """
 
         if not (isinstance(item, afwImage.ExposureU) or isinstance(item, afwImage.ExposureI) or
                 isinstance(item, afwImage.ExposureF) or isinstance(item, afwImage.ExposureD)):
@@ -973,15 +1068,29 @@ class CameraMapper(dafPersist.Mapper):
         and optionally set the Fiter. In both cases this saves
         having to persist some data in each exposure (or image).
 
-        @param mapping (lsst.obs.base.Mapping)
-        @param[in,out] item image-like object; any of lsst.afw.image.Exposure,
-                lsst.afw.image.DecoratedImage, lsst.afw.image.Image
-                or lsst.afw.image.MaskedImage
-        @param dataId (dict) Dataset identifier
-        @param filter (bool) Set filter? Ignored if item is already an exposure
-        @param trimmed (bool) Should detector be marked as trimmed?
-        @param setVisitInfo (bool) Should Exposure have its VisitInfo filled out from the metadata?
-        @return (lsst.afw.image.Exposure) the standardized Exposure"""
+        Parameters
+        ----------
+        mapping : `lsst.obs.base.Mapping`
+            Where to get the values from.
+        item : image-like object
+            Can be any of lsst.afw.image.Exposure,
+            lsst.afw.image.DecoratedImage, lsst.afw.image.Image
+            or lsst.afw.image.MaskedImage
+
+        dataId : `dict`
+            Dataset identifier
+        filter : `bool`
+            Set filter? Ignored if item is already an exposure
+        trimmed : `bool`
+            Should detector be marked as trimmed?
+        setVisitInfo : `bool`
+            Should Exposure have its VisitInfo filled out from the metadata?
+
+        Returns
+        -------
+        `lsst.afw.image.Exposure`
+            The standardized Exposure.
+        """
         try:
             item = exposureFromImage(item, dataId, mapper=self, logger=self.log, setVisitInfo=setVisitInfo)
         except Exception as e:
@@ -1000,8 +1109,17 @@ class CameraMapper(dafPersist.Mapper):
 
     def _defectLookup(self, dataId):
         """Find the defects for a given CCD.
-        @param dataId (dict) Dataset identifier
-        @return (string) path to the defects file or None if not available"""
+
+        Parameters
+        ----------
+        dataId : `dict`
+            Dataset identifier
+
+        Returns
+        -------
+        `str`
+            Path to the defects file or None if not available.
+        """
         if self.defectRegistry is None:
             return None
         if self.registry is None:
@@ -1040,11 +1158,14 @@ class CameraMapper(dafPersist.Mapper):
         - a file named `camera.py` that contains persisted camera config
         - ampInfo table FITS files, as required by lsst.afw.cameraGeom.makeCameraFromPath
 
-        @param policy        (daf_persistence.Policy, or pexPolicy.Policy (only for backward compatibility))
-                             Policy with per-camera defaults already merged
-        @param repositoryDir (string) Policy repository for the subclassing
-                             module (obtained with getRepositoryPath() on the
-                             per-camera default dictionary)
+        Parameters
+        ----------
+        policy : `lsst.daf.persistence.Policy` or `pexPolicy.Policy`
+             Policy with per-camera defaults already merged
+             (PexPolicy only for backward compatibility).
+        repositoryDir : `str`
+            Policy repository for the subclassing module (obtained with
+            getRepositoryPath() on the per-camera default dictionary).
         """
         if isinstance(policy, pexPolicy.Policy):
             policy = dafPersist.Policy(pexPolicy=policy)
@@ -1188,8 +1309,16 @@ def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo
     (Image and MaskedImage are missing the necessary metadata
     and Exposure already has those set)
 
-    @param[in] image  Image-like object (lsst.afw.image.DecoratedImage, Image, MaskedImage or Exposure)
-    @return (lsst.afw.image.Exposure) Exposure containing input image
+    Parameters
+    ----------
+    image : Image-like object
+        Can be one of lsst.afw.image.DecoratedImage, Image, MaskedImage or
+        Exposure.
+
+    Returns
+    -------
+    `lsst.afw.image.Exposure`
+        Exposure containing input image.
     """
     metadata = None
     if isinstance(image, afwImage.MaskedImage):
