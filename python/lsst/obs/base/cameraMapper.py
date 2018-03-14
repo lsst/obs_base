@@ -287,9 +287,6 @@ class CameraMapper(dafPersist.Mapper):
         # Filter translation table
         self.filters = None
 
-        # Skytile policy
-        self.skypolicy = policy['skytiles']
-
         # verify that the class variable packageName is set before attempting
         # to instantiate an instance
         if self.packageName is None:

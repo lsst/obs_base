@@ -49,11 +49,6 @@ definitions: {
         description: "The pathname to the directory containing the defect policies and registry.  Relative to the repository containing this dictionary."
         maxOccurs: 1
     }
-    skytiles: {
-        type: Policy
-        description: "Sky tile setup"
-        dictionary: @@skypix:policy:QuadSpherePixelizationDictionary.paf
-    }
 
     exposures: {
         type: policy
