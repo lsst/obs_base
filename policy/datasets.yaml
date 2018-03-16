@@ -791,3 +791,8 @@ fgcmStandardStars: # Catalog of standard stars with magnitudes as generated from
     tables: raw
     python: lsst.afw.table.BaseCatalog
     template: fgcm-process/fgcmStandardStars-%(fgcmcycle)02d.fits
+deepCoadd_obj: #consolidated multi-band object tables from coadd
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.qa.explorer.table.ParquetTable
+    template: deepCoadd-results/merged/%(tract)d/%(patch)s/obj-%(tract)d-%(patch)s.parq
