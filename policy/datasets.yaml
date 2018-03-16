@@ -802,3 +802,8 @@ apPipe_metadata:
     python: lsst.daf.base.PropertySet
     tables: raw
     template: ''
+deepCoadd_obj: #consolidated multi-band object tables from coadd
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.qa.explorer.table.ParquetTable
+    template: deepCoadd-results/merged/%(tract)d/%(patch)s/obj-%(tract)d-%(patch)s.parq
