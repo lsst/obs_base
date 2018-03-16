@@ -796,3 +796,8 @@ deepCoadd_obj: #consolidated multi-band object tables from coadd
     storage: FitsCatalogStorage
     python: lsst.qa.explorer.table.ParquetTable
     template: deepCoadd-results/merged/%(tract)d/%(patch)s/obj-%(tract)d-%(patch)s.parq
+writeObjectTable_config:
+    persistable: Config
+    python: lsst.qa.explorer.writeParquet.WriteObjectTableConfig
+    storage: ConfigStorage
+    template: config/writeObjectTable.py
