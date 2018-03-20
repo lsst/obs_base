@@ -456,16 +456,6 @@ forced_src_schema:
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
     template: schema/forced_src_schema.fits
-deepCoadd_forced_src:
-    persistable: ignored
-    storage: FitsCatalogStorage
-    python: lsst.afw.table.SourceCatalog
-    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/forced_src-%(filter)s-%(tract)d-%(patch)s.fits
-deepCoadd_forced_src_schema:
-    persistable: ignored
-    storage: FitsCatalogStorage
-    python: lsst.afw.table.SourceCatalog
-    template: schema/deepCoadd_forced_src.fits
 src:
     description: "Full depth source catalog produced by ProcessCcdTask."
     persistable: SourceCatalog
