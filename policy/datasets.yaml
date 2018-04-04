@@ -798,6 +798,11 @@ bfKernelNew:
     storage: PickleStorage
     python: numpy.array
     template: ''
+bfGain:
+    persistable: ignored
+    storage: PickleStorage
+    python: numpy.array
+    template: ''
 #bfKernel:
 #    persistable: ignored
 #    python: numpy.ndarray
