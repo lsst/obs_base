@@ -803,6 +803,11 @@ apPipe_metadata:
     tables: raw
     template: ''
 deepCoadd_obj: #consolidated multi-band object tables from coadd
+    description: >
+        Consolidated coadd multi-band object table, a merge of
+        deepCoadd_meas, deepCoadd_forced_src and deepCoadd_ref tables for multiple bands.
+        This is a pandas DataFrame with a multi-level column index; access a particular
+        subcatalog as df['meas']['HSC-R'], e.g.
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.qa.explorer.table.ParquetTable
