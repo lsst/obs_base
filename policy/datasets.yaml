@@ -824,7 +824,7 @@ deepCoadd_qa:
     persistable: ignored
     storage: ParquetStorage
     python: lsst.qa.explorer.parquetTable.MultilevelParquetTable
-    template: deepCoadd-results/qa/%(tract)d/%(patch)s/obj-%(tract)d-%(patch)s.parq
+    template: deepCoadd-results/qa/%(tract)d/%(patch)s/qa-%(tract)d-%(patch)s.parq
 writeQATable_config:
     persistable: Config
     python: lsst.qa.explorer.writeQATable.WriteQATableConfig
