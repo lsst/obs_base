@@ -830,3 +830,8 @@ writeQATable_config:
     python: lsst.qa.explorer.writeQATable.WriteQATableConfig
     storage: ConfigStorage
     template: config/writeQATable.py
+consolidateQATable_config:
+    persistable: Config
+    python: lsst.qa.explorer.consolidateQATable.ConsolidateQATableConfig
+    storage: ConfigStorage
+    template: config/consolidateQATable.py
