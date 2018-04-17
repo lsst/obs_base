@@ -835,3 +835,11 @@ consolidateQATable_config:
     python: lsst.qa.explorer.consolidateQATable.ConsolidateQATableConfig
     storage: ConfigStorage
     template: config/consolidateQATable.py
+deepCoadd_qa_tract:
+    description: >
+        Contents same as deepCoadd_qa, but consolidated one-per-tract.
+    persistable: ignored
+    storage: ParquetStorage
+    python: lsst.qa.explorer.parquetTable.MultilevelParquetTable
+    template: deepCoadd-results/qa/%(tract)d/qa-%(tract)d.parq
+
