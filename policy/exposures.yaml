@@ -114,14 +114,14 @@ dcrCoadd:
     persistable: ExposureF
     storage: FitsStorage
     python: lsst.afw.image.ExposureF
-    template: dcrCoadd/%(filter)s%(subfilter)s/%(tract)d/%(patch)s.fits
+    template: dcrCoadd/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s.fits
     level: Skytile
 dcrCoadd_calexp:
     description: ""
     persistable: ExposureF
     storage: FitsStorage
     python: lsst.afw.image.ExposureF
-    template: dcrCoadd-results/%(filter)s%(subfilter)s/%(tract)d/%(patch)s/calexp-%(filter)s-%(tract)d-%(patch)s.fits
+    template: dcrCoadd-results/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s/calexp-%(filter)s-%(tract)d-%(patch)s.fits
     level: None
 dcrCoadd_directWarp:
     description: ""

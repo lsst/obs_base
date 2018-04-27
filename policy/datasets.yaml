@@ -541,7 +541,7 @@ dcrCoadd_calexp_background:
     persistable: PurePythonClass
     storage: FitsCatalogStorage
     python: lsst.afw.math.BackgroundList
-    template: dcrCoadd-results/%(filter)s%(subfilter)s/%(tract)d/%(patch)s/bkgd-%(filter)s%(subfilter)s-%(tract)d-%(patch)s.fits
+    template: dcrCoadd-results/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s/bkgd-%(filter)s%(subfilter)dof%(numSubfilters)d-%(tract)d-%(patch)s.fits
 dcrCoadd_peak_schema:
     persistable: PeakCatalog
     storage: FitsCatalogStorage
@@ -551,7 +551,7 @@ dcrCoadd_forced_metadata:
     persistable: PropertySet
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
-    template: dcrCoadd_forcedPhotCoadd_metadata/%(filter)s%(subfilter)s/%(tract)d/%(patch)s.boost
+    template: dcrCoadd_forcedPhotCoadd_metadata/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s.boost
 dcrCoadd_forced_src_schema:
     persistable: ignored
     storage: FitsCatalogStorage
@@ -574,7 +574,7 @@ dcrCoadd_meas:
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
-    template: dcrCoadd-results/%(filter)s%(subfilter)s/%(tract)d/%(patch)s/meas-%(filter)s%(subfilter)s-%(tract)d-%(patch)s.fits
+    template: dcrCoadd-results/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s/meas-%(filter)s%(subfilter)dof%(numSubfilters)d-%(tract)d-%(patch)s.fits
 dcrCoadd_forced_config:
     persistable: Config
     storage: ConfigStorage
@@ -584,7 +584,7 @@ dcrCoadd_forced_src:
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
-    template: dcrCoadd-results/%(filter)s%(subfilter)s/%(tract)d/%(patch)s/forced_src-%(filter)s%(subfilter)s-%(tract)d-%(patch)s.fits
+    template: dcrCoadd-results/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s/forced_src-%(filter)s%(subfilter)dof%(numSubfilters)d-%(tract)d-%(patch)s.fits
 dcrCoadd_mergeDet_schema:
     persistable: SourceCatalog
     storage: FitsCatalogStorage
@@ -624,12 +624,12 @@ dcrCoadd_det:
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
-    template: dcrCoadd-results/%(filter)s%(subfilter)s/%(tract)d/%(patch)s/det-%(filter)s%(subfilter)s-%(tract)d-%(patch)s.fits
+    template: dcrCoadd-results/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s/det-%(filter)s%(subfilter)dof%(numSubfilters)d-%(tract)d-%(patch)s.fits
 dcrCoadd_forced_src:
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
-    template: dcrCoadd-results/%(filter)s%(subfilter)s/%(tract)d/%(patch)s/forced_src-%(filter)s%(subfilter)s-%(tract)d-%(patch)s.fits
+    template: dcrCoadd-results/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s/forced_src-%(filter)s%(subfilter)dof%(numSubfilters)d-%(tract)d-%(patch)s.fits
 dcrCoadd_forced_src_schema:
     persistable: ignored
     storage: FitsCatalogStorage
@@ -640,23 +640,23 @@ dcrCoadd_measMatch:  # Matches from MeasureMergedCoaddSourcesTask
     storage: FitsCatalogStorage
     python: lsst.afw.table.BaseCatalog
     tables: raw
-    template: dcrCoadd-results/%(filter)s%(subfilter)s/%(tract)d/%(patch)s/srcMatch-%(filter)s%(subfilter)s-%(tract)d-%(patch)s.fits
+    template: dcrCoadd-results/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s/srcMatch-%(filter)s%(subfilter)dof%(numSubfilters)d-%(tract)d-%(patch)s.fits
 dcrCoadd_measMatchFull:  # Denormalized matches from MeasureMergedCoaddSourcesTask
     persistable: BaseCatalog
     storage: FitsCatalogStorage
     python: lsst.afw.table.BaseCatalog
     tables: raw
-    template: dcrCoadd-results/%(filter)s%(subfilter)s/%(tract)d/%(patch)s/srcMatchFull-%(filter)s%(subfilter)s-%(tract)d-%(patch)s.fits
+    template: dcrCoadd-results/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s/srcMatchFull-%(filter)s%(subfilter)dof%(numSubfilters)d-%(tract)d-%(patch)s.fits
 dcr_makeCoaddTempExp_metadata:
     persistable: PropertySet
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
-    template: dcr_makeCoaddTempExp_metadata/%(filter)s%(subfilter)s/%(tract)d/%(patch)s_metadata.boost
+    template: dcr_makeCoaddTempExp_metadata/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s_metadata.boost
 dcr_assembleCoadd_metadata:
     persistable: PropertySet
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
-    template: dcr_assembleCoadd_metadata/%(filter)s%(subfilter)s/%(tract)d/%(patch)s.boost
+    template: dcr_assembleCoadd_metadata/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s.boost
 dcr_makeSkyMap_metadata:
     persistable: PropertySet
     storage: BoostStorage
