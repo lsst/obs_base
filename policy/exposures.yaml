@@ -1,28 +1,35 @@
 deepCoadd:
+    description: "A coadd assembled from direct warps, produced by AssembleCoaddTask."
     persistable: ExposureF
     storage: FitsStorage
     python: lsst.afw.image.ExposureF
     template: deepCoadd/%(filter)s/%(tract)d/%(patch)s.fits
     level: Skytile
 deepCoadd_nImage:
+    description: "The number of input images per pixel in a deepCoadd, per patch."
     persistable: ImageU
     storage: FitsStorage
     python: lsst.afw.image.ImageU
     template: deepCoadd/%(filter)s/%(tract)d/%(patch)s_nImage.fits
     level: Skytile
 deepCoaddPsfMatched:
+    description: "A coadd assembled from PSF matched warps, produced by AssembleCoaddTask."
     persistable: ExposureF
     storage: FitsStorage
     python: lsst.afw.image.ExposureF
     template: deepCoadd/%(filter)s/%(tract)d/psfMatched-%(patch)s.fits
     level: Skytile
 deepCoadd_calexp:
+    description: >
+      An exposure that holds stacked data, after DetectCoaddSourcesTask
+      (thus the background has been subtracted).
     persistable: ExposureF
     storage: FitsStorage
     python: lsst.afw.image.ExposureF
     template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/calexp-%(filter)s-%(tract)d-%(patch)s.fits
     level: None
 deepDiff_differenceExp:
+    description: "The result of image differencing against a deepCoadd."
     template:      ''
     python:        lsst.afw.image.ExposureF
     persistable:   ExposureF
@@ -30,6 +37,7 @@ deepDiff_differenceExp:
     level:         Ccd
     tables:        'raw'
 deepDiff_matchedExp:
+    description: "The result of PSF matching a deepCoadd to the image to be differenced against."
     template:      ''
     python:        lsst.afw.image.ExposureF
     persistable:   ExposureF
@@ -37,6 +45,7 @@ deepDiff_matchedExp:
     level:         Ccd
     tables:        'raw'
 deepCoadd_directWarp:
+    description: "An image which has been warped so it can be included in a deepCoaddd."
     template:    ''
     python:      lsst.afw.image.ExposureF
     persistable: ExposureF
@@ -44,6 +53,7 @@ deepCoadd_directWarp:
     level:       Skytile
     tables:      'raw'
 deepCoadd_psfMatchedWarp:
+    description: "An image which has been warped and PSF-matched so it can be included in a deepCoaddd."
     template:    ''
     python:      lsst.afw.image.ExposureF
     persistable: ExposureF
@@ -51,6 +61,9 @@ deepCoadd_psfMatchedWarp:
     level:       Skytile
     tables:      'raw'
 postISRCCD:
+    description: >
+      The exposure after Instrument Signature Removal is run,
+      without background subtraction, characterization or measurement.
     persistable: ExposureF
     storage: FitsStorage
     python: lsst.afw.image.ExposureF
@@ -58,6 +71,10 @@ postISRCCD:
     tables: raw
     template: ''
 calexp:
+    description: >
+      A fully characterized and calibrated exposure, produced by ProcessCcdTask.
+      Also refered to as a Processed Visit Image (PVI) in the project management documents.
+      This is stored with the background already subtracted.
     persistable: ExposureF
     storage: FitsStorage
     python: lsst.afw.image.ExposureF
@@ -65,14 +82,17 @@ calexp:
     tables: raw
     template: ''
 raw:
+    description: "An image directly from the data acquisition system."
     persistable: DecoratedImageU
     storage: FitsStorage
     python: lsst.afw.image.DecoratedImageU
     level: Ccd
     tables: raw
     template: ''
-# old meas_mosaic/jointcal output; deprecated in favor of jointcal_wcs, but still need to read old outputs
 wcs:
+    description: >
+      Old meas_mosaic/jointcal output; deprecated in favor of jointcal_wcs,
+      but still need to read old outputs.
     persistable: ExposureI
     storage: FitsStorage
     python: lsst.afw.image.ExposureI
@@ -80,6 +100,9 @@ wcs:
     tables: raw
     template: ''
 icExp:
+    description: >
+      The result of Instrument Signature Removal, background subtraction,
+      and PSF determination, produced by ImageCharacterizationTask.
     persistable: ExposureF
     storage: FitsStorage
     python: lsst.afw.image.ExposureF
@@ -87,18 +110,21 @@ icExp:
     tables: raw
     template: ''
 dcrCoadd:
+    description: ""
     persistable: ExposureF
     storage: FitsStorage
     python: lsst.afw.image.ExposureF
     template: dcrCoadd/%(filter)s%(subfilter)s/%(tract)d/%(patch)s.fits
     level: Skytile
 dcrCoadd_calexp:
+    description: ""
     persistable: ExposureF
     storage: FitsStorage
     python: lsst.afw.image.ExposureF
     template: dcrCoadd-results/%(filter)s%(subfilter)s/%(tract)d/%(patch)s/calexp-%(filter)s-%(tract)d-%(patch)s.fits
     level: None
 dcrCoadd_directWarp:
+    description: ""
     template:    ''
     python:      lsst.afw.image.ExposureF
     persistable: ExposureF
