@@ -811,7 +811,7 @@ deepCoadd_obj: #consolidated multi-band object tables from coadd
         see MultilevelParquetTable documentation for more.
     persistable: ignored
     storage: ParquetStorage
-    python: lsst.qa.explorer.parquetTable.MultilevelParquetTable # pandas.DataFrame to write
+    python: lsst.qa.explorer.parquetTable.MultilevelParquetTable
     template: deepCoadd-results/merged/%(tract)d/%(patch)s/obj-%(tract)d-%(patch)s.parq
 writeObjectTable_config:
     persistable: Config
