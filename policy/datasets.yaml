@@ -778,19 +778,19 @@ fgcmBuildStars_config:
     description: "Configuration for fgcmBuildStars task, which concatenates and matches star observations."
     persistable: Config
     storage: ConfigStorage
-    python: lsst.fgcm.fgcmBuildStars.FgcmBuildStarsConfig
+    python: lsst.fgcmcal.fgcmBuildStars.FgcmBuildStarsConfig
     template: config/fgcmBuildStars.py
 fgcmMakeLut_config:
     description: "Configuration for fgcmMakeLut task, which builds an atmosphere/instrument look-up table."
     persistable: Config
     storage: ConfigStorage
-    python: lsst.fgcm.fgcmMakeLut.FgcmMakeLutConfig
+    python: lsst.fgcmcal.fgcmMakeLut.FgcmMakeLutConfig
     template: config/fgcmMakeLut.py
 fgcmFitCycle_config:
     description: "Configuration for fgcmFitCycle task, which performs a global calibration fit."
     persistable: Config
     storage: ConfigStorage
-    python: lsst.fgcm.fgcmFitCycle.FgcmFitCycleConfig
+    python: lsst.fgcmcal.fgcmFitCycle.FgcmFitCycleConfig
     template: config/fgcmFitCycle-%(fgcmcycle)02d.fits
 fgcmVisitCatalog:
     description: "Catalog of visit information used for input to FGCM global fit."
