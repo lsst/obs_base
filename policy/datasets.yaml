@@ -791,7 +791,13 @@ fgcmFitCycle_config:
     persistable: Config
     storage: ConfigStorage
     python: lsst.fgcmcal.fgcmFitCycle.FgcmFitCycleConfig
-    template: config/fgcmFitCycle-%(fgcmcycle)02d.fits
+    template: config/fgcmFitCycle-%(fgcmcycle)02d.py
+fgcmOutputProducts_config:
+    description: "Configuration for fgcmOutputProducts task, which does a final output of products."
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.fgcmcal.fgcmOutputProducts.FgcmOutputProductsConfig
+    template: config/fgcmOutputProducts.py
 fgcmVisitCatalog:
     description: "Catalog of visit information used for input to FGCM global fit."
     persistable: BaseCatalog
