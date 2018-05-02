@@ -887,3 +887,28 @@ writeObjectTable_config:
     python: lsst.qa.explorer.writeObjectTable.WriteObjectTableConfig
     storage: ConfigStorage
     template: config/writeObjectTable.py
+deepCoadd_qa:
+    description: >
+        Quantities useful for QA, computed from the deepCoadd_obj catalog.
+    persistable: ignored
+    storage: ParquetStorage
+    python: lsst.qa.explorer.parquetTable.MultilevelParquetTable
+    template: deepCoadd-results/qa/%(tract)d/%(patch)s/qa-%(tract)d-%(patch)s.parq
+writeQATable_config:
+    persistable: Config
+    python: lsst.qa.explorer.writeQATable.WriteQATableConfig
+    storage: ConfigStorage
+    template: config/writeQATable.py
+consolidateQATable_config:
+    persistable: Config
+    python: lsst.qa.explorer.consolidateQATable.ConsolidateQATableConfig
+    storage: ConfigStorage
+    template: config/consolidateQATable.py
+deepCoadd_qa_tract:
+    description: >
+        Contents same as deepCoadd_qa, but consolidated one-per-tract.
+    persistable: ignored
+    storage: ParquetStorage
+    python: lsst.qa.explorer.parquetTable.MultilevelParquetTable
+    template: deepCoadd-results/qa/%(tract)d/qa-%(tract)d.parq
+
