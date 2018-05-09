@@ -1330,8 +1330,8 @@ def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo
             # raised on failure to create a wcs (and possibly others)
             if logger is None:
                 logger = lsstLog.Log.getLogger("CameraMapper")
-            logger.warn("wcs set to None; insufficient information found in metadata to create a valid wcs: "
-                        "%s", e.args[0])
+            logger.debug("wcs set to None; insufficient information found in metadata to create a valid wcs:"
+                         " %s", e.args[0])
 
         exposure.setMetadata(metadata)
     elif isinstance(image, afwImage.Exposure):
