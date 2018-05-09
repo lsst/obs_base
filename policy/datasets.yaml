@@ -735,8 +735,8 @@ skyCorr:  # Result of sky correction
     template: ''
 calexp_camera:  # Camera-level view of calexp after sky correction
     template: ''
-    persistable: ExposureF
-    python: lsst.afw.image.ExposureF
+    persistable: ImageF
+    python: lsst.afw.image.ImageF
     storage: FitsStorage
     level: None
 verify_job:  # Dataset to hold metrics, specs and measurements from lsst_verify as lsst.verify.job
