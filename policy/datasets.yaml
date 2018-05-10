@@ -809,8 +809,3 @@ plotBfPtc:
     storage: TextStorage
     tables: raw
     template: ''
-#bfKernel:
-#    persistable: ignored
-#    python: numpy.ndarray
-#    storage: PickleStorage
-#    template: calibrations/bfKernel%(ccd)s.pickle
