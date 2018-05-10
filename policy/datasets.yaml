@@ -1060,4 +1060,43 @@ dcrDiff_kernelSrc:
     persistable:   SourceCatalog
     storage:       FitsCatalogStorage
     tables:        'raw'
-
+bf_config:
+    description: "Configuration for the brighter-fatter coefficient calculation code."
+    persistable: Config
+    python: lsst.cp.pipe.bfCoeffCalc.BfTaskConfig
+    storage: ConfigStorage
+    tables:
+    - raw
+    - raw_visit
+    template: config/processBf.py
+bf_metadata:
+    description: "Metadata for the brighter-fatter coefficient calculation code."
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    tables: raw
+    template: bf_metadata/bf_metadata.boost
+bfKernelNew:
+    description: >
+        New brighter-fatter kernels, such that they do not conflict with bfKernel in obs_subaru.
+        This will be renamed, and replace the bfKernel later, but they must exist simultaneously
+        for now.
+    persistable: ignored
+    storage: PickleStorage
+    python: numpy.array
+    tables: raw
+    template: ''
+bfGain:
+    description: "The per-amplifier gains, as calculated and used by the brighter-fatter task."
+    persistable: ignored
+    storage: PickleStorage
+    python: numpy.array
+    tables: raw
+    template: ''
+plotBfPtc:
+    description: "Plots of the photon transfer curve, as made by the brighter-fatter task."
+    persistable: None
+    python: builtins.str
+    storage: MatplotlibStorage
+    tables: raw
+    template: ''
