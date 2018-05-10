@@ -803,6 +803,12 @@ bfGain:
     storage: PickleStorage
     python: numpy.array
     template: ''
+plotBfPtc:
+    persistable: None
+    python: builtins.str
+    storage: TextStorage
+    tables: raw
+    template: ''
 #bfKernel:
 #    persistable: ignored
 #    python: numpy.ndarray
