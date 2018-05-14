@@ -131,3 +131,10 @@ dcrCoadd_directWarp:
     storage:     FitsStorage
     level:       Skytile
     tables:      'raw'
+dcrCoadd_nImage:
+    description: "The number of input images per pixel in a dcrCoadd, per patch and subfilter."
+    persistable: ImageU
+    storage: FitsStorage
+    python: lsst.afw.image.ImageU
+    template: dcrCoadd/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s_nImage.fits
+    level: Skytile
