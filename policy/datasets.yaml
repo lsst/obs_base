@@ -778,20 +778,26 @@ fgcmBuildStars_config:
     description: "Configuration for fgcmBuildStars task, which concatenates and matches star observations."
     persistable: Config
     storage: ConfigStorage
-    python: lsst.fgcm.fgcmBuildStars.FgcmBuildStarsConfig
+    python: lsst.fgcmcal.fgcmBuildStars.FgcmBuildStarsConfig
     template: config/fgcmBuildStars.py
 fgcmMakeLut_config:
     description: "Configuration for fgcmMakeLut task, which builds an atmosphere/instrument look-up table."
     persistable: Config
     storage: ConfigStorage
-    python: lsst.fgcm.fgcmMakeLut.FgcmMakeLutConfig
+    python: lsst.fgcmcal.fgcmMakeLut.FgcmMakeLutConfig
     template: config/fgcmMakeLut.py
 fgcmFitCycle_config:
     description: "Configuration for fgcmFitCycle task, which performs a global calibration fit."
     persistable: Config
     storage: ConfigStorage
-    python: lsst.fgcm.fgcmFitCycle.FgcmFitCycleConfig
-    template: config/fgcmFitCycle-%(fgcmcycle)02d.fits
+    python: lsst.fgcmcal.fgcmFitCycle.FgcmFitCycleConfig
+    template: config/fgcmFitCycle-%(fgcmcycle)02d.py
+fgcmOutputProducts_config:
+    description: "Configuration for fgcmOutputProducts task, which does a final output of products."
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.fgcmcal.fgcmOutputProducts.FgcmOutputProductsConfig
+    template: config/fgcmOutputProducts.py
 fgcmVisitCatalog:
     description: "Catalog of visit information used for input to FGCM global fit."
     persistable: BaseCatalog
@@ -860,6 +866,15 @@ fgcmStandardStars:
     tables: raw
     python: lsst.afw.table.BaseCatalog
     template: fgcm-process/fgcmStandardStars-%(fgcmcycle)02d.fits
+transmission_atmosphere_fgcm:
+    description: >
+      Wavelength-dependent throughput due to the atmosphere as constrained
+      by FGCM (spatially constant).
+    template: ''
+    persistable: TransmissionCurve
+    python: lsst.afw.image.TransmissionCurve
+    storage: FitsCatalogStorage
+    level: None
 apPipe_config:
     persistable: Config
     python: lsst.ap.pipe.ApPipeConfig
