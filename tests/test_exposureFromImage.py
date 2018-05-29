@@ -89,9 +89,9 @@ def makeRampMaskedImage(width, height, imgClass=afwImage.MaskedImageF):
     val = 0
     for yInd in range(height):
         for xInd in range(width):
-            image.set(xInd, yInd, val)
-            variance.set(xInd, yInd, val + 100)
-            mask.set(xInd, yInd, val % 0x100)
+            image[xInd, yInd, afwImage.LOCAL] = val
+            variance[xInd, yInd, afwImage.LOCAL] = val + 100
+            mask[xInd, yInd, afwImage.LOCAL] = val % 0x100
             val += 1
     return mi
 

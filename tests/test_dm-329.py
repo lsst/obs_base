@@ -78,8 +78,9 @@ class DM329TestCase(unittest.TestCase):
             self.assertIsInstance(image, lsst.afw.image.ImageF)
             self.assertEqual(image.getHeight(), 2024)
             self.assertEqual(image.getWidth(), 2248)
-            self.assertEqual(image.get(200, 25), (0.0, 20.0, 0.0)[i-1])
-            self.assertAlmostEqual(image.get(200, 26), (1.20544, 0.0, 5.82185)[i-1], places=5)
+            self.assertEqual(image[200, 25, lsst.afw.image.LOCAL], (0.0, 20.0, 0.0)[i-1])
+            self.assertAlmostEqual(image[200, 26, lsst.afw.image.LOCAL], (1.20544, 0.0, 5.82185)[i-1],
+                                   places=5)
 
 
 class MemoryTester(lsst.utils.tests.MemoryTestCase):
