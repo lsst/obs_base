@@ -22,7 +22,6 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-import gc
 import os
 import shutil
 import unittest
@@ -215,7 +214,7 @@ class TestGenericAssembler(unittest.TestCase):
                      # setter names inferred by component name.
                  },
                  # "generic assembler default constructor pair"
-                 'gaDefCtorPair': { # dataset defition that uses the default ctor
+                 'gaDefCtorPair': {  # dataset defition that uses the default ctor
                      'python': 'lsst.daf.persistence.test.TestObjectPair',
                      'composite': {
                          # note that the component names are the same as the argument

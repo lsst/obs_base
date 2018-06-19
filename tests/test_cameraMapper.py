@@ -22,7 +22,6 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-import collections
 import gc
 import os
 import sqlite3
@@ -193,7 +192,6 @@ class Mapper1TestCase(unittest.TestCase):
         self.assertEqual(result, 3.14)
 
     def testNames(self):
-        name = MinMapper1.getCameraName()
         self.assertEqual(MinMapper1.getCameraName(), "min")
         self.assertEqual(MinMapper1.getPackageName(), "larry")
 

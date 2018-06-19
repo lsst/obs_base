@@ -24,8 +24,6 @@
 
 import lsst.daf.persistence as dafPersist
 from lsst.obs.base import CameraMapper
-from lsst.utils import getPackageDir
-import os
 
 __all__ = ["CompositeMapper"]
 
