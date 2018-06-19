@@ -11,6 +11,8 @@ config.log
 *_wrap.cc
 *Lib.py
 .cache
+.pytest_cache
+.coverage
 doc/html
 doc/*.tag
 doc/*.inc
