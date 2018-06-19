@@ -46,7 +46,7 @@ class ExposureFromImageTestCase(lsst.utils.tests.TestCase):
         exposure = exposureFromImage(decoImage)
         self.assertImagesEqual(exposure.getMaskedImage().getImage(), image)
         md = exposure.getMetadata()
-        self.assertEqual(md.get("FOO"), "BAR")
+        self.assertEqual(md.getScalar("FOO"), "BAR")
 
     def testExposure(self):
         inExposure = afwImage.ExposureF(self.maskedImage)

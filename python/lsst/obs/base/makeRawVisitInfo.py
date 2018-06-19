@@ -215,14 +215,14 @@ class MakeRawVisitInfo(object):
         Returns
         -------
         `object`
-            The value of the specified key, using whatever type md.get(key)
+            The value of the specified key, using whatever type md.getScalar(key)
             returns.
         """
         try:
             if not md.exists(key):
                 self.log.warn("Key=\"{}\" not in metadata".format(key))
                 return default
-            val = md.get(key)
+            val = md.getScalar(key)
             md.remove(key)
             return val
         except Exception as e:
@@ -302,7 +302,7 @@ class MakeRawVisitInfo(object):
         if isoDateStr is not None:
             try:
                 if timesys is None:
-                    timesys = md.get("TIMESYS") if md.exists("TIMESYS") else "UTC"
+                    timesys = md.getScalar("TIMESYS") if md.exists("TIMESYS") else "UTC"
                 if isoDateStr.endswith("Z"):  # illegal in FITS
                     isoDateStr = isoDateStr[0:-1]
                 astropyTime = astropy.time.Time(isoDateStr, scale=timesys.lower(), format="fits")
@@ -336,7 +336,7 @@ class MakeRawVisitInfo(object):
         mjdDate = self.popFloat(md, key)
         try:
             if timesys is None:
-                timesys = md.get("TIMESYS") if md.exists("TIMESYS") else "UTC"
+                timesys = md.getScalar("TIMESYS") if md.exists("TIMESYS") else "UTC"
             astropyTime = astropy.time.Time(mjdDate, format="mjd", scale=timesys.lower())
             # DateTime uses nanosecond resolution, regardless of the resolution of the original date
             astropyTime.precision = 9
