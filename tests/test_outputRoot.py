@@ -20,8 +20,6 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-from future import standard_library
-standard_library.install_aliases()
 import unittest
 import tempfile
 import shutil

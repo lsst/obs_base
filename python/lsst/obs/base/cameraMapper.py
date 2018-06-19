@@ -20,7 +20,6 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-from builtins import str
 import copy
 import os
 import pyfits  # required by _makeDefectsDict until defects are written as AFW tables

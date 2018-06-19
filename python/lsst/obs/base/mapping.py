@@ -20,8 +20,6 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-from builtins import zip
-from builtins import object
 from collections import OrderedDict
 import os
 import re

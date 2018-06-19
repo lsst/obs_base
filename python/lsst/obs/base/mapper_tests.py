@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-from future.utils import with_metaclass
 #
 # LSST Data Management System
 # Copyright 2016 LSST Corporation.
@@ -33,7 +31,7 @@ import collections
 __all__ = ["MapperTests"]
 
 
-class MapperTests(with_metaclass(abc.ABCMeta)):
+class MapperTests(metaclass=abc.ABCMeta):
     """
     Generic tests of obs_* package mapper functionality.
 
