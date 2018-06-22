@@ -20,15 +20,13 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-from future import standard_library
-standard_library.install_aliases()
 import unittest
 import tempfile
 import shutil
-import lsst.utils.tests
 import pickle
 import os
-import subprocess
+
+import lsst.utils.tests
 import lsst.afw.geom as afwGeom
 import lsst.pex.policy as pexPolicy
 import lsst.daf.persistence as dafPersist

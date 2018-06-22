@@ -22,9 +22,6 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-from __future__ import print_function
-from builtins import range
-import collections
 import gc
 import os
 import sqlite3
@@ -145,8 +142,8 @@ def checkCompression(testCase, additionalData):
                       "scaling.bscale",
                       "scaling.bzero",
                       ):
-            additionalData.get(plane + "." + entry)
-        testCase.assertNotEqual(additionalData.get(plane + ".scaling.seed"), 0)
+            additionalData.getScalar(plane + "." + entry)
+        testCase.assertNotEqual(additionalData.getScalar(plane + ".scaling.seed"), 0)
 
 
 class Mapper1TestCase(unittest.TestCase):
@@ -195,7 +192,6 @@ class Mapper1TestCase(unittest.TestCase):
         self.assertEqual(result, 3.14)
 
     def testNames(self):
-        name = MinMapper1.getCameraName()
         self.assertEqual(MinMapper1.getCameraName(), "min")
         self.assertEqual(MinMapper1.getPackageName(), "larry")
 
@@ -230,7 +226,7 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getStorageName(), "FitsStorage")
         self.assertEqual(loc.getLocations(), ["foo-13.fits"])
         self.assertEqual(loc.getStorage().root, ROOT)
-        self.assertEqual(loc.getAdditionalData().get("ccd"), 13)
+        self.assertEqual(loc.getAdditionalData().getScalar("ccd"), 13)
         checkCompression(self, loc.getAdditionalData())
 
     def testSubMap(self):
@@ -249,11 +245,11 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getStorageName(), "FitsStorage")
         self.assertEqual(loc.getLocations(), ["foo-13.fits"])
         self.assertEqual(loc.getStorage().root, ROOT)
-        self.assertEqual(loc.getAdditionalData().get("ccd"), 13)
-        self.assertEqual(loc.getAdditionalData().get("width"), 300)
-        self.assertEqual(loc.getAdditionalData().get("height"), 400)
-        self.assertEqual(loc.getAdditionalData().get("llcX"), 200)
-        self.assertEqual(loc.getAdditionalData().get("llcY"), 100)
+        self.assertEqual(loc.getAdditionalData().getScalar("ccd"), 13)
+        self.assertEqual(loc.getAdditionalData().getScalar("width"), 300)
+        self.assertEqual(loc.getAdditionalData().getScalar("height"), 400)
+        self.assertEqual(loc.getAdditionalData().getScalar("llcX"), 200)
+        self.assertEqual(loc.getAdditionalData().getScalar("llcY"), 100)
         checkCompression(self, loc.getAdditionalData())
 
         loc = mapper.map("raw_sub", {"ccd": 13, "bbox": bbox, "imageOrigin": "PARENT"}, write=True)
@@ -262,12 +258,12 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(loc.getStorageName(), "FitsStorage")
         self.assertEqual(loc.getLocations(), ["foo-13.fits"])
         self.assertEqual(loc.getStorage().root, ROOT)
-        self.assertEqual(loc.getAdditionalData().get("ccd"), 13)
-        self.assertEqual(loc.getAdditionalData().get("width"), 300)
-        self.assertEqual(loc.getAdditionalData().get("height"), 400)
-        self.assertEqual(loc.getAdditionalData().get("llcX"), 200)
-        self.assertEqual(loc.getAdditionalData().get("llcY"), 100)
-        self.assertEqual(loc.getAdditionalData().get("imageOrigin"), "PARENT")
+        self.assertEqual(loc.getAdditionalData().getScalar("ccd"), 13)
+        self.assertEqual(loc.getAdditionalData().getScalar("width"), 300)
+        self.assertEqual(loc.getAdditionalData().getScalar("height"), 400)
+        self.assertEqual(loc.getAdditionalData().getScalar("llcX"), 200)
+        self.assertEqual(loc.getAdditionalData().getScalar("llcY"), 100)
+        self.assertEqual(loc.getAdditionalData().getScalar("imageOrigin"), "PARENT")
         checkCompression(self, loc.getAdditionalData())
 
     def testCatalogExtras(self):
@@ -288,7 +284,7 @@ class Mapper2TestCase(unittest.TestCase):
             self.assertEqual(butler.get("someCatalog_schema", dataId), schema)
             self.assertEqual(butler.get("someCatalog_len", dataId), size)
             header = butler.get("someCatalog_md", dataId)
-            self.assertEqual(header.get("NAXIS2"), size)
+            self.assertEqual(header.getScalar("NAXIS2"), size)
         finally:
             try:
                 os.remove(filename)
@@ -388,10 +384,10 @@ class Mapper2TestCase(unittest.TestCase):
         expectedLocations = ["flat-05Am03-fi.fits"]
         self.assertEqual(loc.getStorage().root, expectedRoot)
         self.assertEqual(loc.getLocations(), expectedLocations)
-        self.assertEqual(loc.getAdditionalData().get("ccd"), 13)
-        self.assertEqual(loc.getAdditionalData().get("visit"), 787650)
-        self.assertEqual(loc.getAdditionalData().get("derivedRunId"), "05Am03")
-        self.assertEqual(loc.getAdditionalData().get("filter"), "i")
+        self.assertEqual(loc.getAdditionalData().getScalar("ccd"), 13)
+        self.assertEqual(loc.getAdditionalData().getScalar("visit"), 787650)
+        self.assertEqual(loc.getAdditionalData().getScalar("derivedRunId"), "05Am03")
+        self.assertEqual(loc.getAdditionalData().getScalar("filter"), "i")
         checkCompression(self, loc.getAdditionalData())
 
     def testNames(self):

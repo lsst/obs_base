@@ -20,7 +20,6 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-from builtins import str
 import copy
 import os
 import pyfits  # required by _makeDefectsDict until defects are written as AFW tables
@@ -495,7 +494,7 @@ class CameraMapper(dafPersist.Mapper):
                         setMethods("len", bypassImpl=lambda datasetType, pythonType, location, dataId:
                                    readMetadata(os.path.join(location.getStorage().root,
                                                              location.getLocations()[0]),
-                                                hdu=1).get("NAXIS2"))
+                                                hdu=1).getScalar("NAXIS2"))
 
                         # Schema of catalog
                         if not datasetType.endswith("_schema") and datasetType + "_schema" not in datasets:
@@ -895,7 +894,7 @@ class CameraMapper(dafPersist.Mapper):
             try:
                 self.log.info("Loading Posix %s registry from %s", description, storage.root)
                 registry = dafPersist.PosixRegistry(storage.root)
-            except:
+            except Exception:
                 registry = None
 
         return registry
@@ -1220,7 +1219,7 @@ class CameraMapper(dafPersist.Mapper):
         recipe = self._writeRecipes[storageType][recipeName].deepCopy()
         seed = hash(tuple(dataId.items())) % 2**31
         for plane in ("image", "mask", "variance"):
-            if recipe.exists(plane + ".scaling.seed") and recipe.get(plane + ".scaling.seed") == 0:
+            if recipe.exists(plane + ".scaling.seed") and recipe.getScalar(plane + ".scaling.seed") == 0:
                 recipe.set(plane + ".scaling.seed", seed)
         return recipe
 

@@ -26,8 +26,8 @@ import os
 import shutil
 import unittest
 import tempfile
+
 import lsst.utils.tests
-from lsst.utils import getPackageDir
 import lsst.daf.persistence as dafPersist
 
 ROOT = os.path.abspath(os.path.dirname(__file__))

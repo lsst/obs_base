@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-from future.utils import with_metaclass
 #
 # LSST Data Management System
 # Copyright 2016 LSST Corporation.
@@ -33,7 +31,7 @@ import collections
 __all__ = ["MapperTests"]
 
 
-class MapperTests(with_metaclass(abc.ABCMeta)):
+class MapperTests(metaclass=abc.ABCMeta):
     """
     Generic tests of obs_* package mapper functionality.
 
@@ -124,7 +122,8 @@ class MapperTests(with_metaclass(abc.ABCMeta)):
         self.assertEqual(self.mapper.root, butlerLocation.getStorage().root)
         self.assertEqual(butlerLocation.getLocations(), [processCcd_path])
         for k, v in dataId.items():
-            self.assertEqual(butlerLocation.getAdditionalData().get(k), v, msg="Failed for key={}".format(k))
+            self.assertEqual(butlerLocation.getAdditionalData().getScalar(k), v,
+                             msg="Failed for key={}".format(k))
 
     def test_map_metadata_data(self):
         dataId = self.dataIds['raw']
@@ -134,7 +133,8 @@ class MapperTests(with_metaclass(abc.ABCMeta)):
         self.assertEqual(butlerLocation.getStorageName(), "BoostStorage")
         self.assertEqual(butlerLocation.getLocations(), [self.mapper_data.metadata_output_path])
         for k, v in dataId.items():
-            self.assertEqual(butlerLocation.getAdditionalData().get(k), v, msg="Failed for key={}".format(k))
+            self.assertEqual(butlerLocation.getAdditionalData().getScalar(k), v,
+                             msg="Failed for key={}".format(k))
 
     def test_keys(self):
         self.assertEqual(set(self.mapper.keys()), self.mapper_data.keys)
@@ -160,7 +160,8 @@ class MapperTests(with_metaclass(abc.ABCMeta)):
         fileName = os.path.basename(locationList[0])
         self.assertEqual(fileName, self.mapper_data.raw_filename)
         for k, v in dataId.items():
-            self.assertEqual(butlerLocation.getAdditionalData().get(k), v, msg="Failed for key={}".format(k))
+            self.assertEqual(butlerLocation.getAdditionalData().getScalar(k), v,
+                             msg="Failed for key={}".format(k))
 
     def test_map(self):
         dataId = self.dataIds['raw']

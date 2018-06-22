@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-from future.utils import with_metaclass
 #
 # LSST Data Management System
 # Copyright 2016 LSST Corporation.
@@ -29,7 +27,7 @@ import collections
 __all__ = ["ButlerGetTests"]
 
 
-class ButlerGetTests(with_metaclass(abc.ABCMeta)):
+class ButlerGetTests(metaclass=abc.ABCMeta):
     """
     Tests of obs_* Butler get() functionality.
 

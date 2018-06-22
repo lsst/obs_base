@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-from future.utils import with_metaclass
 #
 # LSST Data Management System
 # Copyright 2016 LSST Corporation.
@@ -31,7 +29,7 @@ from lsst.afw.cameraGeom import FOCAL_PLANE, FIELD_ANGLE
 __all__ = ["CameraTests"]
 
 
-class CameraTests(with_metaclass(abc.ABCMeta)):
+class CameraTests(metaclass=abc.ABCMeta):
     """
     Tests that the butler returns a useable Camera.
 
