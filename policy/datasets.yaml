@@ -911,7 +911,7 @@ deepCoadd_qa:
     template: deepCoadd-results/qa/%(tract)d/%(patch)s/qa-%(tract)d-%(patch)s.parq
 writeQATable_config:
     persistable: Config
-    python: lsst.qa.explorer.writeQATable.WriteQATableConfig
+    python: lsst.qa.explorer.postprocess.WriteQATableConfig
     storage: ConfigStorage
     template: config/writeQATable.py
 consolidateQATable_config:
