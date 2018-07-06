@@ -22,7 +22,7 @@
 
 import copy
 import os
-import pyfits  # required by _makeDefectsDict until defects are written as AFW tables
+from astropy.io import fits  # required by _makeDefectsDict until defects are written as AFW tables
 import re
 import weakref
 import lsst.daf.persistence as dafPersist
@@ -141,8 +141,8 @@ class CameraMapper(dafPersist.Mapper):
 
     - Handle defects the same was as all other calibration products, using the calibration registry
     - Instead of auto-loading the camera at construction time, load it from the calibration registry
-    - Rewrite defects as AFW tables so we don't need pyfits to unpersist them; then remove all mention
-      of pyfits from this package.
+    - Rewrite defects as AFW tables so we don't need astropy.io.fits to unpersist them; then remove all mention
+      of astropy.io.fits from this package.
     """
     packageName = None
 
@@ -720,7 +720,7 @@ class CameraMapper(dafPersist.Mapper):
         """
         detectorName = self._extractDetectorName(dataId)
         defectsFitsPath = butlerLocation.locationList[0]
-        with pyfits.open(defectsFitsPath) as hduList:
+        with fits.open(defectsFitsPath) as hduList:
             for hdu in hduList[1:]:
                 if hdu.header["name"] != detectorName:
                     continue
