@@ -22,7 +22,7 @@
 
 import copy
 import os
-import pyfits  # required by _makeDefectsDict until defects are written as AFW tables
+from astropy.io import fits  # required by _makeDefectsDict until defects are written as AFW tables
 import re
 import weakref
 import lsst.daf.persistence as dafPersist
@@ -97,13 +97,14 @@ class CameraMapper(dafPersist.Mapper):
     Subclasses may also need to override the following methods:
 
     _transformId(self, dataId): transformation of a data identifier
-    from colloquial usage (e.g., "ccdname") to proper/actual usage (e.g., "ccd"),
-    including making suitable for path expansion (e.g. removing commas).
-    The default implementation does nothing.  Note that this
+    from colloquial usage (e.g., "ccdname") to proper/actual usage
+    (e.g., "ccd"), including making suitable for path expansion (e.g. removing
+    commas). The default implementation does nothing.  Note that this
     method should not modify its input parameter.
 
-    getShortCcdName(self, ccdName): a static method that returns a shortened name
-    suitable for use as a filename. The default version converts spaces to underscores.
+    getShortCcdName(self, ccdName): a static method that returns a shortened
+    name suitable for use as a filename. The default version converts spaces
+    to underscores.
 
     _getCcdKeyVal(self, dataId): return a CCD key and value
     by which to look up defects in the defects registry.
@@ -119,8 +120,8 @@ class CameraMapper(dafPersist.Mapper):
     mappings (see Mappings class).
 
     Common default mappings for all subclasses can be specified in the
-    "policy/{images,exposures,calibrations,datasets}.yaml" files. This provides
-    a simple way to add a product to all camera mappers.
+    "policy/{images,exposures,calibrations,datasets}.yaml" files. This
+    provides a simple way to add a product to all camera mappers.
 
     Functions to map (provide a path to the data given a dataset
     identifier dictionary) and standardize (convert data into some standard
@@ -139,10 +140,13 @@ class CameraMapper(dafPersist.Mapper):
     -----
     TODO:
 
-    - Handle defects the same was as all other calibration products, using the calibration registry
-    - Instead of auto-loading the camera at construction time, load it from the calibration registry
-    - Rewrite defects as AFW tables so we don't need pyfits to unpersist them; then remove all mention
-      of pyfits from this package.
+    - Handle defects the same was as all other calibration products, using the
+      calibration registry
+    - Instead of auto-loading the camera at construction time, load it from
+      the calibration registry
+    - Rewrite defects as AFW tables so we don't need astropy.io.fits to
+      unpersist them; then remove all mention of astropy.io.fits from this
+      package.
     """
     packageName = None
 
@@ -296,16 +300,18 @@ class CameraMapper(dafPersist.Mapper):
     def _initMappings(self, policy, rootStorage=None, calibStorage=None, provided=None):
         """Initialize mappings
 
-        For each of the dataset types that we want to be able to read, there are
-        methods that can be created to support them:
+        For each of the dataset types that we want to be able to read, there
+        are methods that can be created to support them:
         * map_<dataset> : determine the path for dataset
         * std_<dataset> : standardize the retrieved dataset
-        * bypass_<dataset> : retrieve the dataset (bypassing the usual retrieval machinery)
+        * bypass_<dataset> : retrieve the dataset (bypassing the usual
+          retrieval machinery)
         * query_<dataset> : query the registry
 
         Besides the dataset types explicitly listed in the policy, we create
-        additional, derived datasets for additional conveniences, e.g., reading
-        the header of an image, retrieving only the size of a catalog.
+        additional, derived datasets for additional conveniences,
+        e.g., reading the header of an image, retrieving only the size of a
+        catalog.
 
         Parameters
         ----------
@@ -562,8 +568,8 @@ class CameraMapper(dafPersist.Mapper):
 
         All of the backups will be placed in the output repo, however, and will
         not be removed if they are found elsewhere in the _parent chain.  This
-        means that the same file will be stored twice if the previous version was
-        found in an input repo.
+        means that the same file will be stored twice if the previous version
+        was found in an input repo.
         """
 
         # Calling PosixStorage directly is not the long term solution in this
@@ -573,7 +579,8 @@ class CameraMapper(dafPersist.Mapper):
         # by traversing the container of repositories in Butler.
 
         def firstElement(list):
-            """Get the first element in the list, or None if that can't be done.
+            """Get the first element in the list, or None if that can't be
+            done.
             """
             return list[0] if list is not None and len(list) else None
 
@@ -602,8 +609,8 @@ class CameraMapper(dafPersist.Mapper):
         return iter(self.keyDict.keys())
 
     def getKeys(self, datasetType, level):
-        """Return a dict of supported keys and their value types for a given dataset
-        type at a given level of the key hierarchy.
+        """Return a dict of supported keys and their value types for a given
+        dataset type at a given level of the key hierarchy.
 
         Parameters
         ----------
@@ -715,12 +722,13 @@ class CameraMapper(dafPersist.Mapper):
         dataId : `dict`
             Butler data ID; "ccd" must be set.
 
-        Note: the name "bypass_XXX" means the butler makes no attempt to convert the ButlerLocation
-        into an object, which is what we want for now, since that conversion is a bit tricky.
+        Note: the name "bypass_XXX" means the butler makes no attempt to
+        convert the ButlerLocation into an object, which is what we want for
+        now, since that conversion is a bit tricky.
         """
         detectorName = self._extractDetectorName(dataId)
         defectsFitsPath = butlerLocation.locationList[0]
-        with pyfits.open(defectsFitsPath) as hduList:
+        with fits.open(defectsFitsPath) as hduList:
             for hdu in hduList[1:]:
                 if hdu.header["name"] != detectorName:
                     continue
@@ -764,7 +772,8 @@ class CameraMapper(dafPersist.Mapper):
         return item
 
     def std_raw(self, item, dataId):
-        """Standardize a raw dataset by converting it to an Exposure instead of an Image"""
+        """Standardize a raw dataset by converting it to an Exposure instead
+        of an Image"""
         return self._standardizeExposure(self.exposures['raw'], item, dataId,
                                          trimmed=False, setVisitInfo=True)
 
@@ -785,7 +794,8 @@ class CameraMapper(dafPersist.Mapper):
 ###############################################################################
 
     def _getCcdKeyVal(self, dataId):
-        """Return CCD key and value used to look a defect in the defect registry
+        """Return CCD key and value used to look a defect in the defect
+        registry
 
         The default implementation simply returns ("ccd", full detector name)
         """
@@ -1145,14 +1155,18 @@ class CameraMapper(dafPersist.Mapper):
                                (ccdVal, taiObs, len(rows), ", ".join([_[0] for _ in rows])))
 
     def _makeCamera(self, policy, repositoryDir):
-        """Make a camera (instance of lsst.afw.cameraGeom.Camera) describing the camera geometry
+        """Make a camera (instance of lsst.afw.cameraGeom.Camera) describing
+        the camera geometry
 
-        Also set self.cameraDataLocation, if relevant (else it can be left None).
+        Also set self.cameraDataLocation, if relevant (else it can be left
+        None).
 
-        This implementation assumes that policy contains an entry "camera" that points to the
-        subdirectory in this package of camera data; specifically, that subdirectory must contain:
+        This implementation assumes that policy contains an entry "camera"
+        that points to the subdirectory in this package of camera data;
+        specifically, that subdirectory must contain:
         - a file named `camera.py` that contains persisted camera config
-        - ampInfo table FITS files, as required by lsst.afw.cameraGeom.makeCameraFromPath
+        - ampInfo table FITS files, as required by
+          lsst.afw.cameraGeom.makeCameraFromPath
 
         Parameters
         ----------
@@ -1260,9 +1274,11 @@ class CameraMapper(dafPersist.Mapper):
         * bitpix (int): bits per pixel (0,8,16,32,64,-32,-64)
         * fuzz (bool): fuzz the values when quantising floating-point values?
         * seed (long): seed for random number generator when fuzzing
-        * maskPlanes (list of string): mask planes to ignore when doing statistics
+        * maskPlanes (list of string): mask planes to ignore when doing
+          statistics
         * quantizeLevel: divisor of the standard deviation for STDEV_* scaling
-        * quantizePad: number of stdev to allow on the low side (for STDEV_POSITIVE/NEGATIVE)
+        * quantizePad: number of stdev to allow on the low side (for
+          STDEV_POSITIVE/NEGATIVE)
         * bscale: manually specified BSCALE (for MANUAL scaling)
         * bzero: manually specified BSCALE (for MANUAL scaling)
 
