@@ -64,7 +64,8 @@ deep_compareWarpAssembleCoadd_config:
     storage: ConfigStorage
     python: lsst.pipe.tasks.assembleCoadd.CompareWarpAssembleCoaddConfig
     template: config/deep_compareWarpAssembleCoadd.py
-deep_dcrAssembleCoadd_config:  # Configuration for DCR-aware coadds
+deep_dcrAssembleCoadd_config:
+    description: "Configuration for DCR-aware coadds."
     persistable: Config
     storage: ConfigStorage
     python: lsst.pipe.tasks.dcrAssembleCoadd.DcrAssembleCoaddConfig
@@ -193,7 +194,8 @@ deep_compareWarpAssembleCoadd_metadata:
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
     template: deep_assembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.boost
-deep_dcrAssembleCoadd_metadata:  # Temporary metadata for DCR-aware coadds
+deep_dcrAssembleCoadd_metadata:
+    description: "Temporary metadata for DCR-aware coadds."
     persistable: PropertySet
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
@@ -538,6 +540,7 @@ deepCoadd_measMatchFull:
     tables: raw
     template: ''
 dcrCoadd_calexp_background:
+    description: "The background model for a dcrCoadd_calexp."
     persistable: PurePythonClass
     storage: FitsCatalogStorage
     python: lsst.afw.math.BackgroundList
@@ -564,13 +567,17 @@ dcrCoadd_ref_schema:
     template: schema/dcrCoadd_ref.fits
 dcrCoaddId:
     description: >
-      A unique identifier for a (Ian fill this in!).
+      A unique identifier for a coadd of a single patch and DCR subfilter.
       This is overridden by the CameraMapper and not a persisted dataset.
     persistable: ignored
     storage: ignored
     python: lsst.daf.base.PropertySet
     template: ignored
 dcrCoadd_meas:
+    description: >
+        Catalog of source measurements on the dcrCoadd.
+        Footprints are deblended and fit (shapes, positions, fluxes) per filter and subfilter,
+        using peaks produced by MeasureMergedDcrCoaddSourcesTask.
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
@@ -581,6 +588,9 @@ dcrCoadd_forced_config:
     python: lsst.meas.base.forcedPhotCoadd.ForcedPhotCoaddConfig
     template: config/forcedPhotCoadd.py
 dcrCoadd_forced_src:
+    description: >
+        Catalog of forced measurements (shape and position parameters held fixed) on the dcrCoadd.
+        Use dcrCoadd_ref as the reference catalog by default.
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
@@ -596,6 +606,10 @@ dcrCoaddId_bits:
     python: lsst.daf.base.PropertySet
     template: ignored
 dcrCoadd_ref:
+    description: >
+        Catalog marking the primary detection (which band provides a good shape and position)
+        for each detection in dcrCoadd_mergeDet.
+        Produced by mergeDcrCoaddMeasurements.
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
@@ -606,6 +620,9 @@ dcrCoadd_det_schema:
     python: lsst.afw.table.SourceCatalog
     template: schema/dcrCoadd_det.fits
 dcrCoadd_mergeDet:
+    description: >
+        Catalog containing the union of footprints (and peaks) detected on all subfilters (from dcrCoadd_det).
+        Produced by MergeDcrDetectionsTask.
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
@@ -616,32 +633,26 @@ dcrCoadd_meas_schema:
     python: lsst.afw.table.SourceCatalog
     template: schema/dcrCoadd_meas.fits
 dcrCoadd_skyMap:
+    description: "The standard reference system for use when projecting single epoch images on to the coadd."
     persistable: ignored
     storage: PickleStorage
     python: lsst.skymap.BaseSkyMap
     template: dcrCoadd/skyMap.pickle
 dcrCoadd_det:
+    description: "Source catalog of footprints detected on coadds, produced by DetectDcrCoaddSourcesTask."
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
     template: dcrCoadd-results/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s/det-%(filter)s%(subfilter)dof%(numSubfilters)d-%(tract)d-%(patch)s.fits
-dcrCoadd_forced_src:
-    persistable: ignored
-    storage: FitsCatalogStorage
-    python: lsst.afw.table.SourceCatalog
-    template: dcrCoadd-results/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s/forced_src-%(filter)s%(subfilter)dof%(numSubfilters)d-%(tract)d-%(patch)s.fits
-dcrCoadd_forced_src_schema:
-    persistable: ignored
-    storage: FitsCatalogStorage
-    python: lsst.afw.table.SourceCatalog
-    template: schema/dcrCoadd_forced_src.fits
-dcrCoadd_measMatch:  # Matches from MeasureMergedCoaddSourcesTask
+dcrCoadd_measMatch:
+    description: "Matches from MeasureMergedDcrCoaddSourcesTask."
     persistable: BaseCatalog
     storage: FitsCatalogStorage
     python: lsst.afw.table.BaseCatalog
     tables: raw
     template: dcrCoadd-results/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s/srcMatch-%(filter)s%(subfilter)dof%(numSubfilters)d-%(tract)d-%(patch)s.fits
-dcrCoadd_measMatchFull:  # Denormalized matches from MeasureMergedCoaddSourcesTask
+dcrCoadd_measMatchFull:
+    description: "Denormalized matches from MeasureMergedDcrCoaddSourcesTask."
     persistable: BaseCatalog
     storage: FitsCatalogStorage
     python: lsst.afw.table.BaseCatalog
@@ -669,7 +680,7 @@ dcr_safeClipAssembleCoadd_metadata:
     template: dcr_assembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.boost
 dcrMergedCoaddId:
     description: >
-      A unique identifier for a (Ian fill this in!).
+      A unique identifier for a DCR subfilter-merged catalog of a single patch.
       This is overridden by the CameraMapper and not a persisted dataset.
     persistable: ignored
     storage: ignored
