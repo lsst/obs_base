@@ -590,7 +590,8 @@ dcrCoadd_forced_config:
 dcrCoadd_forced_src:
     description: >
         Catalog of forced measurements (shape and position parameters held fixed) on the dcrCoadd.
-        Use dcrCoadd_ref as the reference catalog by default.
+        Uses dcrCoadd_ref as the reference catalog by default.
+        Produced by ForcedPhotCoaddTask.
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
