@@ -140,3 +140,21 @@ dcrCoadd_nImage:
     python: lsst.afw.image.ImageU
     template: dcrCoadd/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s_nImage.fits
     level: Skytile
+dcrDiff_differenceExp:
+    description: "The result of image differencing an image against a dcrCoadd."
+    template:      ''
+    python:        lsst.afw.image.ExposureF
+    persistable:   ExposureF
+    storage:       FitsStorage
+    level:         Ccd
+    tables:        'raw'
+dcrDiff_matchedExp:
+    description: >
+      The result of forward-modeling chromatic effects, warping, and PSF-matching a dcrCoadd
+      to the image to be differenced against.
+    template:      ''
+    python:        lsst.afw.image.ExposureF
+    persistable:   ExposureF
+    storage:       FitsStorage
+    level:         Ccd
+    tables:        'raw'
