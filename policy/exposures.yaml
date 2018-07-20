@@ -110,21 +110,23 @@ icExp:
     tables: raw
     template: ''
 dcrCoadd:
-    description: ""
+    description: "A coadd assembled from direct warps, produced by DcrAssembleCoaddTask."
     persistable: ExposureF
     storage: FitsStorage
     python: lsst.afw.image.ExposureF
     template: dcrCoadd/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s.fits
     level: Skytile
 dcrCoadd_calexp:
-    description: ""
+    description: >
+      An exposure that holds stacked data, after DetectDcrCoaddSourcesTask
+      (thus the background has been subtracted).
     persistable: ExposureF
     storage: FitsStorage
     python: lsst.afw.image.ExposureF
     template: dcrCoadd-results/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s/calexp-%(filter)s-%(tract)d-%(patch)s.fits
     level: None
 dcrCoadd_directWarp:
-    description: ""
+    description: "An image which has been warped so it can be included in a dcrCoaddd."
     template:    ''
     python:      lsst.afw.image.ExposureF
     persistable: ExposureF
