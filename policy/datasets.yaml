@@ -948,4 +948,36 @@ deepCoadd_qa_tract:
     storage: ParquetStorage
     python: lsst.qa.explorer.parquetTable.MultilevelParquetTable
     template: deepCoadd-results/qa/%(tract)d/qa-%(tract)d.parq
+dcrDiff_config:
+    template:      config/dcrDiff.py
+    python:        lsst.pipe.tasks.imageDifference.ImageDifferenceConfig
+    persistable:   Config
+    storage:       ConfigStorage
+    tables:        'raw'
+dcrDiff_metadata:
+    template:      ''
+    python:        lsst.daf.base.PropertySet
+    persistable:   PropertySet
+    storage:       BoostStorage
+    tables:        'raw'
+dcrDiff_diaSrc:
+    description: "Catalog of sources detected on dcrDiff_differenceExp."
+    template:      ''
+    python:        lsst.afw.table.SourceCatalog
+    persistable:   SourceCatalog
+    storage:       FitsCatalogStorage
+    tables:        'raw'
+dcrDiff_diaSrc_schema:
+    template:      schema/dcrDiff_diaSrc.fits
+    python:        lsst.afw.table.SourceCatalog
+    persistable:   SourceCatalog
+    storage:       FitsCatalogStorage
+    tables:        'raw'
+dcrDiff_kernelSrc:
+    description: "Source catalog of stars that were used to compute the matching kernel in ImageDifferenceTask."
+    template:      ''
+    python:        lsst.afw.table.SourceCatalog
+    persistable:   SourceCatalog
+    storage:       FitsCatalogStorage
+    tables:        'raw'
 
