@@ -160,6 +160,11 @@ measureCoaddSources_metadata:
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
     template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/measMD-%(filter)s-%(tract)d-%(patch)s.boost
+deblendCoaddSources_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/deblendMD-%(filter)s-%(tract)d-%(patch)s.boost
 mergeCoaddMeasurements_metadata:
     persistable: PropertySet
     storage: BoostStorage
@@ -267,6 +272,11 @@ measureCoaddSources_config:
     storage: ConfigStorage
     python: lsst.pipe.tasks.multiBand.MeasureMergedCoaddSourcesConfig
     template: config/measureMerged.py
+deblendCoaddSources_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.tasks.multiBand.DeblendCoaddSourcesConfig
+    template: config/deblend.py
 deep_makeDiscreteSkyMap_metadata:
     persistable: PropertySet
     storage: BoostStorage
