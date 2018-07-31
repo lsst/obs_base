@@ -5,5 +5,6 @@ setupRequired(daf_persistence)
 setupRequired(afw)
 setupRequired(astropy)
 setupRequired(utils)
+setupOptional(daf_butler)
 
 envPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
