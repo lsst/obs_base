@@ -132,6 +132,40 @@ deepCoadd_meas:
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
     template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/meas-%(filter)s-%(tract)d-%(patch)s.fits
+deblendCoaddSources_metadata:
+    persistable: PropertySet
+    storage: BoostStorage
+    python: lsst.daf.base.PropertySet
+    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/deblendMD-%(filter)s-%(tract)d-%(patch)s.boost
+deblendCoaddSources_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.tasks.multiBand.DeblendCoaddSourcesConfig
+    template: config/deblend.py
+deepCoadd_deblendedModel:
+    description: >
+        Catalog of deblended footprint models using the output of the multi-band deblender.
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/deblend-%(filter)s-%(tract)d-%(patch)s.fits
+deepCoadd_deblendedModel_schema:
+    persistable: SourceCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: schema/deepCoadd_deblendedModel.fits
+deepCoadd_deblendedFlux:
+    description: >
+        Catalog of deblended footprints with templates used to reweight the data so that flux is conserved.
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/deblendedFlux-%(filter)s-%(tract)d-%(patch)s.fits
+deepCoadd_deblendedFlux_schema:
+    persistable: SourceCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: schema/deepCoadd_deblendedFlux.fits
 deepCoadd_forced_config:
     persistable: Config
     storage: ConfigStorage
@@ -160,11 +194,6 @@ measureCoaddSources_metadata:
     storage: BoostStorage
     python: lsst.daf.base.PropertySet
     template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/measMD-%(filter)s-%(tract)d-%(patch)s.boost
-deblendCoaddSources_metadata:
-    persistable: PropertySet
-    storage: BoostStorage
-    python: lsst.daf.base.PropertySet
-    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/deblendMD-%(filter)s-%(tract)d-%(patch)s.boost
 mergeCoaddMeasurements_metadata:
     persistable: PropertySet
     storage: BoostStorage
@@ -272,11 +301,6 @@ measureCoaddSources_config:
     storage: ConfigStorage
     python: lsst.pipe.tasks.multiBand.MeasureMergedCoaddSourcesConfig
     template: config/measureMerged.py
-deblendCoaddSources_config:
-    persistable: Config
-    storage: ConfigStorage
-    python: lsst.pipe.tasks.multiBand.DeblendCoaddSourcesConfig
-    template: config/deblend.py
 deep_makeDiscreteSkyMap_metadata:
     persistable: PropertySet
     storage: BoostStorage
