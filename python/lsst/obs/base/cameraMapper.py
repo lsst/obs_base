@@ -735,10 +735,9 @@ class CameraMapper(dafPersist.Mapper):
 
                 defectList = []
                 for data in hdu.data:
-                    bbox = afwGeom.Box2I(
-                        afwGeom.Point2I(int(data['x0']), int(data['y0'])),
-                        afwGeom.Extent2I(int(data['width']), int(data['height'])),
-                    )
+                    bbox = afwGeom.Box2I(afwGeom.Point2I(int(data['x0']), int(data['y0'])),
+                                         afwGeom.Extent2I(int(data['width']), int(data['height'])),
+                                         invert=False)
                     defectList.append(afwImage.DefectBase(bbox))
                 return defectList
 

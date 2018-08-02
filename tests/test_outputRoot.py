@@ -216,7 +216,7 @@ class OutputRootTestCase(unittest.TestCase):
         butler1 = dafPersist.Butler(outputs=dafPersist.RepositoryArgs(mode='w',
                                                                       root=testOutput,
                                                                       mapper=mapper1))
-        b1 = afwGeom.Box2I(afwGeom.Point2I(3, 4), afwGeom.Point2I(7, 6))
+        b1 = afwGeom.Box2I(afwGeom.Point2I(3, 4), afwGeom.Point2I(7, 6), invert=False)
         butler1.put(b1, "x")
         self.assertTrue(os.path.exists(os.path.join(testOutput, "foo-1,1.pickle")))
         b2 = afwGeom.Box2I(b1)

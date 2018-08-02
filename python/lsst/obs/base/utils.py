@@ -36,4 +36,4 @@ def bboxFromIraf(irafBBoxStr):
         raise RuntimeError("Unable to parse IRAF-style bbox \"%s\"" % irafBBoxStr)
     x0, x1, y0, y1 = [int(_) for _ in mat.groups()]
 
-    return afwGeom.BoxI(afwGeom.PointI(x0 - 1, y0 - 1), afwGeom.PointI(x1 - 1, y1 - 1))
+    return afwGeom.Box2I(afwGeom.PointI(x0 - 1, y0 - 1), afwGeom.PointI(x1 - 1, y1 - 1), invert=False)
