@@ -148,7 +148,7 @@ deepCoadd_deblendedModel:
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
-    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/deblend-%(filter)s-%(tract)d-%(patch)s.fits
+    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/deblendedModel-%(filter)s-%(tract)d-%(patch)s.fits
 deepCoadd_deblendedModel_schema:
     persistable: SourceCatalog
     storage: FitsCatalogStorage
