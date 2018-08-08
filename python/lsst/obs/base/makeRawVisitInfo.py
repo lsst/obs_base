@@ -224,7 +224,7 @@ class MakeRawVisitInfo(object):
             return val
         except Exception as e:
             # this should never happen, but is a last ditch attempt to avoid exceptions
-            self.log.warn("Could not read key=\"{}\" in metadata: {}" % (key, e))
+            self.log.warn('Could not read key="{}" in metadata: {}'.format(key, e))
         return default
 
     def popFloat(self, md, key):
