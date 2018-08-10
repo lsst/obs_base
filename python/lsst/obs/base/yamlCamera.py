@@ -48,7 +48,7 @@ class YamlCamera(cameraGeom.Camera):
         # meaning that C1 is always 1.
         radialCoeffs = np.array(cameraParams["radialCoeffs"])/plateScale.asRadians()
         fieldAngleToFocalPlane = afwGeom.makeRadialTransform(radialCoeffs)
-        focalPlaneToFieldAngle = fieldAngleToFocalPlane.getInverse()
+        focalPlaneToFieldAngle = fieldAngleToFocalPlane.inverted()
         cameraTransformMap = cameraGeom.TransformMap(cameraGeom.FOCAL_PLANE,
                                                      {cameraGeom.FIELD_ANGLE: focalPlaneToFieldAngle})
         detectorList = self._makeDetectorList(cameraParams["CCDs"], focalPlaneToFieldAngle)
