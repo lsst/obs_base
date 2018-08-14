@@ -953,11 +953,13 @@ fgcmFlaggedStars:
     python: lsst.afw.table.BaseCatalog
     template: fgcm-process/fgcmFlaggedStars-%(fgcmcycle)02d.fits
 fgcmStandardStars:
-    description: "Catalog of FGCM standard stars with magnitudes generated from FGCM global fit."
-    persistable: BaseCatalog
+    description: >
+      Catalog of FGCM standard stars with magnitudes generated from FGCM global fit.
+      These magnitudes do not have absolute calibration offsets applied.
+    persistable: SimpleCatalog
     storage: FitsCatalogStorage
     tables: raw
-    python: lsst.afw.table.BaseCatalog
+    python: lsst.afw.table.SimpleCatalog
     template: fgcm-process/fgcmStandardStars-%(fgcmcycle)02d.fits
 transmission_atmosphere_fgcm:
     description: >
