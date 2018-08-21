@@ -166,6 +166,30 @@ deepCoadd_deblendedFlux_schema:
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
     template: schema/deepCoadd_deblendedFlux.fits
+dcrCoadd_deblendedModel:
+    description: >
+        Catalog of deblended footprint models using the output of the multi-band deblender.
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: dcrCoadd-results/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s/deblendedModel-%(filter)s%(subfilter)dof%(numSubfilters)d-%(tract)d-%(patch)s.fits
+dcrCoadd_deblendedModel_schema:
+    persistable: SourceCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: schema/dcrCoadd_deblendedModel.fits
+dcrCoadd_deblendedFlux:
+    description: >
+        Catalog of deblended footprints with templates used to reweight the data so that flux is conserved.
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: dcrCoadd-results/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s/deblendedFlux-%(filter)s%(subfilter)dof%(numSubfilters)d-%(tract)d-%(patch)s.fits
+dcrCoadd_deblendedFlux_schema:
+    persistable: SourceCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: schema/dcrCoadd_deblendedFlux.fits
 deepCoadd_forced_config:
     persistable: Config
     storage: ConfigStorage
