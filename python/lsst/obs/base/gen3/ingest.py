@@ -295,24 +295,9 @@ class RawIngestTask(Task, metaclass=ABCMeta):
             # *previous* files when config.onError=='rollback' but
             # config.confict=='ignore'.
             ref = self.butler.registry.addDataset(self.datasetType, dataId, run=run,
-                                                  transactional=False)
+                                                  transactional=False, recursive=True)
         except ValueError:
             raise IngestConflictError("Ingest conflict on {} {}".format(file, dataId))
-
-        # Add component Dataset entries, assuming this is a concrete
-        # composite. We may need to revisit that assumption in the future.
-        #
-        # Note that there is no *conflict* handling here, because if there
-        # was a straightforward conflict, it'd have trigged the except
-        # clause above; if we get a conflict at this point the Registry is
-        # corrupted somehow, and so we want that more serious error to
-        # propagate up to the *onError* handling in run().
-        for component in ref.datasetType.storageClass.components:
-            compTypeName = ref.datasetType.componentTypeName(component)
-            compDatasetType = self.butler.registry.getDatasetType(compTypeName)
-            compRef = self.butler.registry.addDataset(compDatasetType, dataId, run=run)
-            self.butler.registry.attachComponent(component, ref, compRef,
-                                                 transactional=False)
 
         # Ingest it into the Datastore.
         self.butler.datastore.ingest(file, ref, formatter=self.getFormatter(file, headers, dataId),
