@@ -87,9 +87,9 @@ bias_config:
     template: config/bias.py
 deepCoadd_forced_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
-    template: deepCoadd_forcedPhotCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.boost
+    template: deepCoadd_forcedPhotCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.yaml
 deepCoadd_forced_src_schema:
     persistable: ignored
     storage: FitsCatalogStorage
@@ -97,9 +97,9 @@ deepCoadd_forced_src_schema:
     template: schema/deepCoadd_forced_src.fits
 deep_makeCoaddTempExp_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
-    template: deep_makeCoaddTempExp_metadata/%(filter)s/%(tract)d/%(patch)s_metadata.boost
+    template: deep_makeCoaddTempExp_metadata/%(filter)s/%(tract)d/%(patch)s_metadata.yaml
 deepCoadd_ref_schema:
     persistable: SourceCatalog
     storage: FitsCatalogStorage
@@ -120,9 +120,9 @@ mergeCoaddMeasurements_config:
     template: config/mergeMeasure.py
 deep_assembleCoadd_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
-    template: deep_assembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.boost
+    template: deep_assembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.yaml
 deepCoadd_meas:
     description: >
         Catalog of source measurements on the deepCoadd.
@@ -134,9 +134,9 @@ deepCoadd_meas:
     template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/meas-%(filter)s-%(tract)d-%(patch)s.fits
 deblendCoaddSources_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
-    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/deblendMD-%(filter)s-%(tract)d-%(patch)s.boost
+    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/deblendMD-%(filter)s-%(tract)d-%(patch)s.yaml
 deblendCoaddSources_config:
     persistable: Config
     storage: ConfigStorage
@@ -210,19 +210,19 @@ mergeCoaddDetections_config:
     template: config/mergeDetect.py
 deep_makeSkyMap_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
-    template: metadata/deep_makeSkyMap.boost
+    template: metadata/deep_makeSkyMap.yaml
 measureCoaddSources_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
-    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/measMD-%(filter)s-%(tract)d-%(patch)s.boost
+    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/measMD-%(filter)s-%(tract)d-%(patch)s.yaml
 mergeCoaddMeasurements_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
-    template: deepCoadd-results/merged/%(tract)d/%(patch)s/mergeMeasMD-%(tract)d-%(patch)s.boost
+    template: deepCoadd-results/merged/%(tract)d/%(patch)s/mergeMeasMD-%(tract)d-%(patch)s.yaml
 transformSrcMeasurement_config:
     persistable: Config
     storage: ConfigStorage
@@ -244,20 +244,20 @@ brightObjectMask:
     template: deepCoadd/BrightObjectMasks/%(tract)d/BrightObjectMask-%(tract)d-%(patch)s-%(filter)s.reg
 deep_safeClipAssembleCoadd_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
-    template: deep_assembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.boost
+    template: deep_assembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.yaml
 deep_compareWarpAssembleCoadd_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
-    template: deep_assembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.boost
+    template: deep_assembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.yaml
 deep_dcrAssembleCoadd_metadata:
     description: "Temporary metadata for DCR-aware coadds."
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
-    template: deep_assembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.boost
+    template: deep_assembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.yaml
 transformed_src_schema:
     persistable: BaseCatalog
     storage: FitsCatalogStorage
@@ -273,9 +273,9 @@ deepMergedCoaddId:
     template: ignored
 detectCoaddSources_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
-    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/detectMD-%(filter)s-%(tract)d-%(patch)s.boost
+    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/detectMD-%(filter)s-%(tract)d-%(patch)s.yaml
 deep_makeCoaddTempExp_config:
     persistable: Config
     storage: ConfigStorage
@@ -327,9 +327,9 @@ measureCoaddSources_config:
     template: config/measureMerged.py
 deep_makeDiscreteSkyMap_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
-    template: metadata/deep_makeDiscreteSkyMap.boost
+    template: metadata/deep_makeDiscreteSkyMap.yaml
 deepCoadd_mergeDet:
     description: >
         Catalog containing the union of footprints (and peaks) detected on all filters (from deepCoadd_det).
@@ -395,9 +395,9 @@ singleFrameDriver_config:
     template: config/singleFrameDriver.py
 mergeCoaddDetections_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
-    template: deepCoadd-results/merged/%(tract)d/%(patch)s/mergeDetMD-%(tract)d-%(patch)s.boost
+    template: deepCoadd-results/merged/%(tract)d/%(patch)s/mergeDetMD-%(tract)d-%(patch)s.yaml
 icSrc_schema:
     persistable: SourceCatalog
     storage: FitsCatalogStorage
@@ -425,7 +425,7 @@ deepDiff_metadata:
     template:      ''
     python:        lsst.daf.base.PropertySet
     persistable:   PropertySet
-    storage:       BoostStorage
+    storage:       YamlStorage
     tables:        'raw'
 deepDiff_diaSrc:
     description: "Catalog of sources detected on deepDiff_differenceExp."
@@ -454,7 +454,7 @@ isr_config:
     template: config/isr.py
 isr_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
     tables: raw
     template: ''
@@ -478,7 +478,7 @@ icExpBackground:
     template: ''
 processCcd_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
     tables: raw
     template: ''
@@ -494,13 +494,13 @@ characterizeImage_config:
     template: config/characterizeImage.py
 characterizeImage_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
     template: ''
     tables: raw
 calibrate_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
     tables: raw
     template: ''
@@ -511,7 +511,7 @@ forcedPhotCcd_config:
     template: config/forcedPhotCcd.py
 forcedPhotCcd_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
     tables: raw
     template: ''
@@ -610,9 +610,9 @@ dcrCoadd_peak_schema:
     template: schema/dcrCoadd_peak.fits
 dcrCoadd_forced_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
-    template: dcrCoadd_forcedPhotCoadd_metadata/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s.boost
+    template: dcrCoadd_forcedPhotCoadd_metadata/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s.yaml
 dcrCoadd_forced_src_schema:
     persistable: ignored
     storage: FitsCatalogStorage
@@ -719,24 +719,24 @@ dcrCoadd_measMatchFull:
     template: dcrCoadd-results/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s/srcMatchFull-%(filter)s%(subfilter)dof%(numSubfilters)d-%(tract)d-%(patch)s.fits
 dcr_makeCoaddTempExp_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
-    template: dcr_makeCoaddTempExp_metadata/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s_metadata.boost
+    template: dcr_makeCoaddTempExp_metadata/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s_metadata.yaml
 dcr_assembleCoadd_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
-    template: dcr_assembleCoadd_metadata/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s.boost
+    template: dcr_assembleCoadd_metadata/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s.yaml
 dcr_makeSkyMap_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
-    template: metadata/dcr_makeSkyMap.boost
+    template: metadata/dcr_makeSkyMap.yaml
 dcr_safeClipAssembleCoadd_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
-    template: dcr_assembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.boost
+    template: dcr_assembleCoadd_metadata/%(filter)s/%(tract)d/%(patch)s.yaml
 dcrMergedCoaddId:
     description: >
       A unique identifier for a DCR subfilter-merged catalog of a single patch.
@@ -747,9 +747,9 @@ dcrMergedCoaddId:
     template: ignored
 dcr_makeDiscreteSkyMap_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
-    template: metadata/dcr_makeDiscreteSkyMap.boost
+    template: metadata/dcr_makeDiscreteSkyMap.yaml
 dcrMergedCoaddId_bits:
     persistable: ignored
     storage: ignored
@@ -767,10 +767,10 @@ fitDonut_config:
     template: config/fitDonut.py
 fitDonut_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
     tables: raw
-    template: metadata/fitDonut.boost
+    template: metadata/fitDonut.yaml
 donutSrc:
     persistable: SourceCatalog
     storage: FitsCatalogStorage
@@ -962,7 +962,7 @@ apPipe_config:
     template: config/apPipe.py
 apPipe_metadata:
     persistable: PropertySet
-    storage: BoostStorage
+    storage: YamlStorage
     python: lsst.daf.base.PropertySet
     tables: raw
     template: ''
@@ -1016,7 +1016,7 @@ dcrDiff_metadata:
     template:      ''
     python:        lsst.daf.base.PropertySet
     persistable:   PropertySet
-    storage:       BoostStorage
+    storage:       YamlStorage
     tables:        'raw'
 dcrDiff_diaSrc:
     description: "Catalog of sources detected on dcrDiff_differenceExp."
