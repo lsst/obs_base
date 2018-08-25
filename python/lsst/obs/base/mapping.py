@@ -59,7 +59,7 @@ class Mapping(object):
     (e.g. ImageU)
 
     storage (string, optional): Storage type for this dataset type (e.g.
-    "BoostStorage")
+    "FitsStorage")
 
     level (string, optional): the level in the camera hierarchy at which the
     data is stored (Amp, Ccd or skyTile), if relevant
