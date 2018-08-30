@@ -130,7 +130,7 @@ class MapperTests(metaclass=abc.ABCMeta):
         butlerLocation = self.mapper.map_processCcd_metadata(dataId)
         self.assertEqual(butlerLocation.getPythonType(), "lsst.daf.base.PropertySet")
         self.assertEqual(butlerLocation.getCppType(), "PropertySet")
-        self.assertEqual(butlerLocation.getStorageName(), "BoostStorage")
+        self.assertEqual(butlerLocation.getStorageName(), "YamlStorage")
         self.assertEqual(butlerLocation.getLocations(), [self.mapper_data.metadata_output_path])
         for k, v in dataId.items():
             self.assertEqual(butlerLocation.getAdditionalData().getScalar(k), v,
