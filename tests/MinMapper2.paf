@@ -19,6 +19,7 @@ exposures: {
         python:      "lsst.afw.image.ExposureU"
         persistable: "ImageU"
         level:       "Ccd"
+        storage:     "FitsStorage"
         tables:      "raw"
     }
 }
@@ -27,24 +28,28 @@ images: {
         template:    "bar-%(ccd)02d.fits"
         python:      "lsst.afw.image.ExposureF"
         persistable: "ExposureF"
+        storage:     "FitsStorage"
         tables:      raw
     }
     other: {
         template:    "bar-%(ccd)02d.fits[%(hdu)d]"
         python:      "lsst.afw.image.ImageF"
         persistable: "ImageF"
+        storage:     "FitsStorage"
         tables:      raw
     }
     someGz: {
         template:    "gz/bar-%(ccd)02d.fits" # the file will end in ...fits.gz but butler will still find it.
         python:      "lsst.afw.image.ExposureF"
         persistable: "ExposureF"
+        storage:     "FitsStorage"
         tables:      raw
     }
         someFz: {
         template:    "fz/bar-%(ccd)02d.fits" # the file will end in ...fits.fz but butler will still find it.
         python:      "lsst.afw.image.ExposureF"
         persistable: "ExposureF"
+        storage:     "FitsStorage"
         tables:      raw
     }
 }
