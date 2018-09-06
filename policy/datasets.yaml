@@ -410,8 +410,8 @@ ccdExposureId_bits:
     template: ignored
 ref_cat:
     description: "An external reference catalog, read by LoadIndexedReferenceObjectsTask."
-    persistable: SourceCatalog
-    python: lsst.afw.table.SourceCatalog
+    persistable: SimpleCatalog
+    python: lsst.afw.table.SimpleCatalog
     storage: FitsCatalogStorage
     table: ignored
     template: ref_cats/%(name)s/%(pixel_id)s.fits
