@@ -205,12 +205,6 @@ class CameraMapper(dafPersist.Mapper):
         if repoPolicy is not None:
             policy.update(repoPolicy)
 
-        defaultPolicyFile = dafPersist.Policy.defaultPolicyFile("obs_base",
-                                                                "MapperDictionary.paf",
-                                                                "policy")
-        dictPolicy = dafPersist.Policy(defaultPolicyFile)
-        policy.merge(dictPolicy)
-
         # Levels
         self.levels = dict()
         if 'levels' in policy:
@@ -326,13 +320,12 @@ class CameraMapper(dafPersist.Mapper):
         """
         # Sub-dictionaries (for exposure/calibration/dataset types)
         imgMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
-            "obs_base", "ImageMappingDictionary.paf", "policy"))
+            "obs_base", "ImageMappingDefaults.yaml", "policy"))
         expMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
-            "obs_base", "ExposureMappingDictionary.paf", "policy"))
+            "obs_base", "ExposureMappingDefaults.yaml", "policy"))
         calMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
-            "obs_base", "CalibrationMappingDictionary.paf", "policy"))
-        dsMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
-            "obs_base", "DatasetMappingDictionary.paf", "policy"))
+            "obs_base", "CalibrationMappingDefaults.yaml", "policy"))
+        dsMappingPolicy = dafPersist.Policy()
 
         # Mappings
         mappingList = (
