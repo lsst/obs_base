@@ -34,7 +34,6 @@ import lsst.afw.table as afwTable
 from lsst.afw.fits import readMetadata
 import lsst.afw.cameraGeom as afwCameraGeom
 import lsst.log as lsstLog
-import lsst.pex.policy as pexPolicy
 import lsst.pex.exceptions as pexExcept
 from .exposureIdInfo import ExposureIdInfo
 from .makeRawVisitInfo import MakeRawVisitInfo
@@ -165,7 +164,6 @@ class CameraMapper(dafPersist.Mapper):
         Parameters
         ----------
         policy : daf_persistence.Policy,
-            Can also be pexPolicy.Policy, only for backward compatibility.
             Policy with per-camera defaults already merged.
         repositoryDir : string
             Policy repository for the subclassing module (obtained with
@@ -198,8 +196,6 @@ class CameraMapper(dafPersist.Mapper):
             self.root = repositoryCfg.root
         else:
             self.root = None
-        if isinstance(policy, pexPolicy.Policy):
-            policy = dafPersist.Policy(policy)
 
         repoPolicy = repositoryCfg.policy if repositoryCfg else None
         if repoPolicy is not None:
@@ -1163,15 +1159,13 @@ class CameraMapper(dafPersist.Mapper):
 
         Parameters
         ----------
-        policy : `lsst.daf.persistence.Policy` or `pexPolicy.Policy`
+        policy : `lsst.daf.persistence.Policy`
              Policy with per-camera defaults already merged
              (PexPolicy only for backward compatibility).
         repositoryDir : `str`
             Policy repository for the subclassing module (obtained with
             getRepositoryPath() on the per-camera default dictionary).
         """
-        if isinstance(policy, pexPolicy.Policy):
-            policy = dafPersist.Policy(pexPolicy=policy)
         if 'camera' not in policy:
             raise RuntimeError("Cannot find 'camera' in policy; cannot construct a camera")
         cameraDataSubdir = policy['camera']
