@@ -1,6 +1,5 @@
 setupRequired(daf_base)
 setupRequired(log)
-setupRequired(pex_policy)
 setupRequired(daf_persistence)
 setupRequired(afw)
 setupRequired(astropy)
