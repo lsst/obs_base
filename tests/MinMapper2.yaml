@@ -1,55 +1,48 @@
-#<?cfg paf policy ?>
-
 # Minimal mapper configuration policy
 
 camera: "camera"
 
 needCalibRegistry: true
 calibRegistryPath: "tests/calibRegistry.sqlite3"
-levels: {
+levels:
     visit: "ccd"
-}
+
 defaultLevel: "ccd"
-defaultSubLevels: {
+defaultSubLevels:
     visit: "ccd"
-}
-exposures: {
-    raw: {
+
+exposures:
+    raw:
         template:    "foo-%(ccd)02d.fits"
         python:      "lsst.afw.image.ExposureU"
         persistable: "ImageU"
         level:       "Ccd"
         tables:      "raw"
-    }
-}
-images: {
-    some: {
+
+images:
+    some:
         template:    "bar-%(ccd)02d.fits"
         python:      "lsst.afw.image.ExposureF"
         persistable: "ExposureF"
         tables:      raw
-    }
-    other: {
+    other:
         template:    "bar-%(ccd)02d.fits[%(hdu)d]"
         python:      "lsst.afw.image.ImageF"
         persistable: "ImageF"
         tables:      raw
-    }
-    someGz: {
+    someGz:
         template:    "gz/bar-%(ccd)02d.fits" # the file will end in ...fits.gz but butler will still find it.
         python:      "lsst.afw.image.ExposureF"
         persistable: "ExposureF"
         tables:      raw
-    }
-        someFz: {
+    someFz:
         template:    "fz/bar-%(ccd)02d.fits" # the file will end in ...fits.fz but butler will still find it.
         python:      "lsst.afw.image.ExposureF"
         persistable: "ExposureF"
         tables:      raw
-    }
-}
-calibrations: {
-    flat: {
+
+calibrations:
+    flat:
         template:    "flat-%(derivedRunId)s-f%(filter)s.fits"
         python:      "lsst.afw.image.ExposureF"
         persistable: "ExposureF"
@@ -57,25 +50,19 @@ calibrations: {
         tables:      "flat"
         validRange:  true
         reference:   "raw"
-        refCols:     "ccd"
-        refCols:     "visit"
-        columns:     "filter"
-        columns:     "taiObs"
-    }
-}
-datasets: {
-    someCatalog: {
+        refCols:     ["ccd", "visit"]
+        columns:     ["filter", "taiObs"]
+
+datasets:
+    someCatalog:
         template:    "catalog-v%(visit)d-c%(ccd)02d.fits"
         python:      "lsst.afw.table.BaseCatalog"
         persistable: "BasesCatalog"
         storage:     "FitsCatalogStorage"
         tables:      "raw"
-    }
-    forced_src: {
+    forced_src:
         template:    "%(tract)d/%(filter)s/forced_src-v%(visit)d-c%(ccd)02d.fits"
         python:      "lsst.afw.table.SourceCatalog"
         persistable: "SourceCatalog"
         storage:     "FitsCatalogStorage"
         tables:      "raw"
-    }
-}
