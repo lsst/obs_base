@@ -970,6 +970,13 @@ transmission_atmosphere_fgcm:
     python: lsst.afw.image.TransmissionCurve
     storage: FitsCatalogStorage
     level: None
+fgcm_photoCalib:
+    description: "Photometric calibration produced by FGCM."
+    persistable: PhotoCalib
+    storage: FitsCatalogStorage
+    python: lsst.afw.image.PhotoCalib
+    tables: raw
+    template: ''
 apPipe_config:
     persistable: Config
     python: lsst.ap.pipe.ApPipeConfig
