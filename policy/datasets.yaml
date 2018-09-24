@@ -458,6 +458,19 @@ isr_metadata:
     python: lsst.daf.base.PropertySet
     tables: raw
     template: ''
+runIsr_config:
+    description: "Configuration for RunIsrTask, which retargets IsrTask to the correct camera-specific class."
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.ip.isr.RunIsrConfig
+    template: config/runIsr.py
+runIsr_metadata:
+    description: "Metadata for RunIsrTask, which retargets IsrTask to the correct camera-specific class."
+    persistable: PropertySet
+    storage: YamlStorage
+    python: lsst.daf.base.PropertySet
+    tables: raw
+    template: ''
 icSrc:
     description: >
         High signal-to-noise source catalog produced by CharacterizeImageTask (a subset of `src`).
