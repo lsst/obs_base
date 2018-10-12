@@ -421,14 +421,14 @@ starGalaxy_classifier:
     python: sklearn.calibration.CalibratedClassifierCV
     storage: PickleStorage
     table: ignored
-    template: algorithmData/starGalaxyClassifier/%(version)s/clfIsotonicColour.pickle
+    template: algorithmData/starGalaxyClassifier/%(label)s/clfIsotonicColour.pickle
 starGalaxy_morphOnlyClassifier:
     description: "The trained star galaxy separation classfier - uses morphology information only"
     persistable: ignored
     python: sklearn.calibration.CalibratedClassifierCV
     storage: PickleStorage
     table: ignored
-    template: algorithmData/starGalaxyClassifier/%(version)s/clfIsotonicMorph.pickle
+    template: algorithmData/starGalaxyClassifier/%(label)s/clfIsotonicMorph.pickle
 deepDiff_config:
     template:      config/deepDiff.py
     python:        lsst.pipe.tasks.imageDifference.ImageDifferenceConfig
