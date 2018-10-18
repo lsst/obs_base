@@ -415,6 +415,20 @@ ref_cat:
     storage: FitsCatalogStorage
     table: ignored
     template: ref_cats/%(name)s/%(pixel_id)s.fits
+starGalaxy_classifier:
+    description: "The trained star galaxy separation classfier - uses colors and morphology information"
+    persistable: ignored
+    python: sklearn.calibration.CalibratedClassifierCV
+    storage: PickleStorage
+    table: ignored
+    template: algorithmData/starGalaxyClassifier/%(label)s/clfIsotonicColour.pickle
+starGalaxy_morphOnlyClassifier:
+    description: "The trained star galaxy separation classfier - uses morphology information only"
+    persistable: ignored
+    python: sklearn.calibration.CalibratedClassifierCV
+    storage: PickleStorage
+    table: ignored
+    template: algorithmData/starGalaxyClassifier/%(label)s/clfIsotonicMorph.pickle
 deepDiff_config:
     template:      config/deepDiff.py
     python:        lsst.pipe.tasks.imageDifference.ImageDifferenceConfig
@@ -1011,6 +1025,20 @@ deepCoadd_qa:
     storage: ParquetStorage
     python: lsst.qa.explorer.parquetTable.MultilevelParquetTable
     template: deepCoadd-results/qa/%(tract)d/%(patch)s/qa-%(tract)d-%(patch)s.parq
+deepCoadd_sg:
+    description: >
+        Quantities needed for the star galaxy separation task computed from the deepCoadd_obj catalog.
+    persistable: ignored
+    storage: ParquetStorage
+    python: lsst.qa.explorer.parquetTable.MultilevelParquetTable
+    template: deepCoadd-results/merged/%(tract)d/%(patch)s/sg-%(tract)d-%(patch)s.parq
+deepCoadd_sg_features:
+    description: >
+        Features needed to train the star galaxy separation task computed from the deepCoadd_obj catalog.
+    persistable: ignored
+    storage: ParquetStorage
+    python: lsst.qa.explorer.parquetTable.MultilevelParquetTable
+    template: deepCoadd-results/merged/%(tract)d/%(patch)s/sg-feats-%(tract)d-%(patch)s.parq
 writeQATable_config:
     persistable: Config
     python: lsst.qa.explorer.writeQATable.WriteQATableConfig
@@ -1099,3 +1127,11 @@ plotBrighterFatterPtc:
     storage: MatplotlibStorage
     tables: raw
     template: ''
+deepCoadd_sg_features_tract:
+    description: >
+        Contents same as deepCoadd_sg_features, but consolidated one-per-tract.
+    persistable: ignored
+    storage: ParquetStorage
+    python: lsst.qa.explorer.parquetTable.ParquetTable
+    template: deepCoadd-results/merged/%(tract)d/sg-feats-%(tract)d.parq
+
