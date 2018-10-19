@@ -1,0 +1,5 @@
+storage: "FitsStorage"
+obsTimeName: "taiObs"
+validStartName: "validStart"
+validEndName: "validEnd"
+filter: false

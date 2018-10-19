@@ -30,7 +30,6 @@ import lsst.utils.tests
 import lsst.afw.image
 import lsst.daf.persistence as dafPersist
 import lsst.obs.base
-import lsst.pex.policy as pexPolicy
 
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
@@ -40,7 +39,7 @@ class MinMapper2(lsst.obs.base.CameraMapper):
     packageName = 'larry'
 
     def __init__(self):
-        policy = pexPolicy.Policy.createPolicy(os.path.join(ROOT, 'MinMapper2.paf'))
+        policy = dafPersist.Policy(os.path.join(ROOT, 'MinMapper2.yaml'))
         lsst.obs.base.CameraMapper.__init__(self,
                                             policy=policy,
                                             repositoryDir=ROOT,

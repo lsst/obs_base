@@ -25,8 +25,6 @@ import os
 import re
 from lsst.daf.base import PropertySet
 from lsst.daf.persistence import ButlerLocation, NoResults
-from lsst.daf.persistence.policy import Policy
-import lsst.pex.policy as pexPolicy
 
 __all__ = ["Mapping", "ImageMapping", "ExposureMapping", "CalibrationMapping", "DatasetMapping"]
 
@@ -72,8 +70,8 @@ class Mapping(object):
     ----------
     datasetType : `str`
         Butler dataset type to be mapped.
-    policy : `daf_persistence.Policy` or `pexPolicy.Policy`
-        Mapping Policy.  (pexPolicy only for backward compatibility)
+    policy : `daf_persistence.Policy`
+        Mapping Policy.
     registry : `lsst.obs.base.Registry`
         Registry for metadata lookups.
     rootStorage : Storage subclass instance
@@ -86,9 +84,6 @@ class Mapping(object):
 
         if policy is None:
             raise RuntimeError("No policy provided for mapping")
-
-        if isinstance(policy, pexPolicy.Policy):
-            policy = Policy(policy)
 
         self.datasetType = datasetType
         self.registry = registry
@@ -348,8 +343,8 @@ class ImageMapping(Mapping):
     ----------
     datasetType : `str`
         Butler dataset type to be mapped.
-    policy : `daf_persistence.Policy` `pexPolicy.Policy`
-        Mapping Policy. (pexPolicy only for backward compatibility)
+    policy : `daf_persistence.Policy`
+        Mapping Policy.
     registry : `lsst.obs.base.Registry`
         Registry for metadata lookups
     root : `str`
@@ -357,8 +352,6 @@ class ImageMapping(Mapping):
     """
 
     def __init__(self, datasetType, policy, registry, root, **kwargs):
-        if isinstance(policy, pexPolicy.Policy):
-            policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
         self.columns = policy.asArray('columns') if 'columns' in policy else None
 
@@ -370,8 +363,8 @@ class ExposureMapping(Mapping):
     ----------
     datasetType : `str`
         Butler dataset type to be mapped.
-    policy : `daf_persistence.Policy` or `pexPolicy.Policy`
-        Mapping Policy (pexPolicy only for backward compatibility)
+    policy : `daf_persistence.Policy`
+        Mapping Policy.
     registry : `lsst.obs.base.Registry`
         Registry for metadata lookups
     root : `str`
@@ -379,8 +372,6 @@ class ExposureMapping(Mapping):
     """
 
     def __init__(self, datasetType, policy, registry, root, **kwargs):
-        if isinstance(policy, pexPolicy.Policy):
-            policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
         self.columns = policy.asArray('columns') if 'columns' in policy else None
 
@@ -430,8 +421,8 @@ class CalibrationMapping(Mapping):
     ----------
     datasetType : `str`
         Butler dataset type to be mapped.
-    policy : `daf_persistence.Policy` or `pexPolicy.Policy`
-        Mapping Policy (pexPolicy only for backward compatibility)
+    policy : `daf_persistence.Policy`
+        Mapping Policy.
     registry : `lsst.obs.base.Registry`
         Registry for metadata lookups
     calibRegistry : `lsst.obs.base.Registry`
@@ -443,8 +434,6 @@ class CalibrationMapping(Mapping):
     """
 
     def __init__(self, datasetType, policy, registry, calibRegistry, calibRoot, dataRoot=None, **kwargs):
-        if isinstance(policy, pexPolicy.Policy):
-            policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, calibRegistry, calibRoot, **kwargs)
         self.reference = policy.asArray("reference") if "reference" in policy else None
         self.refCols = policy.asArray("refCols") if "refCols" in policy else None
@@ -539,8 +528,8 @@ class DatasetMapping(Mapping):
     ----------
     datasetType : `str`
         Butler dataset type to be mapped.
-    policy : `daf_persistence.Policy` `pexPolicy.Policy`
-        Mapping Policy. (pexPolicy only for backward compatibility)
+    policy : `daf_persistence.Policy`
+        Mapping Policy.
     registry : `lsst.obs.base.Registry`
         Registry for metadata lookups
     root : `str`
@@ -548,7 +537,5 @@ class DatasetMapping(Mapping):
     """
 
     def __init__(self, datasetType, policy, registry, root, **kwargs):
-        if isinstance(policy, pexPolicy.Policy):
-            policy = Policy(policy)
         Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
         self.storage = policy["storage"]  # Storage type

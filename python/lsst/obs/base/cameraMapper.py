@@ -34,7 +34,6 @@ import lsst.afw.table as afwTable
 from lsst.afw.fits import readMetadata
 import lsst.afw.cameraGeom as afwCameraGeom
 import lsst.log as lsstLog
-import lsst.pex.policy as pexPolicy
 import lsst.pex.exceptions as pexExcept
 from .exposureIdInfo import ExposureIdInfo
 from .makeRawVisitInfo import MakeRawVisitInfo
@@ -165,7 +164,6 @@ class CameraMapper(dafPersist.Mapper):
         Parameters
         ----------
         policy : daf_persistence.Policy,
-            Can also be pexPolicy.Policy, only for backward compatibility.
             Policy with per-camera defaults already merged.
         repositoryDir : string
             Policy repository for the subclassing module (obtained with
@@ -198,18 +196,10 @@ class CameraMapper(dafPersist.Mapper):
             self.root = repositoryCfg.root
         else:
             self.root = None
-        if isinstance(policy, pexPolicy.Policy):
-            policy = dafPersist.Policy(policy)
 
         repoPolicy = repositoryCfg.policy if repositoryCfg else None
         if repoPolicy is not None:
             policy.update(repoPolicy)
-
-        defaultPolicyFile = dafPersist.Policy.defaultPolicyFile("obs_base",
-                                                                "MapperDictionary.paf",
-                                                                "policy")
-        dictPolicy = dafPersist.Policy(defaultPolicyFile)
-        policy.merge(dictPolicy)
 
         # Levels
         self.levels = dict()
@@ -326,13 +316,12 @@ class CameraMapper(dafPersist.Mapper):
         """
         # Sub-dictionaries (for exposure/calibration/dataset types)
         imgMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
-            "obs_base", "ImageMappingDictionary.paf", "policy"))
+            "obs_base", "ImageMappingDefaults.yaml", "policy"))
         expMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
-            "obs_base", "ExposureMappingDictionary.paf", "policy"))
+            "obs_base", "ExposureMappingDefaults.yaml", "policy"))
         calMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
-            "obs_base", "CalibrationMappingDictionary.paf", "policy"))
-        dsMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
-            "obs_base", "DatasetMappingDictionary.paf", "policy"))
+            "obs_base", "CalibrationMappingDefaults.yaml", "policy"))
+        dsMappingPolicy = dafPersist.Policy()
 
         # Mappings
         mappingList = (
@@ -1170,15 +1159,13 @@ class CameraMapper(dafPersist.Mapper):
 
         Parameters
         ----------
-        policy : `lsst.daf.persistence.Policy` or `pexPolicy.Policy`
+        policy : `lsst.daf.persistence.Policy`
              Policy with per-camera defaults already merged
              (PexPolicy only for backward compatibility).
         repositoryDir : `str`
             Policy repository for the subclassing module (obtained with
             getRepositoryPath() on the per-camera default dictionary).
         """
-        if isinstance(policy, pexPolicy.Policy):
-            policy = dafPersist.Policy(pexPolicy=policy)
         if 'camera' not in policy:
             raise RuntimeError("Cannot find 'camera' in policy; cannot construct a camera")
         cameraDataSubdir = policy['camera']

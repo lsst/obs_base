@@ -28,7 +28,6 @@ import os
 
 import lsst.utils.tests
 import lsst.afw.geom as afwGeom
-import lsst.pex.policy as pexPolicy
 import lsst.daf.persistence as dafPersist
 import lsst.obs.base
 
@@ -44,9 +43,8 @@ class MinMapper1(lsst.obs.base.CameraMapper):
     packageName = 'larry'
 
     def __init__(self, **kwargs):
-        policy = pexPolicy.Policy.createPolicy(os.path.join(ROOT, "MinMapper1.paf"))
-        lsst.obs.base.CameraMapper.__init__(self,
-                                            policy=policy, repositoryDir=ROOT, **kwargs)
+        policy = dafPersist.Policy(os.path.join(ROOT, "MinMapper1.yaml"))
+        lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=ROOT, **kwargs)
         return
 
     def std_x(self, item, dataId):
