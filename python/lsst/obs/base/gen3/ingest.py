@@ -20,14 +20,15 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-__all__ = ("RawIngestTask", "RawIngestConfig", "VisitInfoRawIngestTask")
+__all__ = ("RawIngestTask", "RawIngestConfig")
 
 import os.path
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 
+from astro_metadata_translator import ObservationInfo
 from lsst.afw.image import readMetadata
 from lsst.daf.butler import DatasetType, StorageClassFactory, Run
-from lsst.daf.butler.instrument import makeExposureEntryFromVisitInfo, makeVisitEntryFromVisitInfo
+from lsst.daf.butler.instrument import makeExposureEntryFromObsInfo, makeVisitEntryFromObsInfo
 from lsst.pex.config import Config, Field, ChoiceField
 from lsst.pipe.base import Task
 
@@ -339,7 +340,6 @@ class RawIngestTask(Task, metaclass=ABCMeta):
             else:
                 self.log.infof("Conflict on {} ({}); ignoring.", dataId, file)
 
-    @abstractmethod
     def extractDataId(self, file, headers):
         """Return the Data ID dictionary that should be used to label a file.
 
@@ -358,101 +358,14 @@ class RawIngestTask(Task, metaclass=ABCMeta):
             "physical_filter" and "visit" keys should be provided as well
             (respectively).
         """
-        raise NotImplementedError("Must be implemented by subclasses.")
-
-    @abstractmethod
-    def extractVisitEntry(self, file, headers, dataId, associated):
-        """Create a Visit DataUnit entry from raw file metadata.
-
-        Parameters
-        ----------
-        file : `str` or path-like object
-            Absolute path to the file being ingested (prior to any transfers).
-        headers : `list` of `~lsst.daf.base.PropertyList`
-            All headers returned by `readHeaders()`.
-        dataId : `dict`
-            The data ID for this file.  Implementations are permitted to
-            modify this dictionary (generally by stripping off "sensor" and
-            "exposure" and adding new metadata key-value pairs) and return it.
-        associated : `dict`
-            A dictionary containing other associated DataUnit entries.
-            Guaranteed to have "Camera", "Sensor",  and "PhysicalFilter" keys,
-            but the last may map to ``None`` if `extractDataId` either did not
-            contain a "physical_filter" key or mapped it to ``None``.
-            Subclasses may add new keys to this dict to pass arbitrary data to
-            `extractExposureEntry` (`extractVisitEntry` is always called
-            first), but note that when a Visit is comprised of multiple
-            Exposures, `extractVisitEntry` may not be called at all.
-
-        Returns
-        -------
-        entry : `dict`
-            Dictionary corresponding to an Visit database table row.
-            Must have all non-null columns in the Visit table as keys.
-        """
-        raise NotImplementedError("Must be implemented by subclasses.")
-
-    @abstractmethod
-    def extractExposureEntry(self, file, headers, dataId, associated):
-        """Create an Exposure DataUnit entry from raw file metadata.
-
-        Parameters
-        ----------
-        file : `str` or path-like object
-            Absolute path to the file being ingested (prior to any transfers).
-        headers : `list` of `~lsst.daf.base.PropertyList`
-            All headers returned by `readHeaders()`.
-        dataId : `dict`
-            The data ID for this file.  Implementations are permitted to
-            modify this dictionary (generally by stripping off "sensor" and
-            adding new metadata key-value pairs) and return it.
-        associated : `dict`
-            A dictionary containing other associated DataUnit entries.
-            Guaranteed to have "Camera", "Sensor", "PhysicalFilter", and
-            "Visit" keys, but the latter two may map to ``None`` if
-            `extractDataId` did not contain keys for these or mapped them to
-            ``None``.  May also contain additional keys added by
-            `extractVisitEntry`.
-
-        Returns
-        -------
-        entry : `dict`
-            Dictionary corresponding to an Exposure database table row.
-            Must have all non-null columns in the Exposure table as keys.
-        """
-        raise NotImplementedError("Must be implemented by subclasses.")
-
-    def getFormatter(self, file, headers, dataId):
-        """Return the Formatter that should be used to read this file after
-        ingestion.
-
-        The default implementation returns None, which uses the formatter
-        configured for this DatasetType/StorageClass in the Butler.
-        """
-        return None
-
-
-class VisitInfoRawIngestTask(RawIngestTask):
-    """An intermediate base class of RawIngestTask for cameras that already
-    implement constructing a `afw.image.VisitInfo` object from raw data.
-
-    Subclasses must provide (at least) implementations of `extractDataId` and
-    the new `makeVisitInfo` method; the latter is used to provide concrete
-    implementations of `extractVisitEntry` and `extractExposureEntry`.
-    """
-
-    @abstractmethod
-    def makeVisitInfo(self, headers, exposureId):
-        """Return an `afw.image.VisitInfo` object from the given header and ID.
-
-        Parameters
-        ----------
-        headers : `list` of `~lsst.daf.base.PropertyList`
-            All headers returned by `readHeaders()`.
-        exposureId : `int`
-            Integer ID to pass to the `VisitInfo` constructor.
-        """
-        raise NotImplementedError("Must be implemented by subclasses.")
+        obsInfo = ObservationInfo(headers[0])
+        return {
+            "camera": obsInfo.instrument,
+            "exposure": obsInfo.exposure_id,
+            "visit": obsInfo.visit_id,
+            "sensor": obsInfo.detector_num,
+            "physical_filter": obsInfo.physical_filter,
+        }
 
     def extractVisitEntry(self, file, headers, dataId, associated):
         """Create a Visit DataUnit entry from raw file metadata.
@@ -481,11 +394,11 @@ class VisitInfoRawIngestTask(RawIngestTask):
             Dictionary corresponding to an Visit database table row.
             Must have all non-null columns in the Visit table as keys.
         """
-        visitInfo = self.makeVisitInfo(headers, exposureId=dataId["exposure"])
-        associated["VisitInfo"] = visitInfo
+        obsInfo = ObservationInfo(headers[0])
+        associated["ObsInfo"] = obsInfo
         del dataId["sensor"]
         del dataId["exposure"]
-        return makeVisitEntryFromVisitInfo(dataId, visitInfo)
+        return makeVisitEntryFromObsInfo(dataId, obsInfo)
 
     def extractExposureEntry(self, file, headers, dataId, associated):
         """Create an Exposure DataUnit entry from raw file metadata.
@@ -515,8 +428,17 @@ class VisitInfoRawIngestTask(RawIngestTask):
             Must have all non-null columns in the Exposure table as keys.
         """
         try:
-            visitInfo = associated["VisitInfo"]
+            obsInfo = associated["ObsInfo"]
         except KeyError:
-            visitInfo = self.makeVisitInfo(headers, exposureId=dataId["exposure"])
+            obsInfo = ObservationInfo(headers[0])
         del dataId["sensor"]
-        return makeExposureEntryFromVisitInfo(dataId, visitInfo)
+        return makeExposureEntryFromObsInfo(dataId, obsInfo)
+
+    def getFormatter(self, file, headers, dataId):
+        """Return the Formatter that should be used to read this file after
+        ingestion.
+
+        The default implementation returns None, which uses the formatter
+        configured for this DatasetType/StorageClass in the Butler.
+        """
+        return None

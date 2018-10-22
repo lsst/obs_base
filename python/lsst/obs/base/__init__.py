@@ -25,4 +25,5 @@ from .mapping import *
 from .cameraMapper import *
 from .exposureIdInfo import *
 from .makeRawVisitInfo import *
+from .makeRawVisitInfoViaObsInfo import *
 from .utils import *
