@@ -1211,3 +1211,56 @@ analysisColorTable:
     python: lsst.qa.explorer.parquetTable.ParquetTable
     template: plots/color/tract-%(tract)d/%(tract)d_color.parq
 
+# The 'ngmix' and 'mcal' datasets below are produced by CmdLineTasks in the
+# meas_extensions_ngmix package, which is not part of the LSST pipelines now
+# but is very much a prototype of something that someday will be.
+# Unfortunately there's no good way to define these dataset types downstream
+# until we can use PipelineTask, so those datasets are instead defined here.
+deepCoadd_ngmix:
+    description: Output catalog from running ngmix on coadds.
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: deepCoadd-results/merged/%(tract)d/%(patch)s/ngmix-%(tract)d-%(patch)s.fits
+deepCoadd_ngmix_schema:
+    description: Zero-size schema catalog for deepCoadd_ngmix
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: schema/ngmix.fits
+deepCoadd_ngmix_deblended:
+    description: Output catalog from running ngmix on deblended coadds.
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: deepCoadd-results/merged/%(tract)d/%(patch)s/ngmix-deblended-%(tract)d-%(patch)s.fits
+deepCoadd_ngmix_deblended_schema:
+    description: Zero-size schema catalog for deepCoadd_ngmix_deblended
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: schema/ngmix-deblended.fits
+deepCoadd_mcalmax:
+    description: Output catalog from running metacal on coadds using max likelihood.
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: deepCoadd-results/merged/%(tract)d/%(patch)s/mcalmax-%(tract)d-%(patch)s.fits
+deepCoadd_mcalmax_schema:
+    description: Zero-size schema catalog for deepCoadd_mcalmax
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: schema/mcalmax.fits
+deepCoadd_mcalmax_deblended:
+    description: Output catalog from running metacal on deblended coadds using max likelihood.
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: deepCoadd-results/merged/%(tract)d/%(patch)s/mcalmax-deblended-%(tract)d-%(patch)s.fits
+deepCoadd_mcalmax_deblended_schema:
+    description: Zero-size schema catalog for deepCoadd_mcalmax_deblended
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    template: schema/mcalmax-deblended.fits
