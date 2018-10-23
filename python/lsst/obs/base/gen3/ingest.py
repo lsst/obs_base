@@ -94,8 +94,8 @@ class RawIngestTask(Task, metaclass=ABCMeta):
     of files (possibly semi-atomically; see `RawIngestConfig.onError`).
 
     RawIngestTask should be subclassed to specialize ingest for the actual
-    structure of raw data files produced by a particular camera. Subclasses
-    must either provide populated `MetadataReader` instances in the
+    structure of raw data files produced by a particular instrument.
+    Subclasses must either provide populated `MetadataReader` instances in the
     `dataIdReader`, `visitReader`, and `exposureReader` class attributes, or
     alternate implementations of the `extractDataId`, `extractVisit`, and
     `extractExposure` methods that do not use those attributes (each
@@ -124,7 +124,7 @@ class RawIngestTask(Task, metaclass=ABCMeta):
     def getDatasetType(cls):
         """Return the DatasetType of the Datasets ingested by this Task.
         """
-        return DatasetType("raw", ("Camera", "Detector", "Exposure"),
+        return DatasetType("raw", ("Instrument", "Detector", "Exposure"),
                            StorageClassFactory().getStorageClass("Exposure"))
 
     def __init__(self, config=None, *, butler, **kwds):
@@ -132,9 +132,9 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         self.butler = butler
         self.datasetType = self.getDatasetType()
         self.units = tuple(butler.registry.getDataUnitDefinition(k)
-                           for k in ("Camera", "Detector", "PhysicalFilter", "Visit", "Exposure", ))
+                           for k in ("Instrument", "Detector", "PhysicalFilter", "Visit", "Exposure", ))
         # Nested dictionary of form {<unit-name>: {<primary-key-tuple>: {<field>: <value>}}}, where:
-        #  - <unit-name> is a DataUnit name (e.g. Camera, Exposure)
+        #  - <unit-name> is a DataUnit name (e.g. Instrument, Exposure)
         #  - <primary-key-tuple> is a tuple of values that correspond to the [compound] primary
         #    key for that DataUnit.  (TODO: make these DataId objects on DM-15034).
         #  - <field> is the name of a column in the table for this DataUnit.
@@ -152,8 +152,8 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         This creates any new Exposure or Visit DataUnit entries needed to
         identify the ingested files, creates new Dataset entries in the
         Registry and finally ingests the files themselves into the Datastore.
-        Any needed Camera, Detector, and PhysicalFilter DataUnit entries must
-        exist in the Registry before `run` is called.
+        Any needed Instrument, Detector, and PhysicalFilter DataUnit entries
+        must exist in the Registry before `run` is called.
 
         Parameters
         ----------
@@ -199,7 +199,7 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         """Extract metadata from a raw file and add Exposure and Visit
         DataUnit entries.
 
-        Any needed Camera, Detector, and PhysicalFilter DataUnit entries must
+        Any needed Instrument, Detector, and PhysicalFilter DataUnit entries must
         exist in the Registry before `run` is called.
 
         Parameters
@@ -218,7 +218,8 @@ class RawIngestTask(Task, metaclass=ABCMeta):
 
         # Extract a dictionary with structure {<link-name>: <value>} where:
         #  - <link-name> is the name of a DataUnit link to the Dataset table,
-        #    usually a DataUnit primary key field (e.g. 'camera' or 'visit').
+        #    usually a DataUnit primary key field (e.g. 'instrument' or
+        #    'visit').
         #  - <value> is the value of that field
         dataId = self.extractDataId(file, headers)
         dataId.setdefault("physical_filter", None)
@@ -311,7 +312,7 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         This creates any new Exposure or Visit DataUnit entries needed to
         identify the ingest file, creates a new Dataset entry in the
         Registry and finally ingests the file itself into the Datastore.
-        Any needed Camera, Detector, and PhysicalFilter DataUnit entries must
+        Any needed Instrument, Detector, and PhysicalFilter DataUnit entries must
         exist in the Registry before `run` is called.
 
         Parameters
@@ -353,14 +354,14 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         Returns
         -------
         dataId : `dict`
-            Must include "camera", "detector", and "exposure" keys. If the
+            Must include "instrument", "detector", and "exposure" keys. If the
             Exposure is associated with a PhysicalFilter and/or Visit,
             "physical_filter" and "visit" keys should be provided as well
             (respectively).
         """
         obsInfo = ObservationInfo(headers[0])
         return {
-            "camera": obsInfo.instrument,
+            "instrument": obsInfo.instrument,
             "exposure": obsInfo.exposure_id,
             "visit": obsInfo.visit_id,
             "detector": obsInfo.detector_num,
@@ -382,9 +383,9 @@ class RawIngestTask(Task, metaclass=ABCMeta):
             "exposure" and adding new metadata key-value pairs) and return it.
         associated : `dict`
             A dictionary containing other associated DataUnit entries.
-            Guaranteed to have "Camera", "Detector",  and "PhysicalFilter" keys,
-            but the last may map to ``None`` if `extractDataId` either did not
-            contain a "physical_filter" key or mapped it to ``None``.
+            Guaranteed to have "Instrument", "Detector",  and "PhysicalFilter"
+            keys, but the last may map to ``None`` if `extractDataId` either
+            did not contain a "physical_filter" key or mapped it to ``None``.
             Also adds a "VisitInfo" key containing an `afw.image.VisitInfo`
             object for use by `extractExposureEntry`.
 
@@ -415,7 +416,7 @@ class RawIngestTask(Task, metaclass=ABCMeta):
             adding new metadata key-value pairs) and return it.
         associated : `dict`
             A dictionary containing other associated DataUnit entries.
-            Guaranteed to have "Camera", "Detector", "PhysicalFilter", and
+            Guaranteed to have "Instrument", "Detector", "PhysicalFilter", and
             "Visit" keys, but the latter two may map to ``None`` if
             `extractDataId` did not contain keys for these or mapped them to
             ``None``.  May also contain additional keys added by
