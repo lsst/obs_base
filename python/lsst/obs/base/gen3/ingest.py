@@ -124,7 +124,7 @@ class RawIngestTask(Task, metaclass=ABCMeta):
     def getDatasetType(cls):
         """Return the DatasetType of the Datasets ingested by this Task.
         """
-        return DatasetType("raw", ("Camera", "Sensor", "Exposure"),
+        return DatasetType("raw", ("Camera", "Detector", "Exposure"),
                            StorageClassFactory().getStorageClass("Exposure"))
 
     def __init__(self, config=None, *, butler, **kwds):
@@ -132,7 +132,7 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         self.butler = butler
         self.datasetType = self.getDatasetType()
         self.units = tuple(butler.registry.getDataUnitDefinition(k)
-                           for k in ("Camera", "Sensor", "PhysicalFilter", "Visit", "Exposure", ))
+                           for k in ("Camera", "Detector", "PhysicalFilter", "Visit", "Exposure", ))
         # Nested dictionary of form {<unit-name>: {<primary-key-tuple>: {<field>: <value>}}}, where:
         #  - <unit-name> is a DataUnit name (e.g. Camera, Exposure)
         #  - <primary-key-tuple> is a tuple of values that correspond to the [compound] primary
@@ -152,7 +152,7 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         This creates any new Exposure or Visit DataUnit entries needed to
         identify the ingested files, creates new Dataset entries in the
         Registry and finally ingests the files themselves into the Datastore.
-        Any needed Camera, Sensor, and PhysicalFilter DataUnit entries must
+        Any needed Camera, Detector, and PhysicalFilter DataUnit entries must
         exist in the Registry before `run` is called.
 
         Parameters
@@ -199,7 +199,7 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         """Extract metadata from a raw file and add Exposure and Visit
         DataUnit entries.
 
-        Any needed Camera, Sensor, and PhysicalFilter DataUnit entries must
+        Any needed Camera, Detector, and PhysicalFilter DataUnit entries must
         exist in the Registry before `run` is called.
 
         Parameters
@@ -311,7 +311,7 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         This creates any new Exposure or Visit DataUnit entries needed to
         identify the ingest file, creates a new Dataset entry in the
         Registry and finally ingests the file itself into the Datastore.
-        Any needed Camera, Sensor, and PhysicalFilter DataUnit entries must
+        Any needed Camera, Detector, and PhysicalFilter DataUnit entries must
         exist in the Registry before `run` is called.
 
         Parameters
@@ -353,7 +353,7 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         Returns
         -------
         dataId : `dict`
-            Must include "camera", "sensor", and "exposure" keys. If the
+            Must include "camera", "detector", and "exposure" keys. If the
             Exposure is associated with a PhysicalFilter and/or Visit,
             "physical_filter" and "visit" keys should be provided as well
             (respectively).
@@ -363,7 +363,7 @@ class RawIngestTask(Task, metaclass=ABCMeta):
             "camera": obsInfo.instrument,
             "exposure": obsInfo.exposure_id,
             "visit": obsInfo.visit_id,
-            "sensor": obsInfo.detector_num,
+            "detector": obsInfo.detector_num,
             "physical_filter": obsInfo.physical_filter,
         }
 
@@ -378,11 +378,11 @@ class RawIngestTask(Task, metaclass=ABCMeta):
             All headers returned by `readHeaders()`.
         dataId : `dict`
             The data ID for this file.  Implementations are permitted to
-            modify this dictionary (generally by stripping off "sensor" and
+            modify this dictionary (generally by stripping off "detector" and
             "exposure" and adding new metadata key-value pairs) and return it.
         associated : `dict`
             A dictionary containing other associated DataUnit entries.
-            Guaranteed to have "Camera", "Sensor",  and "PhysicalFilter" keys,
+            Guaranteed to have "Camera", "Detector",  and "PhysicalFilter" keys,
             but the last may map to ``None`` if `extractDataId` either did not
             contain a "physical_filter" key or mapped it to ``None``.
             Also adds a "VisitInfo" key containing an `afw.image.VisitInfo`
@@ -396,7 +396,7 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         """
         obsInfo = ObservationInfo(headers[0])
         associated["ObsInfo"] = obsInfo
-        del dataId["sensor"]
+        del dataId["detector"]
         del dataId["exposure"]
         return makeVisitEntryFromObsInfo(dataId, obsInfo)
 
@@ -411,11 +411,11 @@ class RawIngestTask(Task, metaclass=ABCMeta):
             All headers returned by `readHeaders()`.
         dataId : `dict`
             The data ID for this file.  Implementations are permitted to
-            modify this dictionary (generally by stripping off "sensor" and
+            modify this dictionary (generally by stripping off "detector" and
             adding new metadata key-value pairs) and return it.
         associated : `dict`
             A dictionary containing other associated DataUnit entries.
-            Guaranteed to have "Camera", "Sensor", "PhysicalFilter", and
+            Guaranteed to have "Camera", "Detector", "PhysicalFilter", and
             "Visit" keys, but the latter two may map to ``None`` if
             `extractDataId` did not contain keys for these or mapped them to
             ``None``.  May also contain additional keys added by
@@ -431,7 +431,7 @@ class RawIngestTask(Task, metaclass=ABCMeta):
             obsInfo = associated["ObsInfo"]
         except KeyError:
             obsInfo = ObservationInfo(headers[0])
-        del dataId["sensor"]
+        del dataId["detector"]
         return makeExposureEntryFromObsInfo(dataId, obsInfo)
 
     def getFormatter(self, file, headers, dataId):
