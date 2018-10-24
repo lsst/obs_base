@@ -208,11 +208,6 @@ mergeCoaddDetections_config:
     storage: ConfigStorage
     python: lsst.pipe.tasks.multiBand.MergeDetectionsConfig
     template: config/mergeDetect.py
-deep_makeSkyMap_metadata:
-    persistable: PropertySet
-    storage: YamlStorage
-    python: lsst.daf.base.PropertySet
-    template: metadata/deep_makeSkyMap.yaml
 measureCoaddSources_metadata:
     persistable: PropertySet
     storage: YamlStorage
@@ -325,11 +320,6 @@ measureCoaddSources_config:
     storage: ConfigStorage
     python: lsst.pipe.tasks.multiBand.MeasureMergedCoaddSourcesConfig
     template: config/measureMerged.py
-deep_makeDiscreteSkyMap_metadata:
-    persistable: PropertySet
-    storage: YamlStorage
-    python: lsst.daf.base.PropertySet
-    template: metadata/deep_makeDiscreteSkyMap.yaml
 deepCoadd_mergeDet:
     description: >
         Catalog containing the union of footprints (and peaks) detected on all filters (from deepCoadd_det).
@@ -772,11 +762,6 @@ dcrMergedCoaddId:
     storage: ignored
     python: lsst.daf.base.PropertySet
     template: ignored
-dcr_makeDiscreteSkyMap_metadata:
-    persistable: PropertySet
-    storage: YamlStorage
-    python: lsst.daf.base.PropertySet
-    template: metadata/dcr_makeDiscreteSkyMap.yaml
 dcrMergedCoaddId_bits:
     persistable: ignored
     storage: ignored
