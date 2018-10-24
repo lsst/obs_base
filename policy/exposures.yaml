@@ -5,6 +5,13 @@ deepCoadd:
     python: lsst.afw.image.ExposureF
     template: deepCoadd/%(filter)s/%(tract)d/%(patch)s.fits
     level: Skytile
+fakes_deepCoadd:
+    description: "A coadd assembled from direct warps, produced by AssembleCoaddTask, with fakes added."
+    persistable: ExposureF
+    storage: FitsStorage
+    python: lsst.afw.image.ExposureF
+    template: deepCoadd/%(filter)s/%(tract)d/%(patch)s_fakes.fits
+    level: Skytile
 deepCoadd_nImage:
     description: "The number of input images per pixel in a deepCoadd, per patch."
     persistable: ImageU
@@ -27,6 +34,13 @@ deepCoadd_calexp:
     storage: FitsStorage
     python: lsst.afw.image.ExposureF
     template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/calexp-%(filter)s-%(tract)d-%(patch)s.fits
+    level: None
+fakes_deepCoadd_calexp:
+    description: "Same as deepCoadd_calexp but with fakes"
+    persistable: ExposureF
+    storage: FitsStorage
+    python: lsst.afw.image.ExposureF
+    template: deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/calexp-%(filter)s-%(tract)d-%(patch)s_fakes.fits
     level: None
 deepDiff_differenceExp:
     description: "The result of image differencing against a deepCoadd."
@@ -75,6 +89,15 @@ calexp:
       A fully characterized and calibrated exposure, produced by ProcessCcdTask.
       Also refered to as a Processed Visit Image (PVI) in the project management documents.
       This is stored with the background already subtracted.
+    persistable: ExposureF
+    storage: FitsStorage
+    python: lsst.afw.image.ExposureF
+    level: Ccd
+    tables: raw
+    template: ''
+fakes_calexp:
+    description: >
+        Same as a calexp but with fake sources added.
     persistable: ExposureF
     storage: FitsStorage
     python: lsst.afw.image.ExposureF
