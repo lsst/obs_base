@@ -614,7 +614,7 @@ deepCoadd_measMatch:
     storage: FitsCatalogStorage
     python: lsst.afw.table.BaseCatalog
     tables: raw
-    template: ''
+    template: 'deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/srcMatch-%(filter)s-%(tract)d-%(patch)s.fits'
 deepCoadd_measMatchFull:
     description: >
         Denormalized deepCoadd_measMatch. Contains all columns from deepCoadd_meas and reference catalog.
@@ -623,7 +623,7 @@ deepCoadd_measMatchFull:
     storage: FitsCatalogStorage
     python: lsst.afw.table.BaseCatalog
     tables: raw
-    template: ''
+    template: 'deepCoadd-results/%(filter)s/%(tract)d/%(patch)s/srcMatchFull-%(filter)s-%(tract)d-%(patch)s.fits'
 dcrCoadd_calexp_background:
     description: "The background model for a dcrCoadd_calexp."
     persistable: PurePythonClass
