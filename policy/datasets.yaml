@@ -1119,4 +1119,31 @@ deepCoadd_sg_features_tract:
     storage: ParquetStorage
     python: lsst.qa.explorer.parquetTable.ParquetTable
     template: deepCoadd-results/merged/%(tract)d/sg-feats-%(tract)d.parq
-
+transformObjectCatalog_config:
+    description: >
+        Configuration for Task to transform deepCoadd_obj table into objectTable
+    persistable: Config
+    python: lsst.qa.explorer.postprocess.TransformObjectCatalogConfig
+    storage: ConfigStorage
+    template: config/transformObjectCatalog.py
+consolidateObjectTable_config:
+    description: >
+        Configuration for Task to concatenate objectTables
+    persistable: Config
+    python: lsst.qa.explorer.consolidateQATable.ConsolidateObjectTableConfig
+    storage: ConfigStorage
+    template: config/consolidateObjectTable.py
+objectTable:
+    description: >
+        Per-Patch DPDD Object Table computed from the deepCoadd_obj catalog
+    persistable: ignored
+    storage: ParquetStorage
+    python: lsst.qa.explorer.parquetTable.MultilevelParquetTable
+    template: deepCoadd-results/merged/%(tract)d/%(patch)s/objectTable-%(tract)d-%(patch)s.parq
+objectTable_tract:
+    description: >
+        Per-tract DPDD Object Table
+    persistable: ignored
+    storage: ParquetStorage
+    python: lsst.qa.explorer.parquetTable.MultilevelParquetTable
+    template: deepCoadd-results/merged/%(tract)d/objectTable-%(tract)d.parq
