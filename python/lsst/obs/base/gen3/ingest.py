@@ -27,8 +27,8 @@ from abc import ABCMeta
 
 from astro_metadata_translator import ObservationInfo
 from lsst.afw.image import readMetadata
-from lsst.daf.butler import DatasetType, StorageClassFactory, Run
-from lsst.daf.butler.instrument import makeExposureEntryFromObsInfo, makeVisitEntryFromObsInfo
+from lsst.daf.butler import DatasetType, StorageClassFactory, Run, DataId
+from lsst.daf.butler.instrument import updateExposureEntryFromObsInfo, updateVisitEntryFromObsInfo
 from lsst.pex.config import Config, Field, ChoiceField
 from lsst.pipe.base import Task
 
@@ -89,7 +89,7 @@ class RawIngestTask(Task, metaclass=ABCMeta):
     leverage the logging and configurability functionality that provides.
 
     Each instance of `RawIngestTask` writes to the same Butler and maintains a
-    cache of DataUnit entries that have already been added to or extracted
+    cache of Dimension entries that have already been added to or extracted
     from its Registry.  Each invocation of `RawIngestTask.run` ingests a list
     of files (possibly semi-atomically; see `RawIngestConfig.onError`).
 
@@ -101,7 +101,7 @@ class RawIngestTask(Task, metaclass=ABCMeta):
     `extractExposure` methods that do not use those attributes (each
     attribute-method pair may be handled differently).  Subclasses may also
     wish to override `getFormatter` and/or (rarely) `getDatasetType`.  We do
-    not anticipate overriding `run`, `ensureDataUnits`, `ingestFile`, or
+    not anticipate overriding `run`, `ensureDimensions`, `ingestFile`, or
     `processFile` to ever be necessary.
 
     Parameters
@@ -131,16 +131,11 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         super().__init__(config, **kwds)
         self.butler = butler
         self.datasetType = self.getDatasetType()
-        self.units = tuple(butler.registry.getDataUnitDefinition(k)
-                           for k in ("Instrument", "Detector", "PhysicalFilter", "Visit", "Exposure", ))
-        # Nested dictionary of form {<unit-name>: {<primary-key-tuple>: {<field>: <value>}}}, where:
-        #  - <unit-name> is a DataUnit name (e.g. Instrument, Exposure)
-        #  - <primary-key-tuple> is a tuple of values that correspond to the [compound] primary
-        #    key for that DataUnit.  (TODO: make these DataId objects on DM-15034).
-        #  - <field> is the name of a column in the table for this DataUnit.
-        #  - <value> is the value of that field.
-        # The {<field>: <value>} dict is called an "entry" in this class and in Registry methods.
-        self.unitEntryCache = {k.name: {} for k in self.units}
+        self.dimensions = butler.registry.dimensions.extract(["Instrument", "Detector", "PhysicalFilter",
+                                                              "Visit", "Exposure"])
+        # Dictionary of {Dimension: set(DataId)} indicating Dimension entries
+        # we know are in the Registry.
+        self.dimensionEntriesDone = {k: set() for k in self.dimensions}
         # (Possibly) create a Run object for the "stash": where we put datasets
         # that lose conflicts.  Note that this doesn't actually add this Run
         # to the Registry; we only do that on first use.
@@ -149,10 +144,10 @@ class RawIngestTask(Task, metaclass=ABCMeta):
     def run(self, files):
         """Ingest files into a Butler data repository.
 
-        This creates any new Exposure or Visit DataUnit entries needed to
+        This creates any new Exposure or Visit Dimension entries needed to
         identify the ingested files, creates new Dataset entries in the
         Registry and finally ingests the files themselves into the Datastore.
-        Any needed Instrument, Detector, and PhysicalFilter DataUnit entries
+        Any needed Instrument, Detector, and PhysicalFilter Dimension entries
         must exist in the Registry before `run` is called.
 
         Parameters
@@ -195,11 +190,11 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         """
         return [readMetadata(file)]
 
-    def ensureDataUnits(self, file):
+    def ensureDimensions(self, file):
         """Extract metadata from a raw file and add Exposure and Visit
-        DataUnit entries.
+        Dimension entries.
 
-        Any needed Instrument, Detector, and PhysicalFilter DataUnit entries must
+        Any needed Instrument, Detector, and PhysicalFilter Dimension entries must
         exist in the Registry before `run` is called.
 
         Parameters
@@ -211,64 +206,38 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         -------
         headers : `list` of `~lsst.daf.base.PropertyList`
             Result of calling `readHeaders`.
-        dataId : `dict`
+        dataId : `DataId`
             Data ID dictionary, as returned by `extractDataId`.
         """
         headers = self.readHeaders(file)
+        obsInfo = ObservationInfo(headers[0])
 
-        # Extract a dictionary with structure {<link-name>: <value>} where:
-        #  - <link-name> is the name of a DataUnit link to the Dataset table,
-        #    usually a DataUnit primary key field (e.g. 'instrument' or
-        #    'visit').
-        #  - <value> is the value of that field
-        dataId = self.extractDataId(file, headers)
-        dataId.setdefault("physical_filter", None)
-        dataId.setdefault("visit", None)
+        # Extract a DataId that covers all of self.dimensions.
+        fullDataId = self.extractDataId(file, headers, obsInfo=obsInfo)
 
-        # Locate or extract additional DataUnit metadata, producing a nested
-        # dict with structure {<unit-name>: {<field>: <value>}}.  This is the
-        # same content as self.unitEntryCache, but without the middle layer,
-        # because this contains only the entries associated with this
-        # particular file.
-        associatedUnitEntries = {}
-        for unit in self.units:
-            # Start by looking in the Task's cache of unit entries, which is keyed by a tuple.
-            unitPrimaryKeyTuple = tuple(dataId[f] for f in unit.primaryKey)
-            if any(v is None for v in unitPrimaryKeyTuple):
-                # This DataUnit isn't actually applicable for this file; move
-                # on. Could be a calibration Exposure that doesn't have a
-                # Visit, for example.
-                associatedUnitEntries[unit.name] = None
-                continue
-            unitEntryDict = self.unitEntryCache[unit.name].get(unitPrimaryKeyTuple, None)
-            if unitEntryDict is None:
-                # Next look in the Registry, which is keyed by a dataId-like dict
-                unitPrimaryKeyDict = {f: dataId[f] for f in unit.primaryKey}
-                unitEntryDict = self.butler.registry.findDataUnitEntry(unit.name, unitPrimaryKeyDict)
-                if unitEntryDict is None:
-                    # If we haven't found it, either raise an exception or extract that information
-                    # from the headers (and possibly the filename).
-                    if unit.name == "Visit":
-                        extractMethod = self.extractVisitEntry
-                    elif unit.name == "Exposure":
-                        extractMethod = self.extractExposureEntry
+        for dimension in self.dimensions:
+            dimensionDataId = DataId(fullDataId, dimension=dimension)
+            if dimensionDataId not in self.dimensionEntriesDone[dimension]:
+                # Next look in the Registry
+                dimensionEntryDict = self.butler.registry.findDimensionEntry(dimension, dimensionDataId)
+                if dimensionEntryDict is None:
+                    if dimension.name in ("Visit", "Exposure"):
+                        # Add the entry into the Registry.
+                        self.butler.registry.addDimensionEntry(dimension, dimensionDataId)
                     else:
-                        raise LookupError("{} with keys {} not found; must be present in Registry prior "
-                                          "to ingest.".format(unit.name, unitPrimaryKeyDict))
-                    unitEntryDict = extractMethod(file, headers, dataId=dataId.copy(),
-                                                  associated=associatedUnitEntries)
-                    # Add the entry into the Registry.
-                    self.butler.registry.addDataUnitEntry(unit.name, unitEntryDict)
-                # Add the entry into the cache.
-                self.unitEntryCache[unit.name][unitPrimaryKeyTuple] = unitEntryDict
-            associatedUnitEntries[unit.name] = unitEntryDict
+                        raise LookupError(
+                            f"Entry for {dimension.name} with ID {dimensionDataId} not found; must be "
+                            f"present in Registry prior to ingest."
+                        )
+                # Record that we've handled this entry.
+                self.dimensionEntriesDone[dimension].add(dimensionDataId)
 
-        return headers, dataId
+        return headers, fullDataId
 
     def ingestFile(self, file, headers, dataId, run=None):
         """Ingest a single raw file into the repository.
 
-        All necessary DataUnit entres must already be present.
+        All necessary Dimension entres must already be present.
 
         This method is not transactional; it must be wrapped in a
         ``with self.butler.transaction` block to make per-file ingest
@@ -309,10 +278,10 @@ class RawIngestTask(Task, metaclass=ABCMeta):
     def processFile(self, file):
         """Ingest a single raw data file after extacting metadata.
 
-        This creates any new Exposure or Visit DataUnit entries needed to
+        This creates any new Exposure or Visit Dimension entries needed to
         identify the ingest file, creates a new Dataset entry in the
         Registry and finally ingests the file itself into the Datastore.
-        Any needed Instrument, Detector, and PhysicalFilter DataUnit entries must
+        Any needed Instrument, Detector, and PhysicalFilter Dimension entries must
         exist in the Registry before `run` is called.
 
         Parameters
@@ -320,7 +289,7 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         file : `str` or path-like object
             Absolute path to the file to be ingested.
         """
-        headers, dataId = self.ensureDataUnits(file)
+        headers, dataId = self.ensureDimensions(file)
         # We want ingesting a single file to be atomic even if we are
         # not trying to ingest the list of files atomically.
         with self.butler.transaction():
@@ -341,7 +310,7 @@ class RawIngestTask(Task, metaclass=ABCMeta):
             else:
                 self.log.infof("Conflict on {} ({}); ignoring.", dataId, file)
 
-    def extractDataId(self, file, headers):
+    def extractDataId(self, file, headers, obsInfo):
         """Return the Data ID dictionary that should be used to label a file.
 
         Parameters
@@ -353,87 +322,31 @@ class RawIngestTask(Task, metaclass=ABCMeta):
 
         Returns
         -------
-        dataId : `dict`
-            Must include "instrument", "detector", and "exposure" keys. If the
-            Exposure is associated with a PhysicalFilter and/or Visit,
-            "physical_filter" and "visit" keys should be provided as well
-            (respectively).
+        dataId : `DataId`
+            A mapping whose key-value pairs uniquely identify raw datasets.
+            Must have ``dimensions`` equal to ``self.dimensions``.
         """
-        obsInfo = ObservationInfo(headers[0])
-        return {
-            "instrument": obsInfo.instrument,
-            "exposure": obsInfo.exposure_id,
-            "visit": obsInfo.visit_id,
-            "detector": obsInfo.detector_num,
-            "physical_filter": obsInfo.physical_filter,
-        }
-
-    def extractVisitEntry(self, file, headers, dataId, associated):
-        """Create a Visit DataUnit entry from raw file metadata.
-
-        Parameters
-        ----------
-        file : `str` or path-like object
-            Absolute path to the file being ingested (prior to any transfers).
-        headers : `list` of `~lsst.daf.base.PropertyList`
-            All headers returned by `readHeaders()`.
-        dataId : `dict`
-            The data ID for this file.  Implementations are permitted to
-            modify this dictionary (generally by stripping off "detector" and
-            "exposure" and adding new metadata key-value pairs) and return it.
-        associated : `dict`
-            A dictionary containing other associated DataUnit entries.
-            Guaranteed to have "Instrument", "Detector",  and "PhysicalFilter"
-            keys, but the last may map to ``None`` if `extractDataId` either
-            did not contain a "physical_filter" key or mapped it to ``None``.
-            Also adds a "VisitInfo" key containing an `afw.image.VisitInfo`
-            object for use by `extractExposureEntry`.
-
-        Returns
-        -------
-        entry : `dict`
-            Dictionary corresponding to an Visit database table row.
-            Must have all non-null columns in the Visit table as keys.
-        """
-        obsInfo = ObservationInfo(headers[0])
-        associated["ObsInfo"] = obsInfo
-        del dataId["detector"]
-        del dataId["exposure"]
-        return makeVisitEntryFromObsInfo(dataId, obsInfo)
-
-    def extractExposureEntry(self, file, headers, dataId, associated):
-        """Create an Exposure DataUnit entry from raw file metadata.
-
-        Parameters
-        ----------
-        file : `str` or path-like object
-            Absolute path to the file being ingested (prior to any transfers).
-        headers : `list` of `~lsst.daf.base.PropertyList`
-            All headers returned by `readHeaders()`.
-        dataId : `dict`
-            The data ID for this file.  Implementations are permitted to
-            modify this dictionary (generally by stripping off "detector" and
-            adding new metadata key-value pairs) and return it.
-        associated : `dict`
-            A dictionary containing other associated DataUnit entries.
-            Guaranteed to have "Instrument", "Detector", "PhysicalFilter", and
-            "Visit" keys, but the latter two may map to ``None`` if
-            `extractDataId` did not contain keys for these or mapped them to
-            ``None``.  May also contain additional keys added by
-            `extractVisitEntry`.
-
-        Returns
-        -------
-        entry : `dict`
-            Dictionary corresponding to an Exposure database table row.
-            Must have all non-null columns in the Exposure table as keys.
-        """
-        try:
-            obsInfo = associated["ObsInfo"]
-        except KeyError:
-            obsInfo = ObservationInfo(headers[0])
-        del dataId["detector"]
-        return makeExposureEntryFromObsInfo(dataId, obsInfo)
+        toRemove = set()
+        if obsInfo.visit_id is None:
+            toRemove.add("Visit")
+        if obsInfo.physical_filter is None:
+            toRemove.add("PhysicalFilter")
+        if toRemove:
+            dimensions = self.dimensions.difference(toRemove)
+        else:
+            dimensions = self.dimensions
+        dataId = DataId(
+            dimensions=dimensions,
+            instrument=obsInfo.instrument,
+            exposure=obsInfo.exposure_id,
+            visit=obsInfo.visit_id,
+            detector=obsInfo.detector_num,
+            physical_filter=obsInfo.physical_filter,
+        )
+        updateExposureEntryFromObsInfo(dataId, obsInfo)
+        if obsInfo.visit_id is not None:
+            updateVisitEntryFromObsInfo(dataId, obsInfo)
+        return dataId
 
     def getFormatter(self, file, headers, dataId):
         """Return the Formatter that should be used to read this file after
