@@ -28,7 +28,8 @@ from abc import ABCMeta
 from astro_metadata_translator import ObservationInfo
 from lsst.afw.image import readMetadata
 from lsst.daf.butler import DatasetType, StorageClassFactory, Run, DataId
-from lsst.daf.butler.instrument import updateExposureEntryFromObsInfo, updateVisitEntryFromObsInfo
+from lsst.daf.butler.instrument import (Instrument, updateExposureEntryFromObsInfo,
+                                        updateVisitEntryFromObsInfo)
 from lsst.pex.config import Config, Field, ChoiceField
 from lsst.pipe.base import Task
 
@@ -136,6 +137,9 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         # Dictionary of {Dimension: set(DataId)} indicating Dimension entries
         # we know are in the Registry.
         self.dimensionEntriesDone = {k: set() for k in self.dimensions}
+        # Cache of Instrument instances retrieved from Registry; needed to look
+        # up formatters.
+        self.instrumentCache = {}
         # (Possibly) create a Run object for the "stash": where we put datasets
         # that lose conflicts.  Note that this doesn't actually add this Run
         # to the Registry; we only do that on first use.
@@ -352,7 +356,11 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         """Return the Formatter that should be used to read this file after
         ingestion.
 
-        The default implementation returns None, which uses the formatter
-        configured for this DatasetType/StorageClass in the Butler.
+        The default implementation obtains the formatter from the Instrument
+        class for the given data ID.
         """
-        return None
+        instrument = self.instrumentCache.get(dataId["instrument"])
+        if instrument is None:
+            instrument = Instrument.factories[dataId["instrument"]]()
+            self.instrumentCache[dataId["instrument"]] = instrument
+        return instrument.getRawFormatter(dataId)
