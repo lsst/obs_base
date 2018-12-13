@@ -323,12 +323,15 @@ class RawIngestTask(Task, metaclass=ABCMeta):
             Absolute path to the file being ingested (prior to any transfers).
         headers : `list` of `~lsst.daf.base.PropertyList`
             All headers returned by `readHeaders()`.
+        obsInfo : `astro_metadata_translator.ObservationInfo`
+            Observational metadata extracted from the headers.
 
         Returns
         -------
         dataId : `DataId`
             A mapping whose key-value pairs uniquely identify raw datasets.
-            Must have ``dimensions`` equal to ``self.dimensions``.
+            Must have ``dataId.dimensions <= self.dimensions``, with at least
+            Instrument, Exposure, and Detector present.
         """
         toRemove = set()
         if obsInfo.visit_id is None:
