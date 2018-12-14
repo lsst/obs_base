@@ -47,6 +47,7 @@ class MapperTests(metaclass=abc.ABCMeta):
                      queryMetadata=None,
                      metadata_output_path=None,
                      map_python_type=None,
+                     map_python_std_type=None,
                      map_cpp_type=None,
                      map_storage_name=None,
                      raw_filename=None,
@@ -71,8 +72,10 @@ class MapperTests(metaclass=abc.ABCMeta):
             dataIds and the results of calling them in queryMetadata
         metadata_output_path : `str`
             path to metadata output associated with dataIds['raw']
-        map_python_type : `str`
+        map_python_type : class
             full python type specification returned by the mapper for dataIds['raw']
+        map_python_std_type : class
+            full python type specification returned by the mapper for dataIds['raw'] after standardization
         map_cpp_type : `str`
             C++ type specification returned by the mapper for dataIds['raw']
         map_storage_name : `str`
@@ -91,6 +94,7 @@ class MapperTests(metaclass=abc.ABCMeta):
                   'queryMetadata',
                   'metadata_output_path',
                   'map_python_type',
+                  'map_python_std_type',
                   'map_cpp_type',
                   'map_storage_name',
                   'raw_filename',
@@ -105,6 +109,7 @@ class MapperTests(metaclass=abc.ABCMeta):
                                       queryMetadata=queryMetadata,
                                       metadata_output_path=metadata_output_path,
                                       map_python_type=map_python_type,
+                                      map_python_std_type=map_python_std_type,
                                       map_cpp_type=map_cpp_type,
                                       map_storage_name=map_storage_name,
                                       raw_filename=raw_filename,
@@ -185,9 +190,9 @@ class MapperTests(metaclass=abc.ABCMeta):
         self.assertFalse(self.mapper.canStandardize("processCcd_metadata"))
 
     def test_standardize_raw(self):
-        rawImage = lsst.afw.image.DecoratedImageU(self.mapper_data.path_to_raw)
+        rawImage = self.mapper_data.map_python_type(self.mapper_data.path_to_raw)
         stdImage = self.mapper.standardize("raw", rawImage, self.dataIds['raw'])
-        self.assertIsInstance(stdImage, lsst.afw.image.ExposureU)
+        self.assertIsInstance(stdImage, self.mapper_data.map_python_std_type)
 
     def _test_validate(self, dataId):
         self.assertEqual(self.mapper.validate(dataId), dataId)
