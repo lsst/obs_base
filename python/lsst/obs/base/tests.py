@@ -29,6 +29,8 @@ will be broken until updated. This is intentional, as a way to prevent obs
 packages from falling behind out of neglect.
 """
 
+from lsst.log import Log
+
 from . import butler_tests
 from . import mapper_tests
 from . import camera_tests
@@ -80,6 +82,7 @@ class ObsTests(butler_tests.ButlerGetTests, mapper_tests.MapperTests,
         self.butler = butler
         self.mapper = mapper
         self.dataIds = dataIds
+        self.log = Log.getLogger('ObsTests')
 
     def tearDown(self):
         del self.butler
