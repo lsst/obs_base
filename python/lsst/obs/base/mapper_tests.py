@@ -170,8 +170,14 @@ class MapperTests(metaclass=abc.ABCMeta):
 
     def test_map(self):
         dataId = self.dataIds['raw']
-        self._test_map(self.mapper.map_raw(dataId), dataId)
-        self._test_map(self.mapper.map("raw", dataId), dataId)
+        location = self.mapper.map_raw(dataId)
+        if not isinstance(location, lsst.daf.persistence.butlerLocation.ButlerComposite):
+            self._test_map(location, dataId)
+        else:
+            self.log.info('ButlerComposite datasets are not tested for mapper functions')
+        location = self.mapper.map("raw", dataId)
+        if not isinstance(location, lsst.daf.persistence.butlerLocation.ButlerComposite):
+            self._test_map(location, dataId)
 
     def test_query_metadata(self):
         """
