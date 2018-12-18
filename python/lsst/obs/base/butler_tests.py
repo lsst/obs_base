@@ -147,10 +147,12 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
         # We only test the existence of WCS in the raw files, since it's only well-defined
         # for raw, and other exposure types could have or not have a WCS depending
         # on various implementation details.
-        self.assertEqual(exp.hasWcs(), True)
-        origin = exp.getWcs().getSkyOrigin()
-        self.assertAlmostEqual(origin.getLongitude().asDegrees(), self.butler_get_data.sky_origin[0])
-        self.assertAlmostEqual(origin.getLatitude().asDegrees(), self.butler_get_data.sky_origin[1])
+        # Even for raw, there are data that do not have a WCS, e.g. teststand data
+        if not self.butler_get_data.sky_origin is unittest.SkipTest:
+            self.assertEqual(exp.hasWcs(), True)
+            origin = exp.getWcs().getSkyOrigin()
+            self.assertAlmostEqual(origin.getLongitude().asDegrees(), self.butler_get_data.sky_origin[0])
+            self.assertAlmostEqual(origin.getLatitude().asDegrees(), self.butler_get_data.sky_origin[1])
 
     def test_bias(self):
         self._test_exposure('bias')
