@@ -55,7 +55,7 @@ class MapperTests(metaclass=abc.ABCMeta):
                      raw_filename=None,
                      default_level=None,
                      raw_levels=None,
-                     test_config_metadata=None,
+                     test_config_metadata=True,
                      ):
         """
         Set up the necessary variables for mapper tests.
@@ -90,7 +90,8 @@ class MapperTests(metaclass=abc.ABCMeta):
         raw_levels : `tuple` of (`str`, `set` of `str`)
             (level, expect) level and expected mapper return for mapper.getKeys('raw', level)
         test_config_metadata : `bool`
-            Test persisted config and metadata?  These tests may not be appropriate for test stand data
+            Test persisted config and metadata?  These tests may not be appropriate for test stand data.
+            Defaults to True.
         """
         fields = ['output',
                   'path_to_raw',
