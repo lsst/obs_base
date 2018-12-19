@@ -148,7 +148,7 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
         # for raw, and other exposure types could have or not have a WCS depending
         # on various implementation details.
         # Even for raw, there are data that do not have a WCS, e.g. teststand data
-        if not self.butler_get_data.sky_origin is unittest.SkipTest:
+        if self.butler_get_data.sky_origin is not unittest.SkipTest:
             self.assertEqual(exp.hasWcs(), True)
             origin = exp.getWcs().getSkyOrigin()
             self.assertAlmostEqual(origin.getLongitude().asDegrees(), self.butler_get_data.sky_origin[0])

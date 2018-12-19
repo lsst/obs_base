@@ -21,7 +21,6 @@
 #
 import abc
 import os
-import unittest
 import inspect
 
 import lsst.afw.geom
