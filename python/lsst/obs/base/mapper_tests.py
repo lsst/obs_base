@@ -209,11 +209,6 @@ class MapperTests(metaclass=abc.ABCMeta):
             self.assertFalse(self.mapper.canStandardize("processCcd_config"))
             self.assertFalse(self.mapper.canStandardize("processCcd_metadata"))
 
-    def test_standardize_raw(self):
-        rawImage = self.mapper_data.map_python_type(self.mapper_data.path_to_raw)
-        stdImage = self.mapper.standardize("raw", rawImage, self.dataIds['raw'])
-        self.assertIsInstance(stdImage, self.mapper_data.map_python_std_type)
-
     def _test_validate(self, dataId):
         self.assertEqual(self.mapper.validate(dataId), dataId)
 
