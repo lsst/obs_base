@@ -129,7 +129,7 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
             self.skipTest('Skipping %s as requested' % (inspect.currentframe().f_code.co_name))
         exp = self.butler.get(name, self.dataIds[name])
 
-        exp_md = self.butler.get(name+"_md", self.dataIds[name])
+        exp_md = self.butler.get(name + "_md", self.dataIds[name])
         self.assertEqual(type(exp_md), type(exp.getMetadata()))
 
         self.assertEqual(exp.getDimensions(), self.butler_get_data.dimensions[name])
