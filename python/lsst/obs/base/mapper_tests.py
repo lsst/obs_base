@@ -74,9 +74,9 @@ class MapperTests(metaclass=abc.ABCMeta):
             dataIds and the results of calling them in queryMetadata
         metadata_output_path : `str`
             path to metadata output associated with dataIds['raw']
-        map_python_type : class
+        map_python_type : `type`
             full python type specification returned by the mapper for dataIds['raw']
-        map_python_std_type : class
+        map_python_std_type : `type`
             full python type specification returned by the mapper for dataIds['raw'] after standardization
         map_cpp_type : `str`
             C++ type specification returned by the mapper for dataIds['raw']
