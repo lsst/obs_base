@@ -187,10 +187,10 @@ class MapperTests(metaclass=abc.ABCMeta):
         if not isinstance(location, lsst.daf.persistence.butlerLocation.ButlerComposite):
             self._test_map(location, dataId)
         else:
-            self.log.warn('ButlerComposite datasets are not tested for mapper functions.  Though
-                           ButlerComposites duck type as ButlerLocations in some ways, they do not
-                           share enough methods to be usefully tested by the same function.  Note
-                           there are tests of the objects in the package in which they are implemented.')
+            self.log.warn("""ButlerComposite datasets are not tested for mapper functions.  Though
+ButlerComposites duck type as ButlerLocations in some ways, they do not
+share enough methods to be usefully tested by the same function.  Note
+there are tests of the objects in the package in which they are implemented.""")
         #  This should be the same as above.  Testing that both the generic and specific interface work for
         #  mapping the raw.
         location = self.mapper.map("raw", dataId)
