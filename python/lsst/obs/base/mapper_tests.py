@@ -21,6 +21,7 @@
 #
 import abc
 import os
+import inspect
 
 import lsst.afw.geom
 import lsst.utils.tests
@@ -47,11 +48,13 @@ class MapperTests(metaclass=abc.ABCMeta):
                      queryMetadata=None,
                      metadata_output_path=None,
                      map_python_type=None,
+                     map_python_std_type=None,
                      map_cpp_type=None,
                      map_storage_name=None,
                      raw_filename=None,
                      default_level=None,
                      raw_levels=None,
+                     test_config_metadata=True,
                      ):
         """
         Set up the necessary variables for mapper tests.
@@ -71,8 +74,10 @@ class MapperTests(metaclass=abc.ABCMeta):
             dataIds and the results of calling them in queryMetadata
         metadata_output_path : `str`
             path to metadata output associated with dataIds['raw']
-        map_python_type : `str`
+        map_python_type : `type`
             full python type specification returned by the mapper for dataIds['raw']
+        map_python_std_type : `type`
+            full python type specification returned by the mapper for dataIds['raw'] after standardization
         map_cpp_type : `str`
             C++ type specification returned by the mapper for dataIds['raw']
         map_storage_name : `str`
@@ -83,6 +88,9 @@ class MapperTests(metaclass=abc.ABCMeta):
             value returned from mapper.getDefaultLevel
         raw_levels : `tuple` of (`str`, `set` of `str`)
             (level, expect) level and expected mapper return for mapper.getKeys('raw', level)
+        test_config_metadata : `bool`
+            Test persisted config and metadata?  These tests may not be appropriate for test stand data.
+            Defaults to True.
         """
         fields = ['output',
                   'path_to_raw',
@@ -91,11 +99,13 @@ class MapperTests(metaclass=abc.ABCMeta):
                   'queryMetadata',
                   'metadata_output_path',
                   'map_python_type',
+                  'map_python_std_type',
                   'map_cpp_type',
                   'map_storage_name',
                   'raw_filename',
                   'default_level',
                   'raw_levels',
+                  'test_config_metadata',
                   ]
         MapperData = collections.namedtuple("MapperData", fields)
         self.mapper_data = MapperData(output=output,
@@ -105,14 +115,18 @@ class MapperTests(metaclass=abc.ABCMeta):
                                       queryMetadata=queryMetadata,
                                       metadata_output_path=metadata_output_path,
                                       map_python_type=map_python_type,
+                                      map_python_std_type=map_python_std_type,
                                       map_cpp_type=map_cpp_type,
                                       map_storage_name=map_storage_name,
                                       raw_filename=raw_filename,
                                       default_level=default_level,
                                       raw_levels=raw_levels,
+                                      test_config_metadata=test_config_metadata,
                                       )
 
     def test_map_config_data(self):
+        if not self.mapper_data.test_config_metadata:
+            self.skipTest('Skipping %s as requested' % (inspect.currentframe().f_code.co_name))
         dataId = self.dataIds['raw']
         butlerLocation = self.mapper.map("processCcd_config_filename", dataId)
         self.assertEqual(butlerLocation.getPythonType(), "lsst.pipe.tasks.processCcd.ProcessCcdConfig")
@@ -126,6 +140,8 @@ class MapperTests(metaclass=abc.ABCMeta):
                              msg="Failed for key={}".format(k))
 
     def test_map_metadata_data(self):
+        if not self.mapper_data.test_config_metadata:
+            self.skipTest('Skipping %s as requested' % (inspect.currentframe().f_code.co_name))
         dataId = self.dataIds['raw']
         butlerLocation = self.mapper.map_processCcd_metadata(dataId)
         self.assertEqual(butlerLocation.getPythonType(), "lsst.daf.base.PropertySet")
@@ -140,6 +156,8 @@ class MapperTests(metaclass=abc.ABCMeta):
         self.assertEqual(set(self.mapper.keys()), self.mapper_data.keys)
 
     def test_get_dataset_types(self):
+        if not self.mapper_data.test_config_metadata:
+            self.skipTest('Skipping %s as requested' % (inspect.currentframe().f_code.co_name))
         someKeys = set(['raw', 'processCcd_config', 'processCcd_metadata'])
         self.assertTrue(set(self.mapper.getDatasetTypes()).issuperset(someKeys))
 
@@ -165,8 +183,19 @@ class MapperTests(metaclass=abc.ABCMeta):
 
     def test_map(self):
         dataId = self.dataIds['raw']
-        self._test_map(self.mapper.map_raw(dataId), dataId)
-        self._test_map(self.mapper.map("raw", dataId), dataId)
+        location = self.mapper.map_raw(dataId)
+        if not isinstance(location, lsst.daf.persistence.butlerLocation.ButlerComposite):
+            self._test_map(location, dataId)
+        else:
+            self.log.warn("""ButlerComposite datasets are not tested for mapper functions.  Though
+ButlerComposites duck type as ButlerLocations in some ways, they do not
+share enough methods to be usefully tested by the same function.  Note
+there are tests of the objects in the package in which they are implemented.""")
+        #  This should be the same as above.  Testing that both the generic and specific interface work for
+        #  mapping the raw.
+        location = self.mapper.map("raw", dataId)
+        if not isinstance(location, lsst.daf.persistence.butlerLocation.ButlerComposite):
+            self._test_map(location, dataId)
 
     def test_query_metadata(self):
         """
@@ -181,13 +210,9 @@ class MapperTests(metaclass=abc.ABCMeta):
     def test_can_standardize(self):
         self.assertTrue(self.mapper.canStandardize("raw"))
         self.assertFalse(self.mapper.canStandardize("camera"))
-        self.assertFalse(self.mapper.canStandardize("processCcd_config"))
-        self.assertFalse(self.mapper.canStandardize("processCcd_metadata"))
-
-    def test_standardize_raw(self):
-        rawImage = lsst.afw.image.DecoratedImageU(self.mapper_data.path_to_raw)
-        stdImage = self.mapper.standardize("raw", rawImage, self.dataIds['raw'])
-        self.assertIsInstance(stdImage, lsst.afw.image.ExposureU)
+        if not self.mapper_data.test_config_metadata:
+            self.assertFalse(self.mapper.canStandardize("processCcd_config"))
+            self.assertFalse(self.mapper.canStandardize("processCcd_metadata"))
 
     def _test_validate(self, dataId):
         self.assertEqual(self.mapper.validate(dataId), dataId)
