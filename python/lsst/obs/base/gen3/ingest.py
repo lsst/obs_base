@@ -330,7 +330,7 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         -------
         dataId : `DataId`
             A mapping whose key-value pairs uniquely identify raw datasets.
-            Must have ``dataId.dimensions <= self.dimensions``, with at least
+            Must have ``dataId.dimensions() <= self.dimensions``, with at least
             Instrument, Exposure, and Detector present.
         """
         toRemove = set()
