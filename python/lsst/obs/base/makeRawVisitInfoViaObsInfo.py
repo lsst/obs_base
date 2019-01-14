@@ -70,7 +70,11 @@ class MakeRawVisitInfoViaObsInfo(object):
         self.log = log
 
     def __call__(self, md, exposureId=None):
-        """Construct a VisitInfo and strip associated data from the metadata.
+        """Construct a `~lsst.afw.image.VisitInfo` from a header.
+
+        Does not strip the associated metadata keywords from the header
+        since a VisitInfo does not include all information stored in
+        `~astro_metadata_translator.ObservationInfo`.
 
         Parameters
         ----------
@@ -89,10 +93,6 @@ class MakeRawVisitInfoViaObsInfo(object):
         argDict = dict()
 
         obsInfo = ObservationInfo(md, translator_class=self.metadataTranslator)
-
-        # Strip all the cards out that were used
-        for c in obsInfo.cards_used:
-            del md[c]
 
         # Map the translated information into a form suitable for VisitInfo
         if obsInfo.exposure_time is not None:
