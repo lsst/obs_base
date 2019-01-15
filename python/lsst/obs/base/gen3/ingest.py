@@ -263,14 +263,7 @@ class RawIngestTask(Task, metaclass=ABCMeta):
 
         # Add a Dataset entry to the Registry.
         try:
-            # We use transactional=False here (a kwarg added by the
-            # @transactional decorator) to keep the conflict exception from
-            # starting a higher-level rollback - if we catch this exception,
-            # we don't want to have already started rolling back the ingest of
-            # *previous* files when config.onError=='rollback' but
-            # config.confict=='ignore'.
-            ref = self.butler.registry.addDataset(self.datasetType, dataId, run=run,
-                                                  transactional=False, recursive=True)
+            ref = self.butler.registry.addDataset(self.datasetType, dataId, run=run, recursive=True)
         except ValueError:
             raise IngestConflictError("Ingest conflict on {} {}".format(file, dataId))
 
