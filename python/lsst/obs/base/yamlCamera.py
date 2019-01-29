@@ -39,18 +39,21 @@ def makeCamera(cameraFile):
     cameraFile : `str`
         Camera description YAML file.
 
-    Return a `lsst.afw.cameraGeom.Camera`
+    Returns
+    -------
+    camera : `lsst.afw.cameraGeom.Camera`
+        The desired Camera
     """
 
     with open(cameraFile) as fd:
-        cameraParams = yaml.load(fd, Loader=yaml.Loader)
+        cameraParams = yaml.load(fd, Loader=yaml.CLoader)
 
     cameraName = cameraParams["name"]
 
     #
     # Handle distortion models.
     #
-    plateScale = afwGeom.Angle(cameraParams["plateScale"], afwGeom.arcseconds)
+    plateScale = geom.Angle(cameraParams["plateScale"], geom.arcseconds)
     nativeSys = cameraGeom.CameraSys(cameraParams["transforms"].pop("nativeSys"))
     transforms = makeTransformDict(nativeSys, cameraParams["transforms"], plateScale)
 
@@ -58,7 +61,7 @@ def makeCamera(cameraFile):
     detectorConfigList = makeDetectorConfigList(ccdParams)
 
     ampInfoCatDict = {}
-    for (ccdName, ccdValues), detectorConfig in zip(ccdParams.items(), detectorConfigList):
+    for ccdName, ccdValues in ccdParams.items():
         ampInfoCatDict[ccdName] = makeAmpInfoCatalog(ccdValues)
 
     return makeCameraFromCatalogs(cameraName, detectorConfigList, nativeSys, transforms, ampInfoCatDict)
@@ -69,7 +72,7 @@ def makeDetectorConfigList(ccdParams):
 
     Returns
     -------
-    `list` of `lsst.afw.cameraGeom.DetectorConfig`
+    detectorConfig : `list` of `lsst.afw.cameraGeom.DetectorConfig`
         A list of detector configs.
     """
     detectorConfigs = []
@@ -199,7 +202,7 @@ def makeTransformDict(nativeSys, transformYamlDict, plateScale):
     nativeSys : `lsst.afw.cameraGeom.CameraSys`
     transformYamlDict : `dict`
         A dict specifying parameters of transforms; keys are camera system names.
-    plateScale : `afwGeom.Angle`
+    plateScale : `lsst.geom.Angle`
         The size of a pixel in angular units/mm (e.g. 20 arcsec/mm for LSST)
 
     Returns
@@ -247,11 +250,8 @@ def makeTransformDict(nativeSys, transformYamlDict, plateScale):
 
 def makeCameraFromCatalogs(cameraName, detectorConfigList, nativeSys, transformDict, ampInfoCatDict,
                            pupilFactoryClass=cameraGeom.pupil.PupilFactory):
-    """Construct a Camera instance from a dictionary of detector name: AmpInfoCatalog
-
-    Copied from
-        afw/cameraGeom/cameraFactory.py
-    with permission and encouragement from Jim Bosch
+    """Construct a Camera instance from a dictionary of
+       detector name : `lsst.afw.table.ampInfo.AmpInfoCatalog`
 
     Parameters
     ----------
@@ -260,9 +260,9 @@ def makeCameraFromCatalogs(cameraName, detectorConfigList, nativeSys, transformD
     detectorConfig : `list`
         A list of `lsst.afw.cameraGeom.cameraConfig.DetectorConfig`
     nativeSys : `lsst.afw.cameraGeom.CameraSys`
-        The native transformation type; must be cameraGeom.FOCAL_PLANE
+        The native transformation type; must be `lsst.afw.cameraGeom.FOCAL_PLANE`
     transformDict : `dict`
-        A dict of lsst.afw.cameraGeom.CameraSys : lsst.afw.geom.TransformPoint2ToPoint2
+        A dict of lsst.afw.cameraGeom.CameraSys : `lsst.afw.geom.TransformPoint2ToPoint2`
     ampInfoCatDict : `dict`
         A dictionary of detector name :
                            `lsst.afw.table.ampInfo.AmpInfoCatalog`
@@ -274,6 +274,11 @@ def makeCameraFromCatalogs(cameraName, detectorConfigList, nativeSys, transformD
     -------
     camera : `lsst.afw.cameraGeom.Camera`
         New Camera instance.
+
+    Notes
+    ------
+    Copied from `lsst.afw.cameraGeom.cameraFactory` with permission and encouragement
+    from Jim Bosch
     """
 
     # nativeSys=FOCAL_PLANE seems to be assumed in various places in this file
