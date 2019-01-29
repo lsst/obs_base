@@ -194,13 +194,13 @@ def makeBBoxFromList(ylist):
     return afwGeom.BoxI(afwGeom.PointI(x0, y0), afwGeom.ExtentI(xsize, ysize))
 
 
-def makeTransformDict(nativeSys, transformYamlDict, plateScale):
+def makeTransformDict(nativeSys, transformDict, plateScale):
     """Make a dictionary of TransformPoint2ToPoint2s from yaml, mapping from nativeSys
 
     Parameters
     ----------
     nativeSys : `lsst.afw.cameraGeom.CameraSys`
-    transformYamlDict : `dict`
+    transformDict : `dict`
         A dict specifying parameters of transforms; keys are camera system names.
     plateScale : `lsst.geom.Angle`
         The size of a pixel in angular units/mm (e.g. 20 arcsec/mm for LSST)
@@ -208,9 +208,9 @@ def makeTransformDict(nativeSys, transformYamlDict, plateScale):
     Returns
     -------
     transforms : `dict`
-        A dict of lsst.afw.cameraGeom.CameraSys : lsst.afw.geom.TransformPoint2ToPoint2
+        A dict of `lsst.afw.cameraGeom.CameraSys` : `lsst.afw.geom.TransformPoint2ToPoint2`
 
-    The resulting dict's keys are CameraSys,
+    The resulting dict's keys are `~lsst.afw.cameraGeom.CameraSys`,
     and the values are Transforms *from* NativeSys *to* CameraSys
     """
     # As other comments note this is required, and this is one function where it's assumed
@@ -218,7 +218,7 @@ def makeTransformDict(nativeSys, transformYamlDict, plateScale):
 
     resMap = dict()
 
-    for key, transform in transformYamlDict.items():
+    for key, transform in transformDict.items():
         transformType = transform["transformType"]
         knownTransformTypes = ["affine", "radial"]
         if transformType not in knownTransformTypes:
