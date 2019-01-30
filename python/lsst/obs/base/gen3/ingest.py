@@ -27,14 +27,14 @@ from abc import ABCMeta
 
 from astro_metadata_translator import ObservationInfo
 from lsst.afw.image import readMetadata
-from lsst.daf.butler import DatasetType, StorageClassFactory, Run, DataId
+from lsst.daf.butler import DatasetType, StorageClassFactory, Run, DataId, ConflictingDefinitionError
 from lsst.daf.butler.instrument import (Instrument, updateExposureEntryFromObsInfo,
                                         updateVisitEntryFromObsInfo)
 from lsst.pex.config import Config, Field, ChoiceField
 from lsst.pipe.base import Task
 
 
-class IngestConflictError(RuntimeError):
+class IngestConflictError(ConflictingDefinitionError):
     pass
 
 
@@ -264,8 +264,8 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         # Add a Dataset entry to the Registry.
         try:
             ref = self.butler.registry.addDataset(self.datasetType, dataId, run=run, recursive=True)
-        except ValueError:
-            raise IngestConflictError("Ingest conflict on {} {}".format(file, dataId))
+        except ConflictingDefinitionError as err:
+            raise IngestConflictError("Ingest conflict on {} {}".format(file, dataId)) from err
 
         # Ingest it into the Datastore.
         self.butler.datastore.ingest(file, ref, formatter=self.getFormatter(file, headers, dataId),
