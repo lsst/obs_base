@@ -935,6 +935,12 @@ fgcmStarIndices:
     tables: raw
     python: lsst.afw.table.BaseCatalog
     template: fgcm-process/fgcmStarIndices.fits
+fgcmReferenceStars:
+    description: "Catalog of reference stars matched to stars in fgcmStarIds."
+    storage: FitsCatalogStorage
+    tables: raw
+    python: lsst.afw.table.BaseCatalog
+    template: fgcm-process/fgcmReferenceStars.fits
 fgcmLookUpTable:
     description: "Atmosphere + instrument look-up-table for FGCM throughput and chromatic corrections."
     persistable: BaseCatalog
