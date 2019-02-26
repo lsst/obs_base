@@ -1161,3 +1161,40 @@ objectTable_tract:
     storage: ParquetStorage
     python: lsst.qa.explorer.parquetTable.MultilevelParquetTable
     template: deepCoadd-results/merged/%(tract)d/objectTable-%(tract)d.parq
+analysisVisitTable:
+    description: >
+        Per-visit source table (for specific tract) assembled by pipe_analysis scripts.
+    persistable: ignored
+    storage: ParquetStorage
+    python: lsst.qa.explorer.parquetTable.ParquetTable
+    template: plots/%(filter)s/tract-%(tract)d/visit-%(visit)d/%(tract)d_%(visit)d.parq
+analysisVisitTable_commonZp:
+    description: >
+        Per-visit source table (for specific tract) assembled by pipe_analysis scripts,
+        with common zero-point.
+    persistable: ignored
+    storage: ParquetStorage
+    python: lsst.qa.explorer.parquetTable.ParquetTable
+    template: plots/%(filter)s/tract-%(tract)d/visit-%(visit)d/%(tract)d_%(visit)d_commonZp.parq
+analysisCoaddTable_forced:
+    description: >
+        Per-tract object table assembled by pipe_analysis scripts (forced photometry).
+    persistable: ignored
+    storage: ParquetStorage
+    python: lsst.qa.explorer.parquetTable.ParquetTable
+    template: plots/%(filter)s/tract-%(tract)d/%(tract)d_forced.parq
+analysisCoaddTable_unforced:
+    description: >
+        Per-tract object table assembled by pipe_analysis scripts (unforced photometry).
+    persistable: ignored
+    storage: ParquetStorage
+    python: lsst.qa.explorer.parquetTable.ParquetTable
+    template: plots/%(filter)s/tract-%(tract)d/%(tract)d_unforced.parq
+analysisColorTable:
+    description: >
+        Principal color table assembled by pipe_analysis scripts.
+    persistable: ignored
+    storage: ParquetStorage
+    python: lsst.qa.explorer.parquetTable.ParquetTable
+    template: plots/color/tract-%(tract)d/%(tract)d_color.parq
+
