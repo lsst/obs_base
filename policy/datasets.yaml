@@ -589,6 +589,11 @@ srcMatchFull:
     python: lsst.afw.table.BaseCatalog
     tables: raw
     template: ''
+jointcal_config:
+    persistable: Config
+    python: lsst.jointcal.JointcalConfig
+    storage: ConfigStorage
+    template: config/jointcal.py
 jointcal_wcs:
     description: "Astrometric calibration produced by meas_mosaic/jointcal."
     persistable: SkyWcs
