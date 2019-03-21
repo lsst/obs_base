@@ -420,16 +420,27 @@ class CameraMapper(dafPersist.Mapper):
                             setattr(self, addName, self.getImageCompressionSettings)
 
                         if name == "exposures":
-                            setMethods("wcs", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                       afwGeom.makeSkyWcs(readMetadata(location.getLocationsWithRoot()[0])))
+                            def getSkyWcs(datasetType, pythonType, location, dataId):
+                                fitsReader = afwImage.ExposureFitsReader(location.getLocationsWithRoot()[0])
+                                return fitsReader.readWcs()
+
+                            setMethods("wcs", bypassImpl=getSkyWcs)
+
                             setMethods("calib", bypassImpl=lambda datasetType, pythonType, location, dataId:
                                        afwImage.Calib(readMetadata(location.getLocationsWithRoot()[0])))
-                            setMethods("visitInfo",
-                                       bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                       afwImage.VisitInfo(readMetadata(location.getLocationsWithRoot()[0])))
-                            setMethods("filter",
-                                       bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                       afwImage.Filter(readMetadata(location.getLocationsWithRoot()[0])))
+
+                            def getVisitInfo(datasetType, pythonType, location, dataId):
+                                fitsReader = afwImage.ExposureFitsReader(location.getLocationsWithRoot()[0])
+                                return fitsReader.readVisitInfo()
+
+                            setMethods("visitInfo", bypassImpl=getVisitInfo)
+
+                            def getFilter(datasetType, pythonType, location, dataId):
+                                fitsReader = afwImage.ExposureFitsReader(location.getLocationsWithRoot()[0])
+                                return fitsReader.readFilter()
+
+                            setMethods("filter", bypassImpl=getFilter)
+
                             setMethods("detector",
                                        mapImpl=lambda dataId, write=False:
                                            dafPersist.ButlerLocation(
