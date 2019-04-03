@@ -728,6 +728,7 @@ class CameraMapper(dafPersist.Mapper):
         """
         detectorName = self._extractDetectorName(dataId)
         defectsFitsPath = butlerLocation.locationList[0]
+
         with fits.open(defectsFitsPath) as hduList:
             for hdu in hduList[1:]:
                 if hdu.header["name"] != detectorName:
@@ -1113,7 +1114,7 @@ class CameraMapper(dafPersist.Mapper):
 
         return item
 
-    def _defectLookup(self, dataId):
+    def _defectLookup(self, dataId, dateKey='taiObs'):
         """Find the defects for a given CCD.
 
         Parameters
@@ -1135,24 +1136,24 @@ class CameraMapper(dafPersist.Mapper):
 
         dataIdForLookup = {'visit': dataId['visit']}
         # .lookup will fail in a posix registry because there is no template to provide.
-        rows = self.registry.lookup(('taiObs'), ('raw_visit'), dataIdForLookup)
+        rows = self.registry.lookup((dateKey), ('raw_visit'), dataIdForLookup)
         if len(rows) == 0:
             return None
         assert len(rows) == 1
-        taiObs = rows[0][0]
+        dayObs = rows[0][0]
 
         # Lookup the defects for this CCD serial number that are valid at the exposure midpoint.
         rows = self.defectRegistry.executeQuery(("path",), ("defect",),
                                                 [(ccdKey, "?")],
                                                 ("DATETIME(?)", "DATETIME(validStart)", "DATETIME(validEnd)"),
-                                                (ccdVal, taiObs))
+                                                (ccdVal, dayObs))
         if not rows or len(rows) == 0:
             return None
         if len(rows) == 1:
             return os.path.join(self.defectPath, rows[0][0])
         else:
             raise RuntimeError("Querying for defects (%s, %s) returns %d files: %s" %
-                               (ccdVal, taiObs, len(rows), ", ".join([_[0] for _ in rows])))
+                               (ccdVal, dayObs, len(rows), ", ".join([_[0] for _ in rows])))
 
     def _makeCamera(self, policy, repositoryDir):
         """Make a camera (instance of lsst.afw.cameraGeom.Camera) describing
