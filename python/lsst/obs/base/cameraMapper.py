@@ -426,8 +426,11 @@ class CameraMapper(dafPersist.Mapper):
 
                             setMethods("wcs", bypassImpl=getSkyWcs)
 
-                            setMethods("calib", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                       afwImage.Calib(readMetadata(location.getLocationsWithRoot()[0])))
+                            def getPhotoCalib(datasetType, pythonType, location, dataId):
+                                fitsReader = afwImage.ExposureFitsReader(location.getLocationsWithRoot()[0])
+                                return fitsReader.readPhotoCalib()
+
+                            setMethods("photoCalib", bypassImpl=getPhotoCalib)
 
                             def getVisitInfo(datasetType, pythonType, location, dataId):
                                 fitsReader = afwImage.ExposureFitsReader(location.getLocationsWithRoot()[0])
