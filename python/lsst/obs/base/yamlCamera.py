@@ -84,6 +84,8 @@ def makeDetectorConfigList(ccdParams):
         detectorConfig.id = ccd['id']
         detectorConfig.serial = ccd['serial']
         detectorConfig.detectorType = ccd['detectorType']
+        if 'physicalType' in ccd:
+            detectorConfig.physicalType = ccd['physicalType']
         # This is the orientation we need to put the serial direction along the x-axis
         detectorConfig.bbox_x0, detectorConfig.bbox_y0 = ccd['bbox'][0]
         detectorConfig.bbox_x1, detectorConfig.bbox_y1 = ccd['bbox'][1]
