@@ -564,6 +564,13 @@ src:
     python: lsst.afw.table.SourceCatalog
     tables: raw
     template: ''
+fakes_src:
+    description: "Full depth source catalog with fake objects procduced by processFakes."
+    persistable: SourceCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    tables: raw
+    template: ''
 fakeSourceCat:
     description: "A calexp sized catalog of fake sources"
     persistable: ignored
@@ -578,11 +585,16 @@ deepCoadd_fakeSourceCat:
     python: lsst.qa.explorer.parquetTable.MultilevelParquetTable
     tables: raw
     template: deepCoadd-results/%(tract)d/fakeSourceCat-%(tract)d.parq
-insertFakeSources_config:
+insertFakes_config:
     persistable: Config
     storage: ConfigStorage
-    python: lsst.pipe.tasks.insertFakeSources.insertFakeSourcesConfig
-    template: config/insertFakeSources.py
+    python: lsst.pipe.tasks.insertFakes.insertFakesConfig
+    template: config/insertFakes.py
+processFakes_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.tasks.processFakes.processFakesConfig
+    template: config/processFakes.py
 calexpBackground:
     description: >
         Background model produced by ProcessCcdTask.
