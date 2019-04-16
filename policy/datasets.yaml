@@ -1215,6 +1215,14 @@ analysisColorTable:
     storage: ParquetStorage
     python: lsst.qa.explorer.parquetTable.ParquetTable
     template: plots/color/tract-%(tract)d/%(tract)d_color.parq
+visitMatchTable:
+    description: >
+        Tract-level table of visit-match IDs and distances for each visit.
+    persistable: ignored
+    storage: ParquetStorage
+    python: lsst.qa.explorer.parquetTable.ParquetTable
+    template: plots/%(filter)s/tract-%(tract)d/%(tract)d_visit_match.parq
+
 
 # The 'ngmix' and 'mcal' datasets below are produced by CmdLineTasks in the
 # meas_extensions_ngmix package, which is not part of the LSST pipelines now
