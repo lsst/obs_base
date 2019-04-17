@@ -1222,7 +1222,13 @@ visitMatchTable:
     storage: ParquetStorage
     python: lsst.qa.explorer.parquetTable.ParquetTable
     template: plots/%(filter)s/tract-%(tract)d/%(tract)d_visit_match.parq
-
+matchVisits_config:
+    description: >
+        Configuration for Task to match visit tables to coadd table.
+    persistable: Config
+    python: lsst.qa.explorer.matchVisits.MatchVisitsConfig
+    storage: ConfigStorage
+    template: config/matchVisits.py
 
 # The 'ngmix' and 'mcal' datasets below are produced by CmdLineTasks in the
 # meas_extensions_ngmix package, which is not part of the LSST pipelines now
