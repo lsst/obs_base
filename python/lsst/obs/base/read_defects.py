@@ -12,7 +12,7 @@ def defect_reader(filename):
         pt = Point2I(row['x0'], row['y0'])
         ext = ExtentI(row['x_extent'], row['y_extent'])
         box = Box2I(pt, ext)
-        defects.append(box)
+        defects.append(Defect(box))
     return defects
 
 def read_defects_one_chip(root, chip_name):
