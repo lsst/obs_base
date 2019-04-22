@@ -70,6 +70,17 @@ postISRCCD:
     level: Ccd
     tables: raw
     template: ''
+postISRCCD_uninterpolated:
+    description: >
+      The exposure after Instrument Signature Removal is run,
+      without background subtraction, characterization or measurement,
+      with masked pixels left uninterpolated.
+    persistable: ExposureF
+    storage: FitsStorage
+    python: lsst.afw.image.ExposureF
+    level: Ccd
+    tables: raw
+    template: ''
 calexp:
     description: >
       A fully characterized and calibrated exposure, produced by ProcessCcdTask.
