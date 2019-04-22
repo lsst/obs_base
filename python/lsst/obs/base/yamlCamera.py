@@ -132,6 +132,12 @@ def makeAmplifierList(ccd):
         else:
             x0, y0 = ix*xRawExtent, iy*yRawExtent
 
+        #
+        # Some CCD controllers change the on-disk order of pixels
+        #
+        controllerFlipX = "controllerFlipXY" in amp and amp["controllerFlipXY"][0]
+        controllerFlipY = "controllerFlipXY" in amp and amp["controllerFlipXY"][1]
+
         rawDataBBox = makeBBoxFromList(amp['rawDataBBox'])  # Photosensitive area
         xDataExtent, yDataExtent = rawDataBBox.getDimensions()
         amplifier.setBBox(geom.BoxI(
@@ -141,20 +147,26 @@ def makeAmplifierList(ccd):
         rawBBox.shift(geom.ExtentI(x0, y0))
         amplifier.setRawBBox(rawBBox)
 
-        rawDataBBox = makeBBoxFromList(amp['rawDataBBox'])
-        rawDataBBox.shift(geom.ExtentI(x0, y0))
+        def adjustBBox(bbox, x0, y0):
+            """Allow for flips and offsets in the controllers, and offsets into the full Detector"""
+            if controllerFlipX:
+                bbox.flipLR(rawBBox.getWidth())
+            if controllerFlipY:
+                bbox.flipTB(rawBBox.getHeight())
+            bbox.shift(afwGeom.ExtentI(x0, y0))
+
+            return bbox
+
+        rawDataBBox = adjustBBox(makeBBoxFromList(amp['rawDataBBox']), x0, y0)
         amplifier.setRawDataBBox(rawDataBBox)
 
-        rawSerialOverscanBBox = makeBBoxFromList(amp['rawSerialOverscanBBox'])
-        rawSerialOverscanBBox.shift(geom.ExtentI(x0, y0))
+        rawSerialOverscanBBox = adjustBBox(makeBBoxFromList(amp['rawSerialOverscanBBox']), x0, y0)
         amplifier.setRawHorizontalOverscanBBox(rawSerialOverscanBBox)
 
-        rawParallelOverscanBBox = makeBBoxFromList(amp['rawParallelOverscanBBox'])
-        rawParallelOverscanBBox.shift(geom.ExtentI(x0, y0))
+        rawParallelOverscanBBox = adjustBBox(makeBBoxFromList(amp['rawParallelOverscanBBox']), x0, y0)
         amplifier.setRawVerticalOverscanBBox(rawParallelOverscanBBox)
 
-        rawSerialPrescanBBox = makeBBoxFromList(amp['rawSerialPrescanBBox'])
-        rawSerialPrescanBBox.shift(geom.ExtentI(x0, y0))
+        rawSerialPrescanBBox = adjustBBox(makeBBoxFromList(amp['rawSerialPrescanBBox']), x0, y0)
         amplifier.setRawPrescanBBox(rawSerialPrescanBBox)
 
         if perAmpData:
