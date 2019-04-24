@@ -1221,7 +1221,7 @@ brighterFatterGain:
     description: "The per-amplifier gains, as calculated and used by the brighter-fatter task."
     persistable: ignored
     storage: PickleStorage
-    python: builtins.dict
+    python: lsst.cp.pipe.makeBrighterFatterKernel.BrighterFatterGain
     tables: raw
     template: ''
 plotBrighterFatterPtc:
