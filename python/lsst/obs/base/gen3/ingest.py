@@ -125,19 +125,19 @@ class RawIngestTask(Task, metaclass=ABCMeta):
     def getDatasetType(cls):
         """Return the DatasetType of the Datasets ingested by this Task.
         """
-        return DatasetType("raw", ("Instrument", "Detector", "Exposure"),
+        return DatasetType("raw", ("instrument", "detector", "exposure"),
                            StorageClassFactory().getStorageClass("Exposure"))
 
     def __init__(self, config=None, *, butler, **kwds):
         super().__init__(config, **kwds)
         self.butler = butler
         self.datasetType = self.getDatasetType()
-        self.dimensions = butler.registry.dimensions.extract(["Instrument", "Detector", "PhysicalFilter",
-                                                              "Visit", "Exposure"])
+        self.dimensions = butler.registry.dimensions.extract(["instrument", "detector", "physical_filter",
+                                                              "visit", "exposure"])
         # Dictionary of {Dimension: set(DataId)} indicating Dimension entries
         # we know are in the Registry.
         self.dimensionEntriesDone = {k: set() for k in self.dimensions}
-        # Cache of Instrument instances retrieved from Registry; needed to look
+        # Cache of instrument instances retrieved from Registry; needed to look
         # up formatters.
         self.instrumentCache = {}
         # (Possibly) create a Run object for the "stash": where we put datasets
@@ -148,10 +148,10 @@ class RawIngestTask(Task, metaclass=ABCMeta):
     def run(self, files):
         """Ingest files into a Butler data repository.
 
-        This creates any new Exposure or Visit Dimension entries needed to
+        This creates any new exposure or visit Dimension entries needed to
         identify the ingested files, creates new Dataset entries in the
         Registry and finally ingests the files themselves into the Datastore.
-        Any needed Instrument, Detector, and PhysicalFilter Dimension entries
+        Any needed instrument, detector, and physical_filter Dimension entries
         must exist in the Registry before `run` is called.
 
         Parameters
@@ -195,10 +195,10 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         return [readMetadata(file)]
 
     def ensureDimensions(self, file):
-        """Extract metadata from a raw file and add Exposure and Visit
+        """Extract metadata from a raw file and add exposure and visit
         Dimension entries.
 
-        Any needed Instrument, Detector, and PhysicalFilter Dimension entries must
+        Any needed instrument, detector, and physical_filter Dimension entries must
         exist in the Registry before `run` is called.
 
         Parameters
@@ -225,7 +225,7 @@ class RawIngestTask(Task, metaclass=ABCMeta):
                 # Next look in the Registry
                 dimensionEntryDict = self.butler.registry.findDimensionEntry(dimension, dimensionDataId)
                 if dimensionEntryDict is None:
-                    if dimension.name in ("Visit", "Exposure"):
+                    if dimension.name in ("visit", "exposure"):
                         # Add the entry into the Registry.
                         self.butler.registry.addDimensionEntry(dimension, dimensionDataId)
                     else:
@@ -275,10 +275,10 @@ class RawIngestTask(Task, metaclass=ABCMeta):
     def processFile(self, file):
         """Ingest a single raw data file after extacting metadata.
 
-        This creates any new Exposure or Visit Dimension entries needed to
+        This creates any new exposure or visit Dimension entries needed to
         identify the ingest file, creates a new Dataset entry in the
         Registry and finally ingests the file itself into the Datastore.
-        Any needed Instrument, Detector, and PhysicalFilter Dimension entries must
+        Any needed instrument, detector, and physical_filter Dimension entries must
         exist in the Registry before `run` is called.
 
         Parameters
@@ -324,13 +324,13 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         dataId : `DataId`
             A mapping whose key-value pairs uniquely identify raw datasets.
             Must have ``dataId.dimensions() <= self.dimensions``, with at least
-            Instrument, Exposure, and Detector present.
+            instrument, exposure, and detector present.
         """
         toRemove = set()
         if obsInfo.visit_id is None:
-            toRemove.add("Visit")
+            toRemove.add("visit")
         if obsInfo.physical_filter is None:
-            toRemove.add("PhysicalFilter")
+            toRemove.add("physical_filter")
         if toRemove:
             dimensions = self.dimensions.difference(toRemove)
         else:
