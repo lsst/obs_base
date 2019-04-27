@@ -701,56 +701,6 @@ class CameraMapper(dafPersist.Mapper):
             raise RuntimeError("No camera dataset available.")
         return self.camera
 
-    def map_defects(self, dataId, write=False):
-        """Map defects dataset.
-
-        Returns
-        -------
-        `lsst.daf.butler.ButlerLocation`
-            Minimal ButlerLocation containing just the locationList field
-            (just enough information that bypass_defects can use it).
-        """
-        defectFitsPath = self._defectLookup(dataId=dataId)
-        if defectFitsPath is None:
-            raise RuntimeError("No defects available for dataId=%s" % (dataId,))
-
-        return dafPersist.ButlerLocation(None, None, None, defectFitsPath,
-                                         dataId, self,
-                                         storage=self.rootStorage)
-
-    def bypass_defects(self, datasetType, pythonType, butlerLocation, dataId):
-        """Return a defect based on the butler location returned by map_defects
-
-        Parameters
-        ----------
-        butlerLocation : `lsst.daf.persistence.ButlerLocation`
-            locationList = path to defects FITS file
-        dataId : `dict`
-            Butler data ID; "ccd" must be set.
-
-        Note: the name "bypass_XXX" means the butler makes no attempt to
-        convert the ButlerLocation into an object, which is what we want for
-        now, since that conversion is a bit tricky.
-        """
-        detectorName = self._extractDetectorName(dataId)
-        defectsFitsPath = butlerLocation.locationList[0]
-
-        with fits.open(defectsFitsPath) as hduList:
-            for hdu in hduList[1:]:
-                if hdu.header["name"] != detectorName:
-                    continue
-
-                defectList = []
-                for data in hdu.data:
-                    bbox = afwGeom.Box2I(
-                        afwGeom.Point2I(int(data['x0']), int(data['y0'])),
-                        afwGeom.Extent2I(int(data['width']), int(data['height'])),
-                    )
-                    defectList.append(afwImage.DefectBase(bbox))
-                return defectList
-
-        raise RuntimeError("No defects for ccd %s in %s" % (detectorName, defectsFitsPath))
-
     def map_expIdInfo(self, dataId, write=False):
         return dafPersist.ButlerLocation(
             pythonType="lsst.obs.base.ExposureIdInfo",
