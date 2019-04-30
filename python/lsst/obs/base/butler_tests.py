@@ -163,14 +163,14 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
     def test_flat(self):
         self._test_exposure('flat')
 
-    @unittest.skip('Cannot test this, as there is a bug in the butler! DM-8097')
     def test_raw_sub_bbox(self):
         exp = self.butler.get('raw', self.dataIds['raw'], immediate=True)
         bbox = exp.getBBox()
         bbox.grow(-1)
         sub = self.butler.get("raw_sub", self.dataIds['raw'], bbox=bbox, immediate=True)
         self.assertEqual(sub.getImage().getBBox(), bbox)
-        self.assertImagesEqual(sub, exp.Factory(exp, bbox))
+        self.assertImagesEqual(sub.maskedImage.image,
+                               exp.subset(bbox).maskedImage.image)
 
     def test_subset_raw(self):
         for kwargs, expect in self.butler_get_data.raw_subsets:
