@@ -25,13 +25,20 @@ __all__ = ("RawIngestTask", "RawIngestConfig")
 import os.path
 from abc import ABCMeta
 
+# This should really be an error that is caught in daf butler and rethrown with our own
+# but it is not, so this exists here pending some error refactoring in daf butler
+from sqlalchemy.exc import IntegrityError
+
 from astro_metadata_translator import ObservationInfo
-from lsst.afw.image import readMetadata
+from lsst.afw.image import readMetadata, bboxFromMetadata
+from lsst.afw.geom import SkyWcs
 from lsst.daf.butler import DatasetType, StorageClassFactory, Run, DataId, ConflictingDefinitionError
 from lsst.daf.butler.instrument import (Instrument, updateExposureEntryFromObsInfo,
                                         updateVisitEntryFromObsInfo)
+from lsst.geom import Box2D
 from lsst.pex.config import Config, Field, ChoiceField
 from lsst.pipe.base import Task
+from lsst.sphgeom import ConvexPolygon
 
 
 class IngestConflictError(ConflictingDefinitionError):
@@ -77,6 +84,16 @@ class RawIngestConfig(Config):
                  },
         optional=False,
         default="continue",
+    )
+    doAddRegions = Field(
+        dtype=bool,
+        default=True,
+        doc="Add regions when ingesting tasks"
+    )
+    padRegionAmount = Field(
+        dtype=int,
+        default=0,
+        doc="Pad an image with specified number of pixels before calculating region"
     )
 
 
@@ -144,6 +161,25 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         # that lose conflicts.  Note that this doesn't actually add this Run
         # to the Registry; we only do that on first use.
         self.stashRun = Run(self.config.stash) if self.config.stash is not None else None
+        self.visitRegions = {}
+
+    def _addVisitRegions(self):
+        """Adds a region associated with a Visit to registry.
+
+        Visits will be created using regions for individual ccds that are
+        defined in the visitRegions dict field on self, joined against an
+        existing region if one exists. The dict field is formatted using
+        instrument and visit as a tuple for a key, with values that are a
+        list of regions for detectors associated the region.
+        """
+        for (instrument, visit), vertices in self.visitRegions.items():
+            # If there is an existing region it should be updated
+            existingRegion = self.butler.registry.expandDataId({"instrument": instrument, "visit": visit},
+                                                               region=True).region
+            if existingRegion is not None:
+                vertices = list(existingRegion.getVertices()) + vertices
+            region = ConvexPolygon(vertices)
+            self.butler.registry.setDimensionRegion(instrument=instrument, visit=visit, region=region)
 
     def run(self, files):
         """Ingest files into a Butler data repository.
@@ -165,15 +201,21 @@ class RawIngestTask(Task, metaclass=ABCMeta):
             with self.butler.transaction():
                 for file in files:
                     self.processFile(os.path.abspath(file))
+                if self.config.doAddRegions:
+                    self._addVisitRegions()
         elif self.config.onError == "break":
             for file in files:
                 self.processFile(os.path.abspath(file))
+            if self.config.doAddRegions:
+                self._addVisitRegions()
         elif self.config.onError == "continue":
             for file in files:
                 try:
                     self.processFile(os.path.abspath(file))
                 except Exception as err:
                     self.log.warnf("Error processing '{}': {}", file, err)
+            if self.config.doAddRegions:
+                self._addVisitRegions()
 
     def readHeaders(self, file):
         """Read and return any relevant headers from the given file.
@@ -193,6 +235,34 @@ class RawIngestTask(Task, metaclass=ABCMeta):
             non-empty HDU.
         """
         return [readMetadata(file)]
+
+    def buildRegion(self, headers):
+        """Builds a region from information contained in a header
+
+        Parameters
+        ----------
+        headers : `lsst.daf.base.PropertyList`
+            Property list containing the information from the header of
+            one file.
+
+        Returns
+        -------
+        region : `lsst.sphgeom.ConvexPolygon`
+
+        Raises
+        ------
+        ValueError :
+            If required header keys can not be found to construct region
+        """
+        # Default implementation is for headers to be a one element list
+        header = headers[0]
+        wcs = SkyWcs(header)
+        bbox = Box2D(bboxFromMetadata(header))
+        if self.config.padRegionAmount > 0:
+            bbox.grow(self.config.padRegionAmount)
+        corners = bbox.getCorners()
+        sphCorners = [wcs.pixelToSky(point).getVector() for point in corners]
+        return ConvexPolygon(sphCorners)
 
     def ensureDimensions(self, file):
         """Extract metadata from a raw file and add exposure and visit
@@ -235,6 +305,20 @@ class RawIngestTask(Task, metaclass=ABCMeta):
                         )
                 # Record that we've handled this entry.
                 self.dimensionEntriesDone[dimension].add(dimensionDataId)
+        # Do this after the loop to ensure all the dimensions are added
+        if self.config.doAddRegions:
+            region = self.buildRegion(headers)
+            try:
+                self.butler.registry.setDimensionRegion(DataId(fullDataId,
+                                                               dimensions=['visit', 'detector', 'instrument'],
+                                                               region=region),
+                                                        update=False)
+                self.visitRegions.setdefault((fullDataId['instrument'], fullDataId['visit']),
+                                             []).extend(region.getVertices())
+            except IntegrityError:
+                # This means that there were already regions for the dimensions in the database, and nothing
+                # should be done.
+                pass
 
         return headers, fullDataId
 
