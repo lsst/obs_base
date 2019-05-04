@@ -23,7 +23,6 @@
 __all__ = ("RawIngestTask", "RawIngestConfig")
 
 import os.path
-from abc import ABCMeta
 
 # This should really be an error that is caught in daf butler and rethrown with our own
 # but it is not, so this exists here pending some error refactoring in daf butler
@@ -97,7 +96,7 @@ class RawIngestConfig(Config):
     )
 
 
-class RawIngestTask(Task, metaclass=ABCMeta):
+class RawIngestTask(Task):
     """Driver Task for ingesting raw data into Gen3 Butler repositories.
 
     This Task is intended to be runnable from the command-line, but it doesn't
@@ -111,16 +110,10 @@ class RawIngestTask(Task, metaclass=ABCMeta):
     from its Registry.  Each invocation of `RawIngestTask.run` ingests a list
     of files (possibly semi-atomically; see `RawIngestConfig.onError`).
 
-    RawIngestTask should be subclassed to specialize ingest for the actual
-    structure of raw data files produced by a particular instrument.
-    Subclasses must either provide populated `MetadataReader` instances in the
-    `dataIdReader`, `visitReader`, and `exposureReader` class attributes, or
-    alternate implementations of the `extractDataId`, `extractVisit`, and
-    `extractExposure` methods that do not use those attributes (each
-    attribute-method pair may be handled differently).  Subclasses may also
-    wish to override `getFormatter` and/or (rarely) `getDatasetType`.  We do
-    not anticipate overriding `run`, `ensureDimensions`, `ingestFile`, or
-    `processFile` to ever be necessary.
+    RawIngestTask may be subclassed to specialize ingest for the actual
+    structure of raw data files produced by a particular instrument, but this
+    is usually unnecessary because the instrument-specific header-extraction
+    provided by the ``astro_metadata_translator`` is usually enough.
 
     Parameters
     ----------
