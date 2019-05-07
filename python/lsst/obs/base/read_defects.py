@@ -23,12 +23,15 @@ def fix_up_metadata(defects, valid_start, instrument, chip_id):
     md['DETECTOR'] = chip_id
     md['CALIBDATE'] = valid_start.isoformat()
     md['FILTER'] = None
-    md['CALIB_ID'] = f'detector={chip_id} calibDate={valid_start.isoformat()} ccd={chip_id} ccdnum={chip_id} filter=None'
+    md['CALIB_ID'] = (f'detector={chip_id} calibDate={valid_start.isoformat()} ' +
+                      'ccd={chip_id} ccdnum={chip_id} filter=None')
+
 
 def read_all_defects(root, camera):
     dirs = os.listdir(root)  # assumes all directories contain defects
     defects_by_chip = {}
-    name_map = {det.getName().lower():det.getName() for det in camera}  # we assume the directories have been lowered
+    name_map = {det.getName().lower(): det.getName() for
+                det in camera}  # we assume the directories have been lowered
     for d in dirs:
         chip_name = name_map[os.path.basename(d)]
         defects_by_chip[chip_name] = read_defects_one_chip(root, chip_name, camera)

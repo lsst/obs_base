@@ -22,7 +22,6 @@
 
 import copy
 import os
-from astropy.io import fits  # required by _makeDefectsDict until defects are written as AFW tables
 import re
 import weakref
 import lsst.daf.persistence as dafPersist

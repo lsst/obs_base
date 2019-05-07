@@ -511,7 +511,13 @@ class CalibrationMapping(Mapping):
         return Mapping.lookup(self, properties, newId)
 
     def standardize(self, mapper, item, dataId):
-        return mapper._standardizeExposure(self, item, dataId, filter=self.setFilter)
+        try:
+            val = mapper._standardizeExposure(self, item, dataId, filter=self.setFilter)
+        except TypeError:
+            print('Standardizing object of type %s failed.  Assuming stamdardization is not needed.'%
+                  type(item))
+            val = item
+        return val
 
 
 class DatasetMapping(Mapping):
