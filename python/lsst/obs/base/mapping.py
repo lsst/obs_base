@@ -25,6 +25,8 @@ import os
 import re
 from lsst.daf.base import PropertySet
 from lsst.daf.persistence import ButlerLocation, NoResults
+from lsst.utils import doImport
+from lsst.afw.image import Exposure, MaskedImage, Image, DecoratedImage
 
 __all__ = ["Mapping", "ImageMapping", "ExposureMapping", "CalibrationMapping", "DatasetMapping"]
 
@@ -511,13 +513,10 @@ class CalibrationMapping(Mapping):
         return Mapping.lookup(self, properties, newId)
 
     def standardize(self, mapper, item, dataId):
-        try:
-            val = mapper._standardizeExposure(self, item, dataId, filter=self.setFilter)
-        except TypeError:
-            print('Standardizing object of type %s failed.  Assuming stamdardization is not needed.'%
-                  type(item))
-            val = item
-        return val
+        # is item a type that should be standardized
+        if issubclass(doImport(self.python), (Exposure, MaskedImage, Image, DecoratedImage)):
+            return mapper._standardizeExposure(self, item, dataId, filter=self.setFilter)
+        return item
 
 
 class DatasetMapping(Mapping):
