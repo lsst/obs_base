@@ -24,8 +24,9 @@ __all__ = ("RawIngestTask", "RawIngestConfig", "makeTransferChoiceField")
 
 import os.path
 
-# This should really be an error that is caught in daf butler and rethrown with our own
-# but it is not, so this exists here pending some error refactoring in daf butler
+# This should really be an error that is caught in daf butler and rethrown
+# with our own but it is not, so this exists here pending some error
+# refactoring in daf butler
 from sqlalchemy.exc import IntegrityError
 
 from astro_metadata_translator import ObservationInfo
@@ -288,6 +289,8 @@ class RawIngestTask(Task):
         fullDataId = self.extractDataId(file, headers, obsInfo=obsInfo)
 
         for dimension in self.dimensions:
+            if fullDataId.get(dimension.name) is None:
+                continue
             dimensionDataId = DataId(fullDataId, dimension=dimension)
             if dimensionDataId not in self.dimensionEntriesDone[dimension]:
                 # Next look in the Registry
@@ -370,7 +373,10 @@ class RawIngestTask(Task):
         file : `str` or path-like object
             Absolute path to the file to be ingested.
         """
-        headers, dataId = self.ensureDimensions(file)
+        try:
+            headers, dataId = self.ensureDimensions(file)
+        except Exception as err:
+            raise RuntimeError(f"Unexpected error adding dimensions for {file}.") from err
         # We want ingesting a single file to be atomic even if we are
         # not trying to ingest the list of files atomically.
         with self.butler.transaction():
@@ -416,7 +422,7 @@ class RawIngestTask(Task):
         if obsInfo.physical_filter is None:
             toRemove.add("physical_filter")
         if toRemove:
-            dimensions = self.dimensions.difference(toRemove)
+            dimensions = self.dimensions.toSet().difference(toRemove)
         else:
             dimensions = self.dimensions
         dataId = DataId(
