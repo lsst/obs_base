@@ -20,7 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-__all__ = ("RawIngestTask", "RawIngestConfig")
+__all__ = ("RawIngestTask", "RawIngestConfig", "makeTransferChoiceField")
 
 import os.path
 
@@ -45,9 +45,9 @@ class IngestConflictError(ConflictingDefinitionError):
     pass
 
 
-class RawIngestConfig(Config):
-    transfer = ChoiceField(
-        ("How to transfer files (None for no transfer)."),
+def makeTransferChoiceField(doc="How to transfer files (None for no transfer)."):
+    return ChoiceField(
+        doc=doc,
         dtype=str,
         allowed={"move": "move",
                  "copy": "copy",
@@ -55,6 +55,10 @@ class RawIngestConfig(Config):
                  "symlink": "symbolic (soft) link"},
         optional=True,
     )
+
+
+class RawIngestConfig(Config):
+    transfer = makeTransferChoiceField()
     conflict = ChoiceField(
         ("What to do if a raw Dataset with the same data ID as an "
          "ingested file already exists in the Butler's Collection."),
