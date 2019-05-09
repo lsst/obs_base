@@ -46,7 +46,7 @@ class IngestConflictError(ConflictingDefinitionError):
     pass
 
 
-def makeTransferChoiceField(doc="How to transfer files (None for no transfer)."):
+def makeTransferChoiceField(doc="How to transfer files (None for no transfer).", default=None):
     return ChoiceField(
         doc=doc,
         dtype=str,
@@ -55,6 +55,7 @@ def makeTransferChoiceField(doc="How to transfer files (None for no transfer).")
                  "hardlink": "hard link",
                  "symlink": "symbolic (soft) link"},
         optional=True,
+        default=default
     )
 
 
