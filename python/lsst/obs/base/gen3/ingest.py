@@ -31,7 +31,8 @@ from sqlalchemy.exc import IntegrityError
 from astro_metadata_translator import ObservationInfo
 from lsst.afw.image import readMetadata, bboxFromMetadata
 from lsst.afw.geom import SkyWcs
-from lsst.daf.butler import DatasetType, StorageClassFactory, Run, DataId, ConflictingDefinitionError
+from lsst.daf.butler import (DatasetType, StorageClassFactory, Run, DataId, ConflictingDefinitionError,
+                             Butler)
 from lsst.daf.butler.instrument import (Instrument, updateExposureEntryFromObsInfo,
                                         updateVisitEntryFromObsInfo)
 from lsst.geom import Box2D
@@ -320,10 +321,6 @@ class RawIngestTask(Task):
 
         All necessary Dimension entres must already be present.
 
-        This method is not transactional; it must be wrapped in a
-        ``with self.butler.transaction` block to make per-file ingest
-        atomic.
-
         Parameters
         ----------
         file : `str` or path-like object
@@ -334,20 +331,26 @@ class RawIngestTask(Task):
             Data ID dictionary, as returned by `extractDataId`.
         run : `~lsst.daf.butler.Run`, optional
             Run to add the Dataset to; defaults to ``self.butler.run``.
-        """
-        if run is None:
-            run = self.butler.run
 
-        # Add a Dataset entry to the Registry.
+        Returns
+        -------
+        ref : `DatasetRef`
+            Reference to the ingested dataset.
+
+        Raises
+        ------
+        ConflictingDefinitionError
+            Raised if the dataset already exists in the registry.
+        """
+        if run is not None and run != self.butler.run:
+            butler = Butler(self.butler, run=run)
+        else:
+            butler = self.butler
         try:
-            ref = self.butler.registry.addDataset(self.datasetType, dataId, run=run, recursive=True)
+            return butler.ingest(file, self.datasetType, dataId, transfer=self.config.transfer,
+                                 formatter=self.getFormatter(file, headers, dataId))
         except ConflictingDefinitionError as err:
             raise IngestConflictError("Ingest conflict on {} {}".format(file, dataId)) from err
-
-        # Ingest it into the Datastore.
-        self.butler.datastore.ingest(file, ref, formatter=self.getFormatter(file, headers, dataId),
-                                     transfer=self.config.transfer)
-        return None
 
     def processFile(self, file):
         """Ingest a single raw data file after extacting metadata.
