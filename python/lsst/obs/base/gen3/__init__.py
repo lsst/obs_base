@@ -20,4 +20,5 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from .ingest import *  # noqa
+from .bootstrapRepo import *  # noqa
 from .repoConverter import *  # noqa
