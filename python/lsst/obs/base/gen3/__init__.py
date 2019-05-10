@@ -21,3 +21,4 @@
 
 from .ingest import *  # noqa
 from .repoConverter import *  # noqa
+from .calibRepoConverter import *  # noqa
