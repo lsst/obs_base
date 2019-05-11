@@ -5,26 +5,27 @@ from dateutil import parser
 
 
 def read_defects_one_chip(root, chip_name, camera):
-    files = glob.glob(os.path.join(root, chip_name.lower(), '*.dat'))
+    files = glob.glob(os.path.join(root, chip_name.lower(), '*.ecsv'))
     parts = os.path.split(root)
     instrument = os.path.split(parts[0])[1]  # convention is that these reside at <instrument>/defects
     defect_dict = {}
     for f in files:
         date_str = os.path.splitext(os.path.basename(f))[0]
         valid_start = parser.parse(date_str)
-        defect_dict[valid_start] = Defects.readLsstDefectsFile(f)
-        fix_up_metadata(defect_dict[valid_start], valid_start, instrument, camera[chip_name].getId())
+        defect_dict[valid_start] = Defects.readText(f)
+        check_metadata(defect_dict[valid_start], valid_start, instrument, camera[chip_name].getId())
     return defect_dict
 
 
-def fix_up_metadata(defects, valid_start, instrument, chip_id):
+def check_metadata(defects, valid_start, instrument, chip_id):
     md = defects.getMetadata()
-    md['INSTRUME'] = instrument
-    md['DETECTOR'] = chip_id
-    md['CALIBDATE'] = valid_start.isoformat()
-    md['FILTER'] = None
-    md['CALIB_ID'] = (f'detector={chip_id} calibDate={valid_start.isoformat()} ' +
-                      'ccd={chip_id} ccdnum={chip_id} filter=None')
+    finst = md.get('INSTRUME')
+    fchip_id = md.get('DETECTOR')
+    fcalib_date = md.get('CALIBDATE')
+    if not (finst, int(fchip_id), fcalib_date) == (instrument, chip_id, valid_start.isoformat()):
+        raise ValueError("Path and file metadata do not agree:\n" +
+                         "Path metadata: %s, %s, %s\n"%(instrument, chip_id, valid_start.isoformat()) +
+                         "File metadata: %s, %s, %s\n"%(finst, fchip_id, fcalib_date))
 
 
 def read_all_defects(root, camera):
