@@ -1,0 +1,13 @@
+#   Mapper policy that conflicts with a base class mapping
+
+camera: "camera"
+defaultLevel: "sensor"
+datasets: {}
+exposures:
+    packages:  # known packages and their versions, stored for later comparison
+        template: config/packages.pickle
+        python: lsst.base.Packages
+        persistable: Packages
+        storage: PickleStorage
+calibrations: {}
+images: {}

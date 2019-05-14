@@ -375,6 +375,9 @@ class CameraMapper(dafPersist.Mapper):
                                       provided=provided, dataRoot=rootStorage)
                     else:
                         mapping = cls(datasetType, subPolicy, self.registry, rootStorage, provided=provided)
+
+                    if datasetType in self.mappings:
+                        raise ValueError(f"Duplicate mapping policy for dataset type {datasetType}")
                     self.keyDict.update(mapping.keys())
                     mappings[datasetType] = mapping
                     self.mappings[datasetType] = mapping
