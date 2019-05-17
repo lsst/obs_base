@@ -24,7 +24,6 @@ __all__ = ("RepoConverter", "DataIdExtractor")
 import os
 import pickle
 from collections import OrderedDict  # for move_to_end
-from contextlib import contextmanager
 
 import yaml
 
@@ -34,6 +33,7 @@ import lsst.daf.persistence.repositoryCfg   # noqa: F401
 from lsst.daf.butler import DataId, DatasetType, DatasetRef
 from lsst.daf.butler.gen2convert import FilePathParser, Translator
 from lsst.log import Log
+from lsst.log.utils import temporaryLogLevel
 from lsst.utils import doImport
 
 
@@ -73,26 +73,6 @@ def findMapperClass(root):
     if os.path.exists(calibRegistryPath):
         return findMapperClass(os.path.normpath(os.path.join(root, os.path.pardir)))
     raise ValueError(f"Could not determine (Gen2) mapper class for repo at '{root}'.")
-
-
-@contextmanager
-def loggedAt(name, level):
-    """A context manager that temporarily sets the level of an `lsst.log.Log`.
-
-    Parameters
-    ----------
-    name : `str`
-        Name of the log to modify.
-    level : `int`
-        Integer enumeration constant indicating the temporary log level.
-    """
-    log = Log.getLogger(name)
-    old = log.getLevel()
-    log.setLevel(level)
-    try:
-        yield
-    finally:
-        log.setLevel(old)
 
 
 class DataIdExtractor:
@@ -193,8 +173,11 @@ class RepoConverter:
         self.root = root
         if mapper is None:
             # Shush spurious log messages from Gen2 Mapper classes.
-            with loggedAt("CameraMapper", Log.ERROR):
-                with loggedAt("HscMapper", Log.ERROR):
+            # These aren't spurious in other contexts - we're just playing fast
+            # and loose with mapper initialization, because we don't care about
+            # things like parent lookups (we just want the set of templates).
+            with temporaryLogLevel("CameraMapper", Log.ERROR):
+                with temporaryLogLevel("HscMapper", Log.ERROR):
                     cls = findMapperClass(root)
                     mapper = cls(root=root)
         self.mapper = mapper
