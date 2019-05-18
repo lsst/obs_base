@@ -20,19 +20,20 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-__all__ = ("RawIngestTask", "RawIngestConfig")
+__all__ = ("RawIngestTask", "RawIngestConfig", "makeTransferChoiceField")
 
 import os.path
-from abc import ABCMeta
 
-# This should really be an error that is caught in daf butler and rethrown with our own
-# but it is not, so this exists here pending some error refactoring in daf butler
+# This should really be an error that is caught in daf butler and rethrown
+# with our own but it is not, so this exists here pending some error
+# refactoring in daf butler
 from sqlalchemy.exc import IntegrityError
 
 from astro_metadata_translator import ObservationInfo
 from lsst.afw.image import readMetadata, bboxFromMetadata
 from lsst.afw.geom import SkyWcs
-from lsst.daf.butler import DatasetType, StorageClassFactory, Run, DataId, ConflictingDefinitionError
+from lsst.daf.butler import (DatasetType, StorageClassFactory, Run, DataId, ConflictingDefinitionError,
+                             Butler)
 from lsst.daf.butler.instrument import (Instrument, updateExposureEntryFromObsInfo,
                                         updateVisitEntryFromObsInfo)
 from lsst.geom import Box2D
@@ -45,16 +46,21 @@ class IngestConflictError(ConflictingDefinitionError):
     pass
 
 
-class RawIngestConfig(Config):
-    transfer = ChoiceField(
-        ("How to transfer files (None for no transfer)."),
+def makeTransferChoiceField(doc="How to transfer files (None for no transfer).", default=None):
+    return ChoiceField(
+        doc=doc,
         dtype=str,
         allowed={"move": "move",
                  "copy": "copy",
                  "hardlink": "hard link",
                  "symlink": "symbolic (soft) link"},
         optional=True,
+        default=default
     )
+
+
+class RawIngestConfig(Config):
+    transfer = makeTransferChoiceField()
     conflict = ChoiceField(
         ("What to do if a raw Dataset with the same data ID as an "
          "ingested file already exists in the Butler's Collection."),
@@ -97,7 +103,7 @@ class RawIngestConfig(Config):
     )
 
 
-class RawIngestTask(Task, metaclass=ABCMeta):
+class RawIngestTask(Task):
     """Driver Task for ingesting raw data into Gen3 Butler repositories.
 
     This Task is intended to be runnable from the command-line, but it doesn't
@@ -111,16 +117,10 @@ class RawIngestTask(Task, metaclass=ABCMeta):
     from its Registry.  Each invocation of `RawIngestTask.run` ingests a list
     of files (possibly semi-atomically; see `RawIngestConfig.onError`).
 
-    RawIngestTask should be subclassed to specialize ingest for the actual
-    structure of raw data files produced by a particular instrument.
-    Subclasses must either provide populated `MetadataReader` instances in the
-    `dataIdReader`, `visitReader`, and `exposureReader` class attributes, or
-    alternate implementations of the `extractDataId`, `extractVisit`, and
-    `extractExposure` methods that do not use those attributes (each
-    attribute-method pair may be handled differently).  Subclasses may also
-    wish to override `getFormatter` and/or (rarely) `getDatasetType`.  We do
-    not anticipate overriding `run`, `ensureDimensions`, `ingestFile`, or
-    `processFile` to ever be necessary.
+    RawIngestTask may be subclassed to specialize ingest for the actual
+    structure of raw data files produced by a particular instrument, but this
+    is usually unnecessary because the instrument-specific header-extraction
+    provided by the ``astro_metadata_translator`` is usually enough.
 
     Parameters
     ----------
@@ -290,6 +290,8 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         fullDataId = self.extractDataId(file, headers, obsInfo=obsInfo)
 
         for dimension in self.dimensions:
+            if fullDataId.get(dimension.name) is None:
+                continue
             dimensionDataId = DataId(fullDataId, dimension=dimension)
             if dimensionDataId not in self.dimensionEntriesDone[dimension]:
                 # Next look in the Registry
@@ -327,10 +329,6 @@ class RawIngestTask(Task, metaclass=ABCMeta):
 
         All necessary Dimension entres must already be present.
 
-        This method is not transactional; it must be wrapped in a
-        ``with self.butler.transaction` block to make per-file ingest
-        atomic.
-
         Parameters
         ----------
         file : `str` or path-like object
@@ -341,20 +339,26 @@ class RawIngestTask(Task, metaclass=ABCMeta):
             Data ID dictionary, as returned by `extractDataId`.
         run : `~lsst.daf.butler.Run`, optional
             Run to add the Dataset to; defaults to ``self.butler.run``.
-        """
-        if run is None:
-            run = self.butler.run
 
-        # Add a Dataset entry to the Registry.
+        Returns
+        -------
+        ref : `DatasetRef`
+            Reference to the ingested dataset.
+
+        Raises
+        ------
+        ConflictingDefinitionError
+            Raised if the dataset already exists in the registry.
+        """
+        if run is not None and run != self.butler.run:
+            butler = Butler(butler=self.butler, run=run)
+        else:
+            butler = self.butler
         try:
-            ref = self.butler.registry.addDataset(self.datasetType, dataId, run=run, recursive=True)
+            return butler.ingest(file, self.datasetType, dataId, transfer=self.config.transfer,
+                                 formatter=self.getFormatter(file, headers, dataId))
         except ConflictingDefinitionError as err:
             raise IngestConflictError("Ingest conflict on {} {}".format(file, dataId)) from err
-
-        # Ingest it into the Datastore.
-        self.butler.datastore.ingest(file, ref, formatter=self.getFormatter(file, headers, dataId),
-                                     transfer=self.config.transfer)
-        return None
 
     def processFile(self, file):
         """Ingest a single raw data file after extacting metadata.
@@ -370,7 +374,10 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         file : `str` or path-like object
             Absolute path to the file to be ingested.
         """
-        headers, dataId = self.ensureDimensions(file)
+        try:
+            headers, dataId = self.ensureDimensions(file)
+        except Exception as err:
+            raise RuntimeError(f"Unexpected error adding dimensions for {file}.") from err
         # We want ingesting a single file to be atomic even if we are
         # not trying to ingest the list of files atomically.
         with self.butler.transaction():
@@ -416,7 +423,7 @@ class RawIngestTask(Task, metaclass=ABCMeta):
         if obsInfo.physical_filter is None:
             toRemove.add("physical_filter")
         if toRemove:
-            dimensions = self.dimensions.difference(toRemove)
+            dimensions = self.dimensions.toSet().difference(toRemove)
         else:
             dimensions = self.dimensions
         dataId = DataId(

@@ -5,6 +5,7 @@ setupRequired(afw)
 setupRequired(astropy)
 setupRequired(utils)
 setupRequired(astro_metadata_translator)
+setupOptional(skymap)
 setupOptional(daf_butler)
 
 envPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
