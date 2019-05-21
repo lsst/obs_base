@@ -61,8 +61,7 @@ class CameraMapper(dafPersist.Mapper):
     multiple CCDs.  Each CCD is in turn composed of one or more amplifiers
     (amps).  A camera is also assumed to have a camera geometry description
     (CameraGeom object) as a policy file, a filter description (Filter class
-    static configuration) as another policy file, and an optional defects
-    description directory.
+    static configuration) as another policy file.
 
     Information from the camera geometry and defects are inserted into all
     Exposure objects returned.
@@ -104,10 +103,6 @@ class CameraMapper(dafPersist.Mapper):
     name suitable for use as a filename. The default version converts spaces
     to underscores.
 
-    _getCcdKeyVal(self, dataId): return a CCD key and value
-    by which to look up defects in the defects registry.
-    The default value returns ("ccd", detector name)
-
     _mapActualToPath(self, template, actualId): convert a template path to an
     actual path, using the actual dataset identifier.
 
@@ -138,13 +133,8 @@ class CameraMapper(dafPersist.Mapper):
     -----
     TODO:
 
-    - Handle defects the same was as all other calibration products, using the
-      calibration registry
     - Instead of auto-loading the camera at construction time, load it from
       the calibration registry
-    - Rewrite defects as AFW tables so we don't need astropy.io.fits to
-      unpersist them; then remove all mention of astropy.io.fits from this
-      package.
     """
     packageName = None
 
@@ -267,14 +257,6 @@ class CameraMapper(dafPersist.Mapper):
         # Camera geometry
         self.cameraDataLocation = None  # path to camera geometry config file
         self.camera = self._makeCamera(policy=policy, repositoryDir=repositoryDir)
-
-        # Defect registry and root. Defects are stored with the camera and the registry is loaded from the
-        # camera package, which is on the local filesystem.
-        self.defectRegistry = None
-        if 'defects' in policy:
-            self.defectPath = os.path.join(repositoryDir, policy['defects'])
-            defectRegistryLocation = os.path.join(self.defectPath, "defectRegistry.sqlite3")
-            self.defectRegistry = dafPersist.Registry.create(defectRegistryLocation)
 
         # Filter translation table
         self.filters = None
@@ -749,14 +731,6 @@ class CameraMapper(dafPersist.Mapper):
 #
 ###############################################################################
 
-    def _getCcdKeyVal(self, dataId):
-        """Return CCD key and value used to look a defect in the defect
-        registry
-
-        The default implementation simply returns ("ccd", full detector name)
-        """
-        return ("ccd", self._extractDetectorName(dataId))
-
     def _setupRegistry(self, name, description, path, policy, policyKey, storage, searchParents=True,
                        posixIfNoSql=True):
         """Set up a registry (usually SQLite3), trying a number of possible
@@ -1068,47 +1042,6 @@ class CameraMapper(dafPersist.Mapper):
             self._setFilter(mapping, item, dataId)
 
         return item
-
-    def _defectLookup(self, dataId, dateKey='taiObs'):
-        """Find the defects for a given CCD.
-
-        Parameters
-        ----------
-        dataId : `dict`
-            Dataset identifier
-
-        Returns
-        -------
-        `str`
-            Path to the defects file or None if not available.
-        """
-        if self.defectRegistry is None:
-            return None
-        if self.registry is None:
-            raise RuntimeError("No registry for defect lookup")
-
-        ccdKey, ccdVal = self._getCcdKeyVal(dataId)
-
-        dataIdForLookup = {'visit': dataId['visit']}
-        # .lookup will fail in a posix registry because there is no template to provide.
-        rows = self.registry.lookup((dateKey), ('raw_visit'), dataIdForLookup)
-        if len(rows) == 0:
-            return None
-        assert len(rows) == 1
-        dayObs = rows[0][0]
-
-        # Lookup the defects for this CCD serial number that are valid at the exposure midpoint.
-        rows = self.defectRegistry.executeQuery(("path",), ("defect",),
-                                                [(ccdKey, "?")],
-                                                ("DATETIME(?)", "DATETIME(validStart)", "DATETIME(validEnd)"),
-                                                (ccdVal, dayObs))
-        if not rows or len(rows) == 0:
-            return None
-        if len(rows) == 1:
-            return os.path.join(self.defectPath, rows[0][0])
-        else:
-            raise RuntimeError("Querying for defects (%s, %s) returns %d files: %s" %
-                               (ccdVal, dayObs, len(rows), ", ".join([_[0] for _ in rows])))
 
     def _makeCamera(self, policy, repositoryDir):
         """Make a camera (instance of lsst.afw.cameraGeom.Camera) describing
