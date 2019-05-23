@@ -23,7 +23,7 @@ __all__ = ("CalibRepoConverter",)
 
 import sqlite3
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from lsst.daf.butler.gen2convert import makeCalibrationLabel
 from .repoConverter import RepoConverter
@@ -81,7 +81,7 @@ class CalibRepoConverter(RepoConverter):
                 "instrument": self.baseDataId["instrument"],
                 "calibration_label": label,
                 "valid_first": datetime.strptime(row["validStart"], "%Y-%m-%d"),
-                "valid_last": datetime.strptime(row["validEnd"], "%Y-%m-%d"),
+                "valid_last": datetime.strptime(row["validEnd"], "%Y-%m-%d") + timedelta(days=1),
             })
         return extractor
 
