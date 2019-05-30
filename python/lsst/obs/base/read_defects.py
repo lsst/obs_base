@@ -30,6 +30,7 @@ def check_metadata(defects, valid_start, instrument, chip_id):
 
 def read_all_defects(root, camera):
     dirs = os.listdir(root)  # assumes all directories contain defects
+    dirs = [d for d in dirs if os.path.isdir(os.path.join(root, d))]
     defects_by_chip = {}
     name_map = {det.getName().lower(): det.getName() for
                 det in camera}  # we assume the directories have been lowered
