@@ -886,91 +886,122 @@ transmission_atmosphere:
     storage: FitsCatalogStorage
     level: None
 fgcmBuildStars_config:
-    description: "Configuration for fgcmBuildStars task, which concatenates and matches star observations."
+    description: >
+      Configuration of FgcmBuildStarsTask, used to concatenate and match
+      star observations for FGCM global calibration.
     persistable: Config
     storage: ConfigStorage
     python: lsst.fgcmcal.fgcmBuildStars.FgcmBuildStarsConfig
     template: config/fgcmBuildStars.py
 fgcmMakeLut_config:
-    description: "Configuration for fgcmMakeLut task, which builds an atmosphere/instrument look-up table."
+    description: >
+      Configuration of FgcmMakeLutTask, used to build an atmospheric/instrument
+      look-up table.
     persistable: Config
     storage: ConfigStorage
     python: lsst.fgcmcal.fgcmMakeLut.FgcmMakeLutConfig
     template: config/fgcmMakeLut.py
 fgcmFitCycle_config:
-    description: "Configuration for fgcmFitCycle task, which performs a global calibration fit."
+    description: >
+      Configuration of FgcmFitCycleTask, used for global photometric
+      calibration fit.
     persistable: Config
     storage: ConfigStorage
     python: lsst.fgcmcal.fgcmFitCycle.FgcmFitCycleConfig
     template: config/fgcmFitCycle-%(fgcmcycle)02d.py
 fgcmOutputProducts_config:
-    description: "Configuration for fgcmOutputProducts task, which does a final output of products."
+    description: >
+      Configuration of FgcmOutputProductsTask, used for final output of
+      FGCM zeropoints and atmosphere products.
     persistable: Config
     storage: ConfigStorage
     python: lsst.fgcmcal.fgcmOutputProducts.FgcmOutputProductsConfig
     template: config/fgcmOutputProducts.py
 fgcmVisitCatalog:
-    description: "Catalog of visit information used for input to FGCM global fit."
+    description: >
+      Catalog of visit information used for input to FGCM global photometric fit.
+      Generated in FgcmBuildStarsTask and used in FgcmFitCycleTask.
     persistable: BaseCatalog
     storage: FitsCatalogStorage
     tables: raw
     python: lsst.afw.table.BaseCatalog
     template: fgcm-process/fgcmVisitCatalog.fits
 fgcmStarObservations:
-    description: "Catalog of star observations used for input to FGCM global fit."
+    description: >
+      Catalog of star observations for FGCM global photometric fit.
+      Generated in FgcmBuildStarsTask and used in FgcmFitCycleTask.
     storage: FitsCatalogStorage
     tables: raw
     python: lsst.afw.table.BaseCatalog
     template: fgcm-process/fgcmStarObservations.fits
 fgcmStarIds:
-    description: "Catalog of FGCM star ids used for input to FGCM global fit."
+    description: >
+      Catalog of FGCM star identifiers for FGCM global photometric fit.
+      Generated in FgcmBuildStarsTask and used in FgcmFitCycleTask.
     storage: FitsCatalogStorage
     tables: raw
     python: lsst.afw.table.BaseCatalog
     template: fgcm-process/fgcmStarIds.fits
 fgcmStarIndices:
-    description: "Quick look-up indices to FGCM star ids used for input to FGCM global fit."
+    description: >
+      Catalog of quick look-up indices for FGCM global photometric fit.
+      Generated in FgcmBuildStarsTask and used in FgcmFitCycleTask.
     persistable: BaseCatalog
     storage: FitsCatalogStorage
     tables: raw
     python: lsst.afw.table.BaseCatalog
     template: fgcm-process/fgcmStarIndices.fits
 fgcmReferenceStars:
-    description: "Catalog of reference stars matched to stars in fgcmStarIds."
+    description: >
+      Catalog of reference stars matched to fgcmStarIds for FGCM global
+      photometric fit.  Generated in FgcmBuildStarsTask and
+      used in FgcmFitCycleTask.
     storage: FitsCatalogStorage
     tables: raw
     python: lsst.afw.table.BaseCatalog
     template: fgcm-process/fgcmReferenceStars.fits
 fgcmLookUpTable:
-    description: "Atmosphere + instrument look-up-table for FGCM throughput and chromatic corrections."
+    description: >
+      Atmosphere + instrument look-up-table for FGCM throughput and chromatic
+      corrections.  Generated in FgcmMakeLutTask and used in FgcmFitCycleTask.
     persistable: BaseCatalog
     storage: FitsCatalogStorage
     tables: raw
     python: lsst.afw.table.BaseCatalog
     template: fgcm-process/fgcmLookUpTable.fits
 fgcmZeropoints:
-    description: "Catalog of exposure zeropoints and associated quality flags output by FGCM global fit."
+    description: >
+      Catalog of exposure zeropoints and associated quality flags output by
+      FGCM global photometric fit.  Generated in FgcmFitCycleTask and
+      used in FgcmOutputProductsTask.
     persistable: BaseCatalog
     storage: FitsCatalogStorage
     tables: raw
     python: lsst.afw.table.BaseCatalog
     template: fgcm-process/fgcmZeropoints-%(fgcmcycle)02d.fits
 fgcmAtmosphereParameters:
-    description: "Catalog of atmosphere model parameters for each visit constrained by FGCM global fit."
+    description: >
+      Catalog of atmosphere model parameters for each visit constrained by
+      FGCM global photometric fit.  Generated in FgcmFitCycleTask and
+      used in FgcmOutputProductsTask.
     persistable: BaseCatalog
     storage: FitsCatalogStorage
     tables: raw
     python: lsst.afw.table.BaseCatalog
     template: fgcm-process/fgcmAtmosphereParameters-%(fgcmcycle)02d.fits
 fgcmFitParameters:
-    description: "Internal catalog of fit parameters from FGCM global fit, used for input to next fit cycle."
+    description: >
+      Internal catalog of fit parameters from FGCM global photometric fit,
+      used for input to next fit cycle in FgcmFitCycleTask.
     persistable: BaseCatalog
     storage: FitsCatalogStorage
     tables: raw
     python: lsst.afw.table.BaseCatalog
     template: fgcm-process/fgcmFitParameters-%(fgcmcycle)02d.fits
 fgcmFlaggedStars:
-    description: "Catalog of stars flagged (bad or reserved stars), used for input to next FGCM fit cycle."
+    description: >
+      Internal catalog of stars flagged (bad or reserved stars),
+      used for input to next FGCM fit cycle in FgcmFitCycleTask.
     persistable: BaseCatalog
     storage: FitsCatalogStorage
     tables: raw
@@ -979,7 +1010,8 @@ fgcmFlaggedStars:
 fgcmStandardStars:
     description: >
       Catalog of FGCM standard stars with magnitudes generated from FGCM global fit.
-      These magnitudes do not have absolute calibration offsets applied.
+      These magnitudes may not have absolute calibration offsets applied.
+      Generated in FgcmFitCycleTask and used in FgcmOutputProductsTask.
     persistable: SimpleCatalog
     storage: FitsCatalogStorage
     tables: raw
@@ -988,14 +1020,14 @@ fgcmStandardStars:
 transmission_atmosphere_fgcm:
     description: >
       Wavelength-dependent throughput due to the atmosphere as constrained
-      by FGCM (spatially constant).
+      by FGCM (spatially constant).  Generated in FgcmOutputProductsTask.
     template: ''
     persistable: TransmissionCurve
     python: lsst.afw.image.TransmissionCurve
     storage: FitsCatalogStorage
     level: None
 fgcm_photoCalib:
-    description: "Photometric calibration produced by FGCM."
+    description: "Photometric calibration produced by FGCM; generated in FgcmOutputProductsTask."
     persistable: PhotoCalib
     storage: FitsCatalogStorage
     python: lsst.afw.image.PhotoCalib
