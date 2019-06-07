@@ -513,7 +513,29 @@ class CalibrationMapping(Mapping):
         return Mapping.lookup(self, properties, newId)
 
     def standardize(self, mapper, item, dataId):
-        # is item a type that should be standardized
+        """Default standardization function for calibration datasets.
+
+        If the item is of a type that should be standardized, the base class
+        ``standardizeExposure`` method is called, otherwise the item is returned
+        unmodified.
+
+        Parameters
+        ----------
+        mapping : `lsst.obs.base.Mapping`
+            Mapping object to pass through.
+        item : object
+            Will be standardized if of type lsst.afw.image.Exposure,
+            lsst.afw.image.DecoratedImage, lsst.afw.image.Image
+            or lsst.afw.image.MaskedImage
+
+        dataId : `dict`
+            Dataset identifier
+
+        Returns
+        -------
+        `lsst.afw.image.Exposure` or item
+            The standardized object.
+        """
         if issubclass(doImport(self.python), (Exposure, MaskedImage, Image, DecoratedImage)):
             return mapper._standardizeExposure(self, item, dataId, filter=self.setFilter)
         return item
