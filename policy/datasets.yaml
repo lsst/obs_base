@@ -1395,6 +1395,32 @@ findDefects_metadata:
     storage: YamlStorage
     python: lsst.daf.base.PropertySet
     template: findDefects_metadata/%(detector)03d.yaml
+measurePhotonTransferCurve_config:
+    description: "Configuration for the photon transfer curve measurement task."
+    persistable: Config
+    python: lsst.cp.pipe.ptc.MeasurePhotonTransferCurveTaskConfig
+    storage: ConfigStorage
+    tables:
+    - raw
+    template: config/measurePhotonTransferCurve.py
+measurePhotonTransferCurve_metadata:
+    description: "Metadata for the photon transfer curve measurement task."
+    persistable: PropertySet
+    storage: YamlStorage
+    python: lsst.daf.base.PropertySet
+    template: ''
+measurePhotonTransferCurveGainAndNoise:
+    description: "Persisted output data (gain and noise) from the MeasurePhotonTransferCurveTask"
+    persistable: ignored
+    python: lsst.cp.pipe.ptc.PtcDataset
+    storage: PickleStorage
+    template: ''
+measurePhotonTransferCurveDatasetAll:
+    description: "Persisted output data from the MeasurePhotonTransferCurveTask"
+    persistable: ignored
+    python: lsst.cp.pipe.ptc.PtcDataset
+    storage: PickleStorage
+    template: ''
 cpPipePlotRoot:
     description: "A dataset for the root path for cp_pipe plots"
     persistable: ignored
