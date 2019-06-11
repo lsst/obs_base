@@ -140,7 +140,8 @@ class RawIngestTask(Task):
     def getDatasetType(self):
         """Return the DatasetType of the Datasets ingested by this Task.
         """
-        return DatasetType("raw", ("instrument", "detector", "exposure"), "Exposure")
+        return DatasetType("raw", ("instrument", "detector", "exposure"), "Exposure",
+                           universe=self.butler.registry.dimensions)
 
     def __init__(self, config=None, *, butler, **kwds):
         super().__init__(config, **kwds)
