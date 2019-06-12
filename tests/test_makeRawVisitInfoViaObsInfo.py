@@ -73,7 +73,11 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
 
     def testMakeRawVisitInfoViaObsInfo(self):
         maker = MakeTestableVisitInfo()
-        visitInfo = maker(self.header)
+
+        # Capture the warnings from StubTranslator since they are
+        # confusing to people but irrelevant for the test.
+        with self.assertWarns(UserWarning):
+            visitInfo = maker(self.header)
 
         self.assertAlmostEqual(visitInfo.getExposureTime(), self.exposure_time.to_value("s"))
         self.assertEqual(visitInfo.getExposureId(), self.exposure_id)
