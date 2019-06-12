@@ -557,7 +557,7 @@ class MissingPolicyKeyTestCase(unittest.TestCase):
 
     def testConflictRaises(self):
         policy = dafPersist.Policy(os.path.join(ROOT, "ConflictMapper.yaml"))
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
                 ValueError,
                 r"Duplicate mapping policy for dataset type packages"):
             mapper = lsst.obs.base.CameraMapper(policy=policy, repositoryDir=ROOT, root=ROOT)  # noqa F841
