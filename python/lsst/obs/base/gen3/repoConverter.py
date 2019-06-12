@@ -116,7 +116,7 @@ class DataIdExtractor:
         if translator is None:
             translator = Translator.makeMatching(filePathParser.datasetType, baseDataId, skyMap=skyMap)
         self.translator = translator
-        self.datasetType = DatasetType(datasetTypeName, dimensions=self.translator.dimensions,
+        self.datasetType = DatasetType(datasetTypeName, dimensions=self.translator.dimensionNames,
                                        storageClass=storageClass, universe=universe)
 
     def apply(self, fileNameInRoot):
