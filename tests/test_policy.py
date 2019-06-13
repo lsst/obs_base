@@ -69,7 +69,7 @@ class TestPolicyInRepo(unittest.TestCase):
         butler = dafPersist.Butler(outputs=repoArgs)
 
         with open(os.path.join(firstRepoPath, 'repositoryCfg.yaml')) as f:
-            cfg = yaml.load(f)
+            cfg = yaml.load(f, Loader=yaml.FullLoader)
         self.assertEqual(cfg.policy, policy)
         butler.put(objA, 'basicObject1', {'id': 1})
 

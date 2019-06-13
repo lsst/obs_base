@@ -25,7 +25,8 @@ import unittest
 from astropy.time import Time
 import astropy.units as u
 
-from astro_metadata_translator import FitsTranslator, StubTranslator
+import lsst.log
+from astro_metadata_translator import FitsTranslator, StubTranslator, ObservationInfo
 from lsst.daf.base import DateTime
 
 from lsst.obs.base import MakeRawVisitInfoViaObsInfo
@@ -73,13 +74,31 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
 
     def testMakeRawVisitInfoViaObsInfo(self):
         maker = MakeTestableVisitInfo()
-        visitInfo = maker(self.header)
+
+        # Capture the warnings from StubTranslator since they are
+        # confusing to people but irrelevant for the test.
+        with self.assertWarns(UserWarning):
+            with lsst.log.UsePythonLogging():
+                with self.assertLogs(level="WARNING"):
+                    visitInfo = maker(self.header)
 
         self.assertAlmostEqual(visitInfo.getExposureTime(), self.exposure_time.to_value("s"))
         self.assertEqual(visitInfo.getExposureId(), self.exposure_id)
         self.assertEqual(visitInfo.getDate(), DateTime("2001-01-02T03:04:06.123456789Z", DateTime.UTC))
         self.assertNotIn("EXPTIME", self.header)
         self.assertEqual(len(self.header), 2)
+
+    def testObservationInfo2VisitInfo(self):
+
+        with self.assertWarns(UserWarning):
+            obsInfo = ObservationInfo(self.header, translator_class=NewTranslator)
+
+        # No log specified so no log message should appear
+        visitInfo = MakeRawVisitInfoViaObsInfo.observationInfo2visitInfo(obsInfo)
+        self.assertIsInstance(visitInfo, lsst.afw.image.VisitInfo)
+        self.assertAlmostEqual(visitInfo.getExposureTime(), self.exposure_time.to_value("s"))
+        self.assertEqual(visitInfo.getExposureId(), self.exposure_id)
+        self.assertEqual(visitInfo.getDate(), DateTime("2001-01-02T03:04:06.123456789Z", DateTime.UTC))
 
 
 if __name__ == "__main__":

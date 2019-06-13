@@ -86,13 +86,35 @@ class MakeRawVisitInfoViaObsInfo(object):
             `~lsst.afw.image.VisitInfo` derived from the header using
             a `~astro_metadata_translator.MetadataTranslator`.
         """
-        argDict = dict()
 
         obsInfo = ObservationInfo(md, translator_class=self.metadataTranslator)
 
         # Strip all the cards out that were used
         for c in obsInfo.cards_used:
             del md[c]
+
+        return self.observationInfo2visitInfo(obsInfo, log=self.log)
+
+    @staticmethod
+    def observationInfo2visitInfo(obsInfo, log=None):
+        """Construct a `~lsst.afw.image.VisitInfo` from an
+        `~astro_metadata_translator.ObservationInfo`
+
+        Parameters
+        ----------
+        obsInfo : `astro_metadata_translator.ObservationInfo`
+            Information gathered from the observation metadata.
+        log : `logging.Logger` or `lsst.log.Log`, optional
+            Logger to use for logging informational messages.
+            If `None` logging will be disabled.
+
+        Returns
+        -------
+        visitInfo : `lsst.afw.image.VisitInfo`
+            `~lsst.afw.image.VisitInfo` derived from the supplied
+            `~astro_metadata_translator.ObservationInfo`.
+        """
+        argDict = dict()
 
         # Map the translated information into a form suitable for VisitInfo
         if obsInfo.exposure_time is not None:
@@ -170,7 +192,8 @@ class MakeRawVisitInfoViaObsInfo(object):
 
         for key in list(argDict.keys()):  # use a copy because we may delete items
             if argDict[key] is None:
-                self.log.warn("argDict[{}] is None; stripping".format(key, argDict[key]))
+                if log is not None:
+                    log.warn("argDict[{}] is None; stripping".format(key, argDict[key]))
                 del argDict[key]
 
         return VisitInfo(**argDict)
