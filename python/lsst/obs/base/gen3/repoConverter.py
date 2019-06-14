@@ -116,9 +116,8 @@ class DataIdExtractor:
         if translator is None:
             translator = Translator.makeMatching(filePathParser.datasetType, baseDataId, skyMap=skyMap)
         self.translator = translator
-        self.datasetType = DatasetType(datasetTypeName, dimensions=self.translator.dimensions,
-                                       storageClass=storageClass)
-        self.datasetType.normalize(universe=universe)
+        self.datasetType = DatasetType(datasetTypeName, dimensions=self.translator.dimensionNames,
+                                       storageClass=storageClass, universe=universe)
 
     def apply(self, fileNameInRoot):
         """Extract a Gen3 data ID from the given filename,

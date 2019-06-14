@@ -32,8 +32,7 @@ from sqlalchemy.exc import IntegrityError
 from astro_metadata_translator import ObservationInfo
 from lsst.afw.image import readMetadata, bboxFromMetadata
 from lsst.afw.geom import SkyWcs
-from lsst.daf.butler import (DatasetType, StorageClassFactory, Run, DataId, ConflictingDefinitionError,
-                             Butler)
+from lsst.daf.butler import DatasetType, Run, DataId, ConflictingDefinitionError, Butler
 from lsst.daf.butler.instrument import (Instrument, updateExposureEntryFromObsInfo,
                                         updateVisitEntryFromObsInfo)
 from lsst.geom import Box2D
@@ -138,12 +137,11 @@ class RawIngestTask(Task):
 
     _DefaultName = "ingest"
 
-    @classmethod
-    def getDatasetType(cls):
+    def getDatasetType(self):
         """Return the DatasetType of the Datasets ingested by this Task.
         """
-        return DatasetType("raw", ("instrument", "detector", "exposure"),
-                           StorageClassFactory().getStorageClass("Exposure"))
+        return DatasetType("raw", ("instrument", "detector", "exposure"), "Exposure",
+                           universe=self.butler.registry.dimensions)
 
     def __init__(self, config=None, *, butler, **kwds):
         super().__init__(config, **kwds)

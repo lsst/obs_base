@@ -244,7 +244,8 @@ class BootstrapRepoTask(Task):
                 skyMap.register(name, self.butler.registry)
                 if config.datasetTypeName is not None:
                     datasetType = DatasetType(config.datasetTypeName, dimensions=["skymap"],
-                                              storageClass="SkyMap")
+                                              storageClass="SkyMap",
+                                              universe=self.butler.registry.dimensions)
                     self.butler.registry.registerDatasetType(datasetType)
                     self.getButler(config.collection).put(skyMap, datasetType, skymap=name)
             self.skyMaps[name] = skyMap
@@ -293,7 +294,8 @@ class BootstrapRepoTask(Task):
             return
         if any(config.filterByRawRegions for config in self.config.refCats.values()):
             rawSkyPixels = self.computeRawSkyPixels()
-        datasetType = DatasetType("ref_cat", dimensions=["skypix"], storageClass="SimpleCatalog")
+        datasetType = DatasetType("ref_cat", dimensions=["skypix"], storageClass="SimpleCatalog",
+                                  universe=self.butler.registry.dimensions)
         self.butler.registry.registerDatasetType(datasetType)
         for name, config in self.config.refCats.items():
             self.log.info("Ingesting reference catalog '%s'.", name)
