@@ -23,6 +23,61 @@
 import re
 import lsst.geom as geom
 
+from lsst.afw.cameraGeom import PIXELS, FIELD_ANGLE
+from lsst.afw.image import RotType
+from lsst.afw.geom.skyWcs import makeSkyWcs
+import lsst.pex.exceptions
+
+
+class InitialSkyWcsError(Exception):
+    """For handling failures when creating a SkyWcs from a camera geometry and
+    boresight.
+
+    Typically used as a chained exception from a lower level exception.
+    """
+    pass
+
+
+def createInitialSkyWcs(visitInfo, detector, flipX=False):
+    """Create a SkyWcs from the telescope boresight and detector geometry.
+
+    A typical usecase for this is to create the initial WCS for a newly-read
+    raw exposure.
+
+
+    Parameters
+    ----------
+    visitInfo : `lsst.afw.image.VisitInfo`
+        Where to get the telescope boresight and rotator angle from.
+    detector : `lsst.afw.cameraGeom.Detector`
+        Where to get the camera geomtry from.
+    flipX : `bool`, optional
+        If False, +X is along W, if True +X is along E.
+
+    Returns
+    -------
+    skyWcs : `lsst.afw.geom.SkyWcs`
+        The new composed WCS.
+
+    Raises
+    ------
+    InitialSkyWcsError
+        Raised if there is an error generating the SkyWcs, chained from the
+        lower-level exception if available.
+    """
+    if visitInfo.getRotType() != RotType.SKY:
+        msg = (f"Cannot create SkyWcs from camera geometry: rotator angle defined using "
+               f"RotType={visitInfo.getRotType()} instead of SKY.")
+        raise InitialSkyWcsError(msg)
+    orientation = visitInfo.getBoresightRotAngle()
+    boresight = visitInfo.getBoresightRaDec()
+    try:
+        pixelsToFieldAngle = detector.getTransform(detector.makeCameraSys(PIXELS),
+                                                   detector.makeCameraSys(FIELD_ANGLE))
+    except lsst.pex.exceptions.InvalidParameterError as e:
+        raise InitialSkyWcsError("Cannot compute PIXELS to FIELD_ANGLE Transform.") from e
+    return makeSkyWcs(pixelsToFieldAngle, orientation, flipX, boresight)
+
 
 def bboxFromIraf(irafBBoxStr):
     """Return a Box2I corresponding to an IRAF-style BBOX
