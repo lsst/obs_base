@@ -1035,7 +1035,7 @@ class CameraMapper(dafPersist.Mapper):
         """Default standardization function for images.
 
         This sets the Detector from the camera geometry
-        and optionally set the Fiter. In both cases this saves
+        and optionally set the Filter. In both cases this saves
         having to persist some data in each exposure (or image).
 
         Parameters
