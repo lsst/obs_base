@@ -26,8 +26,13 @@ from abc import ABCMeta, abstractmethod
 from astro_metadata_translator import ObservationInfo
 
 import lsst.afw.image
+import lsst.afw.geom
 from lsst.daf.butler.formatters.fitsExposureFormatter import FitsExposureFormatter
+import lsst.log
+import lsst.pex.exceptions
+
 from lsst.obs.base import MakeRawVisitInfoViaObsInfo
+from lsst.obs.base.utils import createInitialSkyWcs, InitialSkyWcsError
 
 
 class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
@@ -88,11 +93,14 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
     def stripMetadata(self):
         """Remove metadata entries that are parsed into components.
         """
+        # NOTE: makeVisitInfo() may not strip any metadata itself, but calling
+        # it ensures that ObservationInfo is created from the metadata, which
+        # will strip the VisitInfo keys and more.
         self.makeVisitInfo()
-        self.makeWcs()
+        self._createSkyWcsFromMetadata()
 
     def makeVisitInfo(self):
-        """Construct a VisitInfo from ObservationInfo.
+        """Construct a VisitInfo from metadata.
 
         Returns
         -------
@@ -101,16 +109,77 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
         """
         return MakeRawVisitInfoViaObsInfo.observationInfo2visitInfo(self.observationInfo)
 
-    def makeWcs(self):
-        """Construct a SkyWcs from metadata.
+    @abstractmethod
+    def getDetector(self, id):
+        """Return the detector that acquired this raw exposure.
+
+        Parameters
+        ----------
+        id : `int`
+            The identifying number of the detector to get.
 
         Returns
         -------
-        wcs : `~lsst.afw.geom.SkyWcs`
-            Reversible mapping from pixel coordinates to sky coordinates.
+        detector : `~lsst.afw.cameraGeom.Detector`
+            The detector associated with that ``id``.
         """
-        from lsst.afw.geom import makeSkyWcs
-        return makeSkyWcs(self.metadata, strip=True)
+        raise NotImplementedError("Must be implemented by subclasses.")
+
+    def makeWcs(self, visitInfo, detector):
+        """Create a SkyWcs from information about the exposure.
+
+        If VisitInfo is not None, use it and the detector to create a SkyWcs,
+        otherwise return the metadata-based SkyWcs (always created, so that
+        the relevant metadata keywords are stripped).
+
+        Parameters
+        ----------
+        visitInfo : `~lsst.afw.image.VisitInfo`
+            The information about the telescope boresight and camera
+            orientation angle for this exposure.
+        detector : `~lsst.afw.cameraGeom.Detector`
+            The detector used to acquire this exposure.
+
+        Returns
+        -------
+        skyWcs : `~lsst.afw.geom.SkyWcs`
+            Reversible mapping from pixel coordinates to sky coordinates.
+
+        Raises
+        ------
+        InitialSkyWcsError
+            Raised if there is an error generating the SkyWcs, chained from the
+            lower-level exception if available.
+        """
+        skyWcs = self._createSkyWcsFromMetadata()
+
+        log = lsst.log.Log.getLogger("fitsRawFormatter")
+        if visitInfo is None:
+            msg = "No VisitInfo; cannot access boresight information. Defaulting to metadata-based SkyWcs."
+            log.warn(msg)
+            if skyWcs is None:
+                raise InitialSkyWcsError("Failed to create both metadata and boresight-based SkyWcs."
+                                         "See warnings in log messages for details.")
+            return skyWcs
+        skyWcs = createInitialSkyWcs(visitInfo, detector)
+
+        return skyWcs
+
+    def _createSkyWcsFromMetadata(self):
+        """Create a SkyWcs from the FITS header metadata in an Exposure.
+
+        Returns
+        -------
+        skyWcs: `lsst.afw.geom.SkyWcs`, or None
+            The WCS that was created from ``self.metadata``, or None if that
+            creation fails due to invalid metadata.
+        """
+        try:
+            return lsst.afw.geom.makeSkyWcs(self.metadata, strip=True)
+        except lsst.pex.exceptions.TypeError as e:
+            log = lsst.log.Log.getLogger("fitsRawFormatter")
+            log.warn("Cannot create a valid WCS from metadata: %s", e.args[0])
+            return None
 
     def makeFilter(self):
         """Construct a Filter from metadata.
@@ -166,7 +235,9 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
         elif component == "visitInfo":
             return self.makeVisitInfo()
         elif component == "wcs":
-            return self.makeWcs()
+            detector = self.getDetector(self.observationInfo.detector_num)
+            visitInfo = self.makeVisitInfo()
+            return self.makeWcs(visitInfo, detector)
         return None
 
     def readFull(self, parameters=None):
@@ -191,13 +262,13 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
         variance = self.readVariance()
         if variance is not None:
             full.setVariance(variance)
+        full.setDetector(self.getDetector(self.observationInfo.detector_num))
         info = full.getInfo()
-        info.setWcs(self.makeWcs())
         info.setFilter(self.makeFilter())
         info.setVisitInfo(self.makeVisitInfo())
-        # We shouldn't have to call stripMetadata() here because that should
-        # have been done by makeVisitInfo and makeWcs (or by subclasses that
-        # strip metadata for other components when constructing them).
+        info.setWcs(self.makeWcs(info.getVisitInfo(), info.getDetector()))
+        # We don't need to call stripMetadata() here because it has already
+        # been stripped during creation of the ObservationInfo, WCS, etc.
         full.setMetadata(self.metadata)
         return full
 
