@@ -1182,7 +1182,7 @@ dcrDiff_kernelSrc:
 makeBrighterFatterKernel_config:
     description: "Configuration for the brighter-fatter coefficient calculation code."
     persistable: Config
-    python: lsst.cp.pipe.brighterFatterKernelGeneration.MakeBrighterFatterKernelTaskConfig
+    python: lsst.cp.pipe.makeBrighterFatterKernel.MakeBrighterFatterKernelTaskConfig
     storage: ConfigStorage
     tables:
     - raw
