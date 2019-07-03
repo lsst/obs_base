@@ -25,8 +25,11 @@ import numpy as np
 import lsst.afw.cameraGeom as cameraGeom
 import lsst.geom as geom
 import lsst.afw.geom as afwGeom
-from lsst.afw.table import AmpInfoCatalog, AmpInfoTable
-from lsst.afw.cameraGeom.cameraFactory import makeDetectorData
+#from lsst.afw.table import AmpInfoCatalog, AmpInfoTable
+from lsst.afw.cameraGeom import Amplifier, Detector
+import lsst.afw.cameraGeom.cameraFactory as camFact
+# from  import makeDetectorData
+
 
 __all__ = ["makeCamera"]
 
@@ -48,23 +51,58 @@ def makeCamera(cameraFile):
     with open(cameraFile) as fd:
         cameraParams = yaml.load(fd, Loader=yaml.CLoader)
 
+    camera = cameraGeom.Camera.Builder(cameraParams['name'])
+    print(camera)
+    camera.fromDict(cameraParams)
     cameraName = cameraParams["name"]
 
-    #
-    # Handle distortion models.
-    #
-    plateScale = geom.Angle(cameraParams["plateScale"], geom.arcseconds)
-    nativeSys = cameraGeom.CameraSys(cameraParams["transforms"].pop("nativeSys"))
-    transforms = makeTransformDict(nativeSys, cameraParams["transforms"], plateScale)
+    #    import pdb
+    #    pdb.set_trace()
 
-    ccdParams = cameraParams["CCDs"]
-    detectorConfigList = makeDetectorConfigList(ccdParams)
+    # #
+    # # Handle distortion models.
+    # #
 
-    ampInfoCatDict = {}
-    for ccdName, ccdValues in ccdParams.items():
-        ampInfoCatDict[ccdName] = makeAmpInfoCatalog(ccdValues)
+    # plateScale = geom.Angle(cameraParams["plateScale"], geom.arcseconds)
+    # nativeSys = cameraGeom.CameraSys(cameraParams["transforms"].pop("nativeSys"))
+    # transforms = makeTransformDict(nativeSys, cameraParams["transforms"], plateScale)
 
-    return makeCameraFromCatalogs(cameraName, detectorConfigList, nativeSys, transforms, ampInfoCatDict)
+    # ccdParams = cameraParams["CCDs"]
+
+    # detectorConfigList = makeDetectorConfigList(ccdParams)
+
+    # ampInfoCatDict = {}
+    # for ccdName, ccdValues in ccdParams.items():
+    #     ampInfoCatDict[ccdName] = makeAmplifier(ccdValues)
+
+    return camera.finish()  ## makeCameraFromCatalogs(cameraName, detectorConfigList, nativeSys, transforms, ampInfoCatDict)
+
+def makeAmplifier(ccdValues):
+    ampCatalog = []
+    for name, amp in ccdValues['amplifiers'].items():
+        ampBuilder = Amplifier.Builder()
+        ampBuilder.fromDict(amp)
+        ampBuilder.setName(name)
+        ampCatalog.append(ampBuilder)
+    return ampCatalog
+
+
+def makeAmpInfoCatalog(ccd):
+    """Construct an amplifier info catalog
+    """
+    # Much of this will need to be filled in when we know it.
+    assert len(ccd['amplifiers']) > 0
+    amp = list(ccd['amplifiers'].values())[0]
+
+    ampCatalog = []
+
+    for name, amp in sorted(ccd['amplifiers'].items(), key=lambda x: x[1]['hdu']):
+        ampBuilder = Amplifier.Builder()
+        ampBuilder.fromDict(amp)
+        ampBuilder.setName(name)
+        ampCatalog.append(ampBuilder)
+
+    return ampCatalog
 
 
 def makeDetectorConfigList(ccdParams):
@@ -75,117 +113,40 @@ def makeDetectorConfigList(ccdParams):
     detectorConfig : `list` of `lsst.afw.cameraGeom.DetectorConfig`
         A list of detector configs.
     """
-    detectorConfigs = []
+    detCatalog = []
     for name, ccd in ccdParams.items():
-        detectorConfig = cameraGeom.DetectorConfig()
-        detectorConfigs.append(detectorConfig)
+        print(name, ccd)
+        detBuilder = Detector.Builder()
+        detBuilder.fromDict(ccd)
+        detBuilder.setName(name)
+        detCatalog.append(detBuilder)
 
-        detectorConfig.name = name
-        detectorConfig.id = ccd['id']
-        detectorConfig.serial = ccd['serial']
-        detectorConfig.detectorType = ccd['detectorType']
-        if 'physicalType' in ccd:
-            detectorConfig.physicalType = ccd['physicalType']
-        # This is the orientation we need to put the serial direction along the x-axis
-        detectorConfig.bbox_x0, detectorConfig.bbox_y0 = ccd['bbox'][0]
-        detectorConfig.bbox_x1, detectorConfig.bbox_y1 = ccd['bbox'][1]
-        detectorConfig.pixelSize_x, detectorConfig.pixelSize_y = ccd['pixelSize']
-        detectorConfig.transformDict.nativeSys = ccd['transformDict']['nativeSys']
-        transforms = ccd['transformDict']['transforms']
-        detectorConfig.transformDict.transforms = None if transforms == 'None' else transforms
-        detectorConfig.refpos_x, detectorConfig.refpos_y = ccd['refpos']
-        detectorConfig.offset_x, detectorConfig.offset_y = ccd['offset']
-        detectorConfig.transposeDetector = ccd['transposeDetector']
-        detectorConfig.pitchDeg = ccd['pitch']
-        detectorConfig.yawDeg = ccd['yaw']
-        detectorConfig.rollDeg = ccd['roll']
-        if 'crosstalk' in ccd:
-            detectorConfig.crosstalk = ccd['crosstalk']
+        # detectorConfig = cameraGeom.DetectorConfig()
+        # detectorConfigs.append(detectorConfig)
 
-    return detectorConfigs
+        # detectorConfig.name = name
+        # detectorConfig.id = ccd['id']
+        # detectorConfig.serial = ccd['serial']
+        # detectorConfig.detectorType = ccd['detectorType']
+        # if 'physicalType' in ccd:
+        #     detectorConfig.physicalType = ccd['physicalType']
+        # # This is the orientation we need to put the serial direction along the x-axis
+        # detectorConfig.bbox_x0, detectorConfig.bbox_y0 = ccd['bbox'][0]
+        # detectorConfig.bbox_x1, detectorConfig.bbox_y1 = ccd['bbox'][1]
+        # detectorConfig.pixelSize_x, detectorConfig.pixelSize_y = ccd['pixelSize']
+        # detectorConfig.transformDict.nativeSys = ccd['transformDict']['nativeSys']
+        # transforms = ccd['transformDict']['transforms']
+        # detectorConfig.transformDict.transforms = None if transforms == 'None' else transforms
+        # detectorConfig.refpos_x, detectorConfig.refpos_y = ccd['refpos']
+        # detectorConfig.offset_x, detectorConfig.offset_y = ccd['offset']
+        # detectorConfig.transposeDetector = ccd['transposeDetector']
+        # detectorConfig.pitchDeg = ccd['pitch']
+        # detectorConfig.yawDeg = ccd['yaw']
+        # detectorConfig.rollDeg = ccd['roll']
+        # if 'crosstalk' in ccd:
+        #     detectorConfig.crosstalk = ccd['crosstalk']
 
-
-def makeAmpInfoCatalog(ccd):
-    """Construct an amplifier info catalog
-    """
-    # Much of this will need to be filled in when we know it.
-    assert len(ccd['amplifiers']) > 0
-    amp = list(ccd['amplifiers'].values())[0]
-
-    rawBBox = makeBBoxFromList(amp['rawBBox'])  # total in file
-    xRawExtent, yRawExtent = rawBBox.getDimensions()
-
-    from lsst.afw.table import LL, LR, UL, UR
-    readCorners = dict(LL=LL, LR=LR, UL=UL, UR=UR)
-
-    schema = AmpInfoTable.makeMinimalSchema()
-
-    linThreshKey = schema.addField('linearityThreshold', type=float)
-    linMaxKey = schema.addField('linearityMaximum', type=float)
-    linUnitsKey = schema.addField('linearityUnits', type=str, size=9)
-    hduKey = schema.addField('hdu', type=np.int32)
-    # end placeholder
-
-    ampCatalog = AmpInfoCatalog(schema)
-    for name, amp in sorted(ccd['amplifiers'].items(), key=lambda x: x[1]['hdu']):
-        record = ampCatalog.addNew()
-        record.setName(name)
-        record.set(hduKey, amp['hdu'])
-
-        ix, iy = amp['ixy']
-        perAmpData = amp['perAmpData']
-        if perAmpData:
-            x0, y0 = 0, 0           # origin of data within each amp image
-        else:
-            x0, y0 = ix*xRawExtent, iy*yRawExtent
-
-        rawDataBBox = makeBBoxFromList(amp['rawDataBBox'])  # Photosensitive area
-        xDataExtent, yDataExtent = rawDataBBox.getDimensions()
-        record.setBBox(afwGeom.BoxI(
-            afwGeom.PointI(ix*xDataExtent, iy*yDataExtent), rawDataBBox.getDimensions()))
-
-        rawBBox = makeBBoxFromList(amp['rawBBox'])
-        rawBBox.shift(afwGeom.ExtentI(x0, y0))
-        record.setRawBBox(rawBBox)
-
-        rawDataBBox = makeBBoxFromList(amp['rawDataBBox'])
-        rawDataBBox.shift(afwGeom.ExtentI(x0, y0))
-        record.setRawDataBBox(rawDataBBox)
-
-        rawSerialOverscanBBox = makeBBoxFromList(amp['rawSerialOverscanBBox'])
-        rawSerialOverscanBBox.shift(afwGeom.ExtentI(x0, y0))
-        record.setRawHorizontalOverscanBBox(rawSerialOverscanBBox)
-
-        rawParallelOverscanBBox = makeBBoxFromList(amp['rawParallelOverscanBBox'])
-        rawParallelOverscanBBox.shift(afwGeom.ExtentI(x0, y0))
-        record.setRawVerticalOverscanBBox(rawParallelOverscanBBox)
-
-        rawSerialPrescanBBox = makeBBoxFromList(amp['rawSerialPrescanBBox'])
-        rawSerialPrescanBBox.shift(afwGeom.ExtentI(x0, y0))
-        record.setRawPrescanBBox(rawSerialPrescanBBox)
-
-        if perAmpData:
-            record.setRawXYOffset(afwGeom.Extent2I(ix*xRawExtent, iy*yRawExtent))
-        else:
-            record.setRawXYOffset(afwGeom.Extent2I(0, 0))
-
-        record.setReadoutCorner(readCorners[amp['readCorner']])
-        record.setGain(amp['gain'])
-        record.setReadNoise(amp['readNoise'])
-        record.setSaturation(amp['saturation'])
-        record.setHasRawInfo(True)
-        # flip data when assembling if needs be (e.g. data from the serial at the top of a CCD)
-        flipX, flipY = amp.get("flipXY")
-
-        record.setRawFlipX(flipX)
-        record.setRawFlipY(flipY)
-        # linearity placeholder stuff
-        record.setLinearityCoeffs([float(val) for val in amp['linearityCoeffs']])
-        record.setLinearityType(amp['linearityType'])
-        record.set(linThreshKey, float(amp['linearityThreshold']))
-        record.set(linMaxKey, float(amp['linearityMax']))
-        record.set(linUnitsKey, "DN")
-    return ampCatalog
+    return detCatalog
 
 
 def makeBBoxFromList(ylist):
@@ -290,58 +251,64 @@ def makeCameraFromCatalogs(cameraName, detectorConfigList, nativeSys, transformD
     # without breaking lots of on-disk camera configs.
     assert nativeSys == cameraGeom.FOCAL_PLANE, "Cameras with nativeSys != FOCAL_PLANE are not supported."
 
+    cameraBuilder = cameraGeom.Camera.Builder(cameraName)
+    cameraBuilder.setPupilFactoryClass(pupilFactoryClass)
+
     focalPlaneToField = transformDict[cameraGeom.FIELD_ANGLE]
-    transformMapBuilder = cameraGeom.TransformMap.Builder(nativeSys)
-    transformMapBuilder.connect(transformDict)
+    for toSys, transform in transformDict.items():
+        cameraBuilder.setTransformFromFocalPlaneTo(toSys, transform)
+
+    #    transformMapBuilder = cameraGeom.TransformMap(nativeSys, transformDict)
+    #    transformMapBuilder.connect(transformDict)
+    #    cameraGeom.Camera(cameraName, detectorList, transformMap, pupilFactoryClass)
 
     # First pass: build a list of all Detector ctor kwargs, minus the
     # transformMap (which needs information from all Detectors).
     detectorData = []
     for detectorConfig in detectorConfigList:
-
         # Get kwargs that could be used to construct each Detector
         # if we didn't care about giving each of them access to
         # all of the transforms.
-        thisDetectorData = makeDetectorData(
-            detectorConfig=detectorConfig,
-            ampInfoCatalog=ampInfoCatDict[detectorConfig.name],
-            focalPlaneToField=focalPlaneToField,
-        )
-
+        thisDetectorBuilder = cameraGeom.cameraFactory.addDetectorBuilderFromConfig(cameraBuilder,
+                                                                                    detectorConfig,
+                                                                                    ampInfoCatDict[detectorConfig.name],
+                                                                                    focalPlaneToField)
         # Pull the transforms dictionary out of the data dict; we'll replace
         # it with a TransformMap argument later.
-        thisDetectorTransforms = thisDetectorData.pop("transforms")
+        # thisDetectorTransforms = thisDetectorBuilderp("transforms")
 
-        # Save the rest of the Detector data dictionary for later
-        detectorData.append(thisDetectorData)
+        # # Save the rest of the Detector data dictionary for later
+        # detectorData.append(thisDetectorData)
 
-        # For reasons I don't understand, some obs_ packages (e.g. HSC) set
-        # nativeSys to None for their detectors (which doesn't seem to be
-        # permitted by the config class!), but they really mean PIXELS. For
-        # backwards compatibility we use that as the default...
-        detectorNativeSys = detectorConfig.transformDict.nativeSys
-        detectorNativeSys = (cameraGeom.PIXELS if detectorNativeSys is None else
-                             cameraGeom.CameraSysPrefix(detectorNativeSys))
+        # # For reasons I don't understand, some obs_ packages (e.g. HSC) set
+        # # nativeSys to None for their detectors (which doesn't seem to be
+        # # permitted by the config class!), but they really mean PIXELS. For
+        # # backwards compatibility we use that as the default...
+        # detectorNativeSys = detectorConfig.transformDict.nativeSys
+        # detectorNativeSys = (cameraGeom.PIXELS if detectorNativeSys is None else
+        #                      cameraGeom.CameraSysPrefix(detectorNativeSys))
 
-        # ...well, actually, it seems that we've always assumed down in C++
-        # that the answer is always PIXELS without ever checking that it is.
-        # So let's assert that it is, since there are hints all over this file
-        # (e.g. the definition of TAN_PIXELS) that other parts of the codebase
-        # have regularly made that assumption as well.  Note that we can't
-        # actually get rid of the nativeSys config option without breaking
-        # lots of on-disk camera configs.
-        assert detectorNativeSys == cameraGeom.PIXELS, \
-            "Detectors with nativeSys != PIXELS are not supported."
-        detectorNativeSys = cameraGeom.CameraSys(detectorNativeSys, detectorConfig.name)
+        # # ...well, actually, it seems that we've always assumed down in C++
+        # # that the answer is always PIXELS without ever checking that it is.
+        # # So let's assert that it is, since there are hints all over this file
+        # # (e.g. the definition of TAN_PIXELS) that other parts of the codebase
+        # # have regularly made that assumption as well.  Note that we can't
+        # # actually get rid of the nativeSys config option without breaking
+        # # lots of on-disk camera configs.
+        # assert detectorNativeSys == cameraGeom.PIXELS, \
+        #     "Detectors with nativeSys != PIXELS are not supported."
+        # detectorNativeSys = cameraGeom.CameraSys(detectorNativeSys, detectorConfig.name)
 
-        # Add this detector's transform dict to the shared TransformMapBuilder
-        transformMapBuilder.connect(detectorNativeSys, thisDetectorTransforms)
+        # # Add this detector's transform dict to the shared TransformMapBuilder
+        # transformMapBuilder.connect(detectorNativeSys, thisDetectorTransforms)
+#        cameraBuilder.append(thisDetectorBuilder.finish())
 
     # Now that we've collected all of the Transforms, we can finally build the
     # (immutable) TransformMap.
-    transformMap = transformMapBuilder.build()
+    #    transformMap = transformMapBuilder.build()
+
 
     # Second pass through the detectorConfigs: actually make Detector instances
-    detectorList = [cameraGeom.Detector(transformMap=transformMap, **kw) for kw in detectorData]
+    # detectorList = [cameraGeom.Detector(transformMap=transformMap, **kw) for kw in detectorData]
 
-    return cameraGeom.Camera(cameraName, detectorList, transformMap, pupilFactoryClass)
+    return cameraBuilder.finish()
