@@ -565,7 +565,7 @@ src:
     tables: raw
     template: ''
 fakes_src:
-    description: "Full depth source catalog with fake objects procduced by processFakes."
+    description: "Full depth source catalog with fake objects procduced by processCcdWithFakes."
     persistable: SourceCatalog
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
@@ -594,12 +594,12 @@ processCcdWithFakes_config:
     persistable: Config
     storage: ConfigStorage
     python: lsst.pipe.tasks.processCcdWithFakes.processCcdWithFakesConfig
-    template: config/processFakes.py
+    template: config/processCcdWithFakes.py
 processCcdWithFakes_metadata:
     persistable: PropertySet
     storage: YamlStorage
     python: lsst.daf.base.PropertySet
-    template: metadata/processFakes.yaml
+    template: metadata/processCcdWithFakes.yaml
 calexpBackground:
     description: >
         Background model produced by ProcessCcdTask.
