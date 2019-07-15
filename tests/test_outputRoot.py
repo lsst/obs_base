@@ -27,7 +27,7 @@ import pickle
 import os
 
 import lsst.utils.tests
-import lsst.afw.geom as afwGeom
+import lsst.geom as geom
 import lsst.daf.persistence as dafPersist
 import lsst.obs.base
 
@@ -111,7 +111,7 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(loc.getStorageName(), "PickleStorage")
         self.assertEqual(loc.getLocations(), ["foo-1,1.pickle"])
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
-        box = afwGeom.BoxI(afwGeom.PointI(0, 1), afwGeom.PointI(2, 3))
+        box = geom.BoxI(geom.PointI(0, 1), geom.PointI(2, 3))
         butler.put(box, "x", sensor="1,1")
         self.assertTrue(os.path.exists(os.path.join(testOutput, loc.getLocations()[0])))
         del butler
@@ -144,7 +144,7 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(loc.getLocations(), ["foo-1,1.pickle"])
         self.assertEqual(loc.getStorage().root, ROOT)
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
-        box = afwGeom.BoxI(afwGeom.PointI(0, 1), afwGeom.PointI(2, 3))
+        box = geom.BoxI(geom.PointI(0, 1), geom.PointI(2, 3))
         butler.put(box, "x", sensor="1,1")
         self.assertTrue(os.path.exists(os.path.join(testOutput, loc.getLocations()[0])))
         del butler
@@ -214,10 +214,10 @@ class OutputRootTestCase(unittest.TestCase):
         butler1 = dafPersist.Butler(outputs=dafPersist.RepositoryArgs(mode='w',
                                                                       root=testOutput,
                                                                       mapper=mapper1))
-        b1 = afwGeom.Box2I(afwGeom.Point2I(3, 4), afwGeom.Point2I(7, 6))
+        b1 = geom.Box2I(geom.Point2I(3, 4), geom.Point2I(7, 6))
         butler1.put(b1, "x")
         self.assertTrue(os.path.exists(os.path.join(testOutput, "foo-1,1.pickle")))
-        b2 = afwGeom.Box2I(b1)
+        b2 = geom.Box2I(b1)
         b2.grow(1)
         butler1.put(b2, "x", doBackup=True)
         self.assertTrue(os.path.exists(os.path.join(testOutput, "foo-1,1.pickle")))
@@ -232,7 +232,7 @@ class OutputRootTestCase(unittest.TestCase):
                 root=testOutput2,
                 mapper=mapper2),
         )
-        b3 = afwGeom.Box2I(b2)
+        b3 = geom.Box2I(b2)
         b3.grow(1)
         butler2.put(b3, "x", doBackup=True)
 
