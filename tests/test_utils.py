@@ -26,7 +26,7 @@ import unittest
 
 import lsst.utils.tests
 
-import lsst.afw.geom as afwGeom
+import lsst.geom as geom
 import lsst.obs.base as obsBase
 
 
@@ -35,8 +35,8 @@ class BboxFromIrafTestCase(lsst.utils.tests.TestCase):
 
     def testValid(self):
         test_data = {
-            "[1:1084,1:1024]": afwGeom.BoxI(afwGeom.PointI(0, 0), afwGeom.PointI(1083, 1023)),
-            "[0:0,0:0]": afwGeom.BoxI(afwGeom.PointI(-1, -1), afwGeom.PointI(-1, -1))
+            "[1:1084,1:1024]": geom.BoxI(geom.PointI(0, 0), geom.PointI(1083, 1023)),
+            "[0:0,0:0]": geom.BoxI(geom.PointI(-1, -1), geom.PointI(-1, -1))
         }
         for val, result in test_data.items():
             self.assertEqual(obsBase.bboxFromIraf(val), result)

@@ -31,7 +31,7 @@ import tempfile
 import numpy as np
 
 import lsst.utils.tests
-import lsst.afw.geom as afwGeom
+import lsst.geom as geom
 import lsst.afw.table as afwTable
 import lsst.daf.persistence as dafPersist
 import lsst.obs.base
@@ -230,14 +230,8 @@ class Mapper2TestCase(unittest.TestCase):
         checkCompression(self, loc.getAdditionalData())
 
     def testSubMap(self):
-        if hasattr(afwGeom, 'makePointI'):
-            # old afw (pre-#1556) interface
-            bbox = afwGeom.BoxI(afwGeom.makePointI(200, 100),
-                                afwGeom.makeExtentI(300, 400))
-        else:
-            # new afw (post-#1556) interface
-            bbox = afwGeom.BoxI(afwGeom.Point2I(200, 100),
-                                afwGeom.Extent2I(300, 400))
+        bbox = geom.BoxI(geom.Point2I(200, 100),
+                         geom.Extent2I(300, 400))
         mapper = MinMapper2(root=ROOT)
         loc = mapper.map("raw_sub", {"ccd": 13, "bbox": bbox}, write=True)
         self.assertEqual(loc.getPythonType(), "lsst.afw.image.ExposureU")
@@ -304,8 +298,8 @@ class Mapper2TestCase(unittest.TestCase):
 
         self.assertEqual(butler.get("some_bbox", ccd=35), image.getBBox())
 
-        bbox = afwGeom.BoxI(afwGeom.Point2I(200, 100),
-                            afwGeom.Extent2I(300, 400))
+        bbox = geom.BoxI(geom.Point2I(200, 100),
+                         geom.Extent2I(300, 400))
         image = butler.get("some_sub", ccd=35, bbox=bbox, imageOrigin="LOCAL", immediate=True)
         self.assertEqual(image.getHeight(), 400)
         self.assertEqual(image.getWidth(), 300)
@@ -327,8 +321,8 @@ class Mapper2TestCase(unittest.TestCase):
         image = butler.get("someGz", ccd=35)
         self.assertEqual(image.getFilter().getName(), "r")
 
-        bbox = afwGeom.BoxI(afwGeom.Point2I(200, 100),
-                            afwGeom.Extent2I(300, 400))
+        bbox = geom.BoxI(geom.Point2I(200, 100),
+                         geom.Extent2I(300, 400))
         image = butler.get("someGz_sub", ccd=35, bbox=bbox, imageOrigin="LOCAL", immediate=True)
         self.assertEqual(image.getHeight(), 400)
         self.assertEqual(image.getWidth(), 300)
@@ -345,8 +339,8 @@ class Mapper2TestCase(unittest.TestCase):
         image = butler.get("someFz", ccd=35)
         self.assertEqual(image.getFilter().getName(), "r")
 
-        bbox = afwGeom.BoxI(afwGeom.Point2I(200, 100),
-                            afwGeom.Extent2I(300, 400))
+        bbox = geom.BoxI(geom.Point2I(200, 100),
+                         geom.Extent2I(300, 400))
         image = butler.get("someFz_sub", ccd=35, bbox=bbox, imageOrigin="LOCAL", immediate=True)
         self.assertEqual(image.getHeight(), 400)
         self.assertEqual(image.getWidth(), 300)

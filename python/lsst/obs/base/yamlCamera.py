@@ -141,33 +141,33 @@ def makeAmpInfoCatalog(ccd):
 
         rawDataBBox = makeBBoxFromList(amp['rawDataBBox'])  # Photosensitive area
         xDataExtent, yDataExtent = rawDataBBox.getDimensions()
-        record.setBBox(afwGeom.BoxI(
-            afwGeom.PointI(ix*xDataExtent, iy*yDataExtent), rawDataBBox.getDimensions()))
+        record.setBBox(geom.BoxI(
+            geom.PointI(ix*xDataExtent, iy*yDataExtent), rawDataBBox.getDimensions()))
 
         rawBBox = makeBBoxFromList(amp['rawBBox'])
-        rawBBox.shift(afwGeom.ExtentI(x0, y0))
+        rawBBox.shift(geom.ExtentI(x0, y0))
         record.setRawBBox(rawBBox)
 
         rawDataBBox = makeBBoxFromList(amp['rawDataBBox'])
-        rawDataBBox.shift(afwGeom.ExtentI(x0, y0))
+        rawDataBBox.shift(geom.ExtentI(x0, y0))
         record.setRawDataBBox(rawDataBBox)
 
         rawSerialOverscanBBox = makeBBoxFromList(amp['rawSerialOverscanBBox'])
-        rawSerialOverscanBBox.shift(afwGeom.ExtentI(x0, y0))
+        rawSerialOverscanBBox.shift(geom.ExtentI(x0, y0))
         record.setRawHorizontalOverscanBBox(rawSerialOverscanBBox)
 
         rawParallelOverscanBBox = makeBBoxFromList(amp['rawParallelOverscanBBox'])
-        rawParallelOverscanBBox.shift(afwGeom.ExtentI(x0, y0))
+        rawParallelOverscanBBox.shift(geom.ExtentI(x0, y0))
         record.setRawVerticalOverscanBBox(rawParallelOverscanBBox)
 
         rawSerialPrescanBBox = makeBBoxFromList(amp['rawSerialPrescanBBox'])
-        rawSerialPrescanBBox.shift(afwGeom.ExtentI(x0, y0))
+        rawSerialPrescanBBox.shift(geom.ExtentI(x0, y0))
         record.setRawPrescanBBox(rawSerialPrescanBBox)
 
         if perAmpData:
-            record.setRawXYOffset(afwGeom.Extent2I(ix*xRawExtent, iy*yRawExtent))
+            record.setRawXYOffset(geom.Extent2I(ix*xRawExtent, iy*yRawExtent))
         else:
-            record.setRawXYOffset(afwGeom.Extent2I(0, 0))
+            record.setRawXYOffset(geom.Extent2I(0, 0))
 
         record.setReadoutCorner(readCorners[amp['readCorner']])
         record.setGain(amp['gain'])
@@ -193,7 +193,7 @@ def makeBBoxFromList(ylist):
     return a BoxI
     """
     (x0, y0), (xsize, ysize) = ylist
-    return afwGeom.BoxI(afwGeom.PointI(x0, y0), afwGeom.ExtentI(xsize, ysize))
+    return geom.BoxI(geom.PointI(x0, y0), geom.ExtentI(xsize, ysize))
 
 
 def makeTransformDict(nativeSys, transformDict, plateScale):

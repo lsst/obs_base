@@ -23,7 +23,7 @@ import abc
 import collections
 import math
 
-import lsst.afw.geom
+import lsst.geom
 from lsst.afw.cameraGeom import FOCAL_PLANE, FIELD_ANGLE
 
 __all__ = ["CameraTests"]
@@ -55,7 +55,7 @@ class CameraTests(metaclass=abc.ABCMeta):
             number of detectors in this camera
          first_detector_name : `str`
             name of the first detector in this camera
-        plate_scale : `lsst.afw.geom.Angle`
+        plate_scale : `lsst.geom.Angle`
             plate scale at center of focal plane, as angle-on-sky/mm
         """
         fields = ['camera_name',
@@ -100,14 +100,14 @@ class CameraTests(metaclass=abc.ABCMeta):
             cosAng = math.cos(offsetAngleRad)
             sinAng = math.sin(offsetAngleRad)
             fieldAngleRadians = focalPlaneToFieldAngle.applyForward(
-                lsst.afw.geom.Point2D(cosAng * focalPlaneRadiusMm, sinAng * focalPlaneRadiusMm))
-            fieldAngleRadius = math.hypot(*fieldAngleRadians) * lsst.afw.geom.radians
+                lsst.geom.Point2D(cosAng * focalPlaneRadiusMm, sinAng * focalPlaneRadiusMm))
+            fieldAngleRadius = math.hypot(*fieldAngleRadians) * lsst.geom.radians
             measuredScale1 = fieldAngleRadius / focalPlaneRadiusMm
             self.assertAnglesAlmostEqual(measuredScale1, plate_scale)
 
             focalPlanePos = focalPlaneToFieldAngle.applyInverse(
-                lsst.afw.geom.Point2D(fieldAngleRadius.asRadians() * cosAng,
-                                      fieldAngleRadius.asRadians() * sinAng))
+                lsst.geom.Point2D(fieldAngleRadius.asRadians() * cosAng,
+                                  fieldAngleRadius.asRadians() * sinAng))
             focalPlaneRadiusMm2 = math.hypot(*focalPlanePos)
             measureScale2 = fieldAngleRadius / focalPlaneRadiusMm2
             self.assertAnglesAlmostEqual(measureScale2, plate_scale)

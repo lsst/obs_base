@@ -29,7 +29,7 @@ import lsst.utils.tests
 import lsst.pex.exceptions
 from lsst.daf.base import DateTime, PropertySet
 from lsst.obs.base import MakeRawVisitInfo
-from lsst.afw.geom import degrees
+from lsst.geom import degrees
 
 
 class SimpleMakeRawVisitInfo(MakeRawVisitInfo):

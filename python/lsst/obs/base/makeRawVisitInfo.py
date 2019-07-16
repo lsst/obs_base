@@ -28,7 +28,7 @@ import astropy.units
 
 from lsst.log import Log
 from lsst.daf.base import DateTime
-from lsst.afw.geom import degrees
+from lsst.geom import degrees
 from lsst.afw.image import VisitInfo
 
 __all__ = ["MakeRawVisitInfo"]

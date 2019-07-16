@@ -5,6 +5,7 @@ setupRequired(afw)
 setupRequired(astropy)
 setupRequired(utils)
 setupRequired(astro_metadata_translator)
+setupRequired(geom)
 setupOptional(skymap)
 setupOptional(daf_butler)
 
