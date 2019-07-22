@@ -24,6 +24,7 @@ import copy
 import os
 import re
 import weakref
+from astro_metadata_translator import fix_header
 import lsst.daf.persistence as dafPersist
 from . import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping
 import lsst.daf.base as dafBase
@@ -75,11 +76,18 @@ class CameraMapper(dafPersist.Mapper):
     data.  This should contain validity start and end entries for each
     calibration dataset in the same timescale as the observation time.
 
-    Subclasses will typically set MakeRawVisitInfoClass:
+    Subclasses will typically set MakeRawVisitInfoClass and optionally the
+    metadata translator class:
 
     MakeRawVisitInfoClass: a class variable that points to a subclass of
     MakeRawVisitInfo, a functor that creates an
     lsst.afw.image.VisitInfo from the FITS metadata of a raw image.
+
+    translatorClass: The `~astro_metadata_translator.MetadataTranslator`
+    class to use for fixing metadata values.  If it is not set an attempt
+    will be made to infer the class from ``MakeRawVisitInfoClass``, failing
+    that the metadata fixup will try to infer the translator class from the
+    header itself.
 
     Subclasses must provide the following methods:
 
@@ -131,10 +139,34 @@ class CameraMapper(dafPersist.Mapper):
 
     Notes
     -----
-    TODO:
+    .. todo::
 
-    - Instead of auto-loading the camera at construction time, load it from
-      the calibration registry
+       Instead of auto-loading the camera at construction time, load it from
+       the calibration registry
+
+    Parameters
+    ----------
+    policy : daf_persistence.Policy,
+        Policy with per-camera defaults already merged.
+    repositoryDir : string
+        Policy repository for the subclassing module (obtained with
+        getRepositoryPath() on the per-camera default dictionary).
+    root : string, optional
+        Path to the root directory for data.
+    registry : string, optional
+        Path to registry with data's metadata.
+    calibRoot : string, optional
+        Root directory for calibrations.
+    calibRegistry : string, optional
+        Path to registry with calibrations' metadata.
+    provided : list of string, optional
+        Keys provided by the mapper.
+    parentRegistry : Registry subclass, optional
+        Registry from a parent repository that may be used to look up
+        data's metadata.
+    repositoryCfg : daf_persistence.RepositoryCfg or None, optional
+        The configuration information for the repository this mapper is
+        being used with.
     """
     packageName = None
 
@@ -145,35 +177,12 @@ class CameraMapper(dafPersist.Mapper):
     # a class or subclass of PupilFactory
     PupilFactoryClass = afwCameraGeom.PupilFactory
 
+    # Class to use for metadata translations
+    translatorClass = None
+
     def __init__(self, policy, repositoryDir,
                  root=None, registry=None, calibRoot=None, calibRegistry=None,
                  provided=None, parentRegistry=None, repositoryCfg=None):
-        """Initialize the CameraMapper.
-
-        Parameters
-        ----------
-        policy : daf_persistence.Policy,
-            Policy with per-camera defaults already merged.
-        repositoryDir : string
-            Policy repository for the subclassing module (obtained with
-            getRepositoryPath() on the per-camera default dictionary).
-        root : string, optional
-            Path to the root directory for data.
-        registry : string, optional
-            Path to registry with data's metadata.
-        calibRoot : string, optional
-            Root directory for calibrations.
-        calibRegistry : string, optional
-            Path to registry with calibrations' metadata.
-        provided : list of string, optional
-            Keys provided by the mapper.
-        parentRegistry : Registry subclass, optional
-            Registry from a parent repository that may be used to look up
-            data's metadata.
-        repositoryCfg : daf_persistence.RepositoryCfg or None, optional
-            The configuration information for the repository this mapper is
-            being used with.
-        """
 
         dafPersist.Mapper.__init__(self)
 
@@ -267,6 +276,12 @@ class CameraMapper(dafPersist.Mapper):
             raise ValueError('class variable packageName must not be None')
 
         self.makeRawVisitInfo = self.MakeRawVisitInfoClass(log=self.log)
+
+        # Assign a metadata translator if one has not been defined by
+        # subclass. We can sometimes infer one from the RawVisitInfo
+        # class.
+        if self.translatorClass is None and hasattr(self.makeRawVisitInfo, "metadataTranslator"):
+            self.translatorClass = self.makeRawVisitInfo.metadataTranslator
 
     def _initMappings(self, policy, rootStorage=None, calibStorage=None, provided=None):
         """Initialize mappings
@@ -395,8 +410,12 @@ class CameraMapper(dafPersist.Mapper):
                                [os.path.join(location.getStorage().root, p) for p in location.getLocations()])
                     # Metadata from FITS file
                     if subPolicy["storage"] == "FitsStorage":  # a FITS image
-                        setMethods("md", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                   readMetadata(location.getLocationsWithRoot()[0]))
+                        def getMetadata(datasetType, pythonType, location, dataId):
+                            md = readMetadata(location.getLocationsWithRoot()[0])
+                            fix_header(md, translator_class=self.translatorClass)
+                            return md
+
+                        setMethods("md", bypassImpl=getMetadata)
 
                         # Add support for configuring FITS compression
                         addName = "add_" + datasetType
@@ -442,19 +461,30 @@ class CameraMapper(dafPersist.Mapper):
                                        bypassImpl=lambda datasetType, pythonType, location, dataId:
                                            self.camera[self._extractDetectorName(dataId)]
                                        )
-                            setMethods("bbox", bypassImpl=lambda dsType, pyType, location, dataId:
-                                       afwImage.bboxFromMetadata(
-                                           readMetadata(location.getLocationsWithRoot()[0], hdu=1)))
+
+                            def getBBox(datasetType, pythonType, location, dataId):
+                                md = readMetadata(location.getLocationsWithRoot()[0], hdu=1)
+                                fix_header(md, translator_class=self.translatorClass)
+                                return afwImage.bboxFromMetadata(md)
+
+                            setMethods("bbox", bypassImpl=getBBox)
 
                         elif name == "images":
-                            setMethods("bbox", bypassImpl=lambda dsType, pyType, location, dataId:
-                                       afwImage.bboxFromMetadata(
-                                           readMetadata(location.getLocationsWithRoot()[0])))
+                            def getBBox(datasetType, pythonType, location, dataId):
+                                md = readMetadata(location.getLocationsWithRoot()[0])
+                                fix_header(md, translator_class=self.translatorClass)
+                                return afwImage.bboxFromMetadata(md)
+                            setMethods("bbox", bypassImpl=getBBox)
 
                     if subPolicy["storage"] == "FitsCatalogStorage":  # a FITS catalog
-                        setMethods("md", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                   readMetadata(os.path.join(location.getStorage().root,
-                                                             location.getLocations()[0]), hdu=1))
+
+                        def getMetadata(datasetType, pythonType, location, dataId):
+                            md = readMetadata(os.path.join(location.getStorage().root,
+                                              location.getLocations()[0]), hdu=1)
+                            fix_header(md, translator_class=self.translatorClass)
+                            return md
+
+                        setMethods("md", bypassImpl=getMetadata)
 
                     # Sub-images
                     if subPolicy["storage"] == "FitsStorage":
@@ -484,10 +514,14 @@ class CameraMapper(dafPersist.Mapper):
 
                     if subPolicy["storage"] == "FitsCatalogStorage":
                         # Length of catalog
-                        setMethods("len", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                   readMetadata(os.path.join(location.getStorage().root,
-                                                             location.getLocations()[0]),
-                                                hdu=1).getScalar("NAXIS2"))
+
+                        def getLen(datasetType, pythonType, location, dataId):
+                            md = readMetadata(os.path.join(location.getStorage().root,
+                                              location.getLocations()[0]), hdu=1)
+                            fix_header(md, translator_class=self.translatorClass)
+                            return md["NAXIS2"]
+
+                        setMethods("len", bypassImpl=getLen)
 
                         # Schema of catalog
                         if not datasetType.endswith("_schema") and datasetType + "_schema" not in datasets:

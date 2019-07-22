@@ -29,7 +29,7 @@ import os.path
 # refactoring in daf butler
 from sqlalchemy.exc import IntegrityError
 
-from astro_metadata_translator import ObservationInfo
+from astro_metadata_translator import ObservationInfo, fix_header
 from lsst.afw.image import readMetadata, bboxFromMetadata
 from lsst.afw.geom import SkyWcs
 from lsst.daf.butler import DatasetType, Run, DataId, ConflictingDefinitionError, Butler
@@ -232,7 +232,10 @@ class RawIngestTask(Task):
             Single-element list containing the header of the first
             non-empty HDU.
         """
-        return [readMetadata(file)]
+        headers = [readMetadata(file)]
+        for h in headers:
+            fix_header(h)
+        return headers
 
     def buildRegion(self, headers):
         """Builds a region from information contained in a header
