@@ -76,11 +76,18 @@ class CameraMapper(dafPersist.Mapper):
     data.  This should contain validity start and end entries for each
     calibration dataset in the same timescale as the observation time.
 
-    Subclasses will typically set MakeRawVisitInfoClass:
+    Subclasses will typically set MakeRawVisitInfoClass and optionally the
+    metadata translator class:
 
     MakeRawVisitInfoClass: a class variable that points to a subclass of
     MakeRawVisitInfo, a functor that creates an
     lsst.afw.image.VisitInfo from the FITS metadata of a raw image.
+
+    translatorClass: The `~astro_metadata_translator.MetadataTranslator`
+    class to use for fixing metadata values.  If it is not set an attempt
+    will be made to infer the class from ``MakeRawVisitInfoClass``, failing
+    that the metadata fixup will try to infer the translator class from the
+    header itself.
 
     Subclasses must provide the following methods:
 
@@ -132,10 +139,34 @@ class CameraMapper(dafPersist.Mapper):
 
     Notes
     -----
-    TODO:
+    .. todo::
 
-    - Instead of auto-loading the camera at construction time, load it from
-      the calibration registry
+       Instead of auto-loading the camera at construction time, load it from
+       the calibration registry
+
+    Parameters
+    ----------
+    policy : daf_persistence.Policy,
+        Policy with per-camera defaults already merged.
+    repositoryDir : string
+        Policy repository for the subclassing module (obtained with
+        getRepositoryPath() on the per-camera default dictionary).
+    root : string, optional
+        Path to the root directory for data.
+    registry : string, optional
+        Path to registry with data's metadata.
+    calibRoot : string, optional
+        Root directory for calibrations.
+    calibRegistry : string, optional
+        Path to registry with calibrations' metadata.
+    provided : list of string, optional
+        Keys provided by the mapper.
+    parentRegistry : Registry subclass, optional
+        Registry from a parent repository that may be used to look up
+        data's metadata.
+    repositoryCfg : daf_persistence.RepositoryCfg or None, optional
+        The configuration information for the repository this mapper is
+        being used with.
     """
     packageName = None
 
@@ -152,32 +183,6 @@ class CameraMapper(dafPersist.Mapper):
     def __init__(self, policy, repositoryDir,
                  root=None, registry=None, calibRoot=None, calibRegistry=None,
                  provided=None, parentRegistry=None, repositoryCfg=None):
-        """Initialize the CameraMapper.
-
-        Parameters
-        ----------
-        policy : daf_persistence.Policy,
-            Policy with per-camera defaults already merged.
-        repositoryDir : string
-            Policy repository for the subclassing module (obtained with
-            getRepositoryPath() on the per-camera default dictionary).
-        root : string, optional
-            Path to the root directory for data.
-        registry : string, optional
-            Path to registry with data's metadata.
-        calibRoot : string, optional
-            Root directory for calibrations.
-        calibRegistry : string, optional
-            Path to registry with calibrations' metadata.
-        provided : list of string, optional
-            Keys provided by the mapper.
-        parentRegistry : Registry subclass, optional
-            Registry from a parent repository that may be used to look up
-            data's metadata.
-        repositoryCfg : daf_persistence.RepositoryCfg or None, optional
-            The configuration information for the repository this mapper is
-            being used with.
-        """
 
         dafPersist.Mapper.__init__(self)
 
@@ -274,7 +279,7 @@ class CameraMapper(dafPersist.Mapper):
 
         # Assign a metadata translator if one has not been defined by
         # subclass. We can sometimes infer one from the RawVisitInfo
-        # class
+        # class.
         if self.translatorClass is None and hasattr(self.makeRawVisitInfo, "metadataTranslator"):
             self.translatorClass = self.makeRawVisitInfo.metadataTranslator
 
