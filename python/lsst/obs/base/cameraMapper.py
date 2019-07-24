@@ -1191,13 +1191,25 @@ class CameraMapper(dafPersist.Mapper):
             os.path.join(repositoryDir, cameraDataSubdir, "camera.py"))
         cameraConfig = afwCameraGeom.CameraConfig()
         cameraConfig.load(self.cameraDataLocation)
+
         ampInfoPath = os.path.dirname(self.cameraDataLocation)
-        return afwCameraGeom.makeCameraFromPath(
-            cameraConfig=cameraConfig,
-            ampInfoPath=ampInfoPath,
-            shortNameFunc=self.getShortCcdName,
-            pupilFactoryClass=self.PupilFactoryClass
-        )
+
+        cameraBuilder = afwCameraGeom.Camera.Builder(cameraConfig.name)
+
+        # Try to build using the new interface.
+        #        try :
+        cameraConfigDict = cameraConfig.toDict()
+        cameraConfigDict['ampInfoPath'] = ampInfoPath
+        cameraConfigDict['pupilFactoryClass'] = self.PupilFactoryClass
+        cameraBuilder.fromDict(cameraConfigDict)
+        return cameraBuilder.finish()
+#        except :
+#             return afwCameraGeom.makeCameraFromPath(
+#                cameraConfig=cameraConfig,
+#                ampInfoPath=ampInfoPath,
+#                shortNameFunc=self.getShortCcdName,
+#                pupilFactoryClass=self.PupilFactoryClass
+#             )
 
     def getRegistry(self):
         """Get the registry used by this mapper.

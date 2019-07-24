@@ -25,9 +25,10 @@ import numpy as np
 import lsst.afw.cameraGeom as cameraGeom
 import lsst.geom as geom
 import lsst.afw.geom as afwGeom
-#from lsst.afw.table import AmpInfoCatalog, AmpInfoTable
+# from lsst.afw.table import AmpInfoCatalog, AmpInfoTable
 from lsst.afw.cameraGeom import Amplifier, Detector
 import lsst.afw.cameraGeom.cameraFactory as camFact
+from lsst.afw.cameraGeom.transformConfig import transformDictFromYaml
 # from  import makeDetectorData
 
 
@@ -52,30 +53,13 @@ def makeCamera(cameraFile):
         cameraParams = yaml.load(fd, Loader=yaml.CLoader)
 
     camera = cameraGeom.Camera.Builder(cameraParams['name'])
-    print(camera)
     camera.fromDict(cameraParams)
-    cameraName = cameraParams["name"]
-
-    #    import pdb
-    #    pdb.set_trace()
-
-    # #
-    # # Handle distortion models.
-    # #
-
     # plateScale = geom.Angle(cameraParams["plateScale"], geom.arcseconds)
     # nativeSys = cameraGeom.CameraSys(cameraParams["transforms"].pop("nativeSys"))
     # transforms = makeTransformDict(nativeSys, cameraParams["transforms"], plateScale)
 
-    # ccdParams = cameraParams["CCDs"]
+    return camera.finish()
 
-    # detectorConfigList = makeDetectorConfigList(ccdParams)
-
-    # ampInfoCatDict = {}
-    # for ccdName, ccdValues in ccdParams.items():
-    #     ampInfoCatDict[ccdName] = makeAmplifier(ccdValues)
-
-    return camera.finish()  ## makeCameraFromCatalogs(cameraName, detectorConfigList, nativeSys, transforms, ampInfoCatDict)
 
 def makeAmplifier(ccdValues):
     ampCatalog = []
@@ -115,36 +99,10 @@ def makeDetectorConfigList(ccdParams):
     """
     detCatalog = []
     for name, ccd in ccdParams.items():
-        print(name, ccd)
         detBuilder = Detector.Builder()
         detBuilder.fromDict(ccd)
         detBuilder.setName(name)
         detCatalog.append(detBuilder)
-
-        # detectorConfig = cameraGeom.DetectorConfig()
-        # detectorConfigs.append(detectorConfig)
-
-        # detectorConfig.name = name
-        # detectorConfig.id = ccd['id']
-        # detectorConfig.serial = ccd['serial']
-        # detectorConfig.detectorType = ccd['detectorType']
-        # if 'physicalType' in ccd:
-        #     detectorConfig.physicalType = ccd['physicalType']
-        # # This is the orientation we need to put the serial direction along the x-axis
-        # detectorConfig.bbox_x0, detectorConfig.bbox_y0 = ccd['bbox'][0]
-        # detectorConfig.bbox_x1, detectorConfig.bbox_y1 = ccd['bbox'][1]
-        # detectorConfig.pixelSize_x, detectorConfig.pixelSize_y = ccd['pixelSize']
-        # detectorConfig.transformDict.nativeSys = ccd['transformDict']['nativeSys']
-        # transforms = ccd['transformDict']['transforms']
-        # detectorConfig.transformDict.transforms = None if transforms == 'None' else transforms
-        # detectorConfig.refpos_x, detectorConfig.refpos_y = ccd['refpos']
-        # detectorConfig.offset_x, detectorConfig.offset_y = ccd['offset']
-        # detectorConfig.transposeDetector = ccd['transposeDetector']
-        # detectorConfig.pitchDeg = ccd['pitch']
-        # detectorConfig.yawDeg = ccd['yaw']
-        # detectorConfig.rollDeg = ccd['roll']
-        # if 'crosstalk' in ccd:
-        #     detectorConfig.crosstalk = ccd['crosstalk']
 
     return detCatalog
 
@@ -176,39 +134,41 @@ def makeTransformDict(nativeSys, transformDict, plateScale):
     The resulting dict's keys are `~lsst.afw.cameraGeom.CameraSys`,
     and the values are Transforms *from* NativeSys *to* CameraSys
     """
-    # As other comments note this is required, and this is one function where it's assumed
-    assert nativeSys == cameraGeom.FOCAL_PLANE, "Cameras with nativeSys != FOCAL_PLANE are not supported."
+    return transformDictFromYaml(plateScale, transformDict)
 
-    resMap = dict()
+    # # As other comments note this is required, and this is one function where it's assumed
+    # assert nativeSys == cameraGeom.FOCAL_PLANE, "Cameras with nativeSys != FOCAL_PLANE are not supported."
 
-    for key, transform in transformDict.items():
-        transformType = transform["transformType"]
-        knownTransformTypes = ["affine", "radial"]
-        if transformType not in knownTransformTypes:
-            raise RuntimeError("Saw unknown transform type for %s: %s (known types are: [%s])" % (
-                key, transform["transformType"], ", ".join(knownTransformTypes)))
+    # resMap = dict()
 
-        if transformType == "affine":
-            affine = geom.AffineTransform(np.array(transform["linear"]),
-                                          np.array(transform["translation"]))
+    # for key, transform in transformDict.items():
+    #     transformType = transform["transformType"]
+    #     knownTransformTypes = ["affine", "radial"]
+    #     if transformType not in knownTransformTypes:
+    #         raise RuntimeError("Saw unknown transform type for %s: %s (known types are: [%s])" % (
+    #             key, transform["transformType"], ", ".join(knownTransformTypes)))
 
-            transform = afwGeom.makeTransform(affine)
-        elif transformType == "radial":
-            # radial coefficients of the form [0, 1 (no units), C2 (rad), usually 0, C3 (rad^2), ...]
-            # Radial distortion is modeled as a radial polynomial that converts from focal plane radius
-            # (in mm) to field angle (in radians). The provided coefficients are divided by the plate
-            # scale (in radians/mm) meaning that C1 is always 1.
-            radialCoeffs = np.array(transform["coeffs"])
+    #     if transformType == "affine":
+    #         affine = geom.AffineTransform(np.array(transform["linear"]),
+    #                                       np.array(transform["translation"]))
 
-            radialCoeffs *= plateScale.asRadians()
-            transform = afwGeom.makeRadialTransform(radialCoeffs)
-        else:
-            raise RuntimeError("Impossible condition \"%s\" is not in: [%s])" % (
-                transform["transformType"], ", ".join(knownTransformTypes)))
+    #         transform = afwGeom.makeTransform(affine)
+    #     elif transformType == "radial":
+    #         # radial coefficients of the form [0, 1 (no units), C2 (rad), usually 0, C3 (rad^2), ...]
+    #         # Radial distortion is modeled as a radial polynomial that converts from focal plane radius
+    #         # (in mm) to field angle (in radians). The provided coefficients are divided by the plate
+    #         # scale (in radians/mm) meaning that C1 is always 1.
+    #         radialCoeffs = np.array(transform["coeffs"])
 
-        resMap[cameraGeom.CameraSys(key)] = transform
+    #         radialCoeffs *= plateScale.asRadians()
+    #         transform = afwGeom.makeRadialTransform(radialCoeffs)
+    #     else:
+    #         raise RuntimeError("Impossible condition \"%s\" is not in: [%s])" % (
+    #             transform["transformType"], ", ".join(knownTransformTypes)))
 
-    return resMap
+    #     resMap[cameraGeom.CameraSys(key)] = transform
+
+    # return resMap
 
 
 def makeCameraFromCatalogs(cameraName, detectorConfigList, nativeSys, transformDict, ampInfoCatDict,
@@ -264,21 +224,21 @@ def makeCameraFromCatalogs(cameraName, detectorConfigList, nativeSys, transformD
 
     # First pass: build a list of all Detector ctor kwargs, minus the
     # transformMap (which needs information from all Detectors).
-    detectorData = []
+    #    detectorData = []
     for detectorConfig in detectorConfigList:
         # Get kwargs that could be used to construct each Detector
         # if we didn't care about giving each of them access to
         # all of the transforms.
-        thisDetectorBuilder = cameraGeom.cameraFactory.addDetectorBuilderFromConfig(cameraBuilder,
-                                                                                    detectorConfig,
-                                                                                    ampInfoCatDict[detectorConfig.name],
-                                                                                    focalPlaneToField)
+        thisDetectorBuilder = camFact.addDetectorBuilderFromConfig(cameraBuilder,
+                                                                   detectorConfig,
+                                                                   ampInfoCatDict[detectorConfig.name],
+                                                                   focalPlaneToField)
         # Pull the transforms dictionary out of the data dict; we'll replace
         # it with a TransformMap argument later.
         # thisDetectorTransforms = thisDetectorBuilderp("transforms")
 
         # # Save the rest of the Detector data dictionary for later
-        # detectorData.append(thisDetectorData)
+        #        detectorData.append(thisDetectorData)
 
         # # For reasons I don't understand, some obs_ packages (e.g. HSC) set
         # # nativeSys to None for their detectors (which doesn't seem to be
@@ -301,12 +261,11 @@ def makeCameraFromCatalogs(cameraName, detectorConfigList, nativeSys, transformD
 
         # # Add this detector's transform dict to the shared TransformMapBuilder
         # transformMapBuilder.connect(detectorNativeSys, thisDetectorTransforms)
-#        cameraBuilder.append(thisDetectorBuilder.finish())
+        cameraBuilder.append(thisDetectorBuilder.finish())
 
     # Now that we've collected all of the Transforms, we can finally build the
     # (immutable) TransformMap.
     #    transformMap = transformMapBuilder.build()
-
 
     # Second pass through the detectorConfigs: actually make Detector instances
     # detectorList = [cameraGeom.Detector(transformMap=transformMap, **kw) for kw in detectorData]
