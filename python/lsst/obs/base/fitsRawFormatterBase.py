@@ -23,6 +23,7 @@ __all__ = ("FitsRawFormatterBase",)
 
 from abc import ABCMeta, abstractmethod
 
+import lsst.afw.image
 from lsst.daf.butler.formatters.fitsExposureFormatter import FitsExposureFormatter
 
 
@@ -35,7 +36,6 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
     additional components (most default to `None`).
     """
 
-    @abstractmethod
     def readImage(self, fileDescriptor):
         """Read just the image component of the Exposure.
 
@@ -49,7 +49,7 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
         image : `~lsst.afw.image.Image`
             In-memory image component.
         """
-        raise NotImplementedError("Must be implemented by subclasses.")
+        return lsst.afw.image.ImageU(fileDescriptor.location.path)
 
     def readMask(self, fileDescriptor):
         """Read just the mask component of the Exposure.
