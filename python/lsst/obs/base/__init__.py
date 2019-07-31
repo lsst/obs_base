@@ -21,6 +21,7 @@
 #
 from .version import *
 
+from .filters import *
 from .mapping import *
 from .cameraMapper import *
 from .exposureIdInfo import *
