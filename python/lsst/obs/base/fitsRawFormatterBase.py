@@ -44,7 +44,6 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
         return None
 
     _observationInfo = None
-    _metadata = None
 
     def readImage(self):
         """Read just the image component of the Exposure.
@@ -224,12 +223,3 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
         if self._observationInfo is None:
             self._observationInfo = ObservationInfo(self._metadata, translator_class=self.translatorClass)
         return self._observationInfo
-
-    @property
-    def metadata(self):
-        """The metadata read from this raw file. It will be stripped as
-        components are extracted from it.
-        """
-        if self._metadata is None:
-            self._metadata = self.readMetadata()
-        return self._metadata
