@@ -38,7 +38,8 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
     @property
     @abstractmethod
     def translatorClass(self):
-        """MetadataTranslator to translate metadata header to ObservationInfo.
+        """`~astro_metadata_translator.MetadataTranslator` to translate
+        metadata header to `~astro_metadata_translator.ObservationInfo`.
         """
         return None
 
@@ -218,7 +219,7 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
 
     @property
     def observationInfo(self):
-        """The ObservationInfo extracted from this raw file's metadata.
+        """The ObservationInfo extracted from this file's metadata.
         """
         if self._observationInfo is None:
             self._observationInfo = ObservationInfo(self._metadata, translator_class=self.translatorClass)
