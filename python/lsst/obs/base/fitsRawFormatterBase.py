@@ -89,8 +89,8 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
     def stripMetadata(self):
         """Remove metadata entries that are parsed into components.
         """
-        self.makeVisitInfo(self.metadata)
-        self.makeWcs(self.metadata)
+        self.makeVisitInfo()
+        self.makeWcs()
 
     def makeVisitInfo(self):
         """Construct a VisitInfo from ObservationInfo.
