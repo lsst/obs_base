@@ -221,5 +221,5 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
         """The ObservationInfo extracted from this file's metadata.
         """
         if self._observationInfo is None:
-            self._observationInfo = ObservationInfo(self._metadata, translator_class=self.translatorClass)
+            self._observationInfo = ObservationInfo(self.metadata, translator_class=self.translatorClass)
         return self._observationInfo
