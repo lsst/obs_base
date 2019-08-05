@@ -218,7 +218,9 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
 
     @property
     def observationInfo(self):
-        """The ObservationInfo extracted from this file's metadata.
+        """The `~astro_metadata_translator.ObservationInfo` extracted from
+        this file's metadata (`~astro_metadata_translator.ObservationInfo`,
+        read-only).
         """
         if self._observationInfo is None:
             self._observationInfo = ObservationInfo(self.metadata, translator_class=self.translatorClass)
