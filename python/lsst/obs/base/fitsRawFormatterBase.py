@@ -1,4 +1,4 @@
-# This file is part of daf_butler.
+# This file is part of obs_base.
 #
 # Developed for the LSST Data Management System.
 # This product includes software developed by the LSST Project
@@ -23,46 +23,45 @@ __all__ = ("FitsRawFormatterBase",)
 
 from abc import ABCMeta, abstractmethod
 
+from astro_metadata_translator import ObservationInfo
+
+import lsst.afw.image
 from lsst.daf.butler.formatters.fitsExposureFormatter import FitsExposureFormatter
+from lsst.obs.base import MakeRawVisitInfoViaObsInfo
 
 
 class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
     """Abstract base class for reading and writing raw data to and from
     FITS files.
-
-    Subclasses must provide implementations of `readImage` and
-    `makeRawVisitInfo`.  Other methods may also be overridden to provide
-    additional components (most default to `None`).
     """
 
+    @property
     @abstractmethod
-    def readImage(self, fileDescriptor):
-        """Read just the image component of the Exposure.
+    def translatorClass(self):
+        """`~astro_metadata_translator.MetadataTranslator` to translate
+        metadata header to `~astro_metadata_translator.ObservationInfo`.
+        """
+        return None
 
-        Parameters
-        ----------
-        fileDescriptor : `FileDescriptor`
-            Identifies the file to read and parameters to be used for reading.
+    _observationInfo = None
+
+    def readImage(self):
+        """Read just the image component of the Exposure.
 
         Returns
         -------
         image : `~lsst.afw.image.Image`
             In-memory image component.
         """
-        raise NotImplementedError("Must be implemented by subclasses.")
+        return lsst.afw.image.ImageU(self.fileDescriptor.location.path)
 
-    def readMask(self, fileDescriptor):
+    def readMask(self):
         """Read just the mask component of the Exposure.
 
         May return None (as the default implementation does) to indicate that
         there is no mask information to be extracted (at least not trivially)
         from the raw data.  This will prohibit direct reading of just the mask,
         and set the mask of the full Exposure to zeros.
-
-        Parameters
-        ----------
-        fileDescriptor : `FileDescriptor`
-            Identifies the file to read and parameters to be used for reading.
 
         Returns
         -------
@@ -71,18 +70,13 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
         """
         return None
 
-    def readVariance(self, fileDescriptor):
+    def readVariance(self):
         """Read just the variance component of the Exposure.
 
         May return None (as the default implementation does) to indicate that
         there is no variance information to be extracted (at least not
         trivially) from the raw data.  This will prohibit direct reading of
         just the variance, and set the variance of the full Exposure to zeros.
-
-        Parameters
-        ----------
-        fileDescriptor : `FileDescriptor`
-            Identifies the file to read and parameters to be used for reading.
 
         Returns
         -------
@@ -91,40 +85,24 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
         """
         return None
 
-    def stripMetadata(self, metadata):
+    def stripMetadata(self):
         """Remove metadata entries that are parsed into components.
-
-        Parameters
-        ----------
-        metadata : `~lsst.daf.base.PropertyList`
-            Header metadata, to be modified in-place.
         """
-        self.makeVisitInfo(metadata)
-        self.makeWcs(metadata)
+        self.makeVisitInfo()
+        self.makeWcs()
 
-    @abstractmethod
-    def makeVisitInfo(self, metadata):
-        """Construct a VisitInfo from metadata.
-
-        Parameters
-        ----------
-        metadata : `~lsst.daf.base.PropertyList`
-            Header metadata.  May be modified in-place.
+    def makeVisitInfo(self):
+        """Construct a VisitInfo from ObservationInfo.
 
         Returns
         -------
         visitInfo : `~lsst.afw.image.VisitInfo`
             Structured metadata about the observation.
         """
-        raise NotImplementedError("Must be implemented by subclasses.")
+        return MakeRawVisitInfoViaObsInfo.observationInfo2visitInfo(self.observationInfo)
 
-    def makeWcs(self, metadata):
+    def makeWcs(self):
         """Construct a SkyWcs from metadata.
-
-        Parameters
-        ----------
-        metadata : `~lsst.daf.base.PropertyList`
-            Header metadata.  May be modified in-place.
 
         Returns
         -------
@@ -132,15 +110,10 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
             Reversible mapping from pixel coordinates to sky coordinates.
         """
         from lsst.afw.geom import makeSkyWcs
-        return makeSkyWcs(metadata, strip=True)
+        return makeSkyWcs(self.metadata, strip=True)
 
-    def makeFilter(self, metadata):
+    def makeFilter(self):
         """Construct a Filter from metadata.
-
-        Parameters
-        ----------
-        metadata : `~lsst.daf.base.PropertyList`
-            Header metadata.  May be modified in-place.
 
         Returns
         -------
@@ -149,13 +122,11 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
         """
         raise NotImplementedError("Must be implemented by subclasses.")
 
-    def readImageComponent(self, fileDescriptor, component):
+    def readImageComponent(self, component):
         """Read the image, mask, or variance component of an Exposure.
 
         Parameters
         ----------
-        fileDescriptor : `FileDescriptor`
-            Identifies the file to read and parameters to be used for reading.
         component : `str`, optional
             Component to read from the file.  Always one of "image",
             "variance", or "mask".
@@ -166,13 +137,13 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
             In-memory image, variance, or mask component.
         """
         if component == "image":
-            return self.readImage(fileDescriptor)
+            return self.readImage()
         elif component == "mask":
-            return self.readMask(fileDescriptor)
+            return self.readMask()
         elif component == "variance":
-            return self.readVariance(fileDescriptor)
+            return self.readVariance()
 
-    def readInfoComponent(self, fileDescriptor, component):
+    def readInfoComponent(self, component):
         """Read a component held by ExposureInfo.
 
         The implementation provided by FitsRawFormatter provides only "wcs"
@@ -182,8 +153,6 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
 
         Parameters
         ----------
-        fileDescriptor : `FileDescriptor`
-            Identifies the file to read and parameters to be used for reading.
         component : `str`, optional
             Component to read from the file.
 
@@ -193,23 +162,21 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
             In-memory component object.
         """
         if component == "filter":
-            return self.makeFilter(self.readMetadata(fileDescriptor))
+            return self.makeFilter()
         elif component == "visitInfo":
-            return self.makeVisitInfo(self.readMetadata(fileDescriptor))
+            return self.makeVisitInfo()
         elif component == "wcs":
-            return self.makeWcs(self.readMetadata(fileDescriptor))
+            return self.makeWcs()
         return None
 
-    def readFull(self, fileDescriptor, parameters=None):
+    def readFull(self, parameters=None):
         """Read the full Exposure object.
 
         Parameters
         ----------
-        fileDescriptor : `FileDescriptor`
-            Identifies the file to read and parameters to be used for reading.
         parameters : `dict`, optional
             If specified a dictionary of slicing parameters that overrides
-            those in ``fileDescriptor`.
+            those in ``self.fileDescriptor`.
 
         Returns
         -------
@@ -217,34 +184,30 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
             Complete in-memory exposure.
         """
         from lsst.afw.image import makeExposure, makeMaskedImage
-        full = makeExposure(makeMaskedImage(self.readImage(fileDescriptor)))
-        mask = self.readMask(fileDescriptor)
+        full = makeExposure(makeMaskedImage(self.readImage()))
+        mask = self.readMask()
         if mask is not None:
             full.setMask(mask)
-        variance = self.readVariance(fileDescriptor)
+        variance = self.readVariance()
         if variance is not None:
             full.setVariance(variance)
-        metadata = self.readMetadata(fileDescriptor)
         info = full.getInfo()
-        info.setWcs(self.makeWcs(metadata))
-        info.setFilter(self.makeFilter(metadata))
-        info.setVisitInfo(self.makeVisitInfo(metadata))
+        info.setWcs(self.makeWcs())
+        info.setFilter(self.makeFilter())
+        info.setVisitInfo(self.makeVisitInfo())
         # We shouldn't have to call stripMetadata() here because that should
         # have been done by makeVisitInfo and makeWcs (or by subclasses that
         # strip metadata for other components when constructing them).
-        full.setMetadata(metadata)
+        full.setMetadata(self.metadata)
         return full
 
-    def write(self, inMemoryDataset, fileDescriptor):
+    def write(self, inMemoryDataset):
         """Write a Python object to a file.
 
         Parameters
         ----------
         inMemoryDataset : `object`
             The Python object to store.
-        fileDescriptor : `FileDescriptor`
-            Identifies the file to read, type to read it into and parameters
-            to be used for reading.
 
         Returns
         -------
@@ -252,3 +215,13 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
             The `URI` where the primary file is stored.
         """
         raise NotImplementedError("Raw data cannot be `put`.")
+
+    @property
+    def observationInfo(self):
+        """The `~astro_metadata_translator.ObservationInfo` extracted from
+        this file's metadata (`~astro_metadata_translator.ObservationInfo`,
+        read-only).
+        """
+        if self._observationInfo is None:
+            self._observationInfo = ObservationInfo(self.metadata, translator_class=self.translatorClass)
+        return self._observationInfo
