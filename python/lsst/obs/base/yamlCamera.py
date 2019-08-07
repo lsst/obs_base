@@ -25,8 +25,8 @@ import numpy as np
 import lsst.afw.cameraGeom as cameraGeom
 import lsst.geom as geom
 import lsst.afw.geom as afwGeom
-from lsst.afw.table import AmpInfoCatalog, AmpInfoTable
-from lsst.afw.cameraGeom.cameraFactory import makeDetectorData
+from lsst.afw.cameraGeom import Amplifier, Camera, ReadoutCorner
+
 
 __all__ = ["makeCamera"]
 
@@ -60,11 +60,11 @@ def makeCamera(cameraFile):
     ccdParams = cameraParams["CCDs"]
     detectorConfigList = makeDetectorConfigList(ccdParams)
 
-    ampInfoCatDict = {}
+    amplifierDict = {}
     for ccdName, ccdValues in ccdParams.items():
-        ampInfoCatDict[ccdName] = makeAmpInfoCatalog(ccdValues)
+        amplifierDict[ccdName] = makeAmplifierList(ccdValues)
 
-    return makeCameraFromCatalogs(cameraName, detectorConfigList, nativeSys, transforms, ampInfoCatDict)
+    return makeCameraFromCatalogs(cameraName, detectorConfigList, nativeSys, transforms, amplifierDict)
 
 
 def makeDetectorConfigList(ccdParams):
@@ -105,32 +105,25 @@ def makeDetectorConfigList(ccdParams):
     return detectorConfigs
 
 
-def makeAmpInfoCatalog(ccd):
-    """Construct an amplifier info catalog
+def makeAmplifierList(ccd):
+    """Construct a list of AmplifierBuilder objects
     """
     # Much of this will need to be filled in when we know it.
-    assert len(ccd['amplifiers']) > 0
+    assert len(ccd) > 0
     amp = list(ccd['amplifiers'].values())[0]
 
     rawBBox = makeBBoxFromList(amp['rawBBox'])  # total in file
     xRawExtent, yRawExtent = rawBBox.getDimensions()
 
-    from lsst.afw.table import LL, LR, UL, UR
-    readCorners = dict(LL=LL, LR=LR, UL=UL, UR=UR)
+    readCorners = {"LL": ReadoutCorner.LL,
+                   "LR": ReadoutCorner.LR,
+                   "UL": ReadoutCorner.UL,
+                   "UR": ReadoutCorner.UR}
 
-    schema = AmpInfoTable.makeMinimalSchema()
-
-    linThreshKey = schema.addField('linearityThreshold', type=float)
-    linMaxKey = schema.addField('linearityMaximum', type=float)
-    linUnitsKey = schema.addField('linearityUnits', type=str, size=9)
-    hduKey = schema.addField('hdu', type=np.int32)
-    # end placeholder
-
-    ampCatalog = AmpInfoCatalog(schema)
+    amplifierList = []
     for name, amp in sorted(ccd['amplifiers'].items(), key=lambda x: x[1]['hdu']):
-        record = ampCatalog.addNew()
-        record.setName(name)
-        record.set(hduKey, amp['hdu'])
+        amplifier = Amplifier.Builder()
+        amplifier.setName(name)
 
         ix, iy = amp['ixy']
         perAmpData = amp['perAmpData']
@@ -141,51 +134,58 @@ def makeAmpInfoCatalog(ccd):
 
         rawDataBBox = makeBBoxFromList(amp['rawDataBBox'])  # Photosensitive area
         xDataExtent, yDataExtent = rawDataBBox.getDimensions()
-        record.setBBox(geom.BoxI(
+        amplifier.setBBox(geom.BoxI(
             geom.PointI(ix*xDataExtent, iy*yDataExtent), rawDataBBox.getDimensions()))
 
         rawBBox = makeBBoxFromList(amp['rawBBox'])
         rawBBox.shift(geom.ExtentI(x0, y0))
-        record.setRawBBox(rawBBox)
+        amplifier.setRawBBox(rawBBox)
 
         rawDataBBox = makeBBoxFromList(amp['rawDataBBox'])
         rawDataBBox.shift(geom.ExtentI(x0, y0))
-        record.setRawDataBBox(rawDataBBox)
+        amplifier.setRawDataBBox(rawDataBBox)
 
         rawSerialOverscanBBox = makeBBoxFromList(amp['rawSerialOverscanBBox'])
         rawSerialOverscanBBox.shift(geom.ExtentI(x0, y0))
-        record.setRawHorizontalOverscanBBox(rawSerialOverscanBBox)
+        amplifier.setRawHorizontalOverscanBBox(rawSerialOverscanBBox)
 
         rawParallelOverscanBBox = makeBBoxFromList(amp['rawParallelOverscanBBox'])
         rawParallelOverscanBBox.shift(geom.ExtentI(x0, y0))
-        record.setRawVerticalOverscanBBox(rawParallelOverscanBBox)
+        amplifier.setRawVerticalOverscanBBox(rawParallelOverscanBBox)
 
         rawSerialPrescanBBox = makeBBoxFromList(amp['rawSerialPrescanBBox'])
         rawSerialPrescanBBox.shift(geom.ExtentI(x0, y0))
-        record.setRawPrescanBBox(rawSerialPrescanBBox)
+        amplifier.setRawPrescanBBox(rawSerialPrescanBBox)
 
         if perAmpData:
-            record.setRawXYOffset(geom.Extent2I(ix*xRawExtent, iy*yRawExtent))
+            amplifier.setRawXYOffset(geom.Extent2I(ix*xRawExtent, iy*yRawExtent))
         else:
-            record.setRawXYOffset(geom.Extent2I(0, 0))
+            amplifier.setRawXYOffset(geom.Extent2I(0, 0))
 
-        record.setReadoutCorner(readCorners[amp['readCorner']])
-        record.setGain(amp['gain'])
-        record.setReadNoise(amp['readNoise'])
-        record.setSaturation(amp['saturation'])
-        record.setHasRawInfo(True)
+        amplifier.setReadoutCorner(readCorners[amp['readCorner']])
+        amplifier.setGain(amp['gain'])
+        amplifier.setReadNoise(amp['readNoise'])
+        amplifier.setSaturation(amp['saturation'])
+
         # flip data when assembling if needs be (e.g. data from the serial at the top of a CCD)
         flipX, flipY = amp.get("flipXY")
 
-        record.setRawFlipX(flipX)
-        record.setRawFlipY(flipY)
+        amplifier.setRawFlipX(flipX)
+        amplifier.setRawFlipY(flipY)
         # linearity placeholder stuff
-        record.setLinearityCoeffs([float(val) for val in amp['linearityCoeffs']])
-        record.setLinearityType(amp['linearityType'])
-        record.set(linThreshKey, float(amp['linearityThreshold']))
-        record.set(linMaxKey, float(amp['linearityMax']))
-        record.set(linUnitsKey, "DN")
-    return ampCatalog
+        amplifier.setLinearityCoeffs([float(val) for val in amp['linearityCoeffs']])
+        amplifier.setLinearityType(amp['linearityType'])
+        amplifier.setLinearityThreshold(float(amp['linearityThreshold']))
+        amplifier.setLinearityMaximum(float(amp['linearityMax']))
+        amplifier.setLinearityUnits("DN")
+        amplifierList.append(amplifier)
+    return amplifierList
+
+
+def makeAmpInfoCatalog(ccd):
+    """Backward compatible name.
+    """
+    return makeAmplifierList(ccd)
 
 
 def makeBBoxFromList(ylist):
@@ -250,24 +250,24 @@ def makeTransformDict(nativeSys, transformDict, plateScale):
     return resMap
 
 
-def makeCameraFromCatalogs(cameraName, detectorConfigList, nativeSys, transformDict, ampInfoCatDict,
+def makeCameraFromCatalogs(cameraName, detectorConfigList, nativeSys, transformDict, amplifierDict,
                            pupilFactoryClass=cameraGeom.pupil.PupilFactory):
     """Construct a Camera instance from a dictionary of
-       detector name : `lsst.afw.table.ampInfo.AmpInfoCatalog`
+       detector name : `lsst.afw.cameraGeom.amplifier`
 
     Parameters
     ----------
     cameraName : `str`
         The name of the camera
-    detectorConfig : `list`
+    detectorConfigList : `list`
         A list of `lsst.afw.cameraGeom.cameraConfig.DetectorConfig`
     nativeSys : `lsst.afw.cameraGeom.CameraSys`
         The native transformation type; must be `lsst.afw.cameraGeom.FOCAL_PLANE`
     transformDict : `dict`
         A dict of lsst.afw.cameraGeom.CameraSys : `lsst.afw.geom.TransformPoint2ToPoint2`
-    ampInfoCatDict : `dict`
+    amplifierDict : `dict`
         A dictionary of detector name :
-                           `lsst.afw.table.ampInfo.AmpInfoCatalog`
+                           `lsst.afw.cameraGeom.Amplifier.Builder`
     pupilFactoryClass : `type`, optional
         Class to attach to camera;
              `lsst.default afw.cameraGeom.PupilFactory`
@@ -291,29 +291,19 @@ def makeCameraFromCatalogs(cameraName, detectorConfigList, nativeSys, transformD
     assert nativeSys == cameraGeom.FOCAL_PLANE, "Cameras with nativeSys != FOCAL_PLANE are not supported."
 
     focalPlaneToField = transformDict[cameraGeom.FIELD_ANGLE]
-    transformMapBuilder = cameraGeom.TransformMap.Builder(nativeSys)
-    transformMapBuilder.connect(transformDict)
 
-    # First pass: build a list of all Detector ctor kwargs, minus the
-    # transformMap (which needs information from all Detectors).
-    detectorData = []
+    cameraBuilder = Camera.Builder(cameraName)
+    cameraBuilder.setPupilFactoryClass(pupilFactoryClass)
+
+    # Ensure all transforms in the camera transform dict are included.
+    for toSys, transform in transformDict.items():
+        cameraBuilder.setTransformFromFocalPlaneTo(toSys, transform)
+
     for detectorConfig in detectorConfigList:
-
-        # Get kwargs that could be used to construct each Detector
-        # if we didn't care about giving each of them access to
-        # all of the transforms.
-        thisDetectorData = makeDetectorData(
-            detectorConfig=detectorConfig,
-            ampInfoCatalog=ampInfoCatDict[detectorConfig.name],
-            focalPlaneToField=focalPlaneToField,
-        )
-
-        # Pull the transforms dictionary out of the data dict; we'll replace
-        # it with a TransformMap argument later.
-        thisDetectorTransforms = thisDetectorData.pop("transforms")
-
-        # Save the rest of the Detector data dictionary for later
-        detectorData.append(thisDetectorData)
+        # This should build all detector pixel -> focalPlane transforms.
+        cameraGeom.addDetectorFromConfig(cameraBuilder, detectorConfig,
+                                         amplifierDict[detectorConfig.name],
+                                         focalPlaneToField)
 
         # For reasons I don't understand, some obs_ packages (e.g. HSC) set
         # nativeSys to None for their detectors (which doesn't seem to be
@@ -334,14 +324,4 @@ def makeCameraFromCatalogs(cameraName, detectorConfigList, nativeSys, transformD
             "Detectors with nativeSys != PIXELS are not supported."
         detectorNativeSys = cameraGeom.CameraSys(detectorNativeSys, detectorConfig.name)
 
-        # Add this detector's transform dict to the shared TransformMapBuilder
-        transformMapBuilder.connect(detectorNativeSys, thisDetectorTransforms)
-
-    # Now that we've collected all of the Transforms, we can finally build the
-    # (immutable) TransformMap.
-    transformMap = transformMapBuilder.build()
-
-    # Second pass through the detectorConfigs: actually make Detector instances
-    detectorList = [cameraGeom.Detector(transformMap=transformMap, **kw) for kw in detectorData]
-
-    return cameraGeom.Camera(cameraName, detectorList, transformMap, pupilFactoryClass)
+    return cameraBuilder.finish()
