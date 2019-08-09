@@ -1357,3 +1357,23 @@ deepCoadd_mcalmax_deblended_schema:
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
     template: schema/mcalmax-deblended.fits
+findDefects_config:
+    description: "Configuration for the defect finding task."
+    persistable: Config
+    python: lsst.cp.pipe.defects.FindDefectsTaskConfig
+    storage: ConfigStorage
+    tables:
+    - raw
+    template: config/findDefects.py
+findDefects_metadata:
+    description: "Metadata for the defect finding task."
+    persistable: PropertySet
+    storage: YamlStorage
+    python: lsst.daf.base.PropertySet
+    template: findDefects_metadata/%(detector)03d.yaml
+cpPipePlotRoot:
+    description: "A dataset for the root path for cp_pipe plots"
+    persistable: ignored
+    python: MatplotlibStorage
+    storage: PickleStorage
+    template: 'plots/'
