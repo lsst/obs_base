@@ -953,6 +953,14 @@ fgcmOutputProducts_config:
     storage: ConfigStorage
     python: lsst.fgcmcal.fgcmOutputProducts.FgcmOutputProductsConfig
     template: config/fgcmOutputProducts.py
+fgcmCalibrateTract_config:
+    description: >
+      Configuration of FgcmCalibrateTractTask, used for running fgcmcal
+      on a single tract.
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.fgcmcal.fgcmCalibrateTract.FgcmCalibrateTractConfig
+    template: config/fgcmCalibrateTract.py
 fgcmVisitCatalog:
     description: >
       Catalog of visit information used for input to FGCM global photometric fit.
@@ -1062,8 +1070,24 @@ transmission_atmosphere_fgcm:
     python: lsst.afw.image.TransmissionCurve
     storage: FitsCatalogStorage
     level: None
+transmission_atmosphere_fgcm_tract:
+    description: >
+      Wavelength-dependent throughput due to atmosphere as constrained
+      by FGCM per tract (spatially constant).  Generated in FgcmCalibrateTractTask.
+    template: ''
+    persistable: TransmissionCurve
+    python: lsst.afw.image.TransmissionCurve
+    storage: FitsCatalogStorage
+    level: None
 fgcm_photoCalib:
     description: "Photometric calibration produced by FGCM; generated in FgcmOutputProductsTask."
+    persistable: PhotoCalib
+    storage: FitsCatalogStorage
+    python: lsst.afw.image.PhotoCalib
+    tables: raw
+    template: ''
+fgcm_tract_photoCalib:
+    description: "Photometric calibration produced by FGCM per tract; generated in FgcmCalibrateTractTask."
     persistable: PhotoCalib
     storage: FitsCatalogStorage
     python: lsst.afw.image.PhotoCalib
