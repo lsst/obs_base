@@ -1030,7 +1030,10 @@ class CameraMapper(dafPersist.Mapper):
         filterName = actualId['filter']
         if self.filters is not None and filterName in self.filters:
             filterName = self.filters[filterName]
-        item.setFilter(afwImage.Filter(filterName))
+        try:
+            item.setFilter(afwImage.Filter(filterName))
+        except pexExcept.NotFoundError:
+            self.log.warn("Filter %s not defined.  Set to UNKNOWN." % (filterName))
 
     def _standardizeExposure(self, mapping, item, dataId, filter=True,
                              trimmed=True, setVisitInfo=True):
