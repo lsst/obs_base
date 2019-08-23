@@ -23,7 +23,9 @@
 import copy
 import os
 import re
+import traceback
 import weakref
+
 from astro_metadata_translator import fix_header
 import lsst.daf.persistence as dafPersist
 from . import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping
@@ -37,6 +39,7 @@ import lsst.log as lsstLog
 import lsst.pex.exceptions as pexExcept
 from .exposureIdInfo import ExposureIdInfo
 from .makeRawVisitInfo import MakeRawVisitInfo
+from .utils import createInitialSkyWcs, InitialSkyWcsError
 from lsst.utils import getPackageDir
 
 __all__ = ["CameraMapper", "exposureFromImage"]
@@ -1029,13 +1032,12 @@ class CameraMapper(dafPersist.Mapper):
             filterName = self.filters[filterName]
         item.setFilter(afwImage.Filter(filterName))
 
-    # Default standardization function for exposures
     def _standardizeExposure(self, mapping, item, dataId, filter=True,
                              trimmed=True, setVisitInfo=True):
         """Default standardization function for images.
 
         This sets the Detector from the camera geometry
-        and optionally set the Fiter. In both cases this saves
+        and optionally set the Filter. In both cases this saves
         having to persist some data in each exposure (or image).
 
         Parameters
@@ -1062,20 +1064,76 @@ class CameraMapper(dafPersist.Mapper):
             The standardized Exposure.
         """
         try:
-            item = exposureFromImage(item, dataId, mapper=self, logger=self.log, setVisitInfo=setVisitInfo)
+            exposure = exposureFromImage(item, dataId, mapper=self, logger=self.log,
+                                         setVisitInfo=setVisitInfo)
         except Exception as e:
             self.log.error("Could not turn item=%r into an exposure: %s" % (repr(item), e))
             raise
 
         if mapping.level.lower() == "amp":
-            self._setAmpDetector(item, dataId, trimmed)
+            self._setAmpDetector(exposure, dataId, trimmed)
         elif mapping.level.lower() == "ccd":
-            self._setCcdDetector(item, dataId, trimmed)
+            self._setCcdDetector(exposure, dataId, trimmed)
+
+        # We can only create a WCS if it doesn't already have one and
+        # we have either a VisitInfo or exposure metadata.
+        if exposure.getWcs() is None and \
+           (exposure.getInfo().getVisitInfo() is not None or exposure.getMetadata().toDict() != {}):
+            self._createInitialSkyWcs(exposure)
 
         if filter:
-            self._setFilter(mapping, item, dataId)
+            self._setFilter(mapping, exposure, dataId)
 
-        return item
+        return exposure
+
+    def _createSkyWcsFromMetadata(self, exposure):
+        """Create a SkyWcs from the FITS header metadata in an Exposure.
+
+        Parameters
+        ----------
+        exposure : `lsst.afw.image.Exposure`
+            The exposure to get metadata from, and attach the SkyWcs to.
+        """
+        metadata = exposure.getMetadata()
+        try:
+            wcs = afwGeom.makeSkyWcs(metadata, strip=True)
+            exposure.setWcs(wcs)
+        except pexExcept.TypeError as e:
+            # See DM-14372 for why this is debug and not warn (e.g. calib files without wcs metadata).
+            self.log.debug("wcs set to None; missing information found in metadata to create a valid wcs:"
+                           " %s", e.args[0])
+        # ensure any WCS values stripped from the metadata are removed in the exposure
+        exposure.setMetadata(metadata)
+
+    def _createInitialSkyWcs(self, exposure):
+        """Create a SkyWcs from the boresight and camera geometry.
+
+        If the boresight or camera geometry do not support this method of
+        WCS creation, this falls back on the header metadata-based version
+        (typically a purely linear FITS crval/crpix/cdmatrix WCS).
+
+        Parameters
+        ----------
+        exposure : `lsst.afw.image.Exposure`
+            The exposure to get data from, and attach the SkyWcs to.
+        """
+        # Always use try to use metadata first, to strip WCS keys from it.
+        self._createSkyWcsFromMetadata(exposure)
+
+        if exposure.getInfo().getVisitInfo() is None:
+            msg = "No VisitInfo; cannot access boresight information. Defaulting to metadata-based SkyWcs."
+            self.log.warn(msg)
+            return
+        try:
+            newSkyWcs = createInitialSkyWcs(exposure.getInfo().getVisitInfo(), exposure.getDetector())
+            exposure.setWcs(newSkyWcs)
+        except InitialSkyWcsError as e:
+            msg = "Cannot create SkyWcs using VisitInfo and Detector, using metadata-based SkyWcs: %s"
+            self.log.warn(msg, e)
+            self.log.debug("Exception was: %s", traceback.TracebackException.from_exception(e))
+            if e.__context__ is not None:
+                self.log.debug("Root-cause Exception was: %s",
+                               traceback.TracebackException.from_exception(e.__context__))
 
     def _makeCamera(self, policy, repositoryDir):
         """Make a camera (instance of lsst.afw.cameraGeom.Camera) describing
@@ -1259,27 +1317,14 @@ def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo
     elif isinstance(image, afwImage.DecoratedImage):
         exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image.getImage()))
         metadata = image.getMetadata()
-        try:
-            wcs = afwGeom.makeSkyWcs(metadata, strip=True)
-            exposure.setWcs(wcs)
-        except pexExcept.TypeError as e:
-            # raised on failure to create a wcs (and possibly others)
-            if logger is None:
-                logger = lsstLog.Log.getLogger("CameraMapper")
-            logger.debug("wcs set to None; insufficient information found in metadata to create a valid wcs:"
-                         " %s", e.args[0])
-
         exposure.setMetadata(metadata)
     elif isinstance(image, afwImage.Exposure):
-        # Exposure
         exposure = image
         metadata = exposure.getMetadata()
-    else:
-        # Image
+    else:  # Image
         exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image))
-    #
+
     # set VisitInfo if we can
-    #
     if setVisitInfo and exposure.getInfo().getVisitInfo() is None:
         if metadata is not None:
             if mapper is None:
