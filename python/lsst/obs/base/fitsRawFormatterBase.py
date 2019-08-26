@@ -246,8 +246,8 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
         Parameters
         ----------
         parameters : `dict`, optional
-            If specified a dictionary of slicing parameters that overrides
-            those in ``self.fileDescriptor`.
+            If specified, a dictionary of slicing parameters that overrides
+            those in the `fileDescriptor` attribute.
 
         Returns
         -------
