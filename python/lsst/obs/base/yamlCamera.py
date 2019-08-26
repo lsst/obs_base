@@ -153,7 +153,7 @@ def makeAmplifierList(ccd):
                 bbox.flipLR(rawBBox.getWidth())
             if controllerFlipY:
                 bbox.flipTB(rawBBox.getHeight())
-            bbox.shift(afwGeom.ExtentI(x0, y0))
+            bbox.shift(geom.ExtentI(x0, y0))
 
             return bbox
 
