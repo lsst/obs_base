@@ -20,6 +20,8 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
+__all__ = ('InitialSkyWcsError', 'createInitialSkyWcs', 'bboxFromIraf')
+
 import re
 import lsst.geom as geom
 
