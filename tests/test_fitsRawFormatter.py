@@ -33,7 +33,7 @@ import lsst.afw.geom
 import lsst.daf.base
 import lsst.daf.butler
 import lsst.geom
-from lsst.obs.base import FitsRawFormatterBase, MakeRawVisitInfoViaObsInfo
+from lsst.obs.base import FitsRawFormatterBase, MakeRawVisitInfoViaObsInfo, FilterDefinitionCollection
 from lsst.obs.base.utils import createInitialSkyWcs, InitialSkyWcsError
 
 
@@ -55,6 +55,8 @@ class MakeTestingRawVisitInfo(MakeRawVisitInfoViaObsInfo):
 
 
 class SimpleFitsRawFormatter(FitsRawFormatterBase):
+    filterDefinitions = FilterDefinitionCollection()
+
     @property
     def translatorClass(self):
         return SimpleTestingTranslator
@@ -70,6 +72,9 @@ class SimpleFitsRawFormatter(FitsRawFormatterBase):
 
 class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
     def setUp(self):
+        # reset the filters before we test anything
+        FilterDefinitionCollection.reset()
+
         # The FITS WCS and VisitInfo coordinates in this header are intentionally
         # different, to make comparisons between them more obvious.
         self.boresight = lsst.geom.SpherePoint(10., 20., lsst.geom.degrees)

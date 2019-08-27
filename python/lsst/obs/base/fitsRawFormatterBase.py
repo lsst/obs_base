@@ -40,6 +40,10 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
     FITS files.
     """
 
+    def __init__(self, *args, **kwargs):
+        self.filterDefinitions.defineFilters()
+        super().__init__(*args, **kwargs)
+
     @property
     @abstractmethod
     def translatorClass(self):
@@ -49,6 +53,14 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
         return None
 
     _observationInfo = None
+
+    @property
+    @abstractmethod
+    def filterDefinitions(self):
+        """`~lsst.obs.base.FilterDefinitions`, defining the filters for this
+        instrument.
+        """
+        return None
 
     def readImage(self):
         """Read just the image component of the Exposure.
@@ -188,8 +200,14 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
         -------
         filter : `~lsst.afw.image.Filter`
             Object that identifies the filter for this image.
+
+        Raises
+        ------
+        NotFoundError
+            Raised if the physical filter was not registered via
+            `~lsst.afw.image.utils.defineFilter`.
         """
-        raise NotImplementedError("Must be implemented by subclasses.")
+        return lsst.afw.image.Filter(self.observationInfo.physical_filter)
 
     def readImageComponent(self, component):
         """Read the image, mask, or variance component of an Exposure.
