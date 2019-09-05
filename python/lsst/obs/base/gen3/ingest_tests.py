@@ -26,6 +26,7 @@ __all__ = ("IngestTestBase",)
 
 import abc
 import tempfile
+import unittest
 import os
 import shutil
 
@@ -110,15 +111,19 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
     def testHardLink(self):
         self.config.transfer = "hardlink"
-        self.runIngestTest()
+        try:
+            self.runIngestTest()
+        except PermissionError as err:
+            raise unittest.SkipTest("Skipping hard-link test because input data"
+                                    " is on a different filesystem.") from err
 
     def testInPlace(self):
         """Test that files already in the directory can be added to the
         registry in-place.
         """
-        # hardlink into repo root manually
+        # copy into repo root manually
         newPath = os.path.join(self.butler.datastore.root, os.path.basename(self.file))
-        os.link(self.file, newPath)
+        shutil.copyfile(self.file, newPath)
         self.config.transfer = None
         self.runIngestTest([newPath])
 
