@@ -27,6 +27,7 @@ from astro_metadata_translator import ObservationInfo
 
 import lsst.afw.image
 import lsst.afw.geom
+from lsst.daf.butler import FileDescriptor
 from lsst.daf.butler.formatters.fitsExposureFormatter import FitsExposureFormatter
 import lsst.log
 
@@ -42,6 +43,38 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
     def __init__(self, *args, **kwargs):
         self.filterDefinitions.defineFilters()
         super().__init__(*args, **kwargs)
+
+    @classmethod
+    def fromMetadata(cls, metadata, obsInfo=None, storageClass=None, location=None):
+        """Construct a possibly-limited formatter from known metadata.
+
+        Parameters
+        ----------
+        metadata : `lsst.daf.base.PropertyList`
+            Raw header metadata, with any fixes (see
+            `astro_metadata_translator.fix_header`) applied but nothing
+            stripped.
+        obsInfo : `astro_metadata_translator.ObservationInfo`, optional
+            Structured information already extracted from ``metadata``.
+            If not provided, will be read from ``metadata`` on first use.
+        storageClass : `lsst.daf.butler.StorageClass`, optional
+            StorageClass for this file.  If not provided, the formatter will
+            only support `makeWcs`, `makeVisitInfo`, `makeFilter`, and other
+            operations that operate purely on metadata and not the actual file.
+        location : `lsst.daf.butler.Location`, optional.
+            Location of the file.  If not provided, the formatter will only
+            support `makeWcs`, `makeVisitInfo`, `makeFilter`, and other
+            operations that operate purely on metadata and not the actual file.
+
+        Returns
+        -------
+        formatter : `FitsRawFormatterBase`
+            An instance of ``cls``.
+        """
+        self = cls(FileDescriptor(location, storageClass))
+        self._metadata = metadata
+        self._observationInfo = obsInfo
+        return self
 
     @property
     @abstractmethod
