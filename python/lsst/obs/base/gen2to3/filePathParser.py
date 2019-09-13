@@ -27,10 +27,6 @@ from typing import Dict
 
 from ..mapping import Mapping
 
-# Regular expression that matches a single substitution in
-# Gen2 CameraMapper template, such as "%(tract)04d".
-TEMPLATE_RE = re.compile(r"\%\((?P<name>\w+)\)[^\%]*?(?P<type>[idrs])")
-
 
 class FilePathParser:
     """A callable object that extracts Gen2 data IDs from filenames

@@ -45,10 +45,10 @@ class DataIdExtractor:
     instrument : `str`
         Name of the Gen3 instrument for output data IDs that include that
         dimension.
-    filePathParser : `lsst.daf.butler.gen2convert.FilePathParser`, optional
+    filePathParser : `FilePathParser`, optional
         Object responsible for reading a Gen2 data ID from a filename.  Will
         be created from ``mapper`` if not provided.
-    translator : `lsst.daf.butler.gen2convert.Translator`, optional
+    translator : `Translator`, optional
         Object responsible for converting a Gen2 data ID into a Gen3 data ID.
         Will be created if not provided.
     mapping : `lsst.obs.base.Mapper`, optional

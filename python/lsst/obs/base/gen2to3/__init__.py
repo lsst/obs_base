@@ -19,7 +19,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from .filePathParser import *  # noqa
-from .translators import *  # noqa
-from .dataIdExtractor import *  # noqa
-from .convertRepo import *  # noqa
+from .filePathParser import *
+from .translators import *
+from .dataIdExtractor import *
+from .repoConverter import *
+from .calibRepoConverter import *
+from .standardRepoConverter import *
+from .rootRepoConverter import *
+from .convertRepo import *
