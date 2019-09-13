@@ -31,7 +31,7 @@ import os
 import shutil
 
 from lsst.daf.butler import Butler
-from lsst.obs.base.gen3 import RawIngestTask
+from lsst.obs.base import RawIngestTask
 
 
 class IngestTestBase(metaclass=abc.ABCMeta):
@@ -64,7 +64,8 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
         # Make a default config for test methods to play with
         self.config = RawIngestTask.ConfigClass()
-        self.config.onError = "break"
+        self.config.instrument = \
+            f"{self.instrument.__class__.__module__}.{self.instrument.__class__.__name__}"
 
     def tearDown(self):
         if os.path.exists(self.root):
@@ -121,86 +122,16 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         """Test that files already in the directory can be added to the
         registry in-place.
         """
-        # copy into repo root manually
+        # symlink into repo root manually
         newPath = os.path.join(self.butler.datastore.root, os.path.basename(self.file))
-        shutil.copyfile(self.file, newPath)
+        os.symlink(self.file, newPath)
         self.config.transfer = None
         self.runIngestTest([newPath])
 
-    def testOnConflictFail(self):
-        """Re-ingesting the same data into the repository should fail, if
-        configured to do so.
+    def testFailOnConflict(self):
+        """Re-ingesting the same data into the repository should fail.
         """
         self.config.transfer = "symlink"
-        self.config.conflict = "fail"
         self.runIngest()
         with self.assertRaises(Exception):
             self.runIngest()
-
-    def testOnConflictIgnore(self):
-        """Re-ingesting the same data into the repository does not fail, if
-        configured to ignore conflict errors.
-        """
-        self.config.transfer = "symlink"
-        self.config.conflict = "ignore"
-        self.runIngest()   # this one should succeed
-        n1, = self.butler.registry.query("SELECT COUNT(*) FROM Dataset")
-        self.runIngest()   # this one should silently fail
-        n2, = self.butler.registry.query("SELECT COUNT(*) FROM Dataset")
-        self.assertEqual(n1, n2)
-
-    def testOnConflictStash(self):
-        """Re-ingesting the same data will be put into a different collection,
-        if configured to do so.
-        """
-        self.config.transfer = "symlink"
-        self.config.conflict = "ignore"
-        self.config.stash = "stash"
-        self.runIngest()   # this one should write to 'raw'
-        self.runIngest()   # this one should write to 'stash'
-        dt = self.butler.registry.getDatasetType("raw.metadata")
-        ref1 = self.butler.registry.find(self.butler.collection, dt, self.dataId)
-        ref2 = self.butler.registry.find("stash", dt, self.dataId)
-        self.assertNotEqual(ref1.id, ref2.id)
-        self.assertEqual(self.butler.get(ref1).toDict(), self.butler.getDirect(ref2).toDict())
-
-    def testOnErrorBreak(self):
-        """Test that errors do not roll back success, when configured to do so.
-
-        Failing to ingest a nonexistent file after ingesting the valid one should
-        leave the valid one in the registry, despite raising an exception.
-        """
-        self.config.transfer = "symlink"
-        self.config.onError = "break"
-        with self.assertRaises(Exception):
-            self.runIngest(files=[self.file, "nonexistent.fits"])
-        dt = self.butler.registry.getDatasetType("raw.metadata")
-        self.assertIsNotNone(self.butler.registry.find(self.butler.collection, dt, self.dataId))
-
-    def testOnErrorContinue(self):
-        """Failing to ingest nonexistent files before and after ingesting the
-        valid one should leave the valid one in the registry and not raise
-        an exception.
-        """
-        self.config.transfer = "symlink"
-        self.config.onError = "continue"
-        self.runIngest(files=["nonexistent.fits", self.file, "still-not-here.fits"])
-        dt = self.butler.registry.getDatasetType("raw.metadata")
-        self.assertIsNotNone(self.butler.registry.find(self.butler.collection, dt, self.dataId))
-
-    def testOnErrorRollback(self):
-        """Failing to ingest nonexistent files after ingesting the
-        valid one should leave the registry unchanged.
-        """
-        self.config.transfer = "symlink"
-        self.config.onError = "rollback"
-        with self.assertRaises(Exception):
-            self.runIngest(file=[self.file, "nonexistent.fits"])
-        try:
-            dt = self.butler.registry.getDatasetType("raw.metadata")
-        except KeyError:
-            # If we also rollback registering the DatasetType, that's fine,
-            # but not required.
-            pass
-        else:
-            self.assertIsNotNone(self.butler.registry.find(self.butler.collection, dt, self.dataId))
