@@ -309,7 +309,7 @@ class RawIngestTask(Task):
                 # Record that we've handled this entry.
                 self.dimensionEntriesDone[dimension].add(dimensionDataId)
         # Do this after the loop to ensure all the dimensions are added
-        if self.config.doAddRegions:
+        if self.config.doAddRegions and obsInfo.tracking_radec is not None:
             region = self.buildRegion(headers)
             try:
                 self.butler.registry.setDimensionRegion(DataId(fullDataId,

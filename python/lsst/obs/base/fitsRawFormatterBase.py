@@ -163,6 +163,10 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
             Raised if there is an error generating the SkyWcs, chained from the
             lower-level exception if available.
         """
+        if self.observationInfo.tracking_radec is None:
+            # This is not an on-sky observation
+            return None
+
         skyWcs = self._createSkyWcsFromMetadata()
 
         log = lsst.log.Log.getLogger("fitsRawFormatter")
@@ -186,6 +190,10 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
             The WCS that was created from ``self.metadata``, or None if that
             creation fails due to invalid metadata.
         """
+        if self.observationInfo.tracking_radec is None:
+            # This is not an on-sky observation
+            return None
+
         try:
             return lsst.afw.geom.makeSkyWcs(self.metadata, strip=True)
         except lsst.pex.exceptions.TypeError as e:
