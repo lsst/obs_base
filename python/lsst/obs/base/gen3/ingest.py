@@ -30,7 +30,8 @@ import os.path
 from sqlalchemy.exc import IntegrityError
 
 from astro_metadata_translator import ObservationInfo, fix_header, merge_headers
-from lsst.afw.image import readMetadata, bboxFromMetadata
+from lsst.afw.image import bboxFromMetadata
+from lsst.afw.fits import readMetadata
 from lsst.afw.geom import SkyWcs
 from lsst.daf.butler import DatasetType, Run, DataId, ConflictingDefinitionError, Butler
 from lsst.daf.butler.instrument import (Instrument, updateExposureEntryFromObsInfo,
