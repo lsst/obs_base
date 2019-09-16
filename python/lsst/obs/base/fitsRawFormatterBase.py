@@ -29,7 +29,6 @@ import lsst.afw.image
 import lsst.afw.geom
 from lsst.daf.butler.formatters.fitsExposureFormatter import FitsExposureFormatter
 import lsst.log
-import lsst.pex.exceptions
 
 from lsst.obs.base import MakeRawVisitInfoViaObsInfo
 from lsst.obs.base.utils import createInitialSkyWcs, InitialSkyWcsError
@@ -196,7 +195,7 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
 
         try:
             return lsst.afw.geom.makeSkyWcs(self.metadata, strip=True)
-        except lsst.pex.exceptions.TypeError as e:
+        except TypeError as e:
             log = lsst.log.Log.getLogger("fitsRawFormatter")
             log.warn("Cannot create a valid WCS from metadata: %s", e.args[0])
             return None
