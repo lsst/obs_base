@@ -1080,8 +1080,9 @@ class CameraMapper(dafPersist.Mapper):
 
         # We can only create a WCS if it doesn't already have one and
         # we have either a VisitInfo or exposure metadata.
-        if exposure.getWcs() is None and \
-           (exposure.getInfo().getVisitInfo() is not None or exposure.getMetadata().toDict() != {}):
+        # Do not calculate a WCS if this is an amplifier exposure
+        if mapping.level.lower() != "amp" and exposure.getWcs() is None and \
+           (exposure.getInfo().getVisitInfo() is not None or exposure.getMetadata().toDict()):
             self._createInitialSkyWcs(exposure)
 
         if filter:
