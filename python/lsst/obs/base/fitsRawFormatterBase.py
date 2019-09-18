@@ -101,6 +101,26 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
         """
         return None
 
+    def isOnSky(self):
+        """Boolean to determine if the exposure is thought to be on the sky.
+
+        Returns
+        -------
+        onSky : `bool`
+            Returns `True` if the observation looks like it was taken on the
+            sky.  Returns `False` if this observation looks like a calibration
+            observation.
+
+        Notes
+        -----
+        If there is tracking RA/Dec information associated with the
+        observation it is assumed that the observation is on sky.
+        Currently the observation type is not checked.
+        """
+        if self.observationInfo.tracking_radec is None:
+            return False
+        return True
+
     def stripMetadata(self):
         """Remove metadata entries that are parsed into components.
         """
@@ -162,7 +182,7 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
             Raised if there is an error generating the SkyWcs, chained from the
             lower-level exception if available.
         """
-        if self.observationInfo.tracking_radec is None:
+        if not self.isOnSky():
             # This is not an on-sky observation
             return None
 
@@ -189,7 +209,7 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
             The WCS that was created from ``self.metadata``, or None if that
             creation fails due to invalid metadata.
         """
-        if self.observationInfo.tracking_radec is None:
+        if not self.isOnSky():
             # This is not an on-sky observation
             return None
 
