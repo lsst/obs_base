@@ -40,9 +40,29 @@ from lsst.obs.base.utils import createInitialSkyWcs, InitialSkyWcsError
 class SimpleTestingTranslator(FitsTranslator, StubTranslator):
     _const_map = {"boresight_rotation_angle": Angle(90*u.deg),
                   "boresight_rotation_coord": "sky",
-                  "detector_exposure_id": 12345
+                  "detector_exposure_id": 12345,
+                  # The following are defined to prevent warnings about
+                  # undefined translators
+                  "dark_time": 0.0*u.s,
+                  "exposure_time": 0.0*u.s,
+                  "physical_filter": "u",
+                  "detector_num": 0,
+                  "detector_name": "0",
+                  "detector_group": "",
+                  "detector_unique_name": "0",
+                  "detector_serial": "",
+                  "observation_id": "--",
+                  "science_program": "unknown",
+                  "object": "unknown",
+                  "exposure_id": 0,
+                  "visit_id": 0,
+                  "relative_humidity": 30.0,
+                  "pressure": 0.0*u.MPa,
+                  "temperature": 273*u.K,
+                  "altaz_begin": None,
                   }
-    _trivial_map = {"boresight_airmass": "AIRMASS"}
+    _trivial_map = {"boresight_airmass": "AIRMASS",
+                    "observation_type": "OBSTYPE"}
 
     def to_tracking_radec(self):
         radecsys = ("RADESYS", )
@@ -79,8 +99,11 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
         # different, to make comparisons between them more obvious.
         self.boresight = lsst.geom.SpherePoint(10., 20., lsst.geom.degrees)
         self.header = {
+            "TELESCOP": "TEST",
+            "INSTRUME": "UNKNOWN",
             "AIRMASS": 1.2,
             "RADESYS": "ICRS",
+            "OBSTYPE": "science",
             "EQUINOX": 2000,
             "OBSGEO-X": "-5464588.84421314",
             "OBSGEO-Y": "-2493000.19137644",
@@ -103,10 +126,7 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
         self.metadata.update(self.header)
 
         maker = MakeTestingRawVisitInfo()
-        # Capture the warnings from SimpleTestingTranslator since they are
-        # confusing to people but irrelevant for the test.
-        with self.assertWarns(UserWarning), self.assertLogs(level="WARNING"):
-            self.visitInfo = maker(self.header)
+        self.visitInfo = maker(self.header)
 
         self.metadataSkyWcs = lsst.afw.geom.makeSkyWcs(self.metadata, strip=False)
         self.boresightSkyWcs = createInitialSkyWcs(self.visitInfo, CameraWrapper().camera.get(10))
