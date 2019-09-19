@@ -20,7 +20,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+import warnings
 import astropy.units
+import astropy.utils.exceptions
 from astropy.utils import iers
 
 # This is an unofficial ERFA interface provided by Astropy.
@@ -141,7 +143,12 @@ class MakeRawVisitInfoViaObsInfo(object):
             # ERFA needs a UT1 time split into two floats
             # We ignore any problems with DUT1 not being defined for now.
             try:
-                ut1time = middle.ut1
+                # Catch any warnings about the time being in the future
+                # since there is nothing we can do about that for simulated
+                # data and it tells us nothing for data from the past.
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", category=astropy.utils.exceptions.AstropyWarning)
+                    ut1time = middle.ut1
             except iers.IERSRangeError:
                 ut1time = middle
 

@@ -29,7 +29,6 @@ import lsst.afw.image
 import lsst.afw.geom
 from lsst.daf.butler.formatters.fitsExposureFormatter import FitsExposureFormatter
 import lsst.log
-import lsst.pex.exceptions
 
 from lsst.obs.base import MakeRawVisitInfoViaObsInfo
 from lsst.obs.base.utils import createInitialSkyWcs, InitialSkyWcsError
@@ -102,6 +101,26 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
         """
         return None
 
+    def isOnSky(self):
+        """Boolean to determine if the exposure is thought to be on the sky.
+
+        Returns
+        -------
+        onSky : `bool`
+            Returns `True` if the observation looks like it was taken on the
+            sky.  Returns `False` if this observation looks like a calibration
+            observation.
+
+        Notes
+        -----
+        If there is tracking RA/Dec information associated with the
+        observation it is assumed that the observation is on sky.
+        Currently the observation type is not checked.
+        """
+        if self.observationInfo.tracking_radec is None:
+            return False
+        return True
+
     def stripMetadata(self):
         """Remove metadata entries that are parsed into components.
         """
@@ -163,6 +182,10 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
             Raised if there is an error generating the SkyWcs, chained from the
             lower-level exception if available.
         """
+        if not self.isOnSky():
+            # This is not an on-sky observation
+            return None
+
         skyWcs = self._createSkyWcsFromMetadata()
 
         log = lsst.log.Log.getLogger("fitsRawFormatter")
@@ -186,9 +209,13 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
             The WCS that was created from ``self.metadata``, or None if that
             creation fails due to invalid metadata.
         """
+        if not self.isOnSky():
+            # This is not an on-sky observation
+            return None
+
         try:
             return lsst.afw.geom.makeSkyWcs(self.metadata, strip=True)
-        except lsst.pex.exceptions.TypeError as e:
+        except TypeError as e:
             log = lsst.log.Log.getLogger("fitsRawFormatter")
             log.warn("Cannot create a valid WCS from metadata: %s", e.args[0])
             return None

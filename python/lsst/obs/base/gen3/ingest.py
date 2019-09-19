@@ -29,8 +29,9 @@ import os.path
 # refactoring in daf butler
 from sqlalchemy.exc import IntegrityError
 
-from astro_metadata_translator import ObservationInfo, fix_header
-from lsst.afw.image import readMetadata, bboxFromMetadata
+from astro_metadata_translator import ObservationInfo, fix_header, merge_headers
+from lsst.afw.image import bboxFromMetadata
+from lsst.afw.fits import readMetadata
 from lsst.afw.geom import SkyWcs
 from lsst.daf.butler import DatasetType, Run, DataId, ConflictingDefinitionError, Butler
 from lsst.daf.butler.instrument import (Instrument, updateExposureEntryFromObsInfo,
@@ -232,7 +233,8 @@ class RawIngestTask(Task):
             Single-element list containing the header of the first
             non-empty HDU.
         """
-        headers = [readMetadata(file)]
+        phdu = readMetadata(file, 0)
+        headers = [merge_headers([phdu, readMetadata(file)], mode="overwrite")]
         for h in headers:
             fix_header(h)
         return headers
@@ -309,7 +311,7 @@ class RawIngestTask(Task):
                 # Record that we've handled this entry.
                 self.dimensionEntriesDone[dimension].add(dimensionDataId)
         # Do this after the loop to ensure all the dimensions are added
-        if self.config.doAddRegions:
+        if self.config.doAddRegions and obsInfo.tracking_radec is not None:
             region = self.buildRegion(headers)
             try:
                 self.butler.registry.setDimensionRegion(DataId(fullDataId,
