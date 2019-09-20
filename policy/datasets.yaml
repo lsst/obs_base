@@ -575,14 +575,14 @@ fakeSourceCat:
     description: "A catalog of fake sources sized to match a specific calexp"
     persistable: ignored
     storage: ParquetStorage
-    python: lsst.qa.explorer.parquetTable.MultilevelParquetTable
+    python: lsst.pipe.tasks.parquetTable.MultilevelParquetTable
     tables: raw
     template: ''
 deepCoadd_fakeSourceCat:
     description: "A catalog of fake sources covering the sky area of a specific tract"
     persistable: ignored
     storage: ParquetStorage
-    python: lsst.qa.explorer.parquetTable.MultilevelParquetTable
+    python: lsst.pipe.tasks.parquetTable.MultilevelParquetTable
     tables: raw
     template: deepCoadd-results/%(tract)d/fakeSourceCat-%(tract)d.parq
 insertFakes_config:
@@ -1113,11 +1113,11 @@ deepCoadd_obj: #consolidated multi-band object tables from coadd
         see MultilevelParquetTable documentation for more.
     persistable: ignored
     storage: ParquetStorage
-    python: lsst.qa.explorer.parquetTable.MultilevelParquetTable
+    python: lsst.pipe.tasks.parquetTable.MultilevelParquetTable
     template: deepCoadd-results/merged/%(tract)d/%(patch)s/obj-%(tract)d-%(patch)s.parq
 writeObjectTable_config:
     persistable: Config
-    python: lsst.qa.explorer.writeObjectTable.WriteObjectTableConfig
+    python: lsst.pipe.tasks.postprocess.WriteObjectTableConfig
     storage: ConfigStorage
     template: config/writeObjectTable.py
 deepCoadd_qa:
@@ -1132,14 +1132,14 @@ deepCoadd_sg:
         Quantities needed for the star galaxy separation task computed from the deepCoadd_obj catalog.
     persistable: ignored
     storage: ParquetStorage
-    python: lsst.qa.explorer.parquetTable.MultilevelParquetTable
+    python: lsst.pipe.tasks.parquetTable.MultilevelParquetTable
     template: deepCoadd-results/merged/%(tract)d/%(patch)s/sg-%(tract)d-%(patch)s.parq
 deepCoadd_sg_features:
     description: >
         Features needed to train the star galaxy separation task computed from the deepCoadd_obj catalog.
     persistable: ignored
     storage: ParquetStorage
-    python: lsst.qa.explorer.parquetTable.MultilevelParquetTable
+    python: lsst.pipe.tasks.parquetTable.MultilevelParquetTable
     template: deepCoadd-results/merged/%(tract)d/%(patch)s/sg-feats-%(tract)d-%(patch)s.parq
 writeQATable_config:
     persistable: Config
@@ -1247,20 +1247,20 @@ deepCoadd_sg_features_tract:
         Contents same as deepCoadd_sg_features, but consolidated one-per-tract.
     persistable: ignored
     storage: ParquetStorage
-    python: lsst.qa.explorer.parquetTable.ParquetTable
+    python: lsst.pipe.tasks.parquetTable.ParquetTable
     template: deepCoadd-results/merged/%(tract)d/sg-feats-%(tract)d.parq
 transformObjectCatalog_config:
     description: >
         Configuration for Task to transform deepCoadd_obj table into objectTable
     persistable: Config
-    python: lsst.qa.explorer.postprocess.TransformObjectCatalogConfig
+    python: lsst.pipe.tasks.postprocess.TransformObjectCatalogConfig
     storage: ConfigStorage
     template: config/transformObjectCatalog.py
 consolidateObjectTable_config:
     description: >
         Configuration for Task to concatenate objectTables
     persistable: Config
-    python: lsst.qa.explorer.consolidateQATable.ConsolidateObjectTableConfig
+    python: lsst.pipe.tasks.postprocess.ConsolidateObjectTableConfig
     storage: ConfigStorage
     template: config/consolidateObjectTable.py
 objectTable:
@@ -1268,21 +1268,21 @@ objectTable:
         Per-Patch DPDD Object Table computed from the deepCoadd_obj catalog
     persistable: ignored
     storage: ParquetStorage
-    python: lsst.qa.explorer.parquetTable.MultilevelParquetTable
+    python: lsst.pipe.tasks.parquetTable.MultilevelParquetTable
     template: deepCoadd-results/merged/%(tract)d/%(patch)s/objectTable-%(tract)d-%(patch)s.parq
 objectTable_tract:
     description: >
         Per-tract DPDD Object Table
     persistable: ignored
     storage: ParquetStorage
-    python: lsst.qa.explorer.parquetTable.MultilevelParquetTable
+    python: lsst.pipe.tasks.parquetTable.MultilevelParquetTable
     template: deepCoadd-results/merged/%(tract)d/objectTable-%(tract)d.parq
 analysisVisitTable:
     description: >
         Per-visit source table (for specific tract) assembled by pipe_analysis scripts.
     persistable: ignored
     storage: ParquetStorage
-    python: lsst.qa.explorer.parquetTable.ParquetTable
+    python: lsst.pipe.tasks.parquetTable.ParquetTable
     template: plots/%(filter)s/tract-%(tract)d/visit-%(visit)d/%(tract)d_%(visit)d.parq
 analysisVisitTable_commonZp:
     description: >
@@ -1290,7 +1290,7 @@ analysisVisitTable_commonZp:
         with common zero-point.
     persistable: ignored
     storage: ParquetStorage
-    python: lsst.qa.explorer.parquetTable.ParquetTable
+    python: lsst.pipe.tasks.parquetTable.ParquetTable
     template: plots/%(filter)s/tract-%(tract)d/visit-%(visit)d/%(tract)d_%(visit)d_commonZp.parq
 analysisCoaddTable_forced:
     description: >
