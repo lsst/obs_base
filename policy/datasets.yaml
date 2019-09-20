@@ -1327,8 +1327,23 @@ matchVisits_config:
     python: lsst.qa.explorer.matchVisits.MatchVisitsConfig
     storage: ConfigStorage
     template: config/matchVisits.py
+qaDashboardTable:
+    description: >
+        Reshaping of pipe_analysis-created tables to suit ingest by the 
+        browser-based QA dashboard.
+    persistable: ignored
+    storage: ParquetStorage
+    python: lsst.qa.explorer.parquetTable.ParquetTable
+    template: deepCoadd-results/merged/%(tract)d/qaDashboardTable-%(tract)d.parq
+prepareQADashboard_config:
+    description: >
+        Configuration for Task to write reshaped tables for QA Dashboard.
+    persistable: Config
+    python: lsst.qa.explorer.prepareQADashboard.prepareQADashboardConfig
+    storage: ConfigStorage
+    template: config/prepareQADashboard.py
 
-# The 'ngmix' and 'mcal' datasets below are produced by CmdLineTasks in the
+# 'ngmix' and 'mcal' datasets below are produced by CmdLineTasks in the
 # meas_extensions_ngmix package, which is not part of the LSST pipelines now
 # but is very much a prototype of something that someday will be.
 # Unfortunately there's no good way to define these dataset types downstream
