@@ -229,7 +229,14 @@ class RepoConverter(ABC):
     ----------
     task : `ConvertRepoTask`
         Task instance that is using this helper object.
-    v
+    root : `str`
+        Root of the Gen2 repo being converted.
+    collections : `list` of `str`
+        Gen3 collections with which all converted datasets should be
+        associated.
+    subset : `ConversionSubset, optional
+        Helper object that implements a filter that restricts the data IDs that
+        are converted.
 
     Notes
     -----
