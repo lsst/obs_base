@@ -25,8 +25,9 @@ from abc import ABCMeta, abstractmethod
 
 from astro_metadata_translator import ObservationInfo
 
-import lsst.afw.image
+import lsst.afw.fits
 import lsst.afw.geom
+import lsst.afw.image
 from lsst.daf.butler import FileDescriptor
 from lsst.daf.butler.formatters.fitsExposureFormatter import FitsExposureFormatter
 import lsst.log
@@ -349,6 +350,11 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
         # been stripped during creation of the ObservationInfo, WCS, etc.
         full.setMetadata(self.metadata)
         return full
+
+    def readRawHeaderWcs(self, parameters=None):
+        """Read the SkyWcs stored in the un-modified raw FITS WCS header keys.
+        """
+        return lsst.afw.geom.makeSkyWcs(lsst.afw.fits.readMetadata(self.fileDescriptor))
 
     def write(self, inMemoryDataset):
         """Write a Python object to a file.

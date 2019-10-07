@@ -48,7 +48,8 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
                          raw_subsets=None,
                          good_detectorIds=None,
                          bad_detectorIds=None,
-                         linearizer_type=None
+                         linearizer_type=None,
+                         raw_header_wcs=None
                          ):
         """
         Set up the necessary variables for butlerGet tests.
@@ -87,6 +88,9 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
             dict of detectorId (usually `int`): LinearizerType
             (e.g. lsst.ip.isr.LinearizeLookupTable.LinearityType),
             or unittest.SkipTest to skip all linearizer tests.
+        raw_header_wcs : `lsst.afw.geom.SkyWcs`
+            The SkyWcs object that should be returned by:
+                `butler.get("raw_header_wcs", dataId=self.dataIds["raw"])`
         """
 
         fields = ['ccdExposureId_bits',
@@ -101,7 +105,8 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
                   'raw_subsets',
                   'good_detectorIds',
                   'bad_detectorIds',
-                  'linearizer_type'
+                  'linearizer_type',
+                  'raw_header_wcs'
                   ]
         ButlerGet = collections.namedtuple("ButlerGetData", fields)
 
@@ -117,7 +122,8 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
                                          raw_subsets=raw_subsets,
                                          good_detectorIds=good_detectorIds,
                                          bad_detectorIds=bad_detectorIds,
-                                         linearizer_type=linearizer_type
+                                         linearizer_type=linearizer_type,
+                                         raw_header_wcs=raw_header_wcs
                                          )
 
     def test_exposureId_bits(self):
@@ -162,6 +168,13 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
 
     def test_flat(self):
         self._test_exposure('flat')
+
+    def test_raw_header_wcs(self):
+        """Test that `raw_header_wcs` returns the unmodified raw image header.
+        """
+        if self.butler_get_data.raw_header_wcs is not None:
+            wcs = self.butler.get('raw_header_wcs', self.dataIds['raw'])
+            self.assertEqual(wcs, self.butler_get_data.raw_header_wcs)
 
     @unittest.skip('Cannot test this, as there is a bug in the butler! DM-8097')
     def test_raw_sub_bbox(self):
