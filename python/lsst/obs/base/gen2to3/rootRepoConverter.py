@@ -27,7 +27,7 @@ import re
 import itertools
 from typing import TYPE_CHECKING, Iterator, Tuple, List
 
-from lsst.daf.butler import DatasetType, DatasetRef
+from lsst.daf.butler import DatasetType, DatasetRef, FileDataset
 from .calibRepoConverter import CURATED_CALIBRATION_DATASET_TYPES
 from .standardRepoConverter import StandardRepoConverter
 
@@ -120,7 +120,7 @@ class RootRepoConverter(StandardRepoConverter):
                 records[dimension].extend(recordsForDimension)
         self.task.raws.insertDimensionData(records)
 
-    def iterDatasets(self) -> Iterator[Tuple[str, DatasetRef]]:
+    def iterDatasets(self) -> Iterator[FileDataset]:
         # Docstring inherited from RepoConverter.
         # Iterate over reference catalog files.
         for refCat, dimension in self._refCats:
@@ -133,11 +133,13 @@ class RootRepoConverter(StandardRepoConverter):
                     if m is not None:
                         htmId = int(m.group(1))
                         dataId = self.task.registry.expandDataId({dimension: htmId})
-                        yield os.path.join("ref_cats", refCat, fileName), DatasetRef(datasetType, dataId)
+                        yield FileDataset(path=os.path.join(self.root, "ref_cats", refCat, fileName),
+                                          ref=DatasetRef(datasetType, dataId))
             else:
                 for htmId in self.subset.skypix[dimension]:
                     dataId = self.task.registry.expandDataId({dimension: htmId})
-                    yield os.path.join("ref_cats", refCat, f"{htmId}.fits"), DatasetRef(datasetType, dataId)
+                    yield FileDataset(path=os.path.join(self.root, "ref_cats", refCat, f"{htmId}.fits"),
+                                      ref=DatasetRef(datasetType, dataId))
         yield from super().iterDatasets()
 
     def ingest(self):

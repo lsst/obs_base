@@ -29,7 +29,7 @@ from collections import defaultdict
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Generic, TypeVar, List, Tuple, Optional, Iterator, Set, Any, Callable, Dict
 
-from lsst.daf.butler import DatasetRef, Butler as Butler3, DataCoordinate
+from lsst.daf.butler import DatasetRef, Butler as Butler3, DataCoordinate, FileDataset
 from lsst.sphgeom import RangeSet, Region
 
 from .filePathParser import FilePathParser
@@ -344,7 +344,7 @@ class RepoConverter(ABC):
         """
         raise NotImplementedError()
 
-    def iterDatasets(self) -> Iterator[Tuple[str, DatasetRef]]:
+    def iterDatasets(self) -> Iterator[FileDataset]:
         """Iterate over all datasets in the repository that should be
         ingested into the Gen3 repository.
 
@@ -353,8 +353,9 @@ class RepoConverter(ABC):
 
         Yields
         ------
-        fileNameInRoot : `str`
-            Name of the file to be ingested, relative to the repository root.
+        dataset : `FileDataset`
+            Structures representing datasets to be ingested.  Paths should be
+            absolute.
         ref : `lsst.daf.butler.DatasetRef`
             Reference for the Gen3 datasets, including a complete `DatasetType`
             and data ID.
@@ -381,7 +382,7 @@ class RepoConverter(ABC):
                 ref = self._extractDatasetRef(fileNameInRoot)
                 if ref is not None:
                     if self.subset is None or self.subset.isRelated(ref.dataId):
-                        yield fileNameInRoot, ref
+                        yield FileDataset(path=os.path.join(self.root, fileNameInRoot), ref=ref)
                 else:
                     self._handleUnrecognizedFile(fileNameInRoot)
 
@@ -453,25 +454,23 @@ class RepoConverter(ABC):
         `insertDimensionData`.
         """
         self.task.log.info("Finding datasets in repo %s.", self.root)
-        datasets = defaultdict(list)
-        for fileNameInRoot, ref in self.iterDatasets():
-            datasets[ref.datasetType].append((fileNameInRoot, ref))
-        for datasetType, toIngest in datasets.items():
+        datasetsByType = defaultdict(list)
+        for dataset in self.iterDatasets():
+            datasetsByType[dataset.ref.datasetType].append(dataset)
+        for datasetType, datasetsForType in datasetsByType.items():
             self.task.registry.registerDatasetType(datasetType)
-            self.task.log.info("Ingesting %s %s datasets.", len(toIngest), datasetType.name)
+            self.task.log.info("Ingesting %s %s datasets.", len(datasetsForType), datasetType.name)
             try:
                 butler3, collections = self.getButler(datasetType.name)
             except LookupError as err:
                 self.task.log.warn(str(err))
                 continue
             try:
-                refs = [butler3.ingest(os.path.join(self.root, fileNameInRoot), ref,
-                                       transfer=self.task.config.transfer)
-                        for fileNameInRoot, ref in toIngest]
+                butler3.ingest(*datasetsForType, transfer=self.task.config.transfer)
             except LookupError as err:
                 raise LookupError(f"Error expanding data ID for dataset type {datasetType.name}.") from err
             for collection in collections:
-                self.task.registry.associate(collection, refs)
+                self.task.registry.associate(collection, [dataset.ref for dataset in datasetsForType])
 
     def getButler(self, datasetTypeName: str) -> Tuple[Butler3, List[str]]:
         """Create a new Gen3 Butler appropriate for a particular dataset type.
