@@ -434,6 +434,15 @@ class CameraMapper(dafPersist.Mapper):
 
                             setMethods("wcs", bypassImpl=getSkyWcs)
 
+                            def getRawHeaderWcs(datasetType, pythonType, location, dataId):
+                                """Create a SkyWcs from the un-modified raw FITS WCS header keys."""
+                                if datasetType[:3] != "raw":
+                                    raise dafPersist.NoResults("Can only get header WCS for raw exposures.",
+                                                               datasetType, dataId)
+                                return afwGeom.makeSkyWcs(readMetadata(location.getLocationsWithRoot()[0]))
+
+                            setMethods("header_wcs", bypassImpl=getRawHeaderWcs)
+
                             def getPhotoCalib(datasetType, pythonType, location, dataId):
                                 fitsReader = afwImage.ExposureFitsReader(location.getLocationsWithRoot()[0])
                                 return fitsReader.readPhotoCalib()
