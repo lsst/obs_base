@@ -1327,14 +1327,22 @@ matchVisits_config:
     python: lsst.qa.explorer.matchVisits.MatchVisitsConfig
     storage: ConfigStorage
     template: config/matchVisits.py
-qaDashboardTable:
+qaDashboardCoaddTable:
     description: >
         Reshaping of pipe_analysis-created tables to suit ingest by the 
         browser-based QA dashboard.
     persistable: ignored
     storage: ParquetStorage
     python: lsst.qa.explorer.parquetTable.ParquetTable
-    template: deepCoadd-results/merged/%(tract)d/qaDashboardTable-%(tract)d.parq
+    template: deepCoadd-results/merged/%(tract)d/qaDashboardCoaddTable-%(tract)d.parq
+qaDashboardVisitTable:
+    description: >
+        Reshaping of pipe_analysis-created visit tables to suit ingest
+        by the browser-based QA dashboard.
+    persistable: ignored
+    storage: ParquetStorage
+    python: lsst.qa.explorer.parquetTable.ParquetTable
+    template: deepCoadd-results/merged/%(tract)d/qaDashboardVisitTable-%(tract)d.parq
 prepareQADashboard_config:
     description: >
         Configuration for Task to write reshaped tables for QA Dashboard.
