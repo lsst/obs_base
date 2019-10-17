@@ -301,9 +301,9 @@ def makeCameraFromCatalogs(cameraName, detectorConfigList, nativeSys, transformD
 
     for detectorConfig in detectorConfigList:
         # This should build all detector pixel -> focalPlane transforms.
-        cameraGeom.addDetectorFromConfig(cameraBuilder, detectorConfig,
-                                         amplifierDict[detectorConfig.name],
-                                         focalPlaneToField)
+        cameraGeom.addDetectorBuilderFromConfig(cameraBuilder, detectorConfig,
+                                                amplifierDict[detectorConfig.name],
+                                                focalPlaneToField)
 
         # For reasons I don't understand, some obs_ packages (e.g. HSC) set
         # nativeSys to None for their detectors (which doesn't seem to be
