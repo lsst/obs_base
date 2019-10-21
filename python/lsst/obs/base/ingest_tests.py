@@ -77,7 +77,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        files : `list`, [`str`], or None
+        files : `list` [`str`], or None
             List of files to be ingested, or None to use ``self.file``
         """
         if files is None:
@@ -92,7 +92,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        files : `list`, [`str`], or None
+        files : `list` [`str`], or None
             List of files to be ingested, or None to use ``self.file``
         """
         self.runIngest(files)
@@ -101,6 +101,20 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         image = self.butler.get("raw.image", self.dataId)
         self.assertImagesEqual(exposure.image, image)
         self.assertEqual(metadata.toDict(), exposure.getMetadata().toDict())
+        self.checkRepo(files=files)
+
+    def checkRepo(self, files=None):
+        """Check the state of the repository after ingest.
+
+        This is an optional hook provided for subclasses; by default it does
+        nothing.
+
+        Parameters
+        ----------
+        files : `list` [`str`], or None
+            List of files to be ingested, or None to use ``self.file``
+        """
+        pass
 
     def testSymLink(self):
         self.config.transfer = "symlink"
