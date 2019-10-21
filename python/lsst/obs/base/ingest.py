@@ -319,7 +319,7 @@ class RawIngestTask(Task):
             if visitVertices:
                 visitRegion = ConvexPolygon(visitVertices)
             else:
-                self.log.warn("No region found for visit=%s.", file.obsInfo.visit_id,
+                self.log.warn("No region found for visit=%s in detector=%s.", file.obsInfo.visit_id,
                               file.obsInfo.detector_num)
                 visitRegion = None
             exposure.records["visit"] = [
