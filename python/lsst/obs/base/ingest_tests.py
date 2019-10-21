@@ -77,7 +77,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        files : `list`, [`str`], or None
+        files : `list` [`str`], or None
             List of files to be ingested, or None to use ``self.file``
         """
         if files is None:
@@ -92,7 +92,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        files : `list`, [`str`], or None
+        files : `list` [`str`], or None
             List of files to be ingested, or None to use ``self.file``
         """
         self.runIngest(files)
