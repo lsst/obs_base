@@ -22,13 +22,14 @@ from __future__ import annotations
 
 __all__ = ["StandardRepoConverter"]
 
+import os.path
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Iterator, Tuple
 
 from lsst.log import Log
 from lsst.log.utils import temporaryLogLevel
 from lsst.daf.persistence import Butler as Butler2
-from lsst.daf.butler import DatasetType, DatasetRef, DataCoordinate
+from lsst.daf.butler import DatasetType, DatasetRef, DataCoordinate, FileDataset
 from .repoConverter import RepoConverter
 from .filePathParser import FilePathParser
 from .dataIdExtractor import DataIdExtractor
@@ -160,11 +161,11 @@ class StandardRepoConverter(RepoConverter):
             skyMapName=struct.name if struct is not None else None,
         )
 
-    def iterDatasets(self) -> Iterator[Tuple[str, DatasetRef]]:
+    def iterDatasets(self) -> Iterator[FileDataset]:
         # Docstring inherited from RepoConverter.
         for struct in self._foundSkyMapsByCoaddName.values():
             if self.task.isDatasetTypeIncluded(struct.ref.datasetType.name):
-                yield struct.filename, struct.ref
+                yield FileDataset(path=os.path.join(self.root, struct.filename), ref=struct.ref)
         yield from super().iterDatasets()
 
     # Class attributes that will be shadowed by public instance attributes;

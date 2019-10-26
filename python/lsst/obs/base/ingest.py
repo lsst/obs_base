@@ -38,6 +38,7 @@ from lsst.daf.butler import (
     DatasetRef,
     DatasetType,
     DimensionRecord,
+    FileDataset,
 )
 from lsst.daf.butler.instrument import makeExposureRecordFromObsInfo, makeVisitRecordFromObsInfo
 from lsst.geom import Box2D
@@ -480,19 +481,14 @@ class RawIngestTask(Task):
         refs : `list` of `lsst.daf.butler.DatasetRef`
             Dataset references for ingested raws.
         """
-        # TODO: once Butler has the ability to do bulk inserts of
-        # dataset rows (or at least avoid per-dataset savepoints),
-        # use that.
-        refs = []
         if butler is None:
             butler = self.butler
-        for file in exposure.files:
-            path = os.path.abspath(file.filename)
-            ref = butler.ingest(path, self.datasetType, file.dataId,
-                                transfer=self.config.transfer,
+        datasets = [FileDataset(path=os.path.abspath(file.filename),
+                                ref=DatasetRef(self.datasetType, file.dataId),
                                 formatter=file.FormatterClass)
-            refs.append(ref)
-        return refs
+                    for file in exposure.files]
+        butler.ingest(*datasets, transfer=self.config.transfer)
+        return [dataset.ref for dataset in datasets]
 
     def run(self, files, pool: Optional[Pool] = None, processes: int = 1):
         """Ingest files into a Butler data repository.
