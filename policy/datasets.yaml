@@ -1417,3 +1417,10 @@ cpPipePlotRoot:
     python: MatplotlibStorage
     storage: PickleStorage
     template: 'plots/'
+matchedVisitMetrics_config:
+    description: >
+      Configuration of matchedVisitMetricsTask, part of validate_drp
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.validate.drp.matchedVisitMetricsTask.MatchedVisitMetricsConfig
+    template: config/matchedVisitMetrics.py
