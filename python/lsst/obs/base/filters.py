@@ -99,7 +99,7 @@ class FilterDefinition:
 
     This class is used to interface between the `~lsst.afw.image.Filter` class
     and the Gen2 `~lsst.daf.persistence.CameraMapper` and Gen3
-    `~lsst.daf.butler.Instruments` and ``physical_filter``/``abstract_filter``
+    `~lsst.obs.base.Instruments` and ``physical_filter``/``abstract_filter``
     `~lsst.daf.butler.Dimension`.
 
     This class is likely temporary, until we have a better versioned filter
