@@ -1342,7 +1342,7 @@ qaDashboardVisitTable:
     persistable: ignored
     storage: ParquetStorage
     python: lsst.qa.explorer.parquetTable.ParquetTable
-    template: deepCoadd-results/merged/%(tract)d/qaDashboardVisitTable-%(tract)d.parq
+    template: deepCoadd-results/merged/%(tract)d/%(filter)s/qaDashboardVisitTable-%(tract)d-%(filter)s-%(columns)s.parq
 prepareQADashboard_config:
     description: >
         Configuration for Task to write reshaped tables for QA Dashboard.
