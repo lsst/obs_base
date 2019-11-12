@@ -166,6 +166,7 @@ def makeAmplifierList(ccd):
         amplifier.setGain(amp['gain'])
         amplifier.setReadNoise(amp['readNoise'])
         amplifier.setSaturation(amp['saturation'])
+        amplifier.setSuspectLevel(amp.get('suspect', np.nan))
 
         # flip data when assembling if needs be (e.g. data from the serial at the top of a CCD)
         flipX, flipY = amp.get("flipXY")
