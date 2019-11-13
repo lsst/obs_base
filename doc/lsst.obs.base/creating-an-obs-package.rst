@@ -6,9 +6,14 @@
 How to create a new LSST obs package
 ####################################
 
-These instructions describe how to create a package that allows the LSST Data Management Science Pipeline to read raw data from a telescope and instrument using the gen3 middleware and ingest it into an LSST repository.
-The LSST Data Butler provides a unified structure for storing and accessing camera data; the process described in this document defines the interface between the Data Butler and the raw files, so that users do not have to know any details about a particular instrument.
+These instructions describe how to create a package that allows the LSST Science Pipelines to read raw data from a telescope and instrument using the gen3 middleware and ingest it into an LSST repository.
+"Ingestion" is the process of reading raw files, interpreting their metadata, and formatting the data in a way the :py:mod:`Data Butler <lsst.daf.butler>` can read.
+
+This guide describes how to create an interface between the :py:mod:`Data Butler <lsst.daf.butler>` and your raw files, so that users do not have to know any details about a particular instrument.
 These instructions are necessary, but not sufficient: camera geometry, config overrides for tasks, and defects and other curated calibration are other necessary components not described here.
+You will have successfully made an obs package when an :ref:`ingestion test <testing>` passes.
+This demonstrates that the butler can read data ingested from your instrument.
+
 
 The instructions here assume that you are writing for the `ExampleCam` camera, with the new package called `obs_example`.
 
@@ -19,7 +24,7 @@ MetadataTranslator
 
 The `astro_metadata_translator` package abstracts away reading metadata from raw images of a given telescope+instrument.
 For example, the time of the observation, temperature, and filter for a given observation might each be stored in each raw file's FITS header as ``"OBSTIME"``, ``"TEMP_W"``, ``"FILTOBS"``.
-The translator knows how to get all of this relevant metadata out of the raw files, so that they can be loaded into the Data Butler.
+The translator knows how to get all of this relevant metadata out of the raw files, so that they can be loaded into the :py:mod:`Data Butler <lsst.daf.butler>`.
 
 Creating a ``MetadataTranslator`` derived from `~astro_metadata_translator.translators.MetadataTranslator` or `~astro_metadata_translator.translators.FitsTranslator` is the first step in building an obs_package.
 Your new metadata translator can live in a separate package as you are developing it, but you should eventually make a pull request to `astro_metadata_translator` itself, so that other people can readily use it.
@@ -32,7 +37,7 @@ See the `metadata translator <https://astro-metadata-translator.lsst.io>`_ packa
 Filters
 =======
 
-Every instrument has a particular set of photometric filters, each with their own effective wavelength (e.g. ``477 microns``), transmission function, internal name (e.g. ``"HSC-G"``), and "abstract" filter name (e.g. ``"g"``).
+Every instrument has a particular set of photometric filters, each with their own effective wavelength (e.g., ``477 microns``), transmission function, internal name (e.g., ``HSC-G``), and "abstract" filter name (e.g., ``g``).
 You define these filters using a `FilterDefinitionCollection` containing multiple :py:class:`FilterDefinitions <FilterDefinition>`.
 
 Create a file, ``python/lsst/obs/example/exampleFilters.py``, formatted like the following:
@@ -90,7 +95,6 @@ An `Instrument` defines the instrument-specific logic for the Data Butler.
 
 First create a new file ``tests/test_instrument.py`` with a test case derived from `~lsst.obs.base.instrument_tests.InstrumentTests` and `~lsst.utils.tests.TestCase`, defining ``self.data`` and ``self.instrument`` in ``setUp``.
 The `set` of ``physical_filters`` you provide here will be checked to ensure that your `FilterDefinitionCollection` is loaded correctly.
-Run this test via ``pytest -sv tests/test_instrument.py``: the tests should fail, as there is no Example `Instrument` yet.
 
 .. code-block:: python
 
@@ -123,10 +127,17 @@ Run this test via ``pytest -sv tests/test_instrument.py``: the tests should fail
         lsst.utils.tests.init()
         unittest.main()
 
+Run this test via
 
-Next, add a file in ``python/lsst/obs/example/instrument.py`` which contains a base class ``class ExampleCam(lsst.daf.butler.Instrument)`` at minimum override these abstract methods: `Instrument.getName`, `Instrument.getCamera`, `Instrument.register`, `Instrument.filterDefinitions`, and define ``self.configPaths`` in ``__init__``.
+.. code-block:: bash
 
-Run your test again via ``pytest -sv tests/test_instrument.py``: the tests show now pass.
+    pytest -sv tests/test_instrument.py
+
+the tests should fail, as there is no Example `Instrument` yet.
+
+Next, add a file in ``python/lsst/obs/example/instrument.py`` containing a subclass of `Instrument`, `ExampleCam`, which at minimum overrides these abstract methods: `Instrument.getName`, `Instrument.getCamera`, `Instrument.register`, `Instrument.filterDefinitions`, and define ``self.configPaths`` in ``__init__``.
+
+Run your test again: the tests should now pass.
 If they do not, you can use the test output to determine what parts of the Instrument need to be fixed.
 
 .. _testing:
@@ -134,8 +145,8 @@ If they do not, you can use the test output to determine what parts of the Instr
 Ingest tests
 ============
 
-In order to test how your new gen3 obs package works with daf_butler, you need to write a test that ingests raw data.
-`~lsst.obs.base.ingest_tests.IngestTestBase` provides a base class for those tests, requiring only that you specify the input data that will be tested, and the dataIds to use to check that the data was correctly ingested.
+In order to test how your new gen3 obs package works with the :py:mod:`Data Butler <lsst.daf.butler>`, you need to write a test that ingests raw data.
+`~lsst.obs.base.ingest_tests.IngestTestBase` provides a base class for those tests, requiring only that you specify the input data that will be tested, and the :doc:`dataIds <lsst.daf.butler-dimensions_data_ids>` to use to check that the data was correctly ingested.
 This is how our system tests that your ``Formatter`` works correctly.
 
 .. code-block:: python
