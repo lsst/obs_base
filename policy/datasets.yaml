@@ -454,7 +454,7 @@ deepDiff_kernelSrc:
 isr_config:
     persistable: Config
     storage: ConfigStorage
-    python: lsst.obs.subaru.isr.SubaruIsrConfig
+    python: lsst.ip.isr.IsrTaskConfig
     template: config/isr.py
 isr_metadata:
     persistable: PropertySet
