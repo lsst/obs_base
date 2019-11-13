@@ -15,7 +15,7 @@ You will have successfully made an obs package when an :ref:`ingestion test <tes
 This demonstrates that the butler can read data ingested from your instrument.
 
 
-The instructions here assume that you are writing for the `ExampleCam` camera, with the new package called `obs_example`.
+The instructions here assume that you are writing for the ``ExampleCam`` camera, with the new package called ``obs_example``.
 
 .. _translator:
 
@@ -119,10 +119,6 @@ The `set` of ``physical_filters`` you provide here will be checked to ensure tha
                                            physical_filters=physical_filters)
             self.instrument = lsst.obs.example.ExampleCam()
 
-
-    def setup_module(module):
-        lsst.utils.tests.init()
-
     if __name__ == '__main__':
         lsst.utils.tests.init()
         unittest.main()
@@ -135,7 +131,7 @@ Run this test via
 
 the tests should fail, as there is no Example `Instrument` yet.
 
-Next, add a file in ``python/lsst/obs/example/instrument.py`` containing a subclass of `Instrument`, `ExampleCam`, which at minimum overrides these abstract methods: `Instrument.getName`, `Instrument.getCamera`, `Instrument.register`, `Instrument.filterDefinitions`, and define ``self.configPaths`` in ``__init__``.
+Next, add a file in ``python/lsst/obs/example/instrument.py`` containing a subclass of `Instrument`, named `ExampleCam`, which at minimum overrides these abstract methods: `Instrument.getName`, `Instrument.getCamera`, `Instrument.register`, `Instrument.filterDefinitions`, and define ``self.configPaths`` in ``__init__``.
 
 Run your test again: the tests should now pass.
 If they do not, you can use the test output to determine what parts of the Instrument need to be fixed.
@@ -146,7 +142,7 @@ Ingest tests
 ============
 
 In order to test how your new gen3 obs package works with the :py:mod:`Data Butler <lsst.daf.butler>`, you need to write a test that ingests raw data.
-`~lsst.obs.base.ingest_tests.IngestTestBase` provides a base class for those tests, requiring only that you specify the input data that will be tested, and the :doc:`dataIds <lsst.daf.butler-dimensions_data_ids>` to use to check that the data was correctly ingested.
+`~lsst.obs.base.ingest_tests.IngestTestBase` provides a base class for those tests, requiring only that you specify the input data that will be tested, and the :ref:`dataIds <lsst.daf.butler-dimensions_data_ids>` to use to check that the data was correctly ingested.
 This is how our system tests that your ``Formatter`` works correctly.
 
 .. code-block:: python
