@@ -513,16 +513,6 @@ processCcd_metadata:
     python: lsst.daf.base.PropertySet
     tables: raw
     template: ''
-processCcd_config:
-    persistable: Config
-    storage: ConfigStorage
-    python: lsst.pipe.tasks.processCcd.ProcessCcdConfig
-    template: config/processCcd.py
-characterizeImage_config:
-    persistable: Config
-    storage: ConfigStorage
-    python: lsst.pipe.tasks.characterizeImage.CharacterizeImageConfig
-    template: config/characterizeImage.py
 characterizeImage_metadata:
     persistable: PropertySet
     storage: YamlStorage
@@ -535,11 +525,6 @@ calibrate_metadata:
     python: lsst.daf.base.PropertySet
     tables: raw
     template: ''
-forcedPhotCcd_config:
-    persistable: Config
-    storage: ConfigStorage
-    python: lsst.meas.base.forcedPhotCcd.ForcedPhotCcdConfig
-    template: config/forcedPhotCcd.py
 forcedPhotCcd_metadata:
     persistable: PropertySet
     storage: YamlStorage
@@ -552,11 +537,6 @@ forced_src:
     python: lsst.afw.table.SourceCatalog
     tables: raw
     template: ''
-forced_src_schema:
-    persistable: ignored
-    storage: FitsCatalogStorage
-    python: lsst.afw.table.SourceCatalog
-    template: schema/forced_src_schema.fits
 src:
     description: "Full depth source catalog produced by ProcessCcdTask."
     persistable: SourceCatalog
