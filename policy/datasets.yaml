@@ -1334,7 +1334,7 @@ qaDashboardCoaddTable:
     persistable: ignored
     storage: ParquetStorage
     python: lsst.qa.explorer.parquetTable.ParquetTable
-    template: deepCoadd-results/merged/%(tract)d/qaDashboardCoaddTable-%(tract)d.parq
+    template: QADashboard/%(tract)d/qaDashboardCoaddTable-%(tract)d.parq
 qaDashboardVisitTable:
     description: >
         Reshaping of pipe_analysis-created visit tables to suit ingest
@@ -1342,7 +1342,7 @@ qaDashboardVisitTable:
     persistable: ignored
     storage: ParquetStorage
     python: lsst.qa.explorer.parquetTable.ParquetTable
-    template: deepCoadd-results/merged/%(tract)d/%(filter)s/qaDashboardVisitTable-%(tract)d-%(filter)s-%(column)s.parq
+    template: QAdashboard/%(tract)d/visits/%(filter)s/qaDashboardVisitTable-%(tract)d-%(filter)s-%(column)s.parq
 prepareQADashboard_config:
     description: >
         Configuration for Task to write reshaped tables for QA Dashboard.
@@ -1350,6 +1350,13 @@ prepareQADashboard_config:
     python: lsst.qa.explorer.prepareQADashboard.prepareQADashboardConfig
     storage: ConfigStorage
     template: config/prepareQADashboard.py
+QADashboard_metadata:
+    description: >
+        Metadata needed to launch a QA dashboard.
+    persistable: PropertySet
+    storage: YamlStorage
+    python: lsst.daf.base.PropertySet
+    template: QAdashboard/dashboard_metadata.yaml
 
 # 'ngmix' and 'mcal' datasets below are produced by CmdLineTasks in the
 # meas_extensions_ngmix package, which is not part of the LSST pipelines now
