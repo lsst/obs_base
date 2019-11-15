@@ -1394,6 +1394,7 @@ measurePhotonTransferCurveGainAndNoise:
     persistable: ignored
     python: lsst.cp.pipe.ptc.PtcDataset
     storage: PickleStorage
+    tables: 'raw'
     template: ''
 measurePhotonTransferCurveDatasetAll:
     description: "Persisted output data from the MeasurePhotonTransferCurveTask"
