@@ -26,6 +26,11 @@ import os.path
 from datetime import datetime
 from abc import ABCMeta, abstractmethod
 
+import lsst.log
+
+from lsst.daf.butler import DatasetType, DataCoordinate
+from lsst.pipe.tasks import read_curated_calibs
+
 
 class Instrument(metaclass=ABCMeta):
     """Base class for instrument-specific logic for the Gen3 Butler.
@@ -34,11 +39,23 @@ class Instrument(metaclass=ABCMeta):
     arguments.
     """
 
+    filterDefinitions = None
+    """`lsst.obs.base.filters.FilterDefinitions` defining the filters used by
+    this instrument.
+    """
+
     configPaths = []
     """Paths to config files to read for specific Tasks.
 
     The paths in this list should contain files of the form `task.py`, for
     each of the Tasks that requires special configuration.
+    """
+
+    dataPath = None
+    """Path to the ``obs_*_data/instrument`` directory containing human-curated
+    standardized text calibration products, e.g. ``defects/``.
+
+    For example, for HyperSuprimeCam, this would be ``$OBS_SUBARU_DATA/hsc``.
     """
 
     @property
@@ -50,6 +67,7 @@ class Instrument(metaclass=ABCMeta):
         return None
 
     def __init__(self, *args, **kwargs):
+        self.log = lsst.log.Log()
         self.filterDefinitions.defineFilters()
 
     @classmethod
@@ -82,6 +100,7 @@ class Instrument(metaclass=ABCMeta):
         registry : `lsst.daf.butler.core.Registry`
             The registry to add dimensions to.
         """
+        self.log.info("Registering physical_filter dimensions...")
         registry.insertDimensionData(
             "physical_filter",
             *[
@@ -112,15 +131,116 @@ class Instrument(metaclass=ABCMeta):
         """
         raise NotImplementedError()
 
-    @abstractmethod
+    def _getBrighterFatterKernel(self):
+        """Return the brighter-fatter kernel as a `numpy.ndarray`, or `None`
+        if your instrument does not have brighter-fatter data.
+        """
+        return None
+
+    def _writeBrighterFatterKernel(self, butler, calibrationLabelDataId):
+        """Write a brighter-fatter kernel to the butler with the specified
+        calibrationLabelDataId.
+
+        Specialize `_getBrighterFatterKernel` to get the necessary data.
+        """
+        bfKernel = self._getBrighterFatterKernel()
+        if bfKernel is None:
+            self.log.info("No brighter-fatter kernels to write.")
+            return
+
+        self.log.info("Writing brighter-fatter kernels...")
+        datasetType = DatasetType("bfKernel", ("instrument", "calibration_label"), "NumpyArray",
+                                  universe=butler.registry.dimensions)
+        butler.registry.registerDatasetType(datasetType)
+        butler.put(bfKernel, datasetType, calibrationLabelDataId)
+
+    def _writeCamera(self, butler, calibrationLabelDataId):
+        """Write an `lsst.afw.cameraGeom.Camera` to the butler with the
+        specified calibrationLabelDataId.
+        """
+        self.log.info("Writing Camera geometry...")
+        datasetType = DatasetType("camera", ("instrument", "calibration_label"), "Camera",
+                                  universe=butler.registry.dimensions)
+        butler.registry.registerDatasetType(datasetType)
+        camera = self.getCamera()
+        butler.put(camera, datasetType, calibrationLabelDataId)
+
+    def _getDefects(self):
+        """Return defects loaded from the obs data directory.
+        """
+        defectsPath = os.path.join(self.dataPath, "defects")
+        if not os.path.exists(defectsPath):
+            self.log.info("No defects to read.")
+            return None
+        camera = self.getCamera()
+        self.log.info("Reading defects...")
+        data_by_chip, calib_type = read_curated_calibs.read_all(defectsPath, camera)
+        if calib_type != "defects":
+            raise TypeError(f"Loaded {calib_type} instead of `defects` from: {defectsPath}")
+        return data_by_chip
+
+    def _writeDefects(self, butler):
+        """Write a collection of `lsst.meas.algorithms.Defects` to the butler.
+        """
+        defectsDict = self._getDefects()
+        if defectsDict is None:
+            self.log.info("No defects to write...")
+            return
+
+        self.log.info("Writing defects...")
+        datasetType = DatasetType("defects", ("instrument", "detector", "calibration_label"), "DefectsList",
+                                  universe=butler.registry.dimensions)
+        butler.registry.registerDatasetType(datasetType)
+
+        dimensionRecords = []
+        datasetRecords = []
+        # First loop just gathers up the things we want to insert, so we
+        # can do some bulk inserts and minimize the time spent in transaction.
+        for det in defectsDict:
+            times = sorted([k for k in defectsDict[det]])
+            defects = [defectsDict[det][time] for time in times]
+            # Use an "infinite" end time for the "oldest" defect
+            times.append(datetime.max)
+            for defect, beginTime, endTime in zip(defects, times[:-1], times[1:]):
+                md = defect.getMetadata()
+                detectorId = md['DETECTOR']
+                calibrationLabel = f"defect/{md['CALIBDATE']}/{detectorId}"
+                dataId = DataCoordinate.standardize(
+                    universe=butler.registry.dimensions,
+                    instrument=self.getName(),
+                    calibration_label=calibrationLabel,
+                    detector=detectorId,
+                )
+                datasetRecords.append((defect, dataId))
+                dimensionRecords.append({
+                    "instrument": self.getName(),
+                    "name": calibrationLabel,
+                    "datetime_begin": beginTime,
+                    "datetime_end": endTime,
+                })
+        # Second loop actually does the inserts and filesystem writes.
+        with butler.transaction():
+            butler.registry.insertDimensionData("calibration_label", *dimensionRecords)
+            # TODO: vectorize these puts, once butler APIs for that become
+            # available.
+            for defect, dataId in datasetRecords:
+                butler.put(defect, datasetType, dataId)
+
     def writeCuratedCalibrations(self, butler):
         """Write human-curated calibration Datasets to the given Butler with
         the appropriate validity ranges.
-
-        This is a temporary API that should go away once obs_ packages have
-        a standardized approach to this problem.
         """
-        raise NotImplementedError()
+        unboundedDataId = addUnboundedCalibrationLabel(butler.registry, self.getName())
+
+        self._writeCamera(butler, unboundedDataId)
+        self._writeBrighterFatterKernel(butler, unboundedDataId)
+        self._writeDefects(butler)
+
+    def getBrighterFatterKernel(self):
+        """Return the brighter-fatter kernel as a `numpy.ndarray`, or `None`
+        if your instrument does not have brighter-fatter data.
+        """
+        return None
 
     def applyConfigOverrides(self, name, config):
         """Apply instrument-specific overrides for a task config.

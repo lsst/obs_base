@@ -22,26 +22,52 @@
 """Base class for writing Gen3 raw data ingest tests.
 """
 
-__all__ = ("IngestTestBase",)
+__all__ = ("IngestTestBase", "InstrumentSignatureDataIds")
 
 import abc
+import dataclasses
 import tempfile
 import unittest
 import os
 import shutil
 
+import numpy as np
+
+import lsst.afw.image
 from lsst.daf.butler import Butler
-from lsst.obs.base import RawIngestTask
+from lsst.obs.base import RawIngestTask, InstrumentSignatureDataIngestTask
+
+
+@dataclasses.dataclass
+class InstrumentSignatureDataIds:
+    """Additions to the dataIds required to check that instrument signature
+    data were properly ingested.
+
+    Set values to `None` to not test that specific type of ingestion.
+    """
+    camera: dict()
+    """We always need to test that a Camera was ingested."""
+    bfKernel: dict() = None
+    defects: dict() = None
+    transmission_filter: dict() = None
+    transmission_detector: dict() = None
+    transmission_optics: dict() = None
+    transmission_atmosphere: dict() = None
+
+    instrument: dataclasses.InitVar[str] = None
+    """This is added to each of the above as the "instrument" dimension."""
+
+    def __post_init__(self, instrument):
+        for field in self.__dict__:
+            if getattr(self, field) is not None:
+                getattr(self, field)['instrument'] = instrument
 
 
 class IngestTestBase(metaclass=abc.ABCMeta):
-    """Base class for tests of gen3 ingest. Subclass from this, then
-    `unittest.TestCase` to get a working test suite.
-    """
+    """Base class for tests of gen3 `~lsst.obs.base.Instrument` registration
+    and data ingestion.
 
-    ingestDir = ""
-    """Root path to ingest files into. Typically `obs_package/tests/`; the
-    actual directory will be a tempdir under this one.
+    Subclass from this, then `unittest.TestCase` to get a working test suite.
     """
 
     instrument = None
@@ -53,9 +79,11 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     file = ""
     """Full path to a file to ingest in tests."""
 
+    instrumentSignatureDataIds = None
+    """DataIds to test for correct ingestion."""
+
     def setUp(self):
-        # Use a temporary working directory
-        self.root = tempfile.mkdtemp(dir=self.ingestDir)
+        self.root = tempfile.mkdtemp()
         Butler.makeRepo(self.root)
         self.butler = Butler(self.root, run="raw")
 
@@ -149,3 +177,28 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         self.runIngest()
         with self.assertRaises(Exception):
             self.runIngest()
+
+    def testInstrumentSignatureDataIngestTask(self):
+        """Test ingesting instrument signature data."""
+        with self.assertRaisesRegex(KeyError, "bfKernel"):
+            self.butler.get('bfKernel', dataId=self.instrumentSignatureDataIds.bfKernel)
+        with self.assertRaisesRegex(KeyError, "camera"):
+            self.butler.get('camera', dataId=self.instrumentSignatureDataIds.camera)
+        with self.assertRaisesRegex(KeyError, "defects"):
+            self.butler.get('defects', dataId=self.instrumentSignatureDataIds.defects)
+
+        task = InstrumentSignatureDataIngestTask(config=self.config, butler=self.butler)
+        task.run()
+
+        camera = self.butler.get('camera', dataId=self.instrumentSignatureDataIds.camera)
+        self.assertEqual(camera.getName(), self.instrument.getName())
+
+        if self.instrumentSignatureDataIds.defects is not None:
+            defects = self.butler.get('defects', dataId=self.instrumentSignatureDataIds.defects)
+            self.assertIn("lsst.meas.algorithms.defects.Defects", str(type(defects)))
+            # Can't use assertIsInstance because obs_base cannot have a dependency on meas_algorithms
+            # self.assertIsInstance(defects, lsst.meas.algorithms.defects.Defects)
+
+        if self.instrumentSignatureDataIds.bfKernel is not None:
+            bfKernel = self.butler.get('bfKernel', dataId=self.instrumentSignatureDataIds.bfKernel)
+            self.assertIsInstance(bfKernel, np.ndarray)

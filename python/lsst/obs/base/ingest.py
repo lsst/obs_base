@@ -19,8 +19,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+"""Tasks and Configs for ingesting instrument signature data, calibrations,
+and raw data into a Butler repository.
+"""
 
-__all__ = ("RawIngestTask", "RawIngestConfig", "makeTransferChoiceField")
+__all__ = ("RawIngestTask", "RawIngestConfig", "InstrumentSignatureDataIngestTask",
+           "makeTransferChoiceField")
 
 import os.path
 import itertools
@@ -535,3 +539,57 @@ class RawIngestTask(Task):
                 self.insertDimensionData(exposure.records)
                 refs.extend(self.ingestExposureDatasets(exposure))
         return refs
+
+
+class InstrumentSignatureDataIngestTask(Task):
+    """Driver Task for ingesting instrument singature data into Gen3 Butler
+    repositories.
+
+    This Task is intended to be runnable from the command-line, but it doesn't
+    meet the other requirements of CmdLineTask or PipelineTask, and wouldn't
+    gain much from being one. It also wouldn't really be appropriate as a
+    subtask of a CmdLineTask or PipelineTask; it's a Task essentially just to
+    leverage the logging and configurability functionality that provides.
+
+    Each instance of `InstrumentSignatureDataIngestTask` writes to the same
+    Butler. An invocation of `InstrumentSignatureDataIngestTask.run` loads
+    all data from the configured `Instrument` into that Butler.
+    Users should generally configure a new Collection each time they ingest
+    data, to simplify the provenance of processing runs that use that data.
+
+    Parameters
+    ----------
+    config : `RawIngestConfig`
+        Configuration for the task.
+    butler : `~lsst.daf.butler.Butler`
+        Butler instance.  Ingested Datasets will be created as part of
+        ``butler.run`` and associated with its Collection.
+    kwargs
+        Additional keyword arguments are forwarded to the `lsst.pipe.base.Task`
+        constructor.
+    """
+    ConfigClass = RawIngestConfig
+
+    _DefaultName = "instrumentSignatureDataIngest"
+
+    def __init__(self, config: Optional[RawIngestConfig] = None, *, butler: Butler, **kwargs: Any):
+        super().__init__(config, **kwargs)
+        self.butler = butler
+        self.instrument = doImport(self.config.instrument)()
+
+    def run(self):
+        """Ingest Instrument Signature Data files into a Butler data
+        repository.
+
+        Instrument Signature Data includes things like sensor defects,
+        transmission curves, and the camera geometry definitions. These files
+        are typically human-curated text files that are converted to an
+        LSST-internal representation during ingestion.
+
+        This creates any new exposure or visit Dimension entries needed to
+        identify the ingested files, creates new Dataset entries in the
+        Registry and finally ingests the files themselves into the Datastore.
+        Any needed instrument, detector, and physical_filter Dimension entries
+        must exist in the Registry before `run` is called.
+        """
+        self.instrument.writeInstrumentSignatureData(self.butler)
