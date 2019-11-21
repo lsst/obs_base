@@ -1084,6 +1084,15 @@ apPipe_metadata:
     python: lsst.daf.base.PropertySet
     tables: raw
     template: ''
+apdb_marker:
+    description: >
+        Tag that indicates that data for a particular exposure have been stored in the APDB.
+        As a convenience, can be read for config information about accessing the APDB.
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.dax.apdb.ApdbConfig
+    tables: raw
+    template: ''
 deepCoadd_obj: #consolidated multi-band object tables from coadd
     description: >
         Consolidated coadd multi-band object table, a merge of
