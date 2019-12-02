@@ -20,8 +20,6 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-from past.builtins import long
-
 __all__ = ["ExposureIdInfo"]
 
 
@@ -31,7 +29,7 @@ class ExposureIdInfo(object):
     Attributes include:
 
     expId
-        exposure ID as a long int
+        exposure ID as an int
     expBits
         maximum number of bits allowed for exposure IDs
     maxBits
@@ -59,7 +57,7 @@ class ExposureIdInfo(object):
 
         See the class doc string for an explanation of the arguments.
         """
-        expId = long(expId)
+        expId = int(expId)
         expBits = int(expBits)
         maxBits = int(maxBits)
 
