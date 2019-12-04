@@ -202,3 +202,15 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         if self.instrumentSignatureDataIds.bfKernel is not None:
             bfKernel = self.butler.get('bfKernel', dataId=self.instrumentSignatureDataIds.bfKernel)
             self.assertIsInstance(bfKernel, np.ndarray)
+
+        def checkTransmissionCurve(name, dataId):
+            """Check that butler.get(dataId) returns a TransmissionCurve."""
+            if dataId is not None:
+                transmission = self.butler.get(name, dataId)
+                self.assertIsInstance(transmission, lsst.afw.image.TransmissionCurve)
+
+        checkTransmissionCurve("transmission_optics", self.instrumentSignatureDataIds.transmission_optics)
+        checkTransmissionCurve("transmission_sensor", self.instrumentSignatureDataIds.transmission_detector)
+        checkTransmissionCurve("transmission_filter", self.instrumentSignatureDataIds.transmission_filter)
+        checkTransmissionCurve("transmission_atmosphere",
+                               self.instrumentSignatureDataIds.transmission_atmosphere)

@@ -81,6 +81,8 @@ class Instrument(metaclass=ABCMeta):
 
         This is a temporary API that should go away once obs_ packages have
         a standardized approach to writing versioned cameras to a Gen3 repo.
+        It is more future proof to use ``butler.get('camera')`` to get the
+        camera geometry.
         """
         raise NotImplementedError()
 
@@ -226,8 +228,101 @@ class Instrument(metaclass=ABCMeta):
             for defect, dataId in datasetRecords:
                 butler.put(defect, datasetType, dataId)
 
-    def writeCuratedCalibrations(self, butler):
-        """Write human-curated calibration Datasets to the given Butler with
+    def _getDetectorTransmission(self, unboundedDataId):
+        """Return a dictionary of detector tramission curves, keyed on their
+        DataCoordinates.
+        """
+        return None
+
+    def _getOpticsTransmission(self, unboundedDataId):
+        """Return a dictionary of optics tramission curves, keyed on their
+        DataCoordinates.
+        """
+        return None
+
+    def _getFilterTransmission(self, unboundedDataId):
+        """Return a dictionary of filter tramission curves, keyed on their
+        DataCoordinates.
+        """
+        return None
+
+    def _getAtmosphereTransmission(self, unboundedDataId):
+        """Return a dictionary of atmosphere tramission curves, keyed on their
+        DataCoordinates.
+        """
+        return None
+
+    def _writeTransmission(self, butler, unboundedDataId):
+        """Write a collection of `lsst.afw.image.TransmissionCurves` to the
+        butler, loaded via the varoius ``_get*Tranmission`` methods, if they
+        have been implemented.
+        """
+        detectorTransmission = self._getDetectorTransmission(unboundedDataId)
+
+        if detectorTransmission is not None:
+            self.log.info("Writing detector transmission curves...")
+            # NOTE: we want to rename "transmission_sensor" to "transmission_detector" once we retire gen2.
+            datasetType = DatasetType("transmission_sensor",
+                                      ("instrument", "detector", "calibration_label"),
+                                      "TransmissionCurve",
+                                      universe=butler.registry.dimensions)
+            self._putTransmissionCurves(butler, detectorTransmission, datasetType)
+        else:
+            self.log.info("No detector transmission curves to write.")
+
+        opticsTransmission = self._getOpticsTransmission(unboundedDataId)
+        if opticsTransmission is not None:
+            self.log.info("Writing optics transmission curves...")
+            datasetType = DatasetType("transmission_optics",
+                                      ("instrument", "calibration_label"),
+                                      "TransmissionCurve",
+                                      universe=butler.registry.dimensions)
+            print(opticsTransmission)
+            self._putTransmissionCurves(butler, opticsTransmission, datasetType)
+        else:
+            self.log.info("No optics transmission curves to write.")
+
+        filterTransmission = self._getFilterTransmission(unboundedDataId)
+        if filterTransmission is not None:
+            self.log.info("Writing filter transmission curves...")
+            datasetType = DatasetType("transmission_filter",
+                                      ("instrument", "physical_filter", "calibration_label"),
+                                      "TransmissionCurve",
+                                      universe=butler.registry.dimensions)
+            self._putTransmissionCurves(butler, filterTransmission, datasetType)
+        else:
+            self.log.info("No filter transmission curves to write.")
+
+        atmosphereTransmission = self._getAtmosphereTransmission(unboundedDataId)
+        if atmosphereTransmission is not None:
+            self.log.info("Writing atmosphere transmission curves...")
+            datasetType = DatasetType("transmission_atmosphere", ("instrument",),
+                                      "TransmissionCurve",
+                                      universe=butler.registry.dimensions)
+            self._putTransmissionCurves(butler, atmosphereTransmission, datasetType)
+        else:
+            self.log.info("No atmosphere transmission curves to write.")
+
+    def _putTransmissionCurves(self, butler, transmissionCurves, datasetType):
+        """Put a dictionary of transmissionCurves into the Butler.
+
+        Parameters
+        ----------
+        butler : `lsst.daf.butler.Butler`
+            The butler to write the data to.
+        transmissionCurves : `dict` [`lsst.daf.butler.DataCoordinate`, `lsst.afw.image.TransmissionCurve`]
+            The transmission curves to be written, with their corresponding
+            dataIds.
+        datasetType : `lsst.daf.butler.DatasetType`
+            The category of dataset represented by ``transmissionCurves`` to
+            be written to the butler.
+        """
+        butler.registry.registerDatasetType(datasetType)
+        for dataId, transmissionCurve in transmissionCurves.items():
+            butler.put(transmissionCurve, datasetType, dataId)
+
+    def writeInstrumentSignatureData(self, butler):
+        """Write Instrument Signature Datasets to the given Butler with
         the appropriate validity ranges.
         """
         unboundedDataId = addUnboundedCalibrationLabel(butler.registry, self.getName())
@@ -235,12 +330,7 @@ class Instrument(metaclass=ABCMeta):
         self._writeCamera(butler, unboundedDataId)
         self._writeBrighterFatterKernel(butler, unboundedDataId)
         self._writeDefects(butler)
-
-    def getBrighterFatterKernel(self):
-        """Return the brighter-fatter kernel as a `numpy.ndarray`, or `None`
-        if your instrument does not have brighter-fatter data.
-        """
-        return None
+        self._writeTransmission(butler, unboundedDataId)
 
     def applyConfigOverrides(self, name, config):
         """Apply instrument-specific overrides for a task config.
