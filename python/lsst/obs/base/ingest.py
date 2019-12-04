@@ -179,8 +179,6 @@ class RawIngestTask(Task):
     kwds
         Additional keyword arguments are forwarded to the `lsst.pipe.base.Task`
         constructor.
-
-    Other keyword arguments are forwarded to the Task base class constructor.
     """
 
     ConfigClass = RawIngestConfig
@@ -193,8 +191,8 @@ class RawIngestTask(Task):
         return DatasetType("raw", ("instrument", "detector", "exposure"), "Exposure",
                            universe=self.butler.registry.dimensions)
 
-    def __init__(self, config: Optional[RawIngestConfig] = None, *, butler: Butler, **kwds: Any):
-        super().__init__(config, **kwds)
+    def __init__(self, config: Optional[RawIngestConfig] = None, *, butler: Butler, **kwargs: Any):
+        super().__init__(config, **kwargs)
         self.butler = butler
         self.universe = self.butler.registry.dimensions
         self.instrument = doImport(self.config.instrument)()
