@@ -1398,18 +1398,12 @@ measurePhotonTransferCurve_metadata:
     storage: YamlStorage
     python: lsst.daf.base.PropertySet
     template: ''
-measurePhotonTransferCurveGainAndNoise:
-    description: "Persisted output data (gain and noise) from the MeasurePhotonTransferCurveTask"
-    persistable: ignored
-    python: lsst.cp.pipe.ptc.PtcDataset
-    storage: PickleStorage
-    tables: 'raw'
-    template: ''
-measurePhotonTransferCurveDatasetAll:
+photonTransferCurveDataset:
     description: "Persisted output data from the MeasurePhotonTransferCurveTask"
     persistable: ignored
-    python: lsst.cp.pipe.ptc.PtcDataset
+    python: lsst.cp.pipe.ptc.PhotonTransferCurveDataset
     storage: PickleStorage
+    tables: 'raw'
     template: ''
 cpPipePlotRoot:
     description: "A dataset for the root path for cp_pipe plots"
