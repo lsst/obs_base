@@ -29,7 +29,6 @@ from abc import ABCMeta, abstractmethod
 import lsst.log
 
 from lsst.daf.butler import DatasetType, DataCoordinate
-from lsst.pipe.tasks import read_curated_calibs
 
 
 class Instrument(metaclass=ABCMeta):
@@ -176,6 +175,12 @@ class Instrument(metaclass=ABCMeta):
             return None
         camera = self.getCamera()
         self.log.info("Reading defects...")
+
+        # TODO: deal with the fact that read_all lives in pipe_tasks, and depends
+        # TODO: on Defects that live in meas_algorithms.
+        # Leave it here for now, as obs-specific implementations all depend on pipe_tasks.
+        from lsst.pipe.tasks import read_curated_calibs
+
         data_by_chip, calib_type = read_curated_calibs.read_all(defectsPath, camera)
         if calib_type != "defects":
             raise TypeError(f"Loaded {calib_type} instead of `defects` from: {defectsPath}")
