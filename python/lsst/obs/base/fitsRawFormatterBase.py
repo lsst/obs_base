@@ -269,6 +269,8 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
             Raised if the physical filter was not registered via
             `~lsst.afw.image.utils.defineFilter`.
         """
+        if self.observationInfo.physical_filter == 'disperser':
+            lsst.afw.image.utils.defineFilter("disperser", 555.0)
         return lsst.afw.image.Filter(self.observationInfo.physical_filter)
 
     def readImageComponent(self, component):
