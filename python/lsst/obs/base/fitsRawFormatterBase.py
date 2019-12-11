@@ -42,6 +42,7 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
     """
 
     def __init__(self, *args, **kwargs):
+        self.filterDefinitions.reset()
         self.filterDefinitions.defineFilters()
         super().__init__(*args, **kwargs)
 
