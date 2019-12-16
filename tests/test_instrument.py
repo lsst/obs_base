@@ -25,7 +25,7 @@ import unittest
 import lsst.utils
 from lsst.daf.butler.core import Registry
 from lsst.daf.butler.core.butlerConfig import ButlerConfig
-from lsst.obs.base import Instrument
+from lsst.obs.base import Instrument, FilterDefinitionCollection
 
 """Tests of the Instrument class.
 """
@@ -33,13 +33,7 @@ from lsst.obs.base import Instrument
 
 class DummyCam(Instrument):
 
-    class FilterDefinitions:
-        """Stopgap until Instrument is moved into obs_base and we can use the
-        real FilterDefinitions there.
-        """
-        def defineFilters(self):
-            pass
-    filterDefinitions = FilterDefinitions()
+    filterDefinitions = FilterDefinitionCollection()
 
     @classmethod
     def getName(cls):

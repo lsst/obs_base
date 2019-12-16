@@ -50,6 +50,7 @@ class Instrument(metaclass=ABCMeta):
         return None
 
     def __init__(self, *args, **kwargs):
+        self.filterDefinitions.reset()
         self.filterDefinitions.defineFilters()
 
     @classmethod
