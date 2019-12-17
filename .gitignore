@@ -13,6 +13,7 @@ config.log
 .cache
 .pytest_cache
 .coverage
+bin/
 doc/html
 doc/*.tag
 doc/*.inc
