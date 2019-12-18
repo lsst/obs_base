@@ -124,7 +124,7 @@ class RootRepoConverter(StandardRepoConverter):
                 self.task.useSkyPix(dimension)
                 self._refCats.append((refCat, dimension))
         if self.task.isDatasetTypeIncluded("brightObjectMask") and self.task.config.rootSkyMapName:
-            self.task.useSkyMap(self._rootSkyMap)
+            self.task.useSkyMap(self._rootSkyMap, self.task.config.rootSkyMapName)
         super().prep()
 
     def insertDimensionData(self):
