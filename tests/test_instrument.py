@@ -23,8 +23,7 @@ import os
 import unittest
 
 import lsst.utils
-from lsst.daf.butler.core import Registry
-from lsst.daf.butler.core.butlerConfig import ButlerConfig
+from lsst.daf.butler import Registry, ButlerConfig
 from lsst.obs.base import Instrument, FilterDefinitionCollection
 
 """Tests of the Instrument class.
