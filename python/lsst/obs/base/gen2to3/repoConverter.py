@@ -421,21 +421,16 @@ class RepoConverter(ABC):
         """
         pass
 
-    def handleDataIdExpansionFailure(self, dataset: FileDataset, err: LookupError):
-        self.task.log.warn("Skipping ingestion for '%s': %s", dataset.path, err)
-        return False
-
     def expandDataIds(self):
         """Expand the data IDs for all datasets to be inserted.
 
         Subclasses may override this method, but must delegate to the base
-        class implementation if they do.  If they wish to handle expected
-        failures in data ID expansion, they should override
-        `handleDataIdExpansionFailure` instead.
+        class implementation if they do.
 
         This involves queries to the registry, but not writes.  It is
         guaranteed to be called between `insertDimensionData` and `ingest`.
         """
+        import itertools
         for datasetType, datasetsForType in self._fileDatasets.items():
             self.task.log.info("Expanding data IDs for %s %s datasets.", len(datasetsForType),
                                datasetType.name)
@@ -445,10 +440,14 @@ class RepoConverter(ABC):
                     try:
                         dataId = self.task.registry.expandDataId(ref.dataId)
                         dataset.refs[i] = ref.expanded(dataId)
-                        expanded.append(dataset)
                     except LookupError as err:
-                        if self.handleDataIdExpansionFailure(dataset, err):
-                            expanded.append(dataset)
+                        self.task.log.warn("Skipping ingestion for '%s': %s", dataset.path, err)
+                        # Remove skipped datasets from multi-extension FileDatasets
+                        dataset.refs[i] = None  # We will strip off the `None`s after the loop.
+                dataset.refs[:] = itertools.filterfalse(lambda x: x is None, dataset.refs)
+                if dataset.refs:
+                    expanded.append(dataset)
+
             datasetsForType[:] = expanded
 
     def ingest(self):

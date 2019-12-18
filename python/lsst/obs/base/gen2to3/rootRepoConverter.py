@@ -41,6 +41,27 @@ if TYPE_CHECKING:
     from ..ingest import RawExposureData
 
 
+def getDataPaths(dataRefs):
+    """Strip HDU identifiers from paths and return a unique set of paths.
+
+    Parameters
+    ----------
+    dataRefs : `lsst.daf.persistence.ButlerDataRef`
+        The gen2 datarefs to strip "[HDU]" values from.
+
+    Returns
+    -------
+    paths : `set` [`str`]
+        The unique file paths without appended "[HDU]".
+    """
+    paths = set()
+    for dataRef in dataRefs:
+        path = dataRef.getUri()
+        # handle with FITS files with multiple HDUs (e.g. decam raw)
+        paths.add(path.split('[')[0])
+    return paths
+
+
 class RootRepoConverter(StandardRepoConverter):
     """A specialization of `RepoConverter` for root data repositories.
 
@@ -98,7 +119,9 @@ class RootRepoConverter(StandardRepoConverter):
                 )
             else:
                 dataRefs = self.butler2.subset("raw")
-            self._exposureData.extend(self.task.raws.prep(dataRef.getUri() for dataRef in dataRefs))
+            dataPaths = getDataPaths(dataRefs)
+            self.task.log.debug("Prepping files: %s", dataPaths)
+            self._exposureData.extend(self.task.raws.prep(dataPaths))
         # Gather information about reference catalogs.
         if self.task.isDatasetTypeIncluded("ref_cat"):
             from lsst.meas.algorithms import DatasetConfig as RefCatDatasetConfig
