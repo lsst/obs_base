@@ -31,7 +31,7 @@ import os
 import shutil
 
 from lsst.daf.butler import Butler
-from lsst.obs.base import RawIngestTask
+import lsst.obs.base
 
 
 class IngestTestBase(metaclass=abc.ABCMeta):
@@ -47,11 +47,14 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     instrument = None
     """The instrument to be registered and tested."""
 
-    dataId = {}
-    """Butler data ID of a file to ingest when testing."""
+    dataIds = []
+    """list of butler data IDs of files that should have been ingested."""
 
     file = ""
     """Full path to a file to ingest in tests."""
+
+    RawIngestTask = lsst.obs.base.RawIngestTask
+    """The task to use in the Ingest test."""
 
     def setUp(self):
         # Use a temporary working directory
@@ -63,7 +66,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         self.instrument.register(self.butler.registry)
 
         # Make a default config for test methods to play with
-        self.config = RawIngestTask.ConfigClass()
+        self.config = self.RawIngestTask.ConfigClass()
         self.config.instrument = \
             f"{self.instrument.__class__.__module__}.{self.instrument.__class__.__name__}"
 
@@ -82,7 +85,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         """
         if files is None:
             files = [self.file]
-        task = RawIngestTask(config=self.config, butler=self.butler)
+        task = self.RawIngestTask(config=self.config, butler=self.butler)
         task.log.setLevel(task.log.FATAL)  # silence logs, since we expect a lot of warnings
         task.run(files)
 
@@ -96,12 +99,15 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             List of files to be ingested, or None to use ``self.file``
         """
         self.runIngest(files)
-        exposure = self.butler.get("raw", self.dataId)
-        metadata = self.butler.get("raw.metadata", self.dataId)
-        image = self.butler.get("raw.image", self.dataId)
-        self.assertImagesEqual(exposure.image, image)
-        self.assertEqual(metadata.toDict(), exposure.getMetadata().toDict())
-        self.checkRepo(files=files)
+        datasets = self.butler.registry.queryDatasets('raw', collections=...)
+        self.assertEqual(len(list(datasets)), len(self.dataIds))
+        for dataId in self.dataIds:
+            exposure = self.butler.get("raw", dataId)
+            metadata = self.butler.get("raw.metadata", dataId)
+            image = self.butler.get("raw.image", dataId)
+            self.assertImagesEqual(exposure.image, image)
+            self.assertEqual(metadata.toDict(), exposure.getMetadata().toDict())
+            self.checkRepo(files=files)
 
     def checkRepo(self, files=None):
         """Check the state of the repository after ingest.
