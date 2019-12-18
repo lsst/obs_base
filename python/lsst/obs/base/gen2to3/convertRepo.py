@@ -245,6 +245,7 @@ class ConvertRepoTask(Task):
     _DefaultName = "convertRepo"
 
     def __init__(self, config=None, *, butler3: Butler3, **kwds):
+        config.validate()  # Not a CmdlineTask nor PipelineTask, so have to validate the config here.
         super().__init__(config, **kwds)
         self.butler3 = butler3
         self.registry = self.butler3.registry

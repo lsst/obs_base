@@ -206,6 +206,7 @@ class RawIngestTask(Task):
                            universe=self.butler.registry.dimensions)
 
     def __init__(self, config: Optional[RawIngestConfig] = None, *, butler: Butler, **kwds: Any):
+        config.validate()  # Not a CmdlineTask nor PipelineTask, so have to validate the config here.
         super().__init__(config, **kwds)
         self.butler = butler
         self.universe = self.butler.registry.dimensions
