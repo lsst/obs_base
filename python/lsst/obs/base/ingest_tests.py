@@ -138,7 +138,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         """
         # symlink into repo root manually
         newPath = os.path.join(self.butler.datastore.root, os.path.basename(self.file))
-        os.symlink(self.file, newPath)
+        os.symlink(os.path.abspath(self.file), newPath)
         self.config.transfer = None
         self.runIngestTest([newPath])
 
