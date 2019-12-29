@@ -20,7 +20,4 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-"""Python interface to lsst::daf::butlerUtils::test classes
-"""
-
 from .compositeMapper import *
