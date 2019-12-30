@@ -25,8 +25,9 @@ __all__ = ["RootRepoConverter"]
 import os
 import re
 import itertools
-from typing import TYPE_CHECKING, Iterator, Tuple, List
+from typing import TYPE_CHECKING, Iterator, Optional, Tuple, List
 
+from lsst.skymap import BaseSkyMap
 from lsst.daf.butler import DatasetType, DatasetRef, FileDataset
 from .calibRepoConverter import CURATED_CALIBRATION_DATASET_TYPES
 from .standardRepoConverter import StandardRepoConverter
@@ -56,6 +57,10 @@ class RootRepoConverter(StandardRepoConverter):
         super().__init__(**kwds)
         self._exposureData: List[RawExposureData] = []
         self._refCats: List[Tuple[str, SkyPixDimension]] = []
+        if self.task.config.rootSkyMapName is not None:
+            self._rootSkyMap = self.task.config.skyMaps[self.task.config.rootSkyMapName].skyMap.apply()
+        else:
+            self._rootSkyMap = None
 
     def isDatasetTypeSpecial(self, datasetTypeName: str) -> bool:
         # Docstring inherited from RepoConverter.
@@ -69,6 +74,18 @@ class RootRepoConverter(StandardRepoConverter):
     def isDirectorySpecial(self, subdirectory: str) -> bool:
         # Docstring inherited from RepoConverter.
         return subdirectory == "ref_cats"
+
+    def findMatchingSkyMap(self, datasetTypeName: str) -> Tuple[Optional[BaseSkyMap], Optional[str]]:
+        # Docstring inherited from StandardRepoConverter.findMatchingSkyMap.
+        skyMap, name = super().findMatchingSkyMap(datasetTypeName)
+        if skyMap is None and self.task.config.rootSkyMapName is not None:
+            self.task.log.debug(
+                ("Assuming configured root skymap with name '%s' for dataset %s."),
+                self.task.config.rootSkyMapName, datasetTypeName
+            )
+            skyMap = self._rootSkyMap
+            name = self.task.config.rootSkyMapName
+        return skyMap, name
 
     def prep(self):
         # Docstring inherited from RepoConverter.
@@ -109,6 +126,8 @@ class RootRepoConverter(StandardRepoConverter):
                                      f"skypix dimension is configured for this registry.") from err
                 self.task.useSkyPix(dimension)
                 self._refCats.append((refCat, dimension))
+        if self.task.isDatasetTypeIncluded("brightObjectMask") and self.task.config.rootSkyMapName:
+            self.task.useSkyMap(self._rootSkyMap)
         super().prep()
 
     def insertDimensionData(self):

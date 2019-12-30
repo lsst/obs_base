@@ -24,7 +24,7 @@ __all__ = ["StandardRepoConverter"]
 
 import os.path
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Iterator, Tuple
+from typing import TYPE_CHECKING, Iterator, Optional, Tuple
 
 from lsst.log import Log
 from lsst.log.utils import temporaryLogLevel
@@ -131,9 +131,21 @@ class StandardRepoConverter(RepoConverter):
             if datasetTypeName not in self.mapper.calibrations:
                 yield datasetTypeName, mapping
 
-    def makeDataIdExtractor(self, datasetTypeName: str, parser: FilePathParser,
-                            storageClass: StorageClass) -> DataIdExtractor:
-        # Docstring inherited from RepoConverter.
+    def findMatchingSkyMap(self, datasetTypeName: str) -> Tuple[Optional[BaseSkyMap], Optional[str]]:
+        """Return the appropriate SkyMap for the given dataset type.
+
+        Parameters
+        ----------
+        datasetTypeName : `str`
+            Name of the dataset type for which a skymap is sought.
+
+        Returns
+        -------
+        skyMap : `BaseSkyMap` or `None`
+            The `BaseSkyMap` instance, or `None` if there was no match.
+        skyMapName : `str` or `None`
+            The Gen3 name for the SkyMap, or `None` if there was no match.
+        """
         # Use deepCoadd_skyMap by default; there are some dataset types
         # that use it but don't have "deep" anywhere in their name.
         struct = self._foundSkyMapsByCoaddName.get("deep")
@@ -151,14 +163,23 @@ class StandardRepoConverter(RepoConverter):
                          "found in repo %s."),
                         datasetTypeName, coaddName, self.root
                     )
+        if struct is not None:
+            return struct.instance, struct.name
+        else:
+            return None, None
+
+    def makeDataIdExtractor(self, datasetTypeName: str, parser: FilePathParser,
+                            storageClass: StorageClass) -> DataIdExtractor:
+        # Docstring inherited from RepoConverter.
+        skyMap, skyMapName = self.findMatchingSkyMap(datasetTypeName)
         return DataIdExtractor(
             datasetTypeName,
             storageClass,
             filePathParser=parser,
             universe=self.task.universe,
             instrument=self.task.instrument.getName(),
-            skyMap=struct.instance if struct is not None else None,
-            skyMapName=struct.name if struct is not None else None,
+            skyMap=skyMap,
+            skyMapName=skyMapName,
         )
 
     def iterDatasets(self) -> Iterator[FileDataset]:

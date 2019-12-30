@@ -104,6 +104,13 @@ class ConvertRepoConfig(Config):
         itemtype=ConvertRepoSkyMapConfig,
         default={}
     )
+    rootSkyMapName = Field(
+        "Name of a Gen3 skymap (an entry in ``self.skyMaps``) to assume for "
+        "datasets in the root repository when no SkyMap is found there. ",
+        dtype=str,
+        optional=True,
+        default=None,
+    )
     collections = DictField(
         "Special collections (values) for certain dataset types (keys).  "
         "These are used in addition to rerun collections for datasets in "
