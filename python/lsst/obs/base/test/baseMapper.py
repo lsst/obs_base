@@ -19,5 +19,29 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from .baseMapper import *
-from .compositeMapper import *
+import lsst.daf.persistence as dafPersist
+from lsst.obs.base import CameraMapper
+
+__all__ = ["BaseMapper"]
+
+
+class BaseMapper(CameraMapper):
+    packageName = 'base'
+
+    # Mapper policy whose only dataset comes from the base mapper class
+    policy = {
+        "camera": "camera",
+        "defaultLevel": "sensor",
+        "datasets": {},
+        "exposures": {},
+        "calibrations": {},
+        "images": {}
+    }
+
+    def __init__(self, root):
+        CameraMapper.__init__(self, policy=dafPersist.Policy(BaseMapper.policy),
+                              repositoryDir=root, root=root)
+
+    @classmethod
+    def getPackageDir(cls):
+        return "/path/to/nowhere"

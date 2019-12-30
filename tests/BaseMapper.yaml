@@ -1,9 +1,0 @@
-
-#   Mapper policy whose only dataset comes from the base mapper class
-
-camera: "camera"
-defaultLevel: "sensor"
-datasets: {}
-exposures: {}
-calibrations: {}
-images: {}
