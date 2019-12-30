@@ -132,10 +132,11 @@ class ConversionSubset:
         tracts = set()
         self.tracts[name] = tracts
         for visit in self.visits:
-            for dataId in self.registry.queryDimensions(["tract"], expand=False,
-                                                        dataId={"skymap": name, "visit": visit}):
+            for dataId in registry.queryDimensions(["tract"], expand=False,
+                                                   dataId={"skymap": name,
+                                                           "instrument": self.instrument,
+                                                           "visit": visit}):
                 tracts.add(dataId["tract"])
-        self.task.log.info("Limiting datasets defined on skymap %s to %s tracts.", name, len(tracts))
 
     def addSkyPix(self, registry: Registry, dimension: SkyPixDimension):
         """Populate the included skypix IDs for the given dimension from those
@@ -155,7 +156,7 @@ class ConversionSubset:
                 self.regions.append(dataId.region)
         ranges = RangeSet()
         for region in self.regions:
-            ranges = ranges.join(dimension.pixelization.envelope(region))
+            ranges = ranges.union(dimension.pixelization.envelope(region))
         self.skypix[dimension] = ranges
 
     def isRelated(self, dataId: DataCoordinate) -> bool:

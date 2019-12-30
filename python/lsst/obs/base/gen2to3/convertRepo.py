@@ -98,7 +98,7 @@ class ConvertRepoConfig(Config):
     )
     skyMaps = ConfigDictField(
         "Mapping from Gen3 skymap name to the parameters used to construct a "
-        "BaseSkyMap instance.  This will be used to associated names with "
+        "BaseSkyMap instance.  This will be used to associate names with "
         "existing skymaps found in the Gen2 repo.",
         keytype=str,
         itemtype=ConvertRepoSkyMapConfig,
