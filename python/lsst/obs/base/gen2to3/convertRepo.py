@@ -405,11 +405,18 @@ class ConvertRepoTask(Task):
                               "no filtering will be done.")
             subset = None
 
+        # We can't wrap database writes sanely in transactions (yet) because we
+        # keep initializing new Butler instances just so we can write into new
+        # runs/collections, and transactions are managed at the Butler level.
+        # DM-21246 should let us fix this, assuming we actually want to keep
+        # the transaction open that long.
         if self.config.doRegisterInstrument:
             self.instrument.register(self.registry)
 
         # Make and prep converters for all Gen2 repos.  This should not modify
         # the Registry database or filesystem at all, though it may query it.
+        # The prep() calls here will be some of the slowest ones, because
+        # that's when we walk the filesystem.
         converters = []
         rootConverter = RootRepoConverter(task=self, root=root, collections=collections, subset=subset)
         rootConverter.prep()
@@ -457,6 +464,16 @@ class ConvertRepoTask(Task):
         # that is used to filter data IDs for config.relatedOnly.
         self.registerUsedSkyMaps(rootConverter.subset)
         self.registerUsedSkyPix(rootConverter.subset)
+
+        # Look for datasets, generally by scanning the filesystem.
+        # This requires dimensions to have already been inserted so we can use
+        # dimension information to identify related datasets.
+        for converter in converters:
+            converter.findDatasets()
+
+        # Expand data IDs.
+        for converter in converters:
+            converter.expandDataIds()
 
         # Actually ingest datasets.
         for converter in converters:

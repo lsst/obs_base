@@ -27,9 +27,22 @@ import fnmatch
 from dataclasses import dataclass
 from collections import defaultdict
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Generic, TypeVar, List, Tuple, Optional, Iterator, Set, Any, Callable, Dict
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    Iterator,
+    List,
+    MutableMapping,
+    Optional,
+    Set,
+    Tuple,
+    TYPE_CHECKING,
+    TypeVar,
+)
 
-from lsst.daf.butler import DatasetRef, Butler as Butler3, DataCoordinate, FileDataset
+from lsst.daf.butler import DatasetRef, Butler as Butler3, DataCoordinate, FileDataset, DatasetType
 from lsst.sphgeom import RangeSet, Region
 
 from .filePathParser import FilePathParser
@@ -257,6 +270,7 @@ class RepoConverter(ABC):
         self._collections = list(collections)
         self._extractors: MostRecentlyUsedStack[DataIdExtractor] = MostRecentlyUsedStack()
         self._skipParsers: MostRecentlyUsedStack[Tuple[FilePathParser, str, str]] = MostRecentlyUsedStack()
+        self._fileDatasets: MutableMapping[DatasetType, List[FileDataset]] = defaultdict(list)
 
     @abstractmethod
     def isDatasetTypeSpecial(self, datasetTypeName: str) -> bool:
@@ -345,6 +359,54 @@ class RepoConverter(ABC):
         """
         raise NotImplementedError()
 
+    def prep(self):
+        """Perform preparatory work associated with the dataset types to be
+        converted from this repository (but not the datasets themselves).
+
+        Notes
+        -----
+        This should be a relatively fast operation that should not depend on
+        the size of the repository.
+
+        Subclasses may override this method, but must delegate to the base
+        class implementation at some point in their own logic.
+        More often, subclasses will specialize the behavior of
+        `prepDatasetTypes` by overriding other methods to which the base class
+        implementation delegates.
+        These include:
+         - `iterMappings`
+         - `isDatasetTypeSpecial`
+         - `makeDataIdExtractor`
+
+        This should not perform any write operations to the Gen3 repository.
+        It is guaranteed to be called before `insertDimensionData`.
+        """
+        self.task.log.info(f"Preparing other dataset types from root {self.root}.")
+        for datasetTypeName, mapping in self.iterMappings():
+            try:
+                parser = FilePathParser.fromMapping(mapping)
+            except RuntimeError:
+                # No template, so there should be no way we'd get one of these
+                # in the Gen2 repo anyway (and if we do, we'll still produce a
+                # warning - just a less informative one than we might be able
+                # to produce if we had a template).
+                continue
+            if (not self.task.isDatasetTypeIncluded(datasetTypeName) or
+                    self.isDatasetTypeSpecial(datasetTypeName)):
+                # User indicated not to include this data, but we still want
+                # to recognize files of that type to avoid warning about them.
+                self._skipParsers.push((parser, datasetTypeName, None))
+                continue
+            storageClass = self._guessStorageClass(datasetTypeName, mapping)
+            if storageClass is None:
+                # This may be a problem, but only if we actually encounter any
+                # files corresponding to this dataset.  Of course, we need
+                # to be able to parse those files in order to recognize that
+                # situation.
+                self._skipParsers.push((parser, datasetTypeName, "no storage class found."))
+                continue
+            self._extractors.push(self.makeDataIdExtractor(datasetTypeName, parser, storageClass))
+
     def iterDatasets(self) -> Iterator[FileDataset]:
         """Iterate over all datasets in the repository that should be
         ingested into the Gen3 repository.
@@ -387,45 +449,11 @@ class RepoConverter(ABC):
                 else:
                     self._handleUnrecognizedFile(fileNameInRoot)
 
-    def prep(self):
-        """Prepare the repository by identifying the dataset types to be
-        converted and building `DataIdExtractor` instance for them.
-
-        Subclasses may override this method, but must delegate to the base
-        class implementation at some point in their own logic.  More often,
-        subclasses will specialize the behavior of `prep` simply by overriding
-        `iterMappings`, `isDatasetTypeSpecial`, and `makeDataIdExtractor`, to
-        which the base implementation delegates.
-
-        This should not perform any write operations to the Gen3 repository.
-        It is guaranteed to be called before `insertDimensionData` and
-        `ingest`.
-        """
-        self.task.log.info(f"Preparing other datasets from root {self.root}.")
-        for datasetTypeName, mapping in self.iterMappings():
-            try:
-                parser = FilePathParser.fromMapping(mapping)
-            except RuntimeError:
-                # No template, so there should be no way we'd get one of these
-                # in the Gen2 repo anyway (and if we do, we'll still produce a
-                # warning - just a less informative one than we might be able
-                # to produce if we had a template).
-                continue
-            if (not self.task.isDatasetTypeIncluded(datasetTypeName) or
-                    self.isDatasetTypeSpecial(datasetTypeName)):
-                # User indicated not to include this data, but we still want
-                # to recognize files of that type to avoid warning about them.
-                self._skipParsers.push((parser, datasetTypeName, None))
-                continue
-            storageClass = self._guessStorageClass(datasetTypeName, mapping)
-            if storageClass is None:
-                # This may be a problem, but only if we actually encounter any
-                # files corresponding to this dataset.  Of course, we need
-                # to be able to parse those files in order to recognize that
-                # situation.
-                self._skipParsers.push((parser, datasetTypeName, "no storage class found."))
-                continue
-            self._extractors.push(self.makeDataIdExtractor(datasetTypeName, parser, storageClass))
+    def findDatasets(self):
+        self.task.log.info("Finding datasets from files in repo %s.", self.root)
+        for dataset in self.iterDatasets():
+            assert len(dataset.refs) == 1
+            self._fileDatasets[dataset.refs[0].datasetType].append(dataset)
 
     def insertDimensionData(self):
         """Insert any dimension records uniquely derived from this repository
@@ -442,23 +470,35 @@ class RepoConverter(ABC):
         """
         pass
 
+    def handleDataIdExpansionFailure(self, dataset: FileDataset, err: LookupError):
+        self.task.log.warn("Skipping ingestion for '%s': %s", dataset.path, err)
+        return False
+
+    def expandDataIds(self):
+        for datasetType, datasetsForType in self._fileDatasets.items():
+            self.task.log.info("Expanding data IDs for %s %s datasets.", len(datasetsForType),
+                               datasetType.name)
+            expanded = []
+            for dataset in datasetsForType:
+                try:
+                    dataId = self.task.registry.expandDataId(dataset.ref.dataId)
+                    dataset.ref = dataset.ref.expanded(dataId)
+                    expanded.append(dataset)
+                except LookupError as err:
+                    if self.handleDataIdExpansionFailure(dataset, err):
+                        expanded.append(dataset)
+            datasetsForType[:] = expanded
+
     def ingest(self):
         """Insert converted datasets into the Gen3 repository.
 
         Subclasses may override this method, but must delegate to the base
-        class implementation at some point in their own logic.  More often,
-        subclasses will specialize the behavior of `ingest` simply by
-        overriding `iterDatasets` and `isDirectorySpecial`, to which the base
-        implementation delegates.
+        class implementation at some point in their own logic.
 
         This method is guaranteed to be called after both `prep` and
         `insertDimensionData`.
         """
-        self.task.log.info("Finding datasets in repo %s.", self.root)
-        datasetsByType = defaultdict(list)
-        for dataset in self.iterDatasets():
-            datasetsByType[dataset.refs[0].datasetType].append(dataset)
-        for datasetType, datasetsForType in datasetsByType.items():
+        for datasetType, datasetsForType in self._fileDatasets.items():
             self.task.registry.registerDatasetType(datasetType)
             self.task.log.info("Ingesting %s %s datasets.", len(datasetsForType), datasetType.name)
             try:
