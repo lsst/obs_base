@@ -165,7 +165,7 @@ class StandardRepoConverter(RepoConverter):
         # Docstring inherited from RepoConverter.
         for struct in self._foundSkyMapsByCoaddName.values():
             if self.task.isDatasetTypeIncluded(struct.ref.datasetType.name):
-                yield FileDataset(path=os.path.join(self.root, struct.filename), ref=struct.ref)
+                yield FileDataset(path=os.path.join(self.root, struct.filename), refs=struct.ref)
         yield from super().iterDatasets()
 
     # Class attributes that will be shadowed by public instance attributes;

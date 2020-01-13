@@ -134,12 +134,12 @@ class RootRepoConverter(StandardRepoConverter):
                         htmId = int(m.group(1))
                         dataId = self.task.registry.expandDataId({dimension: htmId})
                         yield FileDataset(path=os.path.join(self.root, "ref_cats", refCat, fileName),
-                                          ref=DatasetRef(datasetType, dataId))
+                                          refs=DatasetRef(datasetType, dataId))
             else:
                 for htmId in self.subset.skypix[dimension]:
                     dataId = self.task.registry.expandDataId({dimension: htmId})
                     yield FileDataset(path=os.path.join(self.root, "ref_cats", refCat, f"{htmId}.fits"),
-                                      ref=DatasetRef(datasetType, dataId))
+                                      refs=DatasetRef(datasetType, dataId))
         yield from super().iterDatasets()
 
     def ingest(self):
