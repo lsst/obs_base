@@ -160,7 +160,9 @@ class ConvertRepoConfig(Config):
         "Filename globs that should be ignored instead of being treated as "
         "datasets.",
         dtype=str,
-        default=["README.txt", "*~?", "butler.yaml", "gen3.sqlite3"]
+        default=["README.txt", "*~?", "butler.yaml", "gen3.sqlite3",
+                 "registry.sqlite3", "calibRegistry.sqlite3", "_mapper",
+                 "_parent", "repositoryCfg.yaml"]
     )
     datasetIncludePatterns = ListField(
         "Glob-style patterns for dataset type names that should be converted.",

@@ -24,15 +24,14 @@ __all__ = ["StandardRepoConverter"]
 
 import os.path
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Iterator, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Iterator, Optional, Tuple
 
 from lsst.log import Log
 from lsst.log.utils import temporaryLogLevel
 from lsst.daf.persistence import Butler as Butler2
 from lsst.daf.butler import DatasetType, DatasetRef, DataCoordinate, FileDataset
 from .repoConverter import RepoConverter
-from .filePathParser import FilePathParser
-from .dataIdExtractor import DataIdExtractor
+from .repoWalker import RepoWalker
 
 SKYMAP_DATASET_TYPES = {
     coaddName: f"{coaddName}Coadd_skyMap" for coaddName in ("deep", "goodSeeing", "dcr")
@@ -95,10 +94,6 @@ class StandardRepoConverter(RepoConverter):
     def isDatasetTypeSpecial(self, datasetTypeName: str) -> bool:
         # Docstring inherited from RepoConverter.
         return datasetTypeName in SKYMAP_DATASET_TYPES.values()
-
-    def isDirectorySpecial(self, subdirectory: str) -> bool:
-        # Docstring inherited from RepoConverter.
-        return False
 
     def prep(self):
         # Docstring inherited from RepoConverter.
@@ -168,15 +163,16 @@ class StandardRepoConverter(RepoConverter):
         else:
             return None, None
 
-    def makeDataIdExtractor(self, datasetTypeName: str, parser: FilePathParser,
-                            storageClass: StorageClass) -> DataIdExtractor:
+    def makeRepoWalkerTarget(self, datasetTypeName: str, template: str, keys: Dict[str, type],
+                             storageClass: StorageClass) -> RepoWalker.Target:
         # Docstring inherited from RepoConverter.
         skyMap, skyMapName = self.findMatchingSkyMap(datasetTypeName)
-        return DataIdExtractor(
-            datasetTypeName,
-            storageClass,
-            filePathParser=parser,
-            universe=self.task.universe,
+        return RepoWalker.Target(
+            datasetTypeName=datasetTypeName,
+            storageClass=storageClass,
+            template=template,
+            keys=keys,
+            universe=self.task.registry.dimensions,
             instrument=self.task.instrument.getName(),
             skyMap=skyMap,
             skyMapName=skyMapName,

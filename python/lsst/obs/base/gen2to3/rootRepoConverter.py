@@ -71,9 +71,9 @@ class RootRepoConverter(StandardRepoConverter):
             datasetTypeName in CURATED_CALIBRATION_DATASET_TYPES
         )
 
-    def isDirectorySpecial(self, subdirectory: str) -> bool:
+    def getSpecialDirectories(self) -> List[str]:
         # Docstring inherited from RepoConverter.
-        return subdirectory == "ref_cats"
+        return super().getSpecialDirectories() + ["CALIB", "ref_cats", "rerun"]
 
     def findMatchingSkyMap(self, datasetTypeName: str) -> Tuple[Optional[BaseSkyMap], Optional[str]]:
         # Docstring inherited from StandardRepoConverter.findMatchingSkyMap.

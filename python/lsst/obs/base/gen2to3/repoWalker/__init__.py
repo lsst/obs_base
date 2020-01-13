@@ -2,7 +2,7 @@
 #
 # Developed for the LSST Data Management System.
 # This product includes software developed by the LSST Project
-# (https://www.lsst.org).
+# (http://www.lsst.org).
 # See the COPYRIGHT file at the top-level directory of this distribution
 # for details of code ownership.
 #
@@ -19,10 +19,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from .translators import *
-from .repoWalker import *
-from .repoConverter import *
-from .calibRepoConverter import *
-from .standardRepoConverter import *
-from .rootRepoConverter import *
-from .convertRepo import *
+
+__all__ = (
+    "RepoWalker",  # The only public interface to the functionality in this
+                   # package.
+)
+
+# Other classes should appear in the docs, because maintainers will want to
+# understand them, but don't need to be exported to the next level.
+from .walker import *
+from .parser import *
+from .scanner import *
+from .handlers import *
+from .builders import *
