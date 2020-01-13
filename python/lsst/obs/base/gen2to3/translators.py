@@ -71,8 +71,8 @@ class KeyHandler(metaclass=ABCMeta):
         this handler (e.g. "visit" or "abstract_filter").
     """
     def __init__(self, dimension: str):
-
         self.dimension = dimension
+
     __slots__ = ("dimension",)
 
     def translate(self, gen2id: dict, gen3id: dict,
