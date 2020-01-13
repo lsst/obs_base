@@ -109,11 +109,6 @@ class RootRepoConverter(StandardRepoConverter):
                     continue
                 if refCat not in self.task.config.refCats:
                     continue
-                if not self.task.isDatasetTypeIncluded(refCat):
-                    # While the Gen2 dataset type for reference catalogs is
-                    # just "ref_cat", in Gen3 we use the name of the reference
-                    # catalog as its dataset type name.
-                    continue
                 self.task.log.info(f"Preparing ref_cat {refCat} from root {self.root}.")
                 onDiskConfig = RefCatDatasetConfig()
                 onDiskConfig.load(configFile)
