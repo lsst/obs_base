@@ -66,12 +66,15 @@ class MakeRawVisitInfo(object):
     log : `lsst.log.Log` or None
         Logger to use for messages.
         (None to use ``Log.getLogger("MakeRawVisitInfo")``).
+    doStripHeader : `bool`, optional
+        Strip header keywords from the metadata as they are used?
     """
 
-    def __init__(self, log=None):
+    def __init__(self, log=None, doStripHeader=False):
         if log is None:
             log = Log.getLogger("MakeRawVisitInfo")
         self.log = log
+        self.doStripHeader = doStripHeader
 
     def __call__(self, md, exposureId):
         """Construct a VisitInfo and strip associated data from the metadata.
@@ -81,7 +84,7 @@ class MakeRawVisitInfo(object):
         md : `lsst.daf.base.PropertyList` or `lsst.daf.base.PropertySet`
             Metadata to pull from.
             Items that are used are stripped from the metadata (except TIMESYS,
-            because it may apply to other keywords).
+            because it may apply to other keywords) if ``doStripHeader``.
         exposureId : `int`
             exposure ID
 
@@ -196,14 +199,16 @@ class MakeRawVisitInfo(object):
         return DateTime(dateNSec + int(offsetSec*1.0e9), DateTime.TAI)
 
     def popItem(self, md, key, default=None):
-        """Remove an item of metadata and return the value.
+        """Return an item of metadata.
+
+        The item is removed if ``doStripHeader`` is ``True``.
 
         Log a warning if the key is not found.
 
         Parameters
         ----------
         md : `lsst.daf.base.PropertyList` or `PropertySet`
-            Metadata to pull `key` from and remove.
+            Metadata to pull `key` from and (optionally) remove.
         key : `str`
             Metadata key to extract.
         default : `object`
@@ -220,7 +225,8 @@ class MakeRawVisitInfo(object):
                 self.log.warn("Key=\"{}\" not in metadata".format(key))
                 return default
             val = md.getScalar(key)
-            md.remove(key)
+            if self.doStripHeader:
+                md.remove(key)
             return val
         except Exception as e:
             # this should never happen, but is a last ditch attempt to avoid exceptions
@@ -233,9 +239,9 @@ class MakeRawVisitInfo(object):
         Parameters
         ----------
         md : `lsst.daf.base.PropertyList` or `PropertySet`
-            Metadata to pull `key` from and remove.
+            Metadata to pull `key` from.
         key : `str`
-            Key to read and remove from md.
+            Key to read.
 
         Returns
         -------
@@ -258,9 +264,9 @@ class MakeRawVisitInfo(object):
         Parameters
         ----------
         md : `lsst.daf.base.PropertyList` or `PropertySet`
-            Metadata to pull `key` from and remove.
+            Metadata to pull `key` from.
         key : `str`
-            Key to read and remove from md.
+            Key to read from md.
 
         Returns
         -------
@@ -282,9 +288,9 @@ class MakeRawVisitInfo(object):
         Parameters
         ----------
         md : `lsst.daf.base.PropertyList` or `PropertySet`
-            Metadata to pull `key` from and remove.
+            Metadata to pull `key` from.
         key : `str`
-            Date key to read and remove from md.
+            Date key to read from md.
         timesys : `str`
             Time system as a string (not case sensitive), e.g. "UTC" or None;
             if None then look for TIMESYS (but do NOT pop it, since it may be
@@ -317,9 +323,9 @@ class MakeRawVisitInfo(object):
         Parameters
         ----------
         md : `lsst.daf.base.PropertyList` or `PropertySet`
-            Metadata to pull `key` from and remove.
+            Metadata to pull `key` from.
         key : `str`
-            Date key to read and remove from md.
+            Date key to read from md.
         timesys : `str`
             Time system as a string (not case sensitive), e.g. "UTC" or None;
             if None then look for TIMESYS (but do NOT pop it, since it may be
