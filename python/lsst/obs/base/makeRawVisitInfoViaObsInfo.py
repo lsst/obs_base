@@ -59,16 +59,19 @@ class MakeRawVisitInfoViaObsInfo(object):
     log : `lsst.log.Log` or None
         Logger to use for messages.
         (None to use ``Log.getLogger("MakeRawVisitInfoViaObsInfo")``).
+    doStripHeader : `bool`, optional
+        Strip header keywords from the metadata as they are used?
     """
 
     metadataTranslator = None
     """Header translator to use to construct VisitInfo, defaulting to
     automatic determination."""
 
-    def __init__(self, log=None):
+    def __init__(self, log=None, doStripHeader=False):
         if log is None:
             log = Log.getLogger("MakeRawVisitInfoViaObsInfo")
         self.log = log
+        self.doStripHeader = doStripHeader
 
     def __call__(self, md, exposureId=None):
         """Construct a VisitInfo and strip associated data from the metadata.
@@ -77,7 +80,7 @@ class MakeRawVisitInfoViaObsInfo(object):
         ----------
         md : `lsst.daf.base.PropertyList` or `lsst.daf.base.PropertySet`
             Metadata to pull from.
-            Items that are used are stripped from the metadata.
+            May be modified if ``stripHeader`` is ``True``.
         exposureId : `int`, optional
             Ignored.  Here for compatibility with `MakeRawVisitInfo`.
 
@@ -90,9 +93,10 @@ class MakeRawVisitInfoViaObsInfo(object):
 
         obsInfo = ObservationInfo(md, translator_class=self.metadataTranslator)
 
-        # Strip all the cards out that were used
-        for c in obsInfo.cards_used:
-            del md[c]
+        if self.doStripHeader:
+            # Strip all the cards out that were used
+            for c in obsInfo.cards_used:
+                del md[c]
 
         return self.observationInfo2visitInfo(obsInfo, log=self.log)
 

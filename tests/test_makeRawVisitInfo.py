@@ -73,11 +73,16 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
             "EXTRA1": "an abitrary key and value",
             "EXTRA2": 5,
         })
+        length = len(md)
         visitInfo = self.makeRawVisitInfo(md=md, exposureId=exposureId)
         self.assertEqual(visitInfo.getExposureId(), exposureId)
-        self.assertEqual(md.nameCount(), 3)  # TIMESYS and two EXTRAn keywords
+        self.assertEqual(md.nameCount(), length)  # No stripping
         self.assertEqual(visitInfo.getExposureTime(), exposureTime)
         self.assertEqual(visitInfo.getDate(), date)
+
+        # Test stripping keywords
+        visitInfo = SimpleMakeRawVisitInfo(doStripHeader=True)(md=md, exposureId=exposureId)
+        self.assertEqual(md.nameCount(), 3)  # TIMESYS and two EXTRAn keywords
 
         # try TIMESYS=TAI
         md = getMetadata({
@@ -85,8 +90,9 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
             "TIMESYS": "TAI",
             "EXPTIME": exposureTime,
         })
+        length = len(md)
         visitInfo = self.makeRawVisitInfo(md=md, exposureId=exposureId)
-        self.assertEqual(md.nameCount(), 1)  # TIMESYS
+        self.assertEqual(md.nameCount(), length)
         self.assertEqual(visitInfo.getExposureTime(), exposureTime)
         self.assertEqual(visitInfo.getDate(), date)
 
@@ -95,8 +101,9 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
             "DATE-OBS": startDate.toString(DateTime.UTC),
             "EXPTIME": exposureTime,
         })
+        length = len(md)
         visitInfo = self.makeRawVisitInfo(md=md, exposureId=exposureId)
-        self.assertEqual(md.nameCount(), 0)
+        self.assertEqual(md.nameCount(), length)
         self.assertEqual(visitInfo.getExposureTime(), exposureTime)
         self.assertEqual(visitInfo.getDate(), date)
 
@@ -104,8 +111,9 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
         md = getMetadata({
             "EXPTIME": exposureTime,
         })
+        length = len(md)
         visitInfo = self.makeRawVisitInfo(md=md, exposureId=exposureId)
-        self.assertEqual(md.nameCount(), 0)
+        self.assertEqual(md.nameCount(), length)
         self.assertEqual(visitInfo.getExposureTime(), exposureTime)
         self.assertEqual(visitInfo.getDate(), DateTime())
 
@@ -113,8 +121,9 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
         md = getMetadata({
             "DATE-OBS": startDate.toString(DateTime.UTC),
         })
+        length = len(md)
         visitInfo = self.makeRawVisitInfo(md=md, exposureId=exposureId)
-        self.assertEqual(md.nameCount(), 0)
+        self.assertEqual(md.nameCount(), length)
         self.assertTrue(math.isnan(visitInfo.getExposureTime()))
         self.assertEqual(visitInfo.getDate(), startDate)
 
@@ -123,15 +132,27 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
             "TIMESYS": "UTC",
             "OTHER": 5,
         })
+        names = set(md.names())
 
         timesys = self.makeRawVisitInfo.popItem(md, "TIMESYS")
         self.assertEqual(timesys, "UTC")
-        self.assertEqual(set(md.names()), set(["OTHER"]))
+        self.assertEqual(set(md.names()), names)
 
         defVal = self.makeRawVisitInfo.popItem(md, "BADKEY", default=7)
-        self.assertEqual(set(md.names()), set(["OTHER"]))
+        self.assertEqual(set(md.names()), names)
         self.assertEqual(defVal, 7)
         missingItem = self.makeRawVisitInfo.popItem(md, "BADKEY")
+        self.assertIsNone(missingItem)
+
+        # Repeat, with stripping
+        timesys = SimpleMakeRawVisitInfo(doStripHeader=True).popItem(md, "TIMESYS")
+        self.assertEqual(timesys, "UTC")
+        self.assertEqual(set(md.names()), set(["OTHER"]))
+
+        defVal = SimpleMakeRawVisitInfo(doStripHeader=True).popItem(md, "BADKEY", default=7)
+        self.assertEqual(set(md.names()), set(["OTHER"]))
+        self.assertEqual(defVal, 7)
+        missingItem = SimpleMakeRawVisitInfo(doStripHeader=True).popItem(md, "BADKEY")
         self.assertIsNone(missingItem)
 
     def testPopFloat(self):
@@ -142,6 +163,7 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
             "INTSTR": "6",
             "STR": "FOO",
         }
+        length = len(dataDict)
 
         for key, desValue in dataDict.items():
             if key == "STR":
@@ -149,7 +171,7 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
             md = getMetadata(dataDict)
             value = self.makeRawVisitInfo.popFloat(md, key)
             self.assertAlmostEqual(value, float(desValue))
-            self.assertEqual(len(md.names()), 4)
+            self.assertEqual(len(md.names()), length)
 
         badFloat = self.makeRawVisitInfo.popFloat(md, "STR")
         self.assertTrue(math.isnan(badFloat))
@@ -197,6 +219,7 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
             }
             if timesys is not None:
                 dataDict["TIMESYS"] = timesys
+            length = len(dataDict)
 
             for key, dateStr in dataDict.items():
                 if not key.startswith("DATE"):
@@ -218,9 +241,8 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
                 desDate = DateTime(lsstDateStr, lsstSys)
 
                 md = getMetadata(dataDict)
-                numKeys = len(md.names())
                 date = self.makeRawVisitInfo.popIsoDate(md, key, timesys=timesys)
-                self.assertEqual(len(md.names()), numKeys - 1)
+                self.assertEqual(len(md.names()), length)
                 self.assertEqual(date, desDate)
 
             badDate = self.makeRawVisitInfo.popIsoDate(md, "BADISODATE")
@@ -239,6 +261,7 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
             }
             if timesys is not None:
                 dataDict["TIMESYS"] = timesys
+            length = len(dataDict)
 
             for key, mjdDate in dataDict.items():
                 if not key.startswith("DATE"):
@@ -252,9 +275,8 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
                 desDate = DateTime(mjdDate, DateTime.MJD, lsstSys)
 
                 md = getMetadata(dataDict)
-                numKeys = len(md.names())
                 date = self.makeRawVisitInfo.popMjdDate(md, key, timesys=timesys)
-                self.assertEqual(len(md.names()), numKeys - 1)
+                self.assertEqual(len(md.names()), length)
                 self.assertAlmostEqual(date.get(), desDate.get())
 
             badDate = self.makeRawVisitInfo.popMjdDate(md, "BADMJDDATE")
