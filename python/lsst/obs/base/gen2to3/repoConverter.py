@@ -382,7 +382,7 @@ class RepoConverter(ABC):
                 ref = self._extractDatasetRef(fileNameInRoot)
                 if ref is not None:
                     if self.subset is None or self.subset.isRelated(ref.dataId):
-                        yield FileDataset(path=os.path.join(self.root, fileNameInRoot), ref=ref)
+                        yield FileDataset(path=os.path.join(self.root, fileNameInRoot), refs=ref)
                 else:
                     self._handleUnrecognizedFile(fileNameInRoot)
 
@@ -456,7 +456,7 @@ class RepoConverter(ABC):
         self.task.log.info("Finding datasets in repo %s.", self.root)
         datasetsByType = defaultdict(list)
         for dataset in self.iterDatasets():
-            datasetsByType[dataset.ref.datasetType].append(dataset)
+            datasetsByType[dataset.refs[0].datasetType].append(dataset)
         for datasetType, datasetsForType in datasetsByType.items():
             self.task.registry.registerDatasetType(datasetType)
             self.task.log.info("Ingesting %s %s datasets.", len(datasetsForType), datasetType.name)
@@ -470,7 +470,8 @@ class RepoConverter(ABC):
             except LookupError as err:
                 raise LookupError(f"Error expanding data ID for dataset type {datasetType.name}.") from err
             for collection in collections:
-                self.task.registry.associate(collection, [dataset.ref for dataset in datasetsForType])
+                self.task.registry.associate(collection,
+                                             [ref for dataset in datasetsForType for ref in dataset.refs])
 
     def getButler(self, datasetTypeName: str) -> Tuple[Butler3, List[str]]:
         """Create a new Gen3 Butler appropriate for a particular dataset type.

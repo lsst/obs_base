@@ -484,11 +484,11 @@ class RawIngestTask(Task):
         if butler is None:
             butler = self.butler
         datasets = [FileDataset(path=os.path.abspath(file.filename),
-                                ref=DatasetRef(self.datasetType, file.dataId),
+                                refs=DatasetRef(self.datasetType, file.dataId),
                                 formatter=file.FormatterClass)
                     for file in exposure.files]
         butler.ingest(*datasets, transfer=self.config.transfer)
-        return [dataset.ref for dataset in datasets]
+        return [ref for dataset in datasets for ref in dataset.refs]
 
     def run(self, files, pool: Optional[Pool] = None, processes: int = 1):
         """Ingest files into a Butler data repository.
