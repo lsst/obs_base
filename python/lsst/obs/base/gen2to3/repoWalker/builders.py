@@ -240,12 +240,65 @@ class BuilderPrunedTree(BuilderNode):
               fileIgnoreRegEx: Optional[re.Pattern], dirIgnoreRegEx: Optional[re.Pattern]
               ) -> PathElementHandler:
         # Docstring inherited from BuilderNode.
-        message = ": ".join(self._messages) if self._messages else None
+        message = "; ".join(self._messages) if self._messages else None
         return SkipHandler(parser=parser, isForFiles=False, message=message)
 
     def prune(self) -> Tuple[BuilderNode, List[str], bool]:
         # Docstring inherited from BuilderNode.
         return self, self._messages, True
+
+
+class BuilderDuplicateInputs(BuilderNode):
+    """A `BuilderNode` that represents a collection of `BuilderInput` instances
+    that all have the same template.
+    """
+    def __init__(self, old: BuilderInput, new: BuilderInput):
+        self._children = []
+        if isinstance(old, BuilderDuplicateInputs):
+            self._children.extend(old._children)
+        else:
+            self._children.append(old)
+        self._children.append(new)
+        self._messages = []  # populated in prune()
+
+    def build(self, parser: PathElementParser, allKeys: Dict[str, type], cumulativeKeys: Dict[str, type], *,
+              fileIgnoreRegEx: Optional[re.Pattern], dirIgnoreRegEx: Optional[re.Pattern]
+              ) -> PathElementHandler:
+        # Docstring inherited from BuilderNode.
+        message = "; ".join(self._messages) if self._messages else None
+        return SkipHandler(parser=parser, isForFiles=False, message=message)
+
+    def prune(self) -> Tuple[BuilderNode, List[str], bool]:
+        # Docstring inherited from BuilderNode.
+        unprunable = []
+        newChildren = []
+        for child in self._children:
+            newChild, childMessages, toPruneChild = child.prune()
+            if toPruneChild:
+                self._messages.extend(childMessages)
+            else:
+                unprunable.append(newChild)
+            newChildren.append(newChildren)
+        self._children = newChildren
+        if len(unprunable) == 0:
+            # All children are just skips, so we can prune this node if we
+            # remember their messages.
+            return self, self._messages, True
+        elif len(unprunable) == 1 and not self._messages:
+            # Exactly one child is a target, and the others were ignored with
+            # no warning messages.  Tell parent node to just use that child,
+            # so if we see any matching files, we just assume they're for that
+            # target.
+            return unprunable[0], [], False
+        else:
+            # Multiple targets or skips with messages, which means we won't
+            # know how to handle any matching files.  Replace any messages we
+            # have with a single message that combines them all as well as
+            # any target dataset types that they are ambiguous with.
+            nested = [f"{c.datasetType.name} (target)" for c in unprunable]
+            nested.extend(self._messages)
+            self._messages = [f"ambiguous match: [{', '.join(nested)}]"]
+            return self, self._messages, True
 
 
 class BuilderTree(BuilderNode):
@@ -273,10 +326,16 @@ class BuilderTree(BuilderNode):
             The leaf node to insert.
         """
         nextLevel = level + 1
+        element = leaf.elements[level]
         if nextLevel == len(leaf.elements):
-            self._children[leaf.elements[level]] = leaf
+            conflict = self._children.get(element)
+            if conflict is not None:
+                # Sadly, the Gen2 butler has some actual dataset types that
+                # use the exact same template.
+                leaf = BuilderDuplicateInputs(conflict, leaf)
+            self._children[element] = leaf
         else:
-            child = self._children.setdefault(leaf.elements[level], BuilderTree())
+            child = self._children.setdefault(element, BuilderTree())
             child.insert(nextLevel, leaf)
 
     def fill(self, scanner: DirectoryScanner, allKeys: Dict[str, type], previousKeys: Dict[str, type], *,
