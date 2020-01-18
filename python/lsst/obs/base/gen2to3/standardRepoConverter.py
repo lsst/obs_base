@@ -24,15 +24,14 @@ __all__ = ["StandardRepoConverter"]
 
 import os.path
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Iterator, Tuple
+from typing import TYPE_CHECKING, Dict, Iterator, Optional, Tuple
 
 from lsst.log import Log
 from lsst.log.utils import temporaryLogLevel
 from lsst.daf.persistence import Butler as Butler2
 from lsst.daf.butler import DatasetType, DatasetRef, DataCoordinate, FileDataset
 from .repoConverter import RepoConverter
-from .filePathParser import FilePathParser
-from .dataIdExtractor import DataIdExtractor
+from .repoWalker import RepoWalker
 
 SKYMAP_DATASET_TYPES = {
     coaddName: f"{coaddName}Coadd_skyMap" for coaddName in ("deep", "goodSeeing", "dcr")
@@ -96,10 +95,6 @@ class StandardRepoConverter(RepoConverter):
         # Docstring inherited from RepoConverter.
         return datasetTypeName in SKYMAP_DATASET_TYPES.values()
 
-    def isDirectorySpecial(self, subdirectory: str) -> bool:
-        # Docstring inherited from RepoConverter.
-        return False
-
     def prep(self):
         # Docstring inherited from RepoConverter.
         self.task.log.info(f"Looking for skymaps in root {self.root}.")
@@ -131,9 +126,21 @@ class StandardRepoConverter(RepoConverter):
             if datasetTypeName not in self.mapper.calibrations:
                 yield datasetTypeName, mapping
 
-    def makeDataIdExtractor(self, datasetTypeName: str, parser: FilePathParser,
-                            storageClass: StorageClass) -> DataIdExtractor:
-        # Docstring inherited from RepoConverter.
+    def findMatchingSkyMap(self, datasetTypeName: str) -> Tuple[Optional[BaseSkyMap], Optional[str]]:
+        """Return the appropriate SkyMap for the given dataset type.
+
+        Parameters
+        ----------
+        datasetTypeName : `str`
+            Name of the dataset type for which a skymap is sought.
+
+        Returns
+        -------
+        skyMap : `BaseSkyMap` or `None`
+            The `BaseSkyMap` instance, or `None` if there was no match.
+        skyMapName : `str` or `None`
+            The Gen3 name for the SkyMap, or `None` if there was no match.
+        """
         # Use deepCoadd_skyMap by default; there are some dataset types
         # that use it but don't have "deep" anywhere in their name.
         struct = self._foundSkyMapsByCoaddName.get("deep")
@@ -151,14 +158,24 @@ class StandardRepoConverter(RepoConverter):
                          "found in repo %s."),
                         datasetTypeName, coaddName, self.root
                     )
-        return DataIdExtractor(
-            datasetTypeName,
-            storageClass,
-            filePathParser=parser,
-            universe=self.task.universe,
+        if struct is not None:
+            return struct.instance, struct.name
+        else:
+            return None, None
+
+    def makeRepoWalkerTarget(self, datasetTypeName: str, template: str, keys: Dict[str, type],
+                             storageClass: StorageClass) -> RepoWalker.Target:
+        # Docstring inherited from RepoConverter.
+        skyMap, skyMapName = self.findMatchingSkyMap(datasetTypeName)
+        return RepoWalker.Target(
+            datasetTypeName=datasetTypeName,
+            storageClass=storageClass,
+            template=template,
+            keys=keys,
+            universe=self.task.registry.dimensions,
             instrument=self.task.instrument.getName(),
-            skyMap=struct.instance if struct is not None else None,
-            skyMapName=struct.name if struct is not None else None,
+            skyMap=skyMap,
+            skyMapName=skyMapName,
         )
 
     def iterDatasets(self) -> Iterator[FileDataset]:

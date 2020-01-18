@@ -25,8 +25,9 @@ __all__ = ["RootRepoConverter"]
 import os
 import re
 import itertools
-from typing import TYPE_CHECKING, Iterator, Tuple, List
+from typing import TYPE_CHECKING, Iterator, Optional, Tuple, List
 
+from lsst.skymap import BaseSkyMap
 from lsst.daf.butler import DatasetType, DatasetRef, FileDataset
 from .calibRepoConverter import CURATED_CALIBRATION_DATASET_TYPES
 from .standardRepoConverter import StandardRepoConverter
@@ -56,6 +57,10 @@ class RootRepoConverter(StandardRepoConverter):
         super().__init__(**kwds)
         self._exposureData: List[RawExposureData] = []
         self._refCats: List[Tuple[str, SkyPixDimension]] = []
+        if self.task.config.rootSkyMapName is not None:
+            self._rootSkyMap = self.task.config.skyMaps[self.task.config.rootSkyMapName].skyMap.apply()
+        else:
+            self._rootSkyMap = None
 
     def isDatasetTypeSpecial(self, datasetTypeName: str) -> bool:
         # Docstring inherited from RepoConverter.
@@ -66,9 +71,21 @@ class RootRepoConverter(StandardRepoConverter):
             datasetTypeName in CURATED_CALIBRATION_DATASET_TYPES
         )
 
-    def isDirectorySpecial(self, subdirectory: str) -> bool:
+    def getSpecialDirectories(self) -> List[str]:
         # Docstring inherited from RepoConverter.
-        return subdirectory == "ref_cats"
+        return super().getSpecialDirectories() + ["CALIB", "ref_cats", "rerun"]
+
+    def findMatchingSkyMap(self, datasetTypeName: str) -> Tuple[Optional[BaseSkyMap], Optional[str]]:
+        # Docstring inherited from StandardRepoConverter.findMatchingSkyMap.
+        skyMap, name = super().findMatchingSkyMap(datasetTypeName)
+        if skyMap is None and self.task.config.rootSkyMapName is not None:
+            self.task.log.debug(
+                ("Assuming configured root skymap with name '%s' for dataset %s."),
+                self.task.config.rootSkyMapName, datasetTypeName
+            )
+            skyMap = self._rootSkyMap
+            name = self.task.config.rootSkyMapName
+        return skyMap, name
 
     def prep(self):
         # Docstring inherited from RepoConverter.
@@ -86,16 +103,13 @@ class RootRepoConverter(StandardRepoConverter):
         if self.task.isDatasetTypeIncluded("ref_cat"):
             from lsst.meas.algorithms import DatasetConfig as RefCatDatasetConfig
             for refCat in os.listdir(os.path.join(self.root, "ref_cats")):
-                self.task.log.info(f"Preparing ref_cat {refCat} from root {self.root}.")
                 path = os.path.join(self.root, "ref_cats", refCat)
                 configFile = os.path.join(path, "config.py")
                 if not os.path.exists(configFile):
                     continue
-                if not self.task.isDatasetTypeIncluded(refCat):
-                    # While the Gen2 dataset type for reference catalogs is
-                    # just "ref_cat", in Gen3 we use the name of the reference
-                    # catalog as its dataset type name.
+                if refCat not in self.task.config.refCats:
                     continue
+                self.task.log.info(f"Preparing ref_cat {refCat} from root {self.root}.")
                 onDiskConfig = RefCatDatasetConfig()
                 onDiskConfig.load(configFile)
                 if onDiskConfig.indexer.name != "HTM":
@@ -109,6 +123,8 @@ class RootRepoConverter(StandardRepoConverter):
                                      f"skypix dimension is configured for this registry.") from err
                 self.task.useSkyPix(dimension)
                 self._refCats.append((refCat, dimension))
+        if self.task.isDatasetTypeIncluded("brightObjectMask") and self.task.config.rootSkyMapName:
+            self.task.useSkyMap(self._rootSkyMap)
         super().prep()
 
     def insertDimensionData(self):
@@ -136,10 +152,11 @@ class RootRepoConverter(StandardRepoConverter):
                         yield FileDataset(path=os.path.join(self.root, "ref_cats", refCat, fileName),
                                           refs=DatasetRef(datasetType, dataId))
             else:
-                for htmId in self.subset.skypix[dimension]:
-                    dataId = self.task.registry.expandDataId({dimension: htmId})
-                    yield FileDataset(path=os.path.join(self.root, "ref_cats", refCat, f"{htmId}.fits"),
-                                      refs=DatasetRef(datasetType, dataId))
+                for begin, end in self.subset.skypix[dimension]:
+                    for htmId in range(begin, end):
+                        dataId = self.task.registry.expandDataId({dimension: htmId})
+                        yield FileDataset(path=os.path.join(self.root, "ref_cats", refCat, f"{htmId}.fits"),
+                                          refs=DatasetRef(datasetType, dataId))
         yield from super().iterDatasets()
 
     def ingest(self):

@@ -25,17 +25,16 @@ __all__ = ["CalibRepoConverter"]
 import os
 import sqlite3
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Iterator, Tuple
+from typing import TYPE_CHECKING, Dict, Iterator, Tuple
 
 from .repoConverter import RepoConverter
-from .dataIdExtractor import DataIdExtractor
+from .repoWalker import RepoWalker
 from .translators import makeCalibrationLabel
 
 if TYPE_CHECKING:
     from lsst.daf.butler import StorageClass
     from ..cameraMapper import CameraMapper
     from ..mapping import Mapping as CameraMapperMapping  # disambiguate from collections.abc.Mapping
-    from .filePathParser import FilePathParser
 
 CURATED_CALIBRATION_DATASET_TYPES = (
     "defects",
@@ -70,26 +69,23 @@ class CalibRepoConverter(RepoConverter):
         # Docstring inherited from RepoConverter.
         return datasetTypeName in CURATED_CALIBRATION_DATASET_TYPES
 
-    def isDirectorySpecial(self, subdirectory: str) -> bool:
-        # Docstring inherited from RepoConverter.
-        return False
-
     def iterMappings(self) -> Iterator[Tuple[str, CameraMapperMapping]]:
         # Docstring inherited from RepoConverter.
         yield from self.mapper.calibrations.items()
 
-    def makeDataIdExtractor(self, datasetTypeName: str, parser: FilePathParser,
-                            storageClass: StorageClass) -> DataIdExtractor:
+    def makeRepoWalkerTarget(self, datasetTypeName: str, template: str, keys: Dict[str, type],
+                             storageClass: StorageClass) -> RepoWalker.Target:
         # Docstring inherited from RepoConverter.
-        extractor = DataIdExtractor(
-            datasetTypeName,
-            storageClass,
-            filePathParser=parser,
-            universe=self.task.universe,
+        target = RepoWalker.Target(
+            datasetTypeName=datasetTypeName,
+            storageClass=storageClass,
+            template=template,
+            keys=keys,
             instrument=self.task.instrument.getName(),
+            universe=self.task.registry.dimensions,
         )
-        self._datasetTypes.append(extractor.datasetType)
-        return extractor
+        self._datasetTypes.append(target.datasetType)
+        return target
 
     def insertDimensionData(self):
         # Docstring inherited from RepoConverter.
@@ -133,10 +129,6 @@ class CalibRepoConverter(RepoConverter):
     def ingest(self):
         # Docstring inherited from RepoConverter.
         if self.task.config.doWriteCuratedCalibrations:
-            for datasetTypeName in CURATED_CALIBRATION_DATASET_TYPES:
-                if not self.task.isDatasetTypeIncluded(datasetTypeName):
-                    raise ValueError(f"doWriteCuratedCalibrations is True but "
-                                     f"{datasetTypeName} is configured to be ignored.")
             try:
                 butler3, collections = self.getButler(None)
             except LookupError as err:

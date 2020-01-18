@@ -26,6 +26,7 @@ import itertools
 from typing import Optional, Any, Dict, Tuple, FrozenSet, Iterable, List
 from abc import ABCMeta, abstractmethod
 
+from lsst.log import Log
 from lsst.skymap import BaseSkyMap
 
 
@@ -70,8 +71,8 @@ class KeyHandler(metaclass=ABCMeta):
         this handler (e.g. "visit" or "abstract_filter").
     """
     def __init__(self, dimension: str):
-
         self.dimension = dimension
+
     __slots__ = ("dimension",)
 
     def translate(self, gen2id: dict, gen3id: dict,
@@ -357,13 +358,21 @@ class Translator:
         return Translator(matchedHandlers, skyMap=skyMap, skyMapName=skyMapName,
                           datasetTypeName=datasetTypeName)
 
-    def __call__(self, gen2id):
+    def __call__(self, gen2id: Dict[str, Any], *, partial: bool = False, log: Optional[Log] = None):
         """Return a Gen3 data ID that corresponds to the given Gen2 data ID.
         """
         gen3id = {}
         for handler in self.handlers:
-            handler.translate(gen2id, gen3id, skyMap=self.skyMap, skyMapName=self.skyMapName,
-                              datasetTypeName=self.datasetTypeName)
+            try:
+                handler.translate(gen2id, gen3id, skyMap=self.skyMap, skyMapName=self.skyMapName,
+                                  datasetTypeName=self.datasetTypeName)
+            except KeyError:
+                if partial:
+                    if log is not None:
+                        log.debug("Failed to translate %s from %s.", handler.dimension, gen2id)
+                    continue
+                else:
+                    raise
         return gen3id
 
     @property

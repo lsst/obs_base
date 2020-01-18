@@ -22,80 +22,31 @@ from __future__ import annotations
 
 __all__ = ["RepoConverter"]
 
-import os
-import fnmatch
 from dataclasses import dataclass
 from collections import defaultdict
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Generic, TypeVar, List, Tuple, Optional, Iterator, Set, Any, Callable, Dict
+import fnmatch
+import re
+from typing import (
+    Dict,
+    Iterator,
+    List,
+    MutableMapping,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+    TYPE_CHECKING,
+)
 
-from lsst.daf.butler import DatasetRef, Butler as Butler3, DataCoordinate, FileDataset
+from lsst.daf.butler import Butler as Butler3, DataCoordinate, FileDataset, DatasetType
 from lsst.sphgeom import RangeSet, Region
-
-from .filePathParser import FilePathParser
+from .repoWalker import RepoWalker
 
 if TYPE_CHECKING:
     from ..mapping import Mapping as CameraMapperMapping  # disambiguate from collections.abc.Mapping
-    from .dataIdExtractor import DataIdExtractor
     from .convertRepo import ConvertRepoTask
     from lsst.daf.butler import StorageClass, Registry, SkyPixDimension
-
-
-REPO_ROOT_FILES = ("registry.sqlite3", "_mapper", "repositoryCfg.yaml", "calibRegistry.sqlite3", "_parent")
-
-
-T = TypeVar("T")
-
-
-class MostRecentlyUsedStack(Generic[T]):
-    """A simple container that maintains a most-recently-used ordering.
-    """
-
-    def __init__(self):
-        self._elements = []
-
-    def __iter__(self):
-        # Iterate in reverse order so we can keep the most recent element used
-        # at the end of the list.  We want to use the end rather than the
-        # beginning because appending to lists is much more efficient than
-        # inserting at the beginning.
-        yield from reversed(self._elements)
-
-    def apply(self, func: Callable[[T], Any]) -> Any:
-        """Apply a function to elements until it returns a value that coerces
-        to `True`, and move the corresponding element to the front of the
-        stack.
-
-        Parameters
-        ----------
-        func : callable
-            Callable object.
-
-        Returns
-        -------
-        value : `object`
-            The first value returned by ``func`` that coerces to `True`.
-        """
-        for n, element in enumerate(self):
-            result = func(element)
-            if result:
-                break
-        else:
-            return None
-        # Move the extractor that matched to the back of the list (note that
-        # n indexes from the back of the internal list).
-        if n != 0:
-            # i indexes from the front of the internal list.
-            i = len(self._elements) - 1 - n
-            assert self._elements[i] is element
-            del self._elements[i]
-            self._elements.append(element)
-        return result
-
-    def push(self, element):
-        """Add a new element to the front of the stack.
-        """
-        self._elements.append(element)
 
 
 @dataclass
@@ -132,10 +83,11 @@ class ConversionSubset:
         tracts = set()
         self.tracts[name] = tracts
         for visit in self.visits:
-            for dataId in self.registry.queryDimensions(["tract"], expand=False,
-                                                        dataId={"skymap": name, "visit": visit}):
+            for dataId in registry.queryDimensions(["tract"], expand=False,
+                                                   dataId={"skymap": name,
+                                                           "instrument": self.instrument,
+                                                           "visit": visit}):
                 tracts.add(dataId["tract"])
-        self.task.log.info("Limiting datasets defined on skymap %s to %s tracts.", name, len(tracts))
 
     def addSkyPix(self, registry: Registry, dimension: SkyPixDimension):
         """Populate the included skypix IDs for the given dimension from those
@@ -155,7 +107,7 @@ class ConversionSubset:
                 self.regions.append(dataId.region)
         ranges = RangeSet()
         for region in self.regions:
-            ranges = ranges.join(dimension.pixelization.envelope(region))
+            ranges = ranges.union(dimension.pixelization.envelope(region))
         self.skypix[dimension] = ranges
 
     def isRelated(self, dataId: DataCoordinate) -> bool:
@@ -254,8 +206,8 @@ class RepoConverter(ABC):
         self.root = root
         self.subset = subset
         self._collections = list(collections)
-        self._extractors: MostRecentlyUsedStack[DataIdExtractor] = MostRecentlyUsedStack()
-        self._skipParsers: MostRecentlyUsedStack[Tuple[FilePathParser, str, str]] = MostRecentlyUsedStack()
+        self._repoWalker = None  # Created in prep
+        self._fileDatasets: MutableMapping[DatasetType, List[FileDataset]] = defaultdict(list)
 
     @abstractmethod
     def isDatasetTypeSpecial(self, datasetTypeName: str) -> bool:
@@ -272,28 +224,6 @@ class RepoConverter(ABC):
         -------
         special : `bool`
             `True` if the dataset type is special.
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def isDirectorySpecial(self, subdirectory: str) -> bool:
-        """Test whether the given directory is handled specially by this
-        converter and hence should be ignored by generic base-class logic that
-        searches for datasets to convert.
-
-        Parameters
-        ----------
-        subdirectory : `str`
-            Subdirectory.  This is only ever a single subdirectory, and it
-            could appear anywhere within a repo root.  (A full path relative
-            to the repo root might be more useful, but it is harder to
-            implement, and we don't currently need it to identify any special
-            directories).
-
-        Returns
-        -------
-        special : `bool`
-            `True` if the direct is special.
         """
         raise NotImplementedError()
 
@@ -320,111 +250,160 @@ class RepoConverter(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def makeDataIdExtractor(self, datasetTypeName: str, parser: FilePathParser,
-                            storageClass: StorageClass) -> DataIdExtractor:
-        """Construct a `DataIdExtractor` instance appropriate for a particular
-        dataset type.
+    def makeRepoWalkerTarget(self, datasetTypeName: str, template: str, keys: Dict[str, type],
+                             storageClass: StorageClass) -> RepoWalker.Target:
+        """Make a struct that identifies a dataset type to be extracted by
+        walking the repo directory structure.
 
         Parameters
         ----------
         datasetTypeName : `str`
-            Name of the dataset type; typically forwarded directly to
-            the `DataIdExtractor` constructor.
-        parser : `FilePathParser`
-            Object that parses filenames into Gen2 data IDs; typically
-            forwarded directly to the `DataIdExtractor` constructor.
+            Name of the dataset type (the same in both Gen2 and Gen3).
+        template : `str`
+            The full Gen2 filename template.
+        keys : `dict` [`str`, `type`]
+            A dictionary mapping Gen2 data ID key to the type of its value.
         storageClass : `lsst.daf.butler.StorageClass`
-            Storage class for this dataset type in the Gen3 butler; typically
-            forwarded directly to the `DataIdExtractor` constructor.
+            Gen3 storage class for this dataset type.
 
         Returns
         -------
-        extractor : `DataIdExtractor`
-            A new `DataIdExtractor` instance.
+        target : `RepoWalker.Target`
+            A struct containing information about the target dataset (much of
+            it simplify forwarded from the arguments).
         """
         raise NotImplementedError()
 
-    def iterDatasets(self) -> Iterator[FileDataset]:
-        """Iterate over all datasets in the repository that should be
-        ingested into the Gen3 repository.
+    def getSpecialDirectories(self) -> List[str]:
+        """Return a list of directory paths that should not be searched for
+        files.
+
+        These may be directories that simply do not contain datasets (or
+        contain datasets in another repository), or directories whose datasets
+        are handled specially by a subclass.
+
+        Returns
+        -------
+        directories : `list` [`str`]
+            The full paths of directories to skip, relative to the repository
+            root.
+        """
+        return []
+
+    def prep(self):
+        """Perform preparatory work associated with the dataset types to be
+        converted from this repository (but not the datasets themselves).
+
+        Notes
+        -----
+        This should be a relatively fast operation that should not depend on
+        the size of the repository.
 
         Subclasses may override this method, but must delegate to the base
         class implementation at some point in their own logic.
+        More often, subclasses will specialize the behavior of `prep` by
+        overriding other methods to which the base class implementation
+        delegates.  These include:
+         - `iterMappings`
+         - `isDatasetTypeSpecial`
+         - `getSpecialDirectories`
+         - `makeRepoWalkerTarget`
+
+        This should not perform any write operations to the Gen3 repository.
+        It is guaranteed to be called before `insertDimensionData`.
+        """
+        self.task.log.info(f"Preparing other dataset types from root {self.root}.")
+        walkerInputs: List[Union[RepoWalker.Target, RepoWalker.Skip]] = []
+        for datasetTypeName, mapping in self.iterMappings():
+            try:
+                template = mapping.template
+            except RuntimeError:
+                # No template for this dataset in this mapper, so there's no
+                # way there should be instances of this dataset in this repo.
+                continue
+            skip = False
+            message = None
+            storageClass = None
+            if (not self.task.isDatasetTypeIncluded(datasetTypeName) or
+                    self.isDatasetTypeSpecial(datasetTypeName)):
+                # User indicated not to include this data, but we still want
+                # to recognize files of that type to avoid warning about them.
+                skip = True
+            else:
+                storageClass = self._guessStorageClass(datasetTypeName, mapping)
+                if storageClass is None:
+                    # This may be a problem, but only if we actually encounter any
+                    # files corresponding to this dataset.  Of course, we need
+                    # to be able to parse those files in order to recognize that
+                    # situation.
+                    message = f"no storage class found for {datasetTypeName}"
+                    skip = True
+            if skip:
+                walkerInput = RepoWalker.Skip(
+                    template=template,
+                    keys=mapping.keys(),
+                    message=message,
+                )
+            else:
+                assert message is None
+                walkerInput = self.makeRepoWalkerTarget(
+                    datasetTypeName=datasetTypeName,
+                    template=template,
+                    keys=mapping.keys(),
+                    storageClass=storageClass,
+                )
+            walkerInputs.append(walkerInput)
+        for dirPath in self.getSpecialDirectories():
+            walkerInputs.append(
+                RepoWalker.Skip(
+                    template=dirPath,  # not really a template, but that's fine; it's relative to root.
+                    keys={},
+                    message=None,
+                    isForFiles=True,
+                )
+            )
+        fileIgnoreRegExTerms = []
+        for pattern in self.task.config.fileIgnorePatterns:
+            fileIgnoreRegExTerms.append(fnmatch.translate(pattern))
+        if fileIgnoreRegExTerms:
+            fileIgnoreRegEx = re.compile("|".join(fileIgnoreRegExTerms))
+        else:
+            fileIgnoreRegEx = None
+        self._repoWalker = RepoWalker(walkerInputs, fileIgnoreRegEx=fileIgnoreRegEx)
+
+    def iterDatasets(self) -> Iterator[FileDataset]:
+        """Iterate over datasets in the repository that should be ingested into
+        the Gen3 repository.
+
+        The base class implementation yields nothing; the datasets handled by
+        the `RepoConverter` base class itself are read directly in
+        `findDatasets`.
+
+        Subclasses should override this method if they support additional
+        datasets that are handled some other way.
 
         Yields
         ------
         dataset : `FileDataset`
             Structures representing datasets to be ingested.  Paths should be
             absolute.
-        ref : `lsst.daf.butler.DatasetRef`
-            Reference for the Gen3 datasets, including a complete `DatasetType`
-            and data ID.
         """
-        for dirPath, subdirNamesInDir, fileNamesInDir in os.walk(self.root, followlinks=True):
-            # Remove subdirectories that appear to be repositories themselves
-            # from the walking
-            def isRepoRoot(dirName):
-                return any(os.path.exists(os.path.join(dirPath, dirName, f))
-                           for f in REPO_ROOT_FILES)
-            subdirNamesInDir[:] = [d for d in subdirNamesInDir
-                                   if not isRepoRoot(d) and not self.isDirectorySpecial(d)]
-            # Loop over files in this directory, and ask per-DatasetType
-            # extractors if they recognize them and can extract a data ID;
-            # if so, ingest.
-            dirPathInRoot = dirPath[len(self.root) + len(os.path.sep):]
-            for fileNameInDir in fileNamesInDir:
-                if any(fnmatch.fnmatchcase(fileNameInDir, pattern)
-                       for pattern in self.task.config.fileIgnorePatterns):
-                    continue
-                fileNameInRoot = os.path.join(dirPathInRoot, fileNameInDir)
-                if fileNameInRoot in REPO_ROOT_FILES:
-                    continue
-                ref = self._extractDatasetRef(fileNameInRoot)
-                if ref is not None:
-                    if self.subset is None or self.subset.isRelated(ref.dataId):
-                        yield FileDataset(path=os.path.join(self.root, fileNameInRoot), refs=ref)
-                else:
-                    self._handleUnrecognizedFile(fileNameInRoot)
+        yield from ()
 
-    def prep(self):
-        """Prepare the repository by identifying the dataset types to be
-        converted and building `DataIdExtractor` instance for them.
-
-        Subclasses may override this method, but must delegate to the base
-        class implementation at some point in their own logic.  More often,
-        subclasses will specialize the behavior of `prep` simply by overriding
-        `iterMappings`, `isDatasetTypeSpecial`, and `makeDataIdExtractor`, to
-        which the base implementation delegates.
-
-        This should not perform any write operations to the Gen3 repository.
-        It is guaranteed to be called before `insertDimensionData` and
-        `ingest`.
-        """
-        self.task.log.info(f"Preparing other datasets from root {self.root}.")
-        for datasetTypeName, mapping in self.iterMappings():
-            try:
-                parser = FilePathParser.fromMapping(mapping)
-            except RuntimeError:
-                # No template, so there should be no way we'd get one of these
-                # in the Gen2 repo anyway (and if we do, we'll still produce a
-                # warning - just a less informative one than we might be able
-                # to produce if we had a template).
-                continue
-            if (not self.task.isDatasetTypeIncluded(datasetTypeName) or
-                    self.isDatasetTypeSpecial(datasetTypeName)):
-                # User indicated not to include this data, but we still want
-                # to recognize files of that type to avoid warning about them.
-                self._skipParsers.push((parser, datasetTypeName, None))
-                continue
-            storageClass = self._guessStorageClass(datasetTypeName, mapping)
-            if storageClass is None:
-                # This may be a problem, but only if we actually encounter any
-                # files corresponding to this dataset.  Of course, we need
-                # to be able to parse those files in order to recognize that
-                # situation.
-                self._skipParsers.push((parser, datasetTypeName, "no storage class found."))
-                continue
-            self._extractors.push(self.makeDataIdExtractor(datasetTypeName, parser, storageClass))
+    def findDatasets(self):
+        assert self._repoWalker, "prep() must be called before findDatasets."
+        self.task.log.info("Adding special datasets in repo %s.", self.root)
+        for dataset in self.iterDatasets():
+            assert len(dataset.refs) == 1
+            self._fileDatasets[dataset.refs[0].datasetType].append(dataset)
+        self.task.log.info("Finding datasets from files in repo %s.", self.root)
+        self._fileDatasets.update(
+            self._repoWalker.walk(
+                self.root,
+                log=self.task.log,
+                predicate=(self.subset.isRelated if self.subset is not None else None)
+            )
+        )
 
     def insertDimensionData(self):
         """Insert any dimension records uniquely derived from this repository
@@ -437,27 +416,50 @@ class RepoConverter(ABC):
         `ConvertRepoTask.useSkyMap` or `ConvertRepoTask.useSkyPix`, because
         these dimensions are in general shared by multiple Gen2 repositories.
 
-        This method is guaranteed to be called between `prep` and `ingest`.
+        This method is guaranteed to be called between `prep` and
+        `expandDataIds`.
         """
         pass
+
+    def handleDataIdExpansionFailure(self, dataset: FileDataset, err: LookupError):
+        self.task.log.warn("Skipping ingestion for '%s': %s", dataset.path, err)
+        return False
+
+    def expandDataIds(self):
+        """Expand the data IDs for all datasets to be inserted.
+
+        Subclasses may override this method, but must delegate to the base
+        class implementation if they do.  If they wish to handle expected
+        failures in data ID expansion, they should override
+        `handleDataIdExpansionFailure` instead.
+
+        This involves queries to the registry, but not writes.  It is
+        guaranteed to be called between `insertDimensionData` and `ingest`.
+        """
+        for datasetType, datasetsForType in self._fileDatasets.items():
+            self.task.log.info("Expanding data IDs for %s %s datasets.", len(datasetsForType),
+                               datasetType.name)
+            expanded = []
+            for dataset in datasetsForType:
+                for i, ref in enumerate(dataset.refs):
+                    try:
+                        dataId = self.task.registry.expandDataId(ref.dataId)
+                        dataset.refs[i] = ref.expanded(dataId)
+                        expanded.append(dataset)
+                    except LookupError as err:
+                        if self.handleDataIdExpansionFailure(dataset, err):
+                            expanded.append(dataset)
+            datasetsForType[:] = expanded
 
     def ingest(self):
         """Insert converted datasets into the Gen3 repository.
 
         Subclasses may override this method, but must delegate to the base
-        class implementation at some point in their own logic.  More often,
-        subclasses will specialize the behavior of `ingest` simply by
-        overriding `iterDatasets` and `isDirectorySpecial`, to which the base
-        implementation delegates.
+        class implementation at some point in their own logic.
 
-        This method is guaranteed to be called after both `prep` and
-        `insertDimensionData`.
+        This method is guaranteed to be called after `expandDataIds`.
         """
-        self.task.log.info("Finding datasets in repo %s.", self.root)
-        datasetsByType = defaultdict(list)
-        for dataset in self.iterDatasets():
-            datasetsByType[dataset.refs[0].datasetType].append(dataset)
-        for datasetType, datasetsForType in datasetsByType.items():
+        for datasetType, datasetsForType in self._fileDatasets.items():
             self.task.registry.registerDatasetType(datasetType)
             self.task.log.info("Ingesting %s %s datasets.", len(datasetsForType), datasetType.name)
             try:
@@ -507,59 +509,6 @@ class RepoConverter(ABC):
             )
         else:
             raise LookupError("No collection configured for dataset type {datasetTypeName}.")
-
-    def _extractDatasetRef(self, fileNameInRoot: str) -> Optional[DatasetRef]:
-        """Extract a `DatasetRef` from a file name.
-
-        This method is for internal use by `RepoConverter` itself (not its
-        subclasses).
-
-        Parameters
-        ----------
-        fileNameInRoot : `str`
-            Name of the file to be ingested, relative to the repository root.
-
-        Returns
-        -------
-        ref : `lsst.daf.butler.DatasetRef` or `None`
-            Reference for the Gen3 datasets, including a complete `DatasetType`
-            and data ID.  `None` if the converter does not recognize the
-            file as one to be converted.
-        """
-        def closure(extractor):
-            try:
-                dataId = extractor.apply(fileNameInRoot)
-            except LookupError as err:
-                raise RuntimeError(f"Error extracting data ID for {extractor.datasetType.name} "
-                                   f"on file {fileNameInRoot}.") from err
-            if dataId is None:
-                return None
-            else:
-                return DatasetRef(extractor.datasetType, dataId=dataId)
-        return self._extractors.apply(closure)
-
-    def _handleUnrecognizedFile(self, fileNameInRoot: str):
-        """Generate appropriate warnings (or not) for files not matched by
-        `_extractDatasetRef`.
-
-        This method is for internal use by `RepoConverter` itself (not its
-        subclasses).
-
-        Parameters
-        ----------
-        fileNameInRoot : `str`
-            Name of the file, relative to the repository root.
-        """
-        def closure(skipTuple):
-            parser, datasetTypeName, message = skipTuple
-            if parser(fileNameInRoot) is not None:
-                if message is not None:
-                    self.task.log.warn("Skipping dataset %s file %s: %s", datasetTypeName,
-                                       fileNameInRoot, message)
-                return True
-            return False
-        if not self._skipParsers.apply(closure):
-            self.task.log.warn("Skipping unrecognized file %s.", fileNameInRoot)
 
     def _guessStorageClass(self, datasetTypeName: str, mapping: CameraMapperMapping
                            ) -> Optional[StorageClass]:
