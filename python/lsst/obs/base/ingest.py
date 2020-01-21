@@ -250,7 +250,33 @@ class RawIngestTask(Task):
         if obsInfo.instrument != self.instrument.getName():
             raise ValueError(f"Incorrect instrument (expected {self.instrument.getName()}, "
                              f"got {obsInfo.instrument}) for file {filename}.")
+
         FormatterClass = self.instrument.getRawFormatter(dataId)
+        region = self._calculate_region_from_dataset_metadata(obsInfo, header, FormatterClass)
+
+        datasets = [RawFileDatasetInfo(obsInfo=obsInfo, region=region, dataId=dataId)]
+
+        return RawFileData(datasets=datasets, filename=filename,
+                           FormatterClass=FormatterClass)
+
+    def _calculate_region_from_dataset_metadata(self, obsInfo, header, FormatterClass):
+        """Calculate the sky region covered by the supplied observation
+        information.
+
+        Parameters
+        ----------
+        obsInfo : `~astro_metadata_translator.ObservationInfo`
+            Summary information of this dataset.
+        header : `Mapping`
+            Header from the dataset.
+        FormatterClass: `type` as subclass of  `FitsRawFormatterBase`
+            Formatter class that should be used to compute the spatial region.
+
+        Returns
+        -------
+        region : `lsst.sphgeom.ConvexPolygon`
+            Region of sky covered by this observation.
+        """
         if obsInfo.visit_id is not None and obsInfo.tracking_radec is not None:
             formatter = FormatterClass.fromMetadata(metadata=header, obsInfo=obsInfo)
             visitInfo = formatter.makeVisitInfo()
@@ -264,11 +290,7 @@ class RawIngestTask(Task):
             region = ConvexPolygon(sphCorners)
         else:
             region = None
-
-        datasets = [RawFileDatasetInfo(obsInfo=obsInfo, region=region, dataId=dataId)]
-
-        return RawFileData(datasets=datasets, filename=filename,
-                           FormatterClass=FormatterClass)
+        return region
 
     def groupByExposure(self, files: Iterable[RawFileData]) -> List[RawExposureData]:
         """Group an iterable of `RawFileData` by exposure.
