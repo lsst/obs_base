@@ -242,6 +242,30 @@ class RawIngestTask(Task):
         phdu = readMetadata(filename, 0)
         header = merge_headers([phdu, readMetadata(filename)], mode="overwrite")
         fix_header(header)
+        datasets = [self._calculate_dataset_info(header, filename)]
+
+        # Assume all datasets in this file use the same Formatter
+        FormatterClass = self.instrument.getRawFormatter(datasets[0].dataId)
+
+        return RawFileData(datasets=datasets, filename=filename,
+                           FormatterClass=FormatterClass)
+
+    def _calculate_dataset_info(self, header, filename):
+        """Calculate a RawFileDatasetInfo from the supplied information.
+
+        Parameters
+        ----------
+        header : `Mapping`
+            Header from the dataset.
+        filename : `str`
+            Filename to use for error messages.
+
+        Returns
+        -------
+        dataset : `RawFileDatasetInfo`
+            The region, dataId, and observation information associated with
+            this dataset.
+        """
         obsInfo = ObservationInfo(header)
         dataId = DataCoordinate.standardize(instrument=obsInfo.instrument,
                                             exposure=obsInfo.exposure_id,
@@ -253,11 +277,7 @@ class RawIngestTask(Task):
 
         FormatterClass = self.instrument.getRawFormatter(dataId)
         region = self._calculate_region_from_dataset_metadata(obsInfo, header, FormatterClass)
-
-        datasets = [RawFileDatasetInfo(obsInfo=obsInfo, region=region, dataId=dataId)]
-
-        return RawFileData(datasets=datasets, filename=filename,
-                           FormatterClass=FormatterClass)
+        return RawFileDatasetInfo(obsInfo=obsInfo, region=region, dataId=dataId)
 
     def _calculate_region_from_dataset_metadata(self, obsInfo, header, FormatterClass):
         """Calculate the sky region covered by the supplied observation
