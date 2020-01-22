@@ -236,15 +236,17 @@ class RawIngestTask(Task):
         Notes
         -----
         Assumes that there is a single dataset associated with the given
-        file.  This method must be subclassed if multiple datasets are
-        stored in a single raw file.
+        file.  Instruments using a single file to store multiple datasets
+        must implement their own version of this method.
         """
         phdu = readMetadata(filename, 0)
         header = merge_headers([phdu, readMetadata(filename)], mode="overwrite")
         fix_header(header)
         datasets = [self._calculate_dataset_info(header, filename)]
 
-        # Assume all datasets in this file use the same Formatter
+        # The data model currently assumes that whilst multiple datasets
+        # can be associated with a single file, they must all share the
+        # same formatter.
         FormatterClass = self.instrument.getRawFormatter(datasets[0].dataId)
 
         return RawFileData(datasets=datasets, filename=filename,
