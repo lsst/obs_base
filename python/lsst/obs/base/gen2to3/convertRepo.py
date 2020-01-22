@@ -134,6 +134,7 @@ class ConvertRepoConfig(Config):
             "BackgroundList": "Background",
             "raw": "Exposure",
             "MultilevelParquetTable": "DataFrame",
+            "ParquetTable": "DataFrame",
         }
     )
     doRegisterInstrument = Field(

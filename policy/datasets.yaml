@@ -1114,7 +1114,7 @@ deepCoadd_qa:
         Quantities useful for QA, computed from the deepCoadd_obj catalog.
     persistable: ignored
     storage: ParquetStorage
-    python: lsst.qa.explorer.parquetTable.MultilevelParquetTable
+    python: lsst.pipe.tasks.parquetTable.MultilevelParquetTable
     template: deepCoadd-results/qa/%(tract)d/%(patch)s/qa-%(tract)d-%(patch)s.parq
 deepCoadd_sg:
     description: >
@@ -1132,12 +1132,12 @@ deepCoadd_sg_features:
     template: deepCoadd-results/merged/%(tract)d/%(patch)s/sg-feats-%(tract)d-%(patch)s.parq
 writeQATable_config:
     persistable: Config
-    python: lsst.qa.explorer.writeQATable.WriteQATableConfig
+    python: lsst.pipe.tasks.writeQATable.WriteQATableConfig
     storage: ConfigStorage
     template: config/writeQATable.py
 consolidateQATable_config:
     persistable: Config
-    python: lsst.qa.explorer.consolidateQATable.ConsolidateQATableConfig
+    python: lsst.pipe.tasks.consolidateQATable.ConsolidateQATableConfig
     storage: ConfigStorage
     template: config/consolidateQATable.py
 deepCoadd_qa_tract:
@@ -1145,7 +1145,7 @@ deepCoadd_qa_tract:
         Contents same as deepCoadd_qa, but consolidated one-per-tract.
     persistable: ignored
     storage: ParquetStorage
-    python: lsst.qa.explorer.parquetTable.MultilevelParquetTable
+    python: lsst.pipe.tasks.parquetTable.MultilevelParquetTable
     template: deepCoadd-results/qa/%(tract)d/qa-%(tract)d.parq
 dcrDiff_config:
     template:      config/dcrDiff.py
@@ -1257,14 +1257,14 @@ objectTable:
         Per-Patch DPDD Object Table computed from the deepCoadd_obj catalog
     persistable: ignored
     storage: ParquetStorage
-    python: lsst.pipe.tasks.parquetTable.MultilevelParquetTable
+    python: lsst.pipe.tasks.parquetTable.ParquetTable
     template: deepCoadd-results/merged/%(tract)d/%(patch)s/objectTable-%(tract)d-%(patch)s.parq
 objectTable_tract:
     description: >
         Per-tract DPDD Object Table
     persistable: ignored
     storage: ParquetStorage
-    python: lsst.pipe.tasks.parquetTable.MultilevelParquetTable
+    python: lsst.pipe.tasks.parquetTable.ParquetTable
     template: deepCoadd-results/merged/%(tract)d/objectTable-%(tract)d.parq
 analysisVisitTable:
     description: >
@@ -1286,34 +1286,34 @@ analysisCoaddTable_forced:
         Per-tract object table assembled by pipe_analysis scripts (forced photometry).
     persistable: ignored
     storage: ParquetStorage
-    python: lsst.qa.explorer.parquetTable.ParquetTable
+    python: lsst.pipe.tasks.parquetTable.ParquetTable
     template: plots/%(filter)s/tract-%(tract)d/%(tract)d_forced.parq
 analysisCoaddTable_unforced:
     description: >
         Per-tract object table assembled by pipe_analysis scripts (unforced photometry).
     persistable: ignored
     storage: ParquetStorage
-    python: lsst.qa.explorer.parquetTable.ParquetTable
+    python: lsst.pipe.tasks.parquetTable.ParquetTable
     template: plots/%(filter)s/tract-%(tract)d/%(tract)d_unforced.parq
 analysisColorTable:
     description: >
         Principal color table assembled by pipe_analysis scripts.
     persistable: ignored
     storage: ParquetStorage
-    python: lsst.qa.explorer.parquetTable.ParquetTable
+    python: lsst.pipe.tasks.parquetTable.ParquetTable
     template: plots/color/tract-%(tract)d/%(tract)d_color.parq
 visitMatchTable:
     description: >
         Tract-level table of visit-match IDs and distances for each visit.
     persistable: ignored
     storage: ParquetStorage
-    python: lsst.qa.explorer.parquetTable.ParquetTable
+    python: lsst.pipe.tasks.parquetTable.ParquetTable
     template: plots/%(filter)s/tract-%(tract)d/%(tract)d_visit_match.parq
 matchVisits_config:
     description: >
         Configuration for Task to match visit tables to coadd table.
     persistable: Config
-    python: lsst.qa.explorer.matchVisits.MatchVisitsConfig
+    python: lsst.pipe.tasks.matchVisits.MatchVisitsConfig
     storage: ConfigStorage
     template: config/matchVisits.py
 
