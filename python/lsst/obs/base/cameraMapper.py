@@ -255,9 +255,8 @@ class CameraMapper(dafPersist.Mapper):
                                                          posixIfNoSql=False)  # NB never use posix for calibs
             else:
                 raise RuntimeError(
-                    "'needCalibRegistry' is true in Policy, but was unable to locate a repo at " +
-                    "calibRoot ivar:%s or policy['calibRoot']:%s" %
-                    (calibRoot, policy.get('calibRoot', None)))
+                    "'needCalibRegistry' is true in Policy, but was unable to locate a repo at "
+                    f"calibRoot ivar:{calibRoot} or policy['calibRoot']:{policy.get('calibRoot', None)}")
         else:
             self.calibRegistry = None
 
