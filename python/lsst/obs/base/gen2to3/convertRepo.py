@@ -282,9 +282,9 @@ class ConvertRepoTask(Task):
         """
         return (
             any(fnmatch.fnmatchcase(datasetTypeName, pattern)
-                for pattern in self.config.datasetIncludePatterns) and
-            not any(fnmatch.fnmatchcase(datasetTypeName, pattern)
-                    for pattern in self.config.datasetIgnorePatterns)
+                for pattern in self.config.datasetIncludePatterns)
+            and not any(fnmatch.fnmatchcase(datasetTypeName, pattern)
+                        for pattern in self.config.datasetIgnorePatterns)
         )
 
     def useSkyMap(self, skyMap: BaseSkyMap) -> str:
