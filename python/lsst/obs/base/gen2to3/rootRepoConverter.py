@@ -65,10 +65,10 @@ class RootRepoConverter(StandardRepoConverter):
     def isDatasetTypeSpecial(self, datasetTypeName: str) -> bool:
         # Docstring inherited from RepoConverter.
         return (
-            super().isDatasetTypeSpecial(datasetTypeName) or
-            datasetTypeName in ("raw", "ref_cat", "ref_cat_config") or
+            super().isDatasetTypeSpecial(datasetTypeName)
+            or datasetTypeName in ("raw", "ref_cat", "ref_cat_config")
             # in Gen2, some of these are in the root repo, not a calib repo
-            datasetTypeName in CURATED_CALIBRATION_DATASET_TYPES
+            or datasetTypeName in CURATED_CALIBRATION_DATASET_TYPES
         )
 
     def getSpecialDirectories(self) -> List[str]:

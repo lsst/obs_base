@@ -324,8 +324,8 @@ class RepoConverter(ABC):
             skip = False
             message = None
             storageClass = None
-            if (not self.task.isDatasetTypeIncluded(datasetTypeName) or
-                    self.isDatasetTypeSpecial(datasetTypeName)):
+            if (not self.task.isDatasetTypeIncluded(datasetTypeName)
+                    or self.isDatasetTypeSpecial(datasetTypeName)):
                 # User indicated not to include this data, but we still want
                 # to recognize files of that type to avoid warning about them.
                 skip = True

@@ -127,7 +127,7 @@ class Mapping(object):
         if self._template:  # template must not be an empty string or None
             return self._template
         else:
-            raise RuntimeError("Template is not defined for the {} dataset type, ".format(self.datasetType) +
+            raise RuntimeError(f"Template is not defined for the {self.datasetType} dataset type, "
                                "it must be set before it can be used.")
 
     def keys(self):

@@ -50,9 +50,9 @@ from .fitsRawFormatterBase import FitsRawFormatterBase
 
 
 @dataclass
-class RawFileData:
-    """Structure that holds information about a single raw file, used during
-    ingest.
+class RawFileDatasetInfo:
+    """Structure that hold information about a single dataset within a
+    raw file.
     """
 
     dataId: DataCoordinate
@@ -70,6 +70,18 @@ class RawFileData:
     region: ConvexPolygon
     """Region on the sky covered by this file, possibly with padding
     (`lsst.sphgeom.ConvexPolygon`).
+    """
+
+
+@dataclass
+class RawFileData:
+    """Structure that holds information about a single raw file, used during
+    ingest.
+    """
+
+    datasets: List[RawFileDatasetInfo]
+    """The information describing each dataset within this raw file.
+    (`list` of `RawFileDatasetInfo`)
     """
 
     filename: str
@@ -220,10 +232,42 @@ class RawIngestTask(Task):
             as well as the original filename.  All fields will be populated,
             but the `RawFileData.dataId` attribute will be a minimal
             (unexpanded) `DataCoordinate` instance.
+
+        Notes
+        -----
+        Assumes that there is a single dataset associated with the given
+        file.  Instruments using a single file to store multiple datasets
+        must implement their own version of this method.
         """
         phdu = readMetadata(filename, 0)
         header = merge_headers([phdu, readMetadata(filename)], mode="overwrite")
         fix_header(header)
+        datasets = [self._calculate_dataset_info(header, filename)]
+
+        # The data model currently assumes that whilst multiple datasets
+        # can be associated with a single file, they must all share the
+        # same formatter.
+        FormatterClass = self.instrument.getRawFormatter(datasets[0].dataId)
+
+        return RawFileData(datasets=datasets, filename=filename,
+                           FormatterClass=FormatterClass)
+
+    def _calculate_dataset_info(self, header, filename):
+        """Calculate a RawFileDatasetInfo from the supplied information.
+
+        Parameters
+        ----------
+        header : `Mapping`
+            Header from the dataset.
+        filename : `str`
+            Filename to use for error messages.
+
+        Returns
+        -------
+        dataset : `RawFileDatasetInfo`
+            The region, dataId, and observation information associated with
+            this dataset.
+        """
         obsInfo = ObservationInfo(header)
         dataId = DataCoordinate.standardize(instrument=obsInfo.instrument,
                                             exposure=obsInfo.exposure_id,
@@ -232,7 +276,29 @@ class RawIngestTask(Task):
         if obsInfo.instrument != self.instrument.getName():
             raise ValueError(f"Incorrect instrument (expected {self.instrument.getName()}, "
                              f"got {obsInfo.instrument}) for file {filename}.")
+
         FormatterClass = self.instrument.getRawFormatter(dataId)
+        region = self._calculate_region_from_dataset_metadata(obsInfo, header, FormatterClass)
+        return RawFileDatasetInfo(obsInfo=obsInfo, region=region, dataId=dataId)
+
+    def _calculate_region_from_dataset_metadata(self, obsInfo, header, FormatterClass):
+        """Calculate the sky region covered by the supplied observation
+        information.
+
+        Parameters
+        ----------
+        obsInfo : `~astro_metadata_translator.ObservationInfo`
+            Summary information of this dataset.
+        header : `Mapping`
+            Header from the dataset.
+        FormatterClass: `type` as subclass of  `FitsRawFormatterBase`
+            Formatter class that should be used to compute the spatial region.
+
+        Returns
+        -------
+        region : `lsst.sphgeom.ConvexPolygon`
+            Region of sky covered by this observation.
+        """
         if obsInfo.visit_id is not None and obsInfo.tracking_radec is not None:
             formatter = FormatterClass.fromMetadata(metadata=header, obsInfo=obsInfo)
             visitInfo = formatter.makeVisitInfo()
@@ -246,8 +312,7 @@ class RawIngestTask(Task):
             region = ConvexPolygon(sphCorners)
         else:
             region = None
-        return RawFileData(obsInfo=obsInfo, region=region, filename=filename,
-                           FormatterClass=FormatterClass, dataId=dataId)
+        return region
 
     def groupByExposure(self, files: Iterable[RawFileData]) -> List[RawExposureData]:
         """Group an iterable of `RawFileData` by exposure.
@@ -269,7 +334,8 @@ class RawIngestTask(Task):
         exposureDimensions = self.universe["exposure"].graph
         byExposure = defaultdict(list)
         for f in files:
-            byExposure[f.dataId.subset(exposureDimensions)].append(f)
+            # Assume that the first dataset is representative for the file
+            byExposure[f.datasets[0].dataId.subset(exposureDimensions)].append(f)
 
         return [RawExposureData(dataId=dataId, files=exposureFiles)
                 for dataId, exposureFiles in byExposure.items()]
@@ -291,40 +357,41 @@ class RawIngestTask(Task):
             `RawExposureData.records` populated.
         """
         firstFile = exposure.files[0]
+        firstDataset = firstFile.datasets[0]
         VisitDetectorRegionRecordClass = self.universe["visit_detector_region"].RecordClass
         exposure.records = {
-            "exposure": [makeExposureRecordFromObsInfo(firstFile.obsInfo, self.universe)],
+            "exposure": [makeExposureRecordFromObsInfo(firstDataset.obsInfo, self.universe)],
         }
-        if firstFile.obsInfo.visit_id is not None:
+        if firstDataset.obsInfo.visit_id is not None:
             exposure.records["visit_detector_region"] = []
             visitVertices = []
             for file in exposure.files:
-                if file.obsInfo.visit_id != firstFile.obsInfo.visit_id:
-                    raise ValueError(f"Inconsistent visit/exposure relationship for "
-                                     f"exposure {firstFile.obsInfo.exposure_id} between "
-                                     f"{file.filename} and {firstFile.filename}: "
-                                     f"{file.obsInfo.visit_id} != {firstFile.obsInfo.visit_id}.")
-                if file.region is None:
-                    self.log.warn("No region found for visit=%s, detector=%s.", file.obsInfo.visit_id,
-                                  file.obsInfo.detector_num)
-                    continue
-                visitVertices.extend(file.region.getVertices())
-                exposure.records["visit_detector_region"].append(
-                    VisitDetectorRegionRecordClass.fromDict({
-                        "instrument": file.obsInfo.instrument,
-                        "visit": file.obsInfo.visit_id,
-                        "detector": file.obsInfo.detector_num,
-                        "region": file.region,
-                    })
-                )
+                for dataset in file.datasets:
+                    if dataset.obsInfo.visit_id != firstDataset.obsInfo.visit_id:
+                        raise ValueError(f"Inconsistent visit/exposure relationship for "
+                                         f"exposure {firstDataset.obsInfo.exposure_id} between "
+                                         f"{file.filename} and {firstFile.filename}: "
+                                         f"{dataset.obsInfo.visit_id} != {firstDataset.obsInfo.visit_id}.")
+                    if dataset.region is None:
+                        self.log.warn("No region found for visit=%s, detector=%s.", dataset.obsInfo.visit_id,
+                                      dataset.obsInfo.detector_num)
+                        continue
+                    visitVertices.extend(dataset.region.getVertices())
+                    exposure.records["visit_detector_region"].append(
+                        VisitDetectorRegionRecordClass.fromDict({
+                            "instrument": dataset.obsInfo.instrument,
+                            "visit": dataset.obsInfo.visit_id,
+                            "detector": dataset.obsInfo.detector_num,
+                            "region": dataset.region,
+                        })
+                    )
             if visitVertices:
                 visitRegion = ConvexPolygon(visitVertices)
             else:
-                self.log.warn("No region found for visit=%s.", file.obsInfo.visit_id,
-                              file.obsInfo.detector_num)
+                self.log.warn("No region found for visit=%s.", firstDataset.obsInfo.visit_id)
                 visitRegion = None
             exposure.records["visit"] = [
-                makeVisitRecordFromObsInfo(firstFile.obsInfo, self.universe, region=visitRegion)
+                makeVisitRecordFromObsInfo(firstDataset.obsInfo, self.universe, region=visitRegion)
             ]
         return exposure
 
@@ -367,10 +434,11 @@ class RawIngestTask(Task):
         # one.
         vdrRecords = data.records["visit_detector_region"] if hasVisit else itertools.repeat(None)
         for file, vdrRecord in zip(data.files, vdrRecords):
-            file.dataId = self.butler.registry.expandDataId(
-                file.dataId,
-                records=dict(data.dataId.records, visit_detector_region=vdrRecord)
-            )
+            for dataset in file.datasets:
+                dataset.dataId = self.butler.registry.expandDataId(
+                    dataset.dataId,
+                    records=dict(data.dataId.records, visit_detector_region=vdrRecord)
+                )
         return data
 
     def prep(self, files, pool: Optional[Pool] = None, processes: int = 1) -> Iterator[RawExposureData]:
@@ -484,7 +552,7 @@ class RawIngestTask(Task):
         if butler is None:
             butler = self.butler
         datasets = [FileDataset(path=os.path.abspath(file.filename),
-                                refs=DatasetRef(self.datasetType, file.dataId),
+                                refs=[DatasetRef(self.datasetType, d.dataId) for d in file.datasets],
                                 formatter=file.FormatterClass)
                     for file in exposure.files]
         butler.ingest(*datasets, transfer=self.config.transfer)
