@@ -239,6 +239,8 @@ class RawIngestTask(Task):
         file.  Instruments using a single file to store multiple datasets
         must implement their own version of this method.
         """
+        # Manually merge the primary and "first data" headers here because we
+        # do not know in general if an input file has set INHERIT=T.
         phdu = readMetadata(filename, 0)
         header = merge_headers([phdu, readMetadata(filename)], mode="overwrite")
         fix_header(header)
