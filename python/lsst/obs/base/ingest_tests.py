@@ -104,8 +104,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         for dataId in self.dataIds:
             exposure = self.butler.get("raw", dataId)
             metadata = self.butler.get("raw.metadata", dataId)
-            image = self.butler.get("raw.image", dataId)
-            self.assertImagesEqual(exposure.image, image)
+            # only check the metadata, not the images, to speed up tests
             self.assertEqual(metadata.toDict(), exposure.getMetadata().toDict())
             self.checkRepo(files=files)
 
