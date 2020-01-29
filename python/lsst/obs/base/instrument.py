@@ -83,17 +83,18 @@ class Instrument(metaclass=ABCMeta):
         registry : `lsst.daf.butler.core.Registry`
             The registry to add dimensions to.
         """
-        registry.insertDimensionData(
-            "physical_filter",
-            *[
-                {
-                    "instrument": self.getName(),
-                    "name": filter.physical_filter,
-                    "abstract_filter": filter.abstract_filter,
-                }
-                for filter in self.filterDefinitions
-            ]
-        )
+        for filter in self.filterDefinitions:
+            # fix for undefined abstract filters causing trouble in the registry:
+            if filter.abstract_filter is None:
+                abstract_filter = filter.physical_filter
+            else:
+                abstract_filter = filter.abstract_filter
+
+            registry.insertDimensionData("physical_filter",
+                                         {"instrument": self.getName(),
+                                          "name": filter.physical_filter,
+                                          "abstract_filter": abstract_filter
+                                          })
 
     @abstractmethod
     def getRawFormatter(self, dataId):
