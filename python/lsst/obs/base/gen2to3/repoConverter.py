@@ -39,7 +39,7 @@ from typing import (
     TYPE_CHECKING,
 )
 
-from lsst.daf.butler import Butler as Butler3, DataCoordinate, FileDataset, DatasetType
+from lsst.daf.butler import DataCoordinate, FileDataset, DatasetType
 from lsst.sphgeom import RangeSet, Region
 from .repoWalker import RepoWalker
 
@@ -463,24 +463,23 @@ class RepoConverter(ABC):
             self.task.registry.registerDatasetType(datasetType)
             self.task.log.info("Ingesting %s %s datasets.", len(datasetsForType), datasetType.name)
             try:
-                butler3, collections = self.getButler(datasetType.name)
+                collections = self.getCollections(datasetType.name)
             except LookupError as err:
                 self.task.log.warn(str(err))
                 continue
             try:
-                butler3.ingest(*datasetsForType, transfer=self.task.config.transfer)
+                self.task.registry.registerRun(collections[0])
+                self.task.butler3.ingest(*datasetsForType, transfer=self.task.config.transfer,
+                                         run=collections[0])
             except LookupError as err:
                 raise LookupError(f"Error expanding data ID for dataset type {datasetType.name}.") from err
-            for collection in collections:
+            for collection in collections[1:]:
                 self.task.registry.associate(collection,
                                              [ref for dataset in datasetsForType for ref in dataset.refs])
 
-    def getButler(self, datasetTypeName: str) -> Tuple[Butler3, List[str]]:
-        """Create a new Gen3 Butler appropriate for a particular dataset type.
-
-        This should be used exclusively by subclasses when obtaining a butler
-        to use for dataset ingest (`ConvertRepoTask.butler3` should never be
-        used directly).
+    def getCollections(self, datasetTypeName: str) -> List[str]:
+        """Return the set of collections a particular dataset type should be
+        associated with.
 
         Parameters
         ----------
@@ -489,24 +488,15 @@ class RepoConverter(ABC):
 
         Returns
         -------
-        butler : `lsst.daf.butler.Butler`
-            Gen3 Butler instance appropriate for ingesting the given dataset
-            type.
         collections : `list` of `str`
-            Collections the dataset should be associated with, in addition to
-            the one used to define the `lsst.daf.butler.Run` used in
-            ``butler``.
+            Collections the dataset should be associated with.  The first
+            item in the list is the run the dataset should be added to
+            initially.
         """
         if datasetTypeName in self.task.config.collections:
-            return (
-                Butler3(butler=self.task.butler3, run=self.task.config.collections[datasetTypeName]),
-                self._collections,
-            )
+            return [self.task.config.collections[datasetTypeName]] + self._collections
         elif self._collections:
-            return (
-                Butler3(butler=self.task.butler3, run=self._collections[0]),
-                self._collections[1:],
-            )
+            return self._collections
         else:
             raise LookupError("No collection configured for dataset type {datasetTypeName}.")
 

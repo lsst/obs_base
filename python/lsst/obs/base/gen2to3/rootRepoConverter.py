@@ -169,9 +169,9 @@ class RootRepoConverter(StandardRepoConverter):
             # the base class to handle, because we don't want to assume we
             # can use the Datastore-configured Formatter for raw data.
             refs = []
-            butler, collections = self.getButler("raw")
+            collections = self.getCollections("raw")
             for exposure in self._exposureData:
                 refs.extend(self.task.raws.ingestExposureDatasets(exposure))
-            for collection in collections:
+            for collection in collections[1:]:
                 self.task.registry.associate(collection, refs)
         super().ingest()

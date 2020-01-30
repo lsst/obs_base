@@ -27,6 +27,8 @@ import sqlite3
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Dict, Iterator, Tuple
 
+from lsst.daf.butler import Butler as Butler3
+
 from .repoConverter import RepoConverter
 from .repoWalker import RepoWalker
 from .translators import makeCalibrationLabel
@@ -130,13 +132,15 @@ class CalibRepoConverter(RepoConverter):
         # Docstring inherited from RepoConverter.
         if self.task.config.doWriteCuratedCalibrations:
             try:
-                butler3, collections = self.getButler(None)
+                collections = self.getCollections(None)
             except LookupError as err:
                 raise ValueError("Cannot ingest curated calibration into a calibration repo with no "
                                  "collections of its own; skipping.") from err
             # TODO: associate the curated calibrations with any other
-            # collections and remove this assert.
-            assert not collections, "Multiple collections for curated calibrations is not yet supported."
+            # collections and remove this assert; blocker is DM-23230.
+            assert len(collections) == 1, \
+                "Multiple collections for curated calibrations is not yet supported."
+            butler3 = Butler3(butler=self.task.butler3, run=collections[0])
             self.task.instrument.writeCuratedCalibrations(butler3)
         super().ingest()
 
