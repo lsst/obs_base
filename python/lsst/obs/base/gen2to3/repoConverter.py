@@ -344,6 +344,7 @@ class RepoConverter(ABC):
                     keys=mapping.keys(),
                     message=message,
                 )
+                self.task.log.debug("Skipping template in walker: %s", template)
             else:
                 assert message is None
                 walkerInput = self.makeRepoWalkerTarget(
@@ -352,6 +353,7 @@ class RepoConverter(ABC):
                     keys=mapping.keys(),
                     storageClass=storageClass,
                 )
+                self.task.log.debug("Adding template to walker: %s", template)
             walkerInputs.append(walkerInput)
         for dirPath in self.getSpecialDirectories():
             walkerInputs.append(
