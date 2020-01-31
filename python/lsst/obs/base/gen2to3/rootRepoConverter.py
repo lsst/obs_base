@@ -123,7 +123,7 @@ class RootRepoConverter(StandardRepoConverter):
             self.task.log.debug("Prepping files: %s", dataPaths)
             self._exposureData.extend(self.task.raws.prep(dataPaths))
         # Gather information about reference catalogs.
-        if self.task.isDatasetTypeIncluded("ref_cat"):
+        if self.task.isDatasetTypeIncluded("ref_cat") and len(self.task.config.refCats) != 0:
             from lsst.meas.algorithms import DatasetConfig as RefCatDatasetConfig
             for refCat in os.listdir(os.path.join(self.root, "ref_cats")):
                 path = os.path.join(self.root, "ref_cats", refCat)
