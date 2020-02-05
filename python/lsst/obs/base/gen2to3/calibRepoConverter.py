@@ -39,7 +39,6 @@ if TYPE_CHECKING:
     from ..mapping import Mapping as CameraMapperMapping  # disambiguate from collections.abc.Mapping
 
 CURATED_CALIBRATION_DATASET_TYPES = (
-    "defects",
     "camera",
     "transmission_sensor",
     "transmission_filter",
