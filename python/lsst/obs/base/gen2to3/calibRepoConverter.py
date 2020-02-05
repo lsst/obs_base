@@ -65,7 +65,7 @@ class CalibRepoConverter(RepoConverter):
     def __init__(self, *, mapper: CameraMapper, **kwds):
         super().__init__(**kwds)
         self.mapper = mapper
-        self._datasetTypes = []
+        self._datasetTypes = set()
 
     def isDatasetTypeSpecial(self, datasetTypeName: str) -> bool:
         # Docstring inherited from RepoConverter.
@@ -86,7 +86,7 @@ class CalibRepoConverter(RepoConverter):
             instrument=self.task.instrument.getName(),
             universe=self.task.registry.dimensions,
         )
-        self._datasetTypes.append(target.datasetType)
+        self._datasetTypes.add(target.datasetType)
         return target
 
     def insertDimensionData(self):

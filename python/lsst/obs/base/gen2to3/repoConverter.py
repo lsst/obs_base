@@ -321,6 +321,7 @@ class RepoConverter(ABC):
                 # No template for this dataset in this mapper, so there's no
                 # way there should be instances of this dataset in this repo.
                 continue
+            extensions = [""]
             skip = False
             message = None
             storageClass = None
@@ -338,23 +339,28 @@ class RepoConverter(ABC):
                     # situation.
                     message = f"no storage class found for {datasetTypeName}"
                     skip = True
-            if skip:
-                walkerInput = RepoWalker.Skip(
-                    template=template,
-                    keys=mapping.keys(),
-                    message=message,
-                )
-                self.task.log.debug("Skipping template in walker: %s", template)
-            else:
-                assert message is None
-                walkerInput = self.makeRepoWalkerTarget(
-                    datasetTypeName=datasetTypeName,
-                    template=template,
-                    keys=mapping.keys(),
-                    storageClass=storageClass,
-                )
-                self.task.log.debug("Adding template to walker: %s", template)
-            walkerInputs.append(walkerInput)
+            # Handle files that are compressed on disk, but the gen2 template is just `.fits`
+            if template.endswith(".fits"):
+                extensions.extend((".gz", ".fz"))
+            for extension in extensions:
+                if skip:
+                    walkerInput = RepoWalker.Skip(
+                        template=template+extension,
+                        keys=mapping.keys(),
+                        message=message,
+                    )
+                    self.task.log.debug("Skipping template in walker: %s", template)
+                else:
+                    assert message is None
+                    walkerInput = self.makeRepoWalkerTarget(
+                        datasetTypeName=datasetTypeName,
+                        template=template+extension,
+                        keys=mapping.keys(),
+                        storageClass=storageClass,
+                    )
+                    self.task.log.debug("Adding template to walker: %s", template)
+                walkerInputs.append(walkerInput)
+
         for dirPath in self.getSpecialDirectories():
             walkerInputs.append(
                 RepoWalker.Skip(
