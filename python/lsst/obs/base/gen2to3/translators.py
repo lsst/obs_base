@@ -20,7 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 __all__ = ("Translator", "KeyHandler", "CopyKeyHandler", "ConstantKeyHandler",
-           "makeCalibrationLabel")
+           "CalibKeyHandler", "makeCalibrationLabel")
 
 import itertools
 from typing import Optional, Any, Dict, Tuple, FrozenSet, Iterable, List
@@ -214,11 +214,11 @@ class SkyMapKeyHandler(KeyHandler):
 class CalibKeyHandler(KeyHandler):
     """A KeyHandler for master calibration datasets.
     """
+    __slots__ = ("ccdKey",)
 
-    def __init__(self):
+    def __init__(self, ccdKey="ccd"):
+        self.ccdKey = ccdKey
         super().__init__("calibration_label")
-
-    __slots__ = ()
 
     def extract(self, gen2id: dict, skyMap: Optional[BaseSkyMap], skyMapName: Optional[str],
                 datasetTypeName: str) -> Any:
@@ -406,6 +406,3 @@ for datasetTypeName in ("transmission_sensor", "transmission_optics", "transmiss
 # TODO: For now, we just assume that the refcat indexer uses htm7, since that's
 # what the ps1 refcat in testdata_ci_hsc uses.
 Translator.addRule(CopyKeyHandler("htm7", gen2key="pixel_id", dtype=int), gen2keys=("pixel_id",))
-
-# Translate Gen2 calibDate and datasetType to Gen3 calibration_label.
-Translator.addRule(CalibKeyHandler(), gen2keys=("calibDate",))
