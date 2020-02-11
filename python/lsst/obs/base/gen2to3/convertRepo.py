@@ -135,6 +135,7 @@ class ConvertRepoConfig(Config):
             "raw": "Exposure",
             "MultilevelParquetTable": "DataFrame",
             "ParquetTable": "DataFrame",
+            "SkyWcs": "Wcs",
         }
     )
     doRegisterInstrument = Field(
