@@ -33,6 +33,11 @@ forcedPhotCcd_config:
     storage: ConfigStorage
     python: lsst.meas.base.forcedPhotCcd.ForcedPhotCcdConfig
     template: config/forcedPhotCcd.py
+forcedPhotDiffIm_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.meas.base.forcedPhotDiffIm.ForcedPhotDiffImConfig
+    template: config/forcedPhotDiffIm.py
 src_schema:
     persistable: SourceCatalog
     storage: FitsCatalogStorage
@@ -531,7 +536,19 @@ forcedPhotCcd_metadata:
     python: lsst.daf.base.PropertySet
     tables: raw
     template: ''
+forcedPhotDiffIm_metadata:
+    persistable: PropertySet
+    storage: YamlStorage
+    python: lsst.daf.base.PropertySet
+    tables: raw
+    template: ''
 forced_src:
+    persistable: ignored
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.SourceCatalog
+    tables: raw
+    template: ''
+forced_diaSrc:
     persistable: ignored
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
