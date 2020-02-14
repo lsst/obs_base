@@ -20,7 +20,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 __all__ = ("Translator", "KeyHandler", "CopyKeyHandler", "ConstantKeyHandler",
-           "CalibKeyHandler", "makeCalibrationLabel")
+           "CalibKeyHandler", "AbstractToPhysicalFilterKeyHandler", "PhysicalToAbstractFilterKeyHandler",
+           "makeCalibrationLabel")
 
 import itertools
 from typing import Optional, Any, Dict, Tuple, FrozenSet, Iterable, List
@@ -224,7 +225,49 @@ class CalibKeyHandler(KeyHandler):
                 datasetTypeName: str) -> Any:
         # Docstring inherited from KeyHandler.extract.
         return makeCalibrationLabel(datasetTypeName, gen2id["calibDate"],
-                                    ccd=gen2id.get("ccd"), filter=gen2id.get("filter"))
+                                    ccd=gen2id.get(self.ccdKey), filter=gen2id.get("filter"))
+
+
+class PhysicalToAbstractFilterKeyHandler(KeyHandler):
+    """KeyHandler for gen2 ``filter`` keys that match ``physical_filter``
+    keys in gen3 but should be mapped to ``abstract_filter``.
+
+    Note that multiple physical filter can potentially map to one abstract
+    filter, so be careful to only use this translator on obs packages where
+    there is a one-to-one mapping.
+    """
+
+    __slots__ = ("_map",)
+
+    def __init__(self, filterDefinitions):
+        super().__init__("abstract_filter")
+        self._map = {d.physical_filter: d.abstract_filter for d in filterDefinitions
+                     if d.physical_filter is not None}
+
+    def extract(self, gen2id, *args, **kwargs):
+        physical = gen2id["filter"]
+        return self._map.get(physical, physical)
+
+
+class AbstractToPhysicalFilterKeyHandler(KeyHandler):
+    """KeyHandler for gen2 ``filter`` keys that match ``abstract_filter``
+    keys in gen3 but should be mapped to ``physical_filter``.
+
+    Note that one abstract filter can potentially map to multiple physical
+    filters, so be careful to only use this translator on obs packages where
+    there is a one-to-one mapping.
+    """
+
+    __slots__ = ("_map",)
+
+    def __init__(self, filterDefinitions):
+        super().__init__("physical_filter")
+        self._map = {d.abstract_filter: d.physical_filter for d in filterDefinitions
+                     if d.abstract_filter is not None}
+
+    def extract(self, gen2id, *args, **kwargs):
+        abstract = gen2id["filter"]
+        return self._map.get(abstract, abstract)
 
 
 class Translator:
