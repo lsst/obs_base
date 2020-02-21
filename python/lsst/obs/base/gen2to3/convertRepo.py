@@ -129,6 +129,10 @@ class ConvertRepoConfig(Config):
         keytype=str,
         itemtype=str,
         default={
+            "bias": "ExposureF",
+            "dark": "ExposureF",
+            "flat": "ExposureF",
+            "defects": "Defects",
             "BaseSkyMap": "SkyMap",
             "BaseCatalog": "Catalog",
             "BackgroundList": "Background",
