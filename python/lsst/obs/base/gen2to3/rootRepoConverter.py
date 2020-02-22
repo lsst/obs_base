@@ -25,7 +25,7 @@ __all__ = ["RootRepoConverter"]
 import os
 import re
 import itertools
-from typing import TYPE_CHECKING, Iterator, Optional, Tuple, List
+from typing import TYPE_CHECKING, Iterator, Optional, Tuple, List, Set
 
 from lsst.skymap import BaseSkyMap
 from lsst.daf.butler import DatasetType, DatasetRef, FileDataset
@@ -74,13 +74,14 @@ class RootRepoConverter(StandardRepoConverter):
     """
 
     def __init__(self, **kwds):
-        super().__init__(**kwds)
+        super().__init__(run=None, **kwds)
         self._exposureData: List[RawExposureData] = []
         self._refCats: List[Tuple[str, SkyPixDimension]] = []
         if self.task.config.rootSkyMapName is not None:
             self._rootSkyMap = self.task.config.skyMaps[self.task.config.rootSkyMapName].skyMap.apply()
         else:
             self._rootSkyMap = None
+        self._chain = None
 
     def isDatasetTypeSpecial(self, datasetTypeName: str) -> bool:
         # Docstring inherited from RepoConverter.
@@ -184,24 +185,28 @@ class RootRepoConverter(StandardRepoConverter):
 
     def ingest(self):
         # Docstring inherited from RepoConverter.
+        self._chain = {}
         if self.task.raws is not None:
             self.task.log.info(f"Ingesting raws from root {self.root}.")
             self.task.registry.registerDatasetType(self.task.raws.datasetType)
+            self._chain.setdefault(self.task.raws.butler.run, set()).add(self.task.raws.datasetType.name)
             # We need te delegate to RawIngestTask to actually ingest raws,
             # rather than just including those datasets in iterDatasets for
             # the base class to handle, because we don't want to assume we
             # can use the Datastore-configured Formatter for raw data.
-            refs = []
-            collections = self.getCollections("raw")
             for exposure in self._exposureData:
-                refs.extend(self.task.raws.ingestExposureDatasets(exposure))
-            for collection in collections[1:]:
-                self.task.registry.associate(collection, refs)
+                self.task.raws.ingestExposureDatasets(exposure)
         super().ingest()
 
-    def getCollections(self, datasetTypeName: str) -> List[str]:
-        # override to put reference catalogs in the right collection
-        if datasetTypeName in self.task.config.refCats:
-            return ['refcats']
-        else:
-            return super().getCollections(datasetTypeName)
+    def getRun(self, datasetTypeName: str) -> str:
+        # Docstring inherited from RepoConverter.
+        run = self.task.config.runs[datasetTypeName]
+        self._chain.setdefault(run, set()).add(datasetTypeName)
+        return run
+
+    def getCollectionChain(self) -> List[Tuple[str, Set[str]]]:
+        """Return tuples of run name and associated dataset type names that
+        can be used to construct a chained collection that refers to the
+        converted root repository (`list` [ `tuple` ]).
+        """
+        return list(self._chain.items())
