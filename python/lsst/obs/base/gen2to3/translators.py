@@ -447,5 +447,5 @@ for datasetTypeName in ("transmission_sensor", "transmission_optics", "transmiss
 
 # Translate Gen2 pixel_id to Gen3 skypix.
 # TODO: For now, we just assume that the refcat indexer uses htm7, since that's
-# what the ps1 refcat in testdata_ci_hsc uses.
+# what we have generated most of our refcats at.
 Translator.addRule(CopyKeyHandler("htm7", gen2key="pixel_id", dtype=int), gen2keys=("pixel_id",))
