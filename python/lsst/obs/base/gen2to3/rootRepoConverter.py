@@ -198,3 +198,10 @@ class RootRepoConverter(StandardRepoConverter):
             for collection in collections[1:]:
                 self.task.registry.associate(collection, refs)
         super().ingest()
+
+    def getCollections(self, datasetTypeName: str) -> List[str]:
+        # override to put reference catalogs in the right collection
+        if datasetTypeName in self.task.config.refCats:
+            return ['refcats']
+        else:
+            return super().getCollections(datasetTypeName)
