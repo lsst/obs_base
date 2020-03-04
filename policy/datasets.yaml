@@ -568,7 +568,7 @@ deepCoadd_fakeSourceCat:
 insertFakes_config:
     persistable: Config
     storage: ConfigStorage
-    python: lsst.pipe.tasks.insertFakes.insertFakesConfig
+    python: lsst.pipe.tasks.insertFakes.InsertFakesConfig
     template: config/insertFakes.py
 processCcdWithFakes_config:
     persistable: Config
