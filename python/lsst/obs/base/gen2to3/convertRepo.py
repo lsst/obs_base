@@ -193,6 +193,18 @@ class ConvertRepoConfig(Config):
         dtype=bool,
         default=False,
     )
+    curatedCalibrations = ListField(
+        "Dataset types that are handled by `Instrument.writeCuratedCalibrations()` "
+        "and thus should not be converted using the standard calibration "
+        "conversion system.",
+        dtype=str,
+        default=["camera",
+                 "transmission_sensor",
+                 "transmission_filter",
+                 "transmission_optics",
+                 "transmission_atmosphere",
+                 "bfKernel"]
+    )
 
     @property
     def transfer(self):

@@ -38,15 +38,6 @@ if TYPE_CHECKING:
     from ..cameraMapper import CameraMapper
     from ..mapping import Mapping as CameraMapperMapping  # disambiguate from collections.abc.Mapping
 
-CURATED_CALIBRATION_DATASET_TYPES = (
-    "camera",
-    "transmission_sensor",
-    "transmission_filter",
-    "transmission_optics",
-    "transmission_atmosphere",
-    "bfKernel"
-)
-
 
 class CalibRepoConverter(RepoConverter):
     """A specialization of `RepoConverter` for calibration repositories.
@@ -68,7 +59,7 @@ class CalibRepoConverter(RepoConverter):
 
     def isDatasetTypeSpecial(self, datasetTypeName: str) -> bool:
         # Docstring inherited from RepoConverter.
-        return datasetTypeName in CURATED_CALIBRATION_DATASET_TYPES
+        return datasetTypeName in self.task.config.curatedCalibrations
 
     def iterMappings(self) -> Iterator[Tuple[str, CameraMapperMapping]]:
         # Docstring inherited from RepoConverter.

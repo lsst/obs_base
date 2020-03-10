@@ -29,7 +29,6 @@ from typing import TYPE_CHECKING, Iterator, Optional, Tuple, List
 
 from lsst.skymap import BaseSkyMap
 from lsst.daf.butler import DatasetType, DatasetRef, FileDataset
-from .calibRepoConverter import CURATED_CALIBRATION_DATASET_TYPES
 from .standardRepoConverter import StandardRepoConverter
 
 SKYMAP_DATASET_TYPES = {
@@ -89,7 +88,7 @@ class RootRepoConverter(StandardRepoConverter):
             super().isDatasetTypeSpecial(datasetTypeName)
             or datasetTypeName in ("raw", "ref_cat", "ref_cat_config")
             # in Gen2, some of these are in the root repo, not a calib repo
-            or datasetTypeName in CURATED_CALIBRATION_DATASET_TYPES
+            or datasetTypeName in self.task.config.curatedCalibrations
         )
 
     def getSpecialDirectories(self) -> List[str]:
