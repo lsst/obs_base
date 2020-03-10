@@ -1313,7 +1313,7 @@ matchVisits_config:
     description: >
         Configuration for Task to match visit tables to coadd table.
     persistable: Config
-    python: lsst.pipe.tasks.matchVisits.MatchVisitsConfig
+    python: lsst.qa.explorer.matchVisits.MatchVisitsConfig
     storage: ConfigStorage
     template: config/matchVisits.py
 
