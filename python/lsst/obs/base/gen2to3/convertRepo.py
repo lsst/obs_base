@@ -507,8 +507,9 @@ class ConvertRepoTask(Task):
             converters.append(converter)
 
         for spec in reruns:
-            if not os.path.isabs(spec.path):
-                root = os.path.join(rootConverter.root, spec.path)
+            root = spec.path
+            if not os.path.isabs(root):
+                root = os.path.join(rootConverter.root, root)
             converter = StandardRepoConverter(task=self, root=root, run=spec.runName,
                                               subset=rootConverter.subset)
             converter.prep()
