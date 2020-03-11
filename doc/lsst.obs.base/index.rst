@@ -18,6 +18,15 @@ Contributing
 ``lsst.obs.base`` is developed at https://github.com/lsst/obs_base.
 You can find Jira issues for this module under the `obs_base <https://jira.lsstcorp.org/issues/?jql=project%20%3D%20DM%20AND%20component%20%3D%20obs_base>`_ component.
 
+.. _lsst.obs.base-scripts:
+
+Command Line Scripts
+====================
+
+.. autoprogram:: lsst.obs.base.script.convertGen2RepoToGen3:build_argparser()
+   :prog: convert_gen2_repo_to_gen3.py
+   :groups:
+
 .. _lsst.obs.base-pyapi:
 
 Python API reference

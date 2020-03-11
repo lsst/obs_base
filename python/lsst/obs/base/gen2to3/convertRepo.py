@@ -129,6 +129,10 @@ class ConvertRepoConfig(Config):
         keytype=str,
         itemtype=str,
         default={
+            "bias": "ExposureF",
+            "dark": "ExposureF",
+            "flat": "ExposureF",
+            "defects": "Defects",
             "BaseSkyMap": "SkyMap",
             "BaseCatalog": "Catalog",
             "BackgroundList": "Background",
@@ -189,6 +193,18 @@ class ConvertRepoConfig(Config):
         dtype=bool,
         default=False,
     )
+    curatedCalibrations = ListField(
+        "Dataset types that are handled by `Instrument.writeCuratedCalibrations()` "
+        "and thus should not be converted using the standard calibration "
+        "conversion system.",
+        dtype=str,
+        default=["camera",
+                 "transmission_sensor",
+                 "transmission_filter",
+                 "transmission_optics",
+                 "transmission_atmosphere",
+                 "bfKernel"]
+    )
 
     @property
     def transfer(self):
@@ -245,6 +261,7 @@ class ConvertRepoTask(Task):
     _DefaultName = "convertRepo"
 
     def __init__(self, config=None, *, butler3: Butler3, **kwds):
+        config.validate()  # Not a CmdlineTask nor PipelineTask, so have to validate the config here.
         super().__init__(config, **kwds)
         self.butler3 = butler3
         self.registry = self.butler3.registry
@@ -259,10 +276,13 @@ class ConvertRepoTask(Task):
         self._configuredSkyMapsByName = {}
         for name, config in self.config.skyMaps.items():
             instance = config.skyMap.apply()
-            struct = ConfiguredSkyMap(name=name, sha1=instance.getSha1(), instance=instance)
-            self._configuredSkyMapsBySha1[struct.sha1] = struct
-            self._configuredSkyMapsByName[struct.name] = struct
+            self._populateSkyMapDicts(name, instance)
         self._usedSkyPix = set()
+
+    def _populateSkyMapDicts(self, name, instance):
+        struct = ConfiguredSkyMap(name=name, sha1=instance.getSha1(), instance=instance)
+        self._configuredSkyMapsBySha1[struct.sha1] = struct
+        self._configuredSkyMapsByName[struct.name] = struct
 
     def isDatasetTypeIncluded(self, datasetTypeName: str):
         """Return `True` if configuration indicates that the given dataset type
@@ -288,7 +308,7 @@ class ConvertRepoTask(Task):
                         for pattern in self.config.datasetIgnorePatterns)
         )
 
-    def useSkyMap(self, skyMap: BaseSkyMap) -> str:
+    def useSkyMap(self, skyMap: BaseSkyMap, skyMapName: str) -> str:
         """Indicate that a repository uses the given SkyMap.
 
         This method is intended to be called primarily by the
@@ -299,17 +319,27 @@ class ConvertRepoTask(Task):
         skyMap : `lsst.skymap.BaseSkyMap`
             SkyMap instance being used, typically retrieved from a Gen2
             data repository.
+        skyMapName : `str`
+            The name of the gen2 skymap, for error reporting.
 
         Returns
         -------
         name : `str`
             The name of the skymap in Gen3 data IDs.
+
+        Raises
+        ------
+            LookupError
+                Raised if the specified skymap cannot be found.
         """
         sha1 = skyMap.getSha1()
+        if sha1 not in self._configuredSkyMapsBySha1:
+            self._populateSkyMapDicts(skyMapName, skyMap)
         try:
             struct = self._configuredSkyMapsBySha1[sha1]
         except KeyError as err:
-            raise LookupError(f"SkyMap with sha1={sha1} not included in configuration.") from err
+            msg = f"SkyMap '{skyMapName}' with sha1={sha1} not included in configuration."
+            raise LookupError(msg) from err
         struct.used = True
         return struct.name
 

@@ -43,7 +43,8 @@ from lsst.daf.butler import DatasetType, DimensionUniverse, StorageClass
 from ..translators import Translator
 from .parser import PathElementParser
 from .scanner import PathElementHandler, DirectoryScanner
-from .handlers import IgnoreHandler, SubdirectoryHandler, SkipHandler, TargetFileHandler
+from .handlers import (IgnoreHandler, SubdirectoryHandler, SkipHandler,
+                       TargetFileHandler, MultiExtensionFileHandler)
 
 
 class BuilderNode(ABC):
@@ -192,11 +193,13 @@ class BuilderTargetInput(BuilderInput):
     universe : `DimensionUniverse`
         All candidate dimensions for the Gen3 dataset type.
     kwargs:
-        Additional keyword argumetns are passed to `Translator.makeMatching`,
+        Additional keyword arguments are passed to `Translator.makeMatching`,
         in along with ``datasetTypeName`` and ``keys``.
     """
     def __init__(self, *, datasetTypeName: str, template: str, keys: Dict[str, type],
                  storageClass: StorageClass, universe: DimensionUniverse, **kwargs: Any):
+        # strip off [%HDU] identifiers from e.g. DECAM Community Pipeline products
+        template = template.split('[%(')[0]
         super().__init__(template=template, keys=keys)
         self._translator = Translator.makeMatching(datasetTypeName, keys, **kwargs)
         self.datasetType = DatasetType(datasetTypeName, dimensions=self._translator.dimensionNames,
@@ -206,7 +209,14 @@ class BuilderTargetInput(BuilderInput):
               fileIgnoreRegEx: Optional[re.Pattern], dirIgnoreRegEx: Optional[re.Pattern]
               ) -> PathElementHandler:
         # Docstring inherited from BuilderNode.
-        return TargetFileHandler(parser=parser, translator=self._translator, datasetType=self.datasetType)
+        if self.datasetType.name == 'cpBias' or self.datasetType.name == 'cpFlat':
+            # 'cpBias'/'cpFlat' are DECam Community Pipeline calibrations
+            # stored as multi-extension FITS files.
+            return MultiExtensionFileHandler(parser=parser,
+                                             translator=self._translator,
+                                             datasetType=self.datasetType)
+        else:
+            return TargetFileHandler(parser=parser, translator=self._translator, datasetType=self.datasetType)
 
     def prune(self) -> Tuple[BuilderNode, List[str], bool]:
         # Docstring inherited from BuilderNode.

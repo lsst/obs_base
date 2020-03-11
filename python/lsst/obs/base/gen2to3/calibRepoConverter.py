@@ -38,16 +38,6 @@ if TYPE_CHECKING:
     from ..cameraMapper import CameraMapper
     from ..mapping import Mapping as CameraMapperMapping  # disambiguate from collections.abc.Mapping
 
-CURATED_CALIBRATION_DATASET_TYPES = (
-    "defects",
-    "camera",
-    "transmission_sensor",
-    "transmission_filter",
-    "transmission_optics",
-    "transmission_atmosphere",
-    "bfKernel"
-)
-
 
 class CalibRepoConverter(RepoConverter):
     """A specialization of `RepoConverter` for calibration repositories.
@@ -65,11 +55,11 @@ class CalibRepoConverter(RepoConverter):
     def __init__(self, *, mapper: CameraMapper, **kwds):
         super().__init__(**kwds)
         self.mapper = mapper
-        self._datasetTypes = []
+        self._datasetTypes = set()
 
     def isDatasetTypeSpecial(self, datasetTypeName: str) -> bool:
         # Docstring inherited from RepoConverter.
-        return datasetTypeName in CURATED_CALIBRATION_DATASET_TYPES
+        return datasetTypeName in self.task.config.curatedCalibrations
 
     def iterMappings(self) -> Iterator[Tuple[str, CameraMapperMapping]]:
         # Docstring inherited from RepoConverter.
@@ -86,7 +76,7 @@ class CalibRepoConverter(RepoConverter):
             instrument=self.task.instrument.getName(),
             universe=self.task.registry.dimensions,
         )
-        self._datasetTypes.append(target.datasetType)
+        self._datasetTypes.add(target.datasetType)
         return target
 
     def insertDimensionData(self):
@@ -105,17 +95,29 @@ class CalibRepoConverter(RepoConverter):
                 fields.append(self.task.config.ccdKey)
             else:
                 fields.append(f"NULL AS {self.task.config.ccdKey}")
-            if "physical_filter" in datasetType.dimensions.names:
+            if ("physical_filter" in datasetType.dimensions.names
+                    or "abstract_filter" in datasetType.dimensions.names):
                 fields.append("filter")
             else:
                 fields.append("NULL AS filter")
             query = f"SELECT DISTINCT {', '.join(fields)} FROM {datasetType.name};"
             try:
                 results = db.execute(query)
-            except sqlite3.OperationalError:
-                self.task.log.warn("Could not extract calibration ranges for %s in %s.",
-                                   datasetType.name, self.root)
-                continue
+            except sqlite3.OperationalError as e:
+                if (self.mapper.mappings[datasetType.name].tables is None
+                        or len(self.mapper.mappings[datasetType.name].tables) == 0):
+                    self.task.log.warn("Could not extract calibration ranges for %s in %s: %r",
+                                       datasetType.name, self.root, e)
+                    continue
+                # Try using one of the alternate table names in the mapper (e.g. cpBias->bias for DECam).
+                name = self.mapper.mappings[datasetType.name].tables[0]
+                query = f"SELECT DISTINCT {', '.join(fields)} FROM {name};"
+                try:
+                    results = db.execute(query)
+                except sqlite3.OperationalError as e:
+                    self.task.log.warn("Could not extract calibration ranges for %s in %s: %r",
+                                       datasetType.name, self.root, e)
+                    continue
             for row in results:
                 label = makeCalibrationLabel(datasetType.name, row["calibDate"],
                                              ccd=row[self.task.config.ccdKey], filter=row["filter"])

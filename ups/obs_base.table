@@ -11,3 +11,4 @@ setupRequired(pipe_base)
 setupOptional(skymap)
 
 envPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
+envPrepend(PATH, ${PRODUCT_DIR}/bin)

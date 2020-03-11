@@ -29,7 +29,6 @@ from typing import TYPE_CHECKING, Iterator, Optional, Tuple, List
 
 from lsst.skymap import BaseSkyMap
 from lsst.daf.butler import DatasetType, DatasetRef, FileDataset
-from .calibRepoConverter import CURATED_CALIBRATION_DATASET_TYPES
 from .standardRepoConverter import StandardRepoConverter
 
 SKYMAP_DATASET_TYPES = {
@@ -39,6 +38,27 @@ SKYMAP_DATASET_TYPES = {
 if TYPE_CHECKING:
     from lsst.daf.butler import SkyPixDimension
     from ..ingest import RawExposureData
+
+
+def getDataPaths(dataRefs):
+    """Strip HDU identifiers from paths and return a unique set of paths.
+
+    Parameters
+    ----------
+    dataRefs : `lsst.daf.persistence.ButlerDataRef`
+        The gen2 datarefs to strip "[HDU]" values from.
+
+    Returns
+    -------
+    paths : `set` [`str`]
+        The unique file paths without appended "[HDU]".
+    """
+    paths = set()
+    for dataRef in dataRefs:
+        path = dataRef.getUri()
+        # handle with FITS files with multiple HDUs (e.g. decam raw)
+        paths.add(path.split('[')[0])
+    return paths
 
 
 class RootRepoConverter(StandardRepoConverter):
@@ -68,7 +88,7 @@ class RootRepoConverter(StandardRepoConverter):
             super().isDatasetTypeSpecial(datasetTypeName)
             or datasetTypeName in ("raw", "ref_cat", "ref_cat_config")
             # in Gen2, some of these are in the root repo, not a calib repo
-            or datasetTypeName in CURATED_CALIBRATION_DATASET_TYPES
+            or datasetTypeName in self.task.config.curatedCalibrations
         )
 
     def getSpecialDirectories(self) -> List[str]:
@@ -98,9 +118,11 @@ class RootRepoConverter(StandardRepoConverter):
                 )
             else:
                 dataRefs = self.butler2.subset("raw")
-            self._exposureData.extend(self.task.raws.prep(dataRef.getUri() for dataRef in dataRefs))
+            dataPaths = getDataPaths(dataRefs)
+            self.task.log.debug("Prepping files: %s", dataPaths)
+            self._exposureData.extend(self.task.raws.prep(dataPaths))
         # Gather information about reference catalogs.
-        if self.task.isDatasetTypeIncluded("ref_cat"):
+        if self.task.isDatasetTypeIncluded("ref_cat") and len(self.task.config.refCats) != 0:
             from lsst.meas.algorithms import DatasetConfig as RefCatDatasetConfig
             for refCat in os.listdir(os.path.join(self.root, "ref_cats")):
                 path = os.path.join(self.root, "ref_cats", refCat)
@@ -124,7 +146,7 @@ class RootRepoConverter(StandardRepoConverter):
                 self.task.useSkyPix(dimension)
                 self._refCats.append((refCat, dimension))
         if self.task.isDatasetTypeIncluded("brightObjectMask") and self.task.config.rootSkyMapName:
-            self.task.useSkyMap(self._rootSkyMap)
+            self.task.useSkyMap(self._rootSkyMap, self.task.config.rootSkyMapName)
         super().prep()
 
     def insertDimensionData(self):
@@ -175,3 +197,10 @@ class RootRepoConverter(StandardRepoConverter):
             for collection in collections[1:]:
                 self.task.registry.associate(collection, refs)
         super().ingest()
+
+    def getCollections(self, datasetTypeName: str) -> List[str]:
+        # override to put reference catalogs in the right collection
+        if datasetTypeName in self.task.config.refCats:
+            return ['refcats']
+        else:
+            return super().getCollections(datasetTypeName)

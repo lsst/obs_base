@@ -36,6 +36,7 @@ from typing import (
     Optional,
 )
 
+import lsst.afw.fits
 from lsst.log import Log
 from lsst.daf.butler import (
     DataCoordinate,
@@ -43,7 +44,7 @@ from lsst.daf.butler import (
     DatasetType,
     FileDataset,
 )
-from ..translators import Translator
+from ..translators import Translator, makeCalibrationLabel
 from .parser import PathElementParser
 from .scanner import PathElementHandler, DirectoryScanner
 
@@ -284,3 +285,47 @@ class TargetFileHandler(ParsedPathElementHandler):
             return DataCoordinate.standardize(rawDataId3, universe=self._datasetType.dimensions.universe)
         else:
             return DataCoordinate.standardize(rawDataId3, graph=self._datasetType.dimensions)
+
+
+class MultiExtensionFileHandler(TargetFileHandler):
+    """Handler for FITS files that store image and metadata in multiple HDUs
+    per file, for example DECam raw and Community Pipeline calibrations.
+
+    Notes
+    -----
+    For now, this is only used by DECam, and may need to be made more generic
+    (e.g. making ``metadata['CCDNUM']`` use a configurable field) to be used
+    with other obs packages.
+    """
+    def handle(self, path: str, nextDataId2, datasets: Mapping[DatasetType, List[FileDataset]], *,
+               log: Log, predicate: Callable[[DataCoordinate], bool]):
+        dataId3 = self.translate(nextDataId2, partial=True, log=log)
+
+        def get_detectors(filename):
+            fitsData = lsst.afw.fits.Fits(filename, 'r')
+            # NOTE: The primary header (HDU=0) does not contain detector data.
+            detectors = []
+            for i in range(1, fitsData.countHdus()):
+                fitsData.setHdu(i)
+                metadata = fitsData.readMetadata()
+                detectors.append(metadata['CCDNUM'])
+            return detectors
+
+        if predicate(dataId3):
+            detectors = get_detectors(path)
+            refs = []
+            for detector in detectors:
+                label = makeCalibrationLabel(self._datasetType.name, nextDataId2["calibDate"],
+                                             ccd=detector, filter=nextDataId2.get("filter"))
+                newDataId3 = DataCoordinate.standardize(dataId3,
+                                                        graph=self._datasetType.dimensions,
+                                                        detector=detector,
+                                                        calibration_label=label)
+                refs.append(DatasetRef(self._datasetType, newDataId3))
+
+            datasets[self._datasetType].append(FileDataset(refs=refs, path=path))
+
+    def translate(self, dataId2: dict, *, partial: bool = False, log: Log) -> Optional[DataCoordinate]:
+        assert partial is True, "We always require partial, to ignore 'ccdnum'"
+        rawDataId3 = self._translator(dataId2, partial=partial, log=log)
+        return DataCoordinate.standardize(rawDataId3, universe=self._datasetType.dimensions.universe)

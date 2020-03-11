@@ -109,7 +109,7 @@ class StandardRepoConverter(RepoConverter):
             if not exists:
                 continue
             instance = self.butler2.get(datasetTypeName)
-            name = self.task.useSkyMap(instance)
+            name = self.task.useSkyMap(instance, datasetTypeName)
             datasetType = DatasetType(datasetTypeName, dimensions=["skymap"],
                                       storageClass="SkyMap", universe=self.task.universe)
             dataId = DataCoordinate.standardize(skymap=name, universe=self.task.universe)

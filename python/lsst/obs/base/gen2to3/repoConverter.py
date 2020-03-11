@@ -321,6 +321,7 @@ class RepoConverter(ABC):
                 # No template for this dataset in this mapper, so there's no
                 # way there should be instances of this dataset in this repo.
                 continue
+            extensions = [""]
             skip = False
             message = None
             storageClass = None
@@ -338,21 +339,28 @@ class RepoConverter(ABC):
                     # situation.
                     message = f"no storage class found for {datasetTypeName}"
                     skip = True
-            if skip:
-                walkerInput = RepoWalker.Skip(
-                    template=template,
-                    keys=mapping.keys(),
-                    message=message,
-                )
-            else:
-                assert message is None
-                walkerInput = self.makeRepoWalkerTarget(
-                    datasetTypeName=datasetTypeName,
-                    template=template,
-                    keys=mapping.keys(),
-                    storageClass=storageClass,
-                )
-            walkerInputs.append(walkerInput)
+            # Handle files that are compressed on disk, but the gen2 template is just `.fits`
+            if template.endswith(".fits"):
+                extensions.extend((".gz", ".fz"))
+            for extension in extensions:
+                if skip:
+                    walkerInput = RepoWalker.Skip(
+                        template=template+extension,
+                        keys=mapping.keys(),
+                        message=message,
+                    )
+                    self.task.log.debug("Skipping template in walker: %s", template)
+                else:
+                    assert message is None
+                    walkerInput = self.makeRepoWalkerTarget(
+                        datasetTypeName=datasetTypeName,
+                        template=template+extension,
+                        keys=mapping.keys(),
+                        storageClass=storageClass,
+                    )
+                    self.task.log.debug("Adding template to walker: %s", template)
+                walkerInputs.append(walkerInput)
+
         for dirPath in self.getSpecialDirectories():
             walkerInputs.append(
                 RepoWalker.Skip(
@@ -421,21 +429,16 @@ class RepoConverter(ABC):
         """
         pass
 
-    def handleDataIdExpansionFailure(self, dataset: FileDataset, err: LookupError):
-        self.task.log.warn("Skipping ingestion for '%s': %s", dataset.path, err)
-        return False
-
     def expandDataIds(self):
         """Expand the data IDs for all datasets to be inserted.
 
         Subclasses may override this method, but must delegate to the base
-        class implementation if they do.  If they wish to handle expected
-        failures in data ID expansion, they should override
-        `handleDataIdExpansionFailure` instead.
+        class implementation if they do.
 
         This involves queries to the registry, but not writes.  It is
         guaranteed to be called between `insertDimensionData` and `ingest`.
         """
+        import itertools
         for datasetType, datasetsForType in self._fileDatasets.items():
             self.task.log.info("Expanding data IDs for %s %s datasets.", len(datasetsForType),
                                datasetType.name)
@@ -445,10 +448,14 @@ class RepoConverter(ABC):
                     try:
                         dataId = self.task.registry.expandDataId(ref.dataId)
                         dataset.refs[i] = ref.expanded(dataId)
-                        expanded.append(dataset)
                     except LookupError as err:
-                        if self.handleDataIdExpansionFailure(dataset, err):
-                            expanded.append(dataset)
+                        self.task.log.warn("Skipping ingestion for '%s': %s", dataset.path, err)
+                        # Remove skipped datasets from multi-extension FileDatasets
+                        dataset.refs[i] = None  # We will strip off the `None`s after the loop.
+                dataset.refs[:] = itertools.filterfalse(lambda x: x is None, dataset.refs)
+                if dataset.refs:
+                    expanded.append(dataset)
+
             datasetsForType[:] = expanded
 
     def ingest(self):
