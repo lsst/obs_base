@@ -186,13 +186,8 @@ def convert(gen2root, gen3root, instrumentClass, calibFilterType,
     convertRepoTask = ConvertRepoTask(config=convertRepoConfig, butler3=butler)
     convertRepoTask.run(
         root=gen2root,
-        # NOTE: we'd like to use `raw/NAME` and `calib/NAME` here, but if I do, I get an error about
-        # `AssertionError: Multiple collections for curated calibrations is not yet supported.`
-        # TODO: This is likely related to DM-23230.
-        # since we also want to specify just `NAME` so that we can instantiate a gen3 Butler
-        # using that as an "umbrella" collection so it knows about everything in it.
-        collections=[instrument.getName()],  # ['raw/'+instrument.getName(), instrument.getName()],
-        calibs=None if calibs is None else {calibs: [instrument.getName()]}
+        reruns=[],
+        calibs=None if calibs is None else {calibs: f"calib/{instrument.getName()}"}
     )
 
 
