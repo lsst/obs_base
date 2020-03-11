@@ -172,7 +172,8 @@ class ConvertGen2To3TestCase:
             The Butler to use to get the data.
         """
         for dataId in calibIds:
-            gen3Exposure = gen3Butler.get(calibName, dataId=dataId)
+            datasets = list(gen3Butler.registry.queryDatasets(calibName, collections=..., dataId=dataId))
+            gen3Exposure = gen3Butler.getDirect(datasets[0])
             self.assertIsInstance(gen3Exposure, lsst.afw.image.ExposureF)
 
     def check_defects(self, gen3Butler, detectors):
@@ -192,7 +193,7 @@ class ConvertGen2To3TestCase:
             # result because we only need to check one.
             datasets = list(gen3Butler.registry.queryDatasets("defects", collections=..., dataId=dataId))
             if datasets:
-                gen3Defects = gen3Butler.get("defects", dataId=datasets[0].dataId)
+                gen3Defects = gen3Butler.getDirect(datasets[0])
                 self.assertIsInstance(gen3Defects, lsst.meas.algorithms.Defects)
 
     def check_refcat(self, gen3Butler):
