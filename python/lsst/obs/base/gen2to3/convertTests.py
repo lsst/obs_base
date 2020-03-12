@@ -172,9 +172,10 @@ class ConvertGen2To3TestCase:
             The Butler to use to get the data.
         """
         for dataId in calibIds:
-            datasets = list(gen3Butler.registry.queryDatasets(calibName, collections=..., dataId=dataId))
-            gen3Exposure = gen3Butler.getDirect(datasets[0])
-            self.assertIsInstance(gen3Exposure, lsst.afw.image.ExposureF)
+            with self.subTest(dtype=calibName, dataId=dataId):
+                datasets = list(gen3Butler.registry.queryDatasets(calibName, collections=..., dataId=dataId))
+                gen3Exposure = gen3Butler.getDirect(datasets[0])
+                self.assertIsInstance(gen3Exposure, lsst.afw.image.ExposureF)
 
     def check_defects(self, gen3Butler, detectors):
         """Test that we can get converted defects from the gen3 repo.
@@ -183,7 +184,7 @@ class ConvertGen2To3TestCase:
         ----------
         gen3Butler : `lsst.daf.butler.Butler`
             The Butler to be tested.
-        detector : `int`
+        detectors : `list` of `int`
             The detector identifiers to ``get`` from the gen3 butler.
         """
         for detector in detectors:
@@ -191,10 +192,11 @@ class ConvertGen2To3TestCase:
             # Fill out the missing parts of the dataId, as we don't a-priori
             # know e.g. the "calibration_label". Use the first element of the
             # result because we only need to check one.
-            datasets = list(gen3Butler.registry.queryDatasets("defects", collections=..., dataId=dataId))
-            if datasets:
-                gen3Defects = gen3Butler.getDirect(datasets[0])
-                self.assertIsInstance(gen3Defects, lsst.meas.algorithms.Defects)
+            with self.subTest(dtype="defects", dataId=dataId):
+                datasets = list(gen3Butler.registry.queryDatasets("defects", collections=..., dataId=dataId))
+                if datasets:
+                    gen3Defects = gen3Butler.getDirect(datasets[0])
+                    self.assertIsInstance(gen3Defects, lsst.meas.algorithms.Defects)
 
     def check_refcat(self, gen3Butler):
         """Test that each expected refcat is in the gen3 repo.
@@ -221,7 +223,7 @@ class ConvertGen2To3TestCase:
         self.assertEqual(self.collections, set(gen3Butler.registry.queryCollections()))
 
     def test_convert(self):
-        """Test that raws are converted correctly.
+        """Test that all data are converted correctly.
         """
         self._run_convert()
         gen3Butler = lsst.daf.butler.Butler(self.gen3root, run=self.instrumentName)
@@ -231,7 +233,8 @@ class ConvertGen2To3TestCase:
         detectors = self.gen2Butler.queryMetadata("raw", self.detectorKey)
         exposures = self.gen2Butler.queryMetadata("raw", self.exposureKey)
         for exposure, detector in itertools.product(exposures, detectors):
-            self.check_raw(gen3Butler, exposure, detector)
+            with self.subTest(mode="raw", exposure=exposure, detector=detector):
+                self.check_raw(gen3Butler, exposure, detector)
 
         self.check_refcat(gen3Butler)
         self.check_defects(gen3Butler, detectors)
