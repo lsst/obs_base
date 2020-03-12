@@ -76,6 +76,9 @@ class IgnoreHandler(PathElementHandler):
 
     __slots__ = ("_pattern", "_isForFiles")
 
+    def __str__(self):
+        return f"{type(self).__name__}({self._pattern}, isForFiles={self._isForFiles})"
+
     def isForFiles(self) -> bool:
         # Docstring inherited from PathElementHandler.
         return self._isForFiles
@@ -109,6 +112,9 @@ class ParsedPathElementHandler(PathElementHandler):
         self._parser = parser
 
     __slots__ = ("_parser",)
+
+    def __str__(self):
+        return f"{type(self).__name__}(parser={self._parser})"
 
     def __call__(self, path: str, name: str, datasets: Mapping[DatasetType, List[FileDataset]], *,
                  log: Log, predicate: Callable[[DataCoordinate], bool]) -> bool:
@@ -275,6 +281,9 @@ class TargetFileHandler(ParsedPathElementHandler):
         self._formatter = formatter
 
     __slots__ = ("_translator", "_datasetType", "_formatter")
+
+    def __str__(self):
+        return f"{type(self).__name__}({self._translator}, {self._datasetType})"
 
     def isForFiles(self) -> bool:
         # Docstring inherited from PathElementHandler.

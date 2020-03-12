@@ -76,6 +76,9 @@ class KeyHandler(metaclass=ABCMeta):
 
     __slots__ = ("dimension",)
 
+    def __str__(self):
+        return f"{type(self).__name__}({self.dimension})"
+
     def translate(self, gen2id: dict, gen3id: dict,
                   skyMap: Optional[BaseSkyMap], skyMapName: Optional[str],
                   datasetTypeName: str):
@@ -165,6 +168,9 @@ class CopyKeyHandler(KeyHandler):
         self.dtype = dtype
 
     __slots__ = ("gen2key", "dtype")
+
+    def __str__(self):
+        return f"{type(self).__name__}({self.gen2key}, {self.dtype})"
 
     def extract(self, gen2id: dict, skyMap: Optional[BaseSkyMap], skyMapName: Optional[str],
                 datasetTypeName: str) -> Any:
@@ -312,6 +318,10 @@ class Translator:
             None: []
         }
     }
+
+    def __str__(self):
+        hstr = ",".join(str(h) for h in self.handlers)
+        return f"{type(self).__name__}(dtype={self.datasetTypeName}, handlers=[{hstr}])"
 
     @classmethod
     def addRule(cls, handler: KeyHandler, instrument: Optional[str] = None,
