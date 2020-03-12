@@ -497,20 +497,20 @@ class ConvertRepoTask(Task):
         rootConverter.prep()
         converters.append(rootConverter)
 
-        for root, run in calibs.items():
-            if not os.path.isabs(root):
-                root = os.path.join(rootConverter.root, root)
-            converter = CalibRepoConverter(task=self, root=root, run=run,
+        for calibRoot, run in calibs.items():
+            if not os.path.isabs(calibRoot):
+                calibRoot = os.path.join(rootConverter.root, calibRoot)
+            converter = CalibRepoConverter(task=self, root=calibRoot, run=run,
                                            mapper=rootConverter.mapper,
                                            subset=rootConverter.subset)
             converter.prep()
             converters.append(converter)
 
         for spec in reruns:
-            root = spec.path
-            if not os.path.isabs(root):
-                root = os.path.join(rootConverter.root, root)
-            converter = StandardRepoConverter(task=self, root=root, run=spec.runName,
+            runRoot = spec.path
+            if not os.path.isabs(runRoot):
+                runRoot = os.path.join(rootConverter.root, runRoot)
+            converter = StandardRepoConverter(task=self, root=runRoot, run=spec.runName,
                                               subset=rootConverter.subset)
             converter.prep()
             converters.append(converter)
