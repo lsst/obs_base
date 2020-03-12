@@ -220,7 +220,8 @@ class ConvertGen2To3TestCase:
         gen3Butler : `lsst.daf.butler.Butler`
             The Butler to be tested.
         """
-        self.assertEqual(self.collections, set(gen3Butler.registry.queryCollections()))
+        self.assertEqual(set(gen3Butler.registry.queryCollections()), self.collections,
+                         f"Compare with expected collections ({self.collections})")
 
     def test_convert(self):
         """Test that all data are converted correctly.
