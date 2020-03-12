@@ -19,12 +19,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
 import unittest
 
-import lsst.utils
-from lsst.daf.butler import Registry, ButlerConfig
 from lsst.obs.base import Instrument, FilterDefinitionCollection
+from lsst.obs.base.instrument_tests import InstrumentTests, InstrumentTestData
 
 """Tests of the Instrument class.
 """
@@ -65,18 +63,20 @@ class DummyCam(Instrument):
         pass
 
 
-class InstrumentTestCase(unittest.TestCase):
+class InstrumentTestCase(InstrumentTests, unittest.TestCase):
     """Test for Instrument.
     """
 
-    def setUp(self):
-        self.configDir = lsst.utils.getPackageDir('daf_butler')
-        self.configFile = os.path.join(self.configDir, "tests/config/basic/butler.yaml")
+    instrument = DummyCam()
 
-    def testRegister(self):
-        registry = Registry.fromConfig(ButlerConfig(self.configFile))
-        dummyCam = DummyCam()
-        dummyCam.register(registry)
+    data = InstrumentTestData(name="DummyCam",
+                              nDetectors=2,
+                              firstDetectorName="1",
+                              physical_filters={"dummy_g", "dummy_u"})
+
+    def test_getCamera(self):
+        """No camera defined in DummyCam"""
+        return
 
 
 if __name__ == "__main__":

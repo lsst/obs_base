@@ -27,11 +27,9 @@ to get a functional test of an Instrument.
 
 import abc
 import dataclasses
-import os
 
 from lsst.daf.butler import Registry
 from lsst.daf.butler import ButlerConfig
-from lsst.utils import getPackageDir
 
 
 @dataclasses.dataclass
@@ -79,8 +77,7 @@ class InstrumentTests(metaclass=abc.ABCMeta):
     def test_register(self):
         """Test that register() sets appropriate Dimensions.
         """
-        registryConfigPath = os.path.join(getPackageDir("daf_butler"), "tests/config/basic/butler.yaml")
-        registry = Registry.fromConfig(ButlerConfig(registryConfigPath))
+        registry = Registry.fromConfig(ButlerConfig())
         # check that the registry starts out empty
         self.assertEqual(list(registry.queryDimensions(["instrument"])), [])
         self.assertEqual(list(registry.queryDimensions(["detector"])), [])
