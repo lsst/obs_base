@@ -215,7 +215,7 @@ class BuilderTargetInput(BuilderInput):
               fileIgnoreRegEx: Optional[re.Pattern], dirIgnoreRegEx: Optional[re.Pattern]
               ) -> PathElementHandler:
         # Docstring inherited from BuilderNode.
-        if self.datasetType.name == 'cpBias' or self.datasetType.name == 'cpFlat':
+        if self.datasetType.name in {'cpBias', 'cpFlat'}:
             # 'cpBias'/'cpFlat' are DECam Community Pipeline calibrations
             # stored as multi-extension FITS files.
             return MultiExtensionFileHandler(parser=parser,
