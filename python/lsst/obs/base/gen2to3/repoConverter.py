@@ -36,6 +36,7 @@ from typing import (
     Set,
     Tuple,
     Union,
+    Type,
     TYPE_CHECKING,
 )
 
@@ -46,7 +47,7 @@ from .repoWalker import RepoWalker
 if TYPE_CHECKING:
     from ..mapping import Mapping as CameraMapperMapping  # disambiguate from collections.abc.Mapping
     from .convertRepo import ConvertRepoTask
-    from lsst.daf.butler import StorageClass, Registry, SkyPixDimension
+    from lsst.daf.butler import StorageClass, Registry, SkyPixDimension, Formatter
 
 
 @dataclass
@@ -251,7 +252,8 @@ class RepoConverter(ABC):
 
     @abstractmethod
     def makeRepoWalkerTarget(self, datasetTypeName: str, template: str, keys: Dict[str, type],
-                             storageClass: StorageClass) -> RepoWalker.Target:
+                             storageClass: StorageClass,
+                             formatter: Union[None, str, Type[Formatter]] = None) -> RepoWalker.Target:
         """Make a struct that identifies a dataset type to be extracted by
         walking the repo directory structure.
 
@@ -265,6 +267,8 @@ class RepoConverter(ABC):
             A dictionary mapping Gen2 data ID key to the type of its value.
         storageClass : `lsst.daf.butler.StorageClass`
             Gen3 storage class for this dataset type.
+        formatter : `lsst.daf.butler.Formatter` or `str`, optional
+            A Gen 3 formatter class or fully-qualified name.
 
         Returns
         -------
@@ -357,6 +361,7 @@ class RepoConverter(ABC):
                         template=template+extension,
                         keys=mapping.keys(),
                         storageClass=storageClass,
+                        formatter=self.task.config.formatterClasses.get(datasetTypeName),
                     )
                     self.task.log.debug("Adding template to walker: %s", template)
                 walkerInputs.append(walkerInput)

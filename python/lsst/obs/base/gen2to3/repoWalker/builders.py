@@ -37,9 +37,11 @@ from typing import (
     List,
     Optional,
     Tuple,
+    Type,
+    Union,
 )
 
-from lsst.daf.butler import DatasetType, DimensionUniverse, StorageClass
+from lsst.daf.butler import DatasetType, DimensionUniverse, StorageClass, Formatter
 from ..translators import Translator
 from .parser import PathElementParser
 from .scanner import PathElementHandler, DirectoryScanner
@@ -192,18 +194,22 @@ class BuilderTargetInput(BuilderInput):
         `StorageClass` for the Gen3 dataset type.
     universe : `DimensionUniverse`
         All candidate dimensions for the Gen3 dataset type.
+    formatter : `lsst.daf.butler.Formatter` or `str`, optional
+        A Gen 3 formatter class or fully-qualified name.
     kwargs:
         Additional keyword arguments are passed to `Translator.makeMatching`,
         in along with ``datasetTypeName`` and ``keys``.
     """
     def __init__(self, *, datasetTypeName: str, template: str, keys: Dict[str, type],
-                 storageClass: StorageClass, universe: DimensionUniverse, **kwargs: Any):
+                 storageClass: StorageClass, universe: DimensionUniverse,
+                 formatter: Union[None, str, Type[Formatter]], **kwargs: Any):
         # strip off [%HDU] identifiers from e.g. DECAM Community Pipeline products
         template = template.split('[%(')[0]
         super().__init__(template=template, keys=keys)
         self._translator = Translator.makeMatching(datasetTypeName, keys, **kwargs)
         self.datasetType = DatasetType(datasetTypeName, dimensions=self._translator.dimensionNames,
                                        storageClass=storageClass, universe=universe)
+        self._formatter = formatter
 
     def build(self, parser: PathElementParser, allKeys: Dict[str, type], cumulativeKeys: Dict[str, type], *,
               fileIgnoreRegEx: Optional[re.Pattern], dirIgnoreRegEx: Optional[re.Pattern]
@@ -214,16 +220,18 @@ class BuilderTargetInput(BuilderInput):
             # stored as multi-extension FITS files.
             return MultiExtensionFileHandler(parser=parser,
                                              translator=self._translator,
-                                             datasetType=self.datasetType)
+                                             datasetType=self.datasetType,
+                                             formatter=self._formatter)
         else:
-            return TargetFileHandler(parser=parser, translator=self._translator, datasetType=self.datasetType)
+            return TargetFileHandler(parser=parser, translator=self._translator, datasetType=self.datasetType,
+                                     formatter=self._formatter)
 
     def prune(self) -> Tuple[BuilderNode, List[str], bool]:
         # Docstring inherited from BuilderNode.
         return self, [], False
 
     datasetType: DatasetType
-    """The Gen3 dataset type extracted by the hander this object builds
+    """The Gen3 dataset type extracted by the handler this object builds
     (`lsst.daf.butler.DatasetType`).
     """
 
