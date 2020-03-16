@@ -40,6 +40,7 @@ from typing import (
     TYPE_CHECKING,
 )
 
+from lsst.utils import doImport
 from lsst.daf.butler import DataCoordinate, FileDataset, DatasetType
 from lsst.sphgeom import RangeSet, Region
 from .repoWalker import RepoWalker
@@ -47,6 +48,7 @@ from .repoWalker import RepoWalker
 if TYPE_CHECKING:
     from ..mapping import Mapping as CameraMapperMapping  # disambiguate from collections.abc.Mapping
     from .convertRepo import ConvertRepoTask
+    from .scanner import PathElementHandler
     from lsst.daf.butler import StorageClass, Registry, SkyPixDimension, Formatter
 
 
@@ -253,7 +255,9 @@ class RepoConverter(ABC):
     @abstractmethod
     def makeRepoWalkerTarget(self, datasetTypeName: str, template: str, keys: Dict[str, type],
                              storageClass: StorageClass,
-                             formatter: Union[None, str, Type[Formatter]] = None) -> RepoWalker.Target:
+                             formatter: Union[None, str, Type[Formatter]] = None,
+                             targetHandler: Optional[PathElementHandler] = None,
+                             ) -> RepoWalker.Target:
         """Make a struct that identifies a dataset type to be extracted by
         walking the repo directory structure.
 
@@ -269,6 +273,8 @@ class RepoConverter(ABC):
             Gen3 storage class for this dataset type.
         formatter : `lsst.daf.butler.Formatter` or `str`, optional
             A Gen 3 formatter class or fully-qualified name.
+        targetHandler : `PathElementHandler`, optional
+            Specialist target handler to use for this dataset type.
 
         Returns
         -------
@@ -356,12 +362,16 @@ class RepoConverter(ABC):
                     self.task.log.debug("Skipping template in walker: %s", template)
                 else:
                     assert message is None
+                    targetHandler = self.task.config.targetHandlerClasses.get(datasetTypeName)
+                    if targetHandler is not None:
+                        targetHandler = doImport(targetHandler)
                     walkerInput = self.makeRepoWalkerTarget(
                         datasetTypeName=datasetTypeName,
                         template=template+extension,
                         keys=mapping.keys(),
                         storageClass=storageClass,
                         formatter=self.task.config.formatterClasses.get(datasetTypeName),
+                        targetHandler=targetHandler,
                     )
                     self.task.log.debug("Adding template to walker: %s", template)
                 walkerInputs.append(walkerInput)

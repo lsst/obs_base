@@ -150,6 +150,12 @@ class ConvertRepoConfig(Config):
         itemtype=str,
         default={}
     )
+    targetHandlerClasses = DictField(
+        "Mapping from dataset type name to target handler class.",
+        keytype=str,
+        itemtype=str,
+        default={}
+    )
     doRegisterInstrument = Field(
         "If True (default), add dimension records for the Instrument and its "
         "filters and detectors to the registry instead of assuming they are "

@@ -46,7 +46,7 @@ from ..translators import Translator
 from .parser import PathElementParser
 from .scanner import PathElementHandler, DirectoryScanner
 from .handlers import (IgnoreHandler, SubdirectoryHandler, SkipHandler,
-                       TargetFileHandler, MultiExtensionFileHandler)
+                       TargetFileHandler)
 
 
 class BuilderNode(ABC):
@@ -196,13 +196,16 @@ class BuilderTargetInput(BuilderInput):
         All candidate dimensions for the Gen3 dataset type.
     formatter : `lsst.daf.butler.Formatter` or `str`, optional
         A Gen 3 formatter class or fully-qualified name.
+    targetHandler : `PathElementHandler`, optional
+        Override target handler for this dataset type.
     kwargs:
         Additional keyword arguments are passed to `Translator.makeMatching`,
         in along with ``datasetTypeName`` and ``keys``.
     """
     def __init__(self, *, datasetTypeName: str, template: str, keys: Dict[str, type],
                  storageClass: StorageClass, universe: DimensionUniverse,
-                 formatter: Union[None, str, Type[Formatter]], **kwargs: Any):
+                 formatter: Union[None, str, Type[Formatter]],
+                 targetHandler: Optional[PathElementHandler] = None, **kwargs: Any):
         # strip off [%HDU] identifiers from e.g. DECAM Community Pipeline products
         template = template.split('[%(')[0]
         super().__init__(template=template, keys=keys)
@@ -210,21 +213,16 @@ class BuilderTargetInput(BuilderInput):
         self.datasetType = DatasetType(datasetTypeName, dimensions=self._translator.dimensionNames,
                                        storageClass=storageClass, universe=universe)
         self._formatter = formatter
+        if targetHandler is None:
+            targetHandler = TargetFileHandler
+        self._handler = targetHandler
 
     def build(self, parser: PathElementParser, allKeys: Dict[str, type], cumulativeKeys: Dict[str, type], *,
               fileIgnoreRegEx: Optional[re.Pattern], dirIgnoreRegEx: Optional[re.Pattern]
               ) -> PathElementHandler:
-        # Docstring inherited from BuilderNode.
-        if self.datasetType.name in {'cpBias', 'cpFlat'}:
-            # 'cpBias'/'cpFlat' are DECam Community Pipeline calibrations
-            # stored as multi-extension FITS files.
-            return MultiExtensionFileHandler(parser=parser,
-                                             translator=self._translator,
-                                             datasetType=self.datasetType,
-                                             formatter=self._formatter)
-        else:
-            return TargetFileHandler(parser=parser, translator=self._translator, datasetType=self.datasetType,
-                                     formatter=self._formatter)
+
+        return self._handler(parser=parser, translator=self._translator, datasetType=self.datasetType,
+                             formatter=self._formatter)
 
     def prune(self) -> Tuple[BuilderNode, List[str], bool]:
         # Docstring inherited from BuilderNode.
