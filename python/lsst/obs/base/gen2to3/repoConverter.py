@@ -36,7 +36,6 @@ from typing import (
     Set,
     Tuple,
     Union,
-    Type,
     TYPE_CHECKING,
 )
 
@@ -49,7 +48,7 @@ if TYPE_CHECKING:
     from ..mapping import Mapping as CameraMapperMapping  # disambiguate from collections.abc.Mapping
     from .convertRepo import ConvertRepoTask
     from .scanner import PathElementHandler
-    from lsst.daf.butler import StorageClass, Registry, SkyPixDimension, Formatter
+    from lsst.daf.butler import StorageClass, Registry, SkyPixDimension, FormatterParameter
 
 
 @dataclass
@@ -255,7 +254,7 @@ class RepoConverter(ABC):
     @abstractmethod
     def makeRepoWalkerTarget(self, datasetTypeName: str, template: str, keys: Dict[str, type],
                              storageClass: StorageClass,
-                             formatter: Union[None, str, Type[Formatter]] = None,
+                             formatter: FormatterParameter = None,
                              targetHandler: Optional[PathElementHandler] = None,
                              ) -> RepoWalker.Target:
         """Make a struct that identifies a dataset type to be extracted by

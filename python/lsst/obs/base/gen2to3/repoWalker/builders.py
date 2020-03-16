@@ -37,11 +37,9 @@ from typing import (
     List,
     Optional,
     Tuple,
-    Type,
-    Union,
 )
 
-from lsst.daf.butler import DatasetType, DimensionUniverse, StorageClass, Formatter
+from lsst.daf.butler import DatasetType, DimensionUniverse, StorageClass, FormatterParameter
 from ..translators import Translator
 from .parser import PathElementParser
 from .scanner import PathElementHandler, DirectoryScanner
@@ -204,7 +202,7 @@ class BuilderTargetInput(BuilderInput):
     """
     def __init__(self, *, datasetTypeName: str, template: str, keys: Dict[str, type],
                  storageClass: StorageClass, universe: DimensionUniverse,
-                 formatter: Union[None, str, Type[Formatter]],
+                 formatter: FormatterParameter,
                  targetHandler: Optional[PathElementHandler] = None, **kwargs: Any):
         # strip off [%HDU] identifiers from e.g. DECAM Community Pipeline products
         template = template.split('[%(')[0]

@@ -34,8 +34,6 @@ from typing import (
     List,
     Mapping,
     Optional,
-    Union,
-    Type,
     TYPE_CHECKING
 )
 
@@ -52,7 +50,7 @@ from .parser import PathElementParser
 from .scanner import PathElementHandler, DirectoryScanner
 
 if TYPE_CHECKING:
-    from lsst.daf.butler import Formatter
+    from lsst.daf.butler import FormatterParameter
 
 
 class IgnoreHandler(PathElementHandler):
@@ -270,7 +268,7 @@ class TargetFileHandler(ParsedPathElementHandler):
         A Gen 3 formatter class or fully-qualified name.
     """
     def __init__(self, parser: PathElementParser, translator: Translator, datasetType: DatasetType,
-                 formatter: Union[None, str, Type[Formatter]] = None):
+                 formatter: FormatterParameter = None):
         super().__init__(parser=parser)
         self._translator = translator
         self._datasetType = datasetType
