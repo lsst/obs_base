@@ -184,6 +184,11 @@ class ConvertRepoConfig(Config):
                  "registry.sqlite3", "calibRegistry.sqlite3", "_mapper",
                  "_parent", "repositoryCfg.yaml"]
     )
+    rawDatasetType = Field(
+        "Gen2 dataset type to use for raw data.",
+        dtype=str,
+        default="raw",
+    )
     datasetIncludePatterns = ListField(
         "Glob-style patterns for dataset type names that should be converted.",
         dtype=str,
