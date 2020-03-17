@@ -39,8 +39,9 @@ SKYMAP_DATASET_TYPES = {
 
 if TYPE_CHECKING:
     from lsst.skymap import BaseSkyMap
-    from lsst.daf.butler import StorageClass
+    from lsst.daf.butler import StorageClass, FormatterParameter
     from .cameraMapper import CameraMapper
+    from .repoWalker.scanner import PathElementHandler
     from ..mapping import Mapping as CameraMapperMapping  # disambiguate from collections.abc.Mapping
 
 
@@ -164,7 +165,10 @@ class StandardRepoConverter(RepoConverter):
             return None, None
 
     def makeRepoWalkerTarget(self, datasetTypeName: str, template: str, keys: Dict[str, type],
-                             storageClass: StorageClass) -> RepoWalker.Target:
+                             storageClass: StorageClass,
+                             formatter: FormatterParameter = None,
+                             targetHandler: Optional[PathElementHandler] = None,
+                             ) -> RepoWalker.Target:
         # Docstring inherited from RepoConverter.
         skyMap, skyMapName = self.findMatchingSkyMap(datasetTypeName)
         return RepoWalker.Target(
@@ -176,6 +180,8 @@ class StandardRepoConverter(RepoConverter):
             instrument=self.task.instrument.getName(),
             skyMap=skyMap,
             skyMapName=skyMapName,
+            formatter=formatter,
+            targetHandler=targetHandler,
         )
 
     def iterDatasets(self) -> Iterator[FileDataset]:

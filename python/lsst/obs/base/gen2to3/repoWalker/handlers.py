@@ -34,6 +34,7 @@ from typing import (
     List,
     Mapping,
     Optional,
+    TYPE_CHECKING
 )
 
 import lsst.afw.fits
@@ -47,6 +48,9 @@ from lsst.daf.butler import (
 from ..translators import Translator, makeCalibrationLabel
 from .parser import PathElementParser
 from .scanner import PathElementHandler, DirectoryScanner
+
+if TYPE_CHECKING:
+    from lsst.daf.butler import FormatterParameter
 
 
 class IgnoreHandler(PathElementHandler):
@@ -142,6 +146,8 @@ class ParsedPathElementHandler(PathElementHandler):
             A callable taking a single `DataCoordinate` argument and returning
             `bool`, indicating whether that (Gen3) data ID represents one
             that should be included in the scan.
+        formatterMap : `dict`, optional
+            Map dataset type to specialist formatter.
         """
         raise NotImplementedError()
 
@@ -258,13 +264,17 @@ class TargetFileHandler(ParsedPathElementHandler):
         Object that translates data IDs from Gen2 to Gen3.
     datasetType : `lsst.daf.butler.DatasetType`
         Gen3 dataset type for the datasets this handler matches.
+    formatter : `lsst.daf.butler.Formatter` or `str`, optional
+        A Gen 3 formatter class or fully-qualified name.
     """
-    def __init__(self, parser: PathElementParser, translator: Translator, datasetType: DatasetType):
+    def __init__(self, parser: PathElementParser, translator: Translator, datasetType: DatasetType,
+                 formatter: FormatterParameter = None):
         super().__init__(parser=parser)
         self._translator = translator
         self._datasetType = datasetType
+        self._formatter = formatter
 
-    __slots__ = ("_translator", "_datasetType")
+    __slots__ = ("_translator", "_datasetType", "_formatter")
 
     def isForFiles(self) -> bool:
         # Docstring inherited from PathElementHandler.
@@ -276,7 +286,7 @@ class TargetFileHandler(ParsedPathElementHandler):
         dataId3 = self.translate(nextDataId2, partial=False, log=log)
         if predicate(dataId3):
             datasets[self._datasetType].append(FileDataset(refs=[DatasetRef(self._datasetType, dataId3)],
-                                                           path=path))
+                                                           path=path, formatter=self._formatter))
 
     def translate(self, dataId2: dict, *, partial: bool = False, log: Log) -> Optional[DataCoordinate]:
         # Docstring inherited from PathElementHandler.
@@ -323,7 +333,7 @@ class MultiExtensionFileHandler(TargetFileHandler):
                                                         calibration_label=label)
                 refs.append(DatasetRef(self._datasetType, newDataId3))
 
-            datasets[self._datasetType].append(FileDataset(refs=refs, path=path))
+            datasets[self._datasetType].append(FileDataset(refs=refs, path=path, formatter=self._formatter))
 
     def translate(self, dataId2: dict, *, partial: bool = False, log: Log) -> Optional[DataCoordinate]:
         assert partial is True, "We always require partial, to ignore 'ccdnum'"

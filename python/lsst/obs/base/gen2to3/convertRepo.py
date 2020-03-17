@@ -142,6 +142,20 @@ class ConvertRepoConfig(Config):
             "SkyWcs": "Wcs",
         }
     )
+    formatterClasses = DictField(
+        "Mapping from dataset type name to formatter class. "
+        "By default these are derived from the formatters listed in the"
+        " Gen3 datastore configuration.",
+        keytype=str,
+        itemtype=str,
+        default={}
+    )
+    targetHandlerClasses = DictField(
+        "Mapping from dataset type name to target handler class.",
+        keytype=str,
+        itemtype=str,
+        default={}
+    )
     doRegisterInstrument = Field(
         "If True (default), add dimension records for the Instrument and its "
         "filters and detectors to the registry instead of assuming they are "

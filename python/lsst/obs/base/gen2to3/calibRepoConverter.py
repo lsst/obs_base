@@ -25,7 +25,7 @@ __all__ = ["CalibRepoConverter"]
 import os
 import sqlite3
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Dict, Iterator, Tuple
+from typing import TYPE_CHECKING, Dict, Iterator, Tuple, Optional
 
 from lsst.daf.butler import Butler as Butler3
 
@@ -34,7 +34,8 @@ from .repoWalker import RepoWalker
 from .translators import makeCalibrationLabel
 
 if TYPE_CHECKING:
-    from lsst.daf.butler import StorageClass
+    from lsst.daf.butler import StorageClass, FormatterParameter
+    from .repoWalker.scanner import PathElementHandler
     from ..cameraMapper import CameraMapper
     from ..mapping import Mapping as CameraMapperMapping  # disambiguate from collections.abc.Mapping
 
@@ -66,7 +67,9 @@ class CalibRepoConverter(RepoConverter):
         yield from self.mapper.calibrations.items()
 
     def makeRepoWalkerTarget(self, datasetTypeName: str, template: str, keys: Dict[str, type],
-                             storageClass: StorageClass) -> RepoWalker.Target:
+                             storageClass: StorageClass, formatter: FormatterParameter = None,
+                             targetHandler: Optional[PathElementHandler] = None,
+                             ) -> RepoWalker.Target:
         # Docstring inherited from RepoConverter.
         target = RepoWalker.Target(
             datasetTypeName=datasetTypeName,
@@ -75,6 +78,8 @@ class CalibRepoConverter(RepoConverter):
             keys=keys,
             instrument=self.task.instrument.getName(),
             universe=self.task.registry.dimensions,
+            formatter=formatter,
+            targetHandler=targetHandler,
         )
         self._datasetTypes.add(target.datasetType)
         return target
