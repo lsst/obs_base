@@ -92,6 +92,8 @@ def configure_translators(instrument, calibFilterType, ccdKey="ccd"):
                        instrument=instrument.getName(), gen2keys=("visit",), consume=False)
     Translator.addRule(ConstantKeyHandler("instrument", instrument.getName()),
                        instrument=instrument.getName(), gen2keys=(ccdKey,), consume=False)
+    Translator.addRule(ConstantKeyHandler("instrument", instrument.getName()),
+                       instrument=instrument.getName(), gen2keys=("calibDate",), consume=False)
 
     # Copy Gen2 'visit' to Gen3 'exposure' for raw only.  Also consume filter,
     # since that's implied by 'exposure' in Gen3.
