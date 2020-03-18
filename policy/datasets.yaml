@@ -1405,10 +1405,17 @@ photonTransferCurveDataset:
     storage: PickleStorage
     tables: 'raw'
     template: ''
+linearityTable:
+    description: "Lookup table from MeasurePhotonTransferCurveTask"
+    persistable: ignored
+    python: lsst.ip.isr.linearize.LinearizeLookuptable
+    storage: YamlStorage
+    tables: 'raw'
+    template: ''
 linearizerLut:
     description: "Lookup table linearizer from MeasurePhotonTransferCurveTask"
     persistable: ignored
-    python: lsst.ip.isr.linearize.LinearizeLookuptable
+    python: lsst.ip.isr.linearize.Linearizer
     storage: YamlStorage
     tables: 'raw'
     template: ''
