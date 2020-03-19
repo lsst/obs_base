@@ -95,6 +95,12 @@ class ConvertGen2To3TestCase:
         self.gen2Butler = lsst.daf.persistence.Butler(root=self.gen2root, calibRoot=self.gen2calib)
         # This command is in obs_base, and we use the one that has been setup and scons'ed.
         self.cmd = "convert_gen2_repo_to_gen3.py"
+
+        # if the collections set is empty we do not add to it, we create
+        # a new instance version. Without this each subclass would add
+        # to the same set.
+        if not self.collections:
+            self.collections = set()
         self.collections.add(self.instrumentName)
         if len(self.refcats) > 0:
             self.collections.add("refcats")
