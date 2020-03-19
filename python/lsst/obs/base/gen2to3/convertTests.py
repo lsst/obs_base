@@ -90,6 +90,12 @@ class ConvertGen2To3TestCase:
     instrument name and any refcats, if ``refcats`` is non-empty above.
     Typically the only additional one necessary would be "skymaps"."""
 
+    detectorKey = "ccd"
+    """Key to use in a gen2 dataId to refer to a detector."""
+
+    exposureKey = "visit"
+    """Key to use in a gen2 dataId to refer to a visit or exposure."""
+
     def setUp(self):
         self.gen3root = tempfile.mkdtemp()
         self.gen2Butler = lsst.daf.persistence.Butler(root=self.gen2root, calibRoot=self.gen2calib)
@@ -135,7 +141,7 @@ class ConvertGen2To3TestCase:
         detector : `int`
             The detector identifier to ``get`` from both butlers.
         """
-        dataIdGen2 = dict(ccd=detector, visit=exposure)
+        dataIdGen2 = {self.detectorKey: detector, self.exposureKey: exposure}
         try:
             gen2Exposure = self.gen2Butler.get("raw", dataId=dataIdGen2)
         except lsst.daf.persistence.butlerExceptions.NoResults:
@@ -220,8 +226,8 @@ class ConvertGen2To3TestCase:
         self.check_collections(gen3Butler)
 
         # check every raw detector that the gen2 butler knows about
-        detectors = self.gen2Butler.queryMetadata("raw", "ccd")
-        exposures = self.gen2Butler.queryMetadata("raw", "visit")
+        detectors = self.gen2Butler.queryMetadata("raw", self.detectorKey)
+        exposures = self.gen2Butler.queryMetadata("raw", self.exposureKey)
         for exposure, detector in itertools.product(exposures, detectors):
             self.check_raw(gen3Butler, exposure, detector)
 
