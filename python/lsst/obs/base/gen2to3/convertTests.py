@@ -191,8 +191,9 @@ class ConvertGen2To3TestCase:
             # know e.g. the "calibration_label". Use the first element of the
             # result because we only need to check one.
             datasets = list(gen3Butler.registry.queryDatasets("defects", collections=..., dataId=dataId))
-            gen3Defects = gen3Butler.get("defects", dataId=datasets[0].dataId)
-            self.assertIsInstance(gen3Defects, lsst.meas.algorithms.Defects)
+            if datasets:
+                gen3Defects = gen3Butler.get("defects", dataId=datasets[0].dataId)
+                self.assertIsInstance(gen3Defects, lsst.meas.algorithms.Defects)
 
     def check_refcat(self, gen3Butler):
         """Test that each expected refcat is in the gen3 repo.
