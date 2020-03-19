@@ -1408,7 +1408,7 @@ photonTransferCurveDataset:
 linearityTable:
     description: "Lookup table from MeasurePhotonTransferCurveTask"
     persistable: ignored
-    python: lsst.ip.isr.linearize.LinearizeLookuptable
+    python: numpy.array
     storage: YamlStorage
     tables: 'raw'
     template: ''
