@@ -176,7 +176,12 @@ def convert(gen2root, gen3root, instrumentClass, calibFilterType,
 
     configure_translators(instrument, calibFilterType, convertRepoConfig.ccdKey)
 
-    butlerConfig = lsst.daf.butler.Butler.makeRepo(gen3root)
+    # Allow a gen3 butler to be reused
+    try:
+        butlerConfig = lsst.daf.butler.Butler.makeRepo(gen3root)
+    except FileExistsError:
+        # Use the existing butler configuration
+        butlerConfig = gen3root
     butler = lsst.daf.butler.Butler(butlerConfig, run=instrument.getName())
     convertRepoTask = ConvertRepoTask(config=convertRepoConfig, butler3=butler)
     convertRepoTask.run(
