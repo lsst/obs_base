@@ -1109,6 +1109,7 @@ class CameraMapper(dafPersist.Mapper):
             The exposure to get metadata from, and attach the SkyWcs to.
         """
         metadata = exposure.getMetadata()
+        fix_header(metadata, translator_class=self.translatorClass)
         try:
             wcs = afwGeom.makeSkyWcs(metadata, strip=True)
             exposure.setWcs(wcs)
@@ -1325,16 +1326,22 @@ def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo
     `lsst.afw.image.Exposure`
         Exposure containing input image.
     """
+    translatorClass = None
+    if mapper is not None:
+        translatorClass = mapper.translatorClass
+
     metadata = None
     if isinstance(image, afwImage.MaskedImage):
         exposure = afwImage.makeExposure(image)
     elif isinstance(image, afwImage.DecoratedImage):
         exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image.getImage()))
         metadata = image.getMetadata()
+        fix_header(metadata, translator_class=translatorClass)
         exposure.setMetadata(metadata)
     elif isinstance(image, afwImage.Exposure):
         exposure = image
         metadata = exposure.getMetadata()
+        fix_header(metadata, translator_class=translatorClass)
     else:  # Image
         exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image))
 
