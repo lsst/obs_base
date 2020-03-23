@@ -114,10 +114,11 @@ class RootRepoConverter(StandardRepoConverter):
             self.task.log.info(f"Preparing raws from root {self.root}.")
             if self.subset is not None:
                 dataRefs = itertools.chain.from_iterable(
-                    self.butler2.subset("raw", visit=visit) for visit in self.subset.visits
+                    self.butler2.subset(self.task.config.rawDatasetType,
+                                        visit=visit) for visit in self.subset.visits
                 )
             else:
-                dataRefs = self.butler2.subset("raw")
+                dataRefs = self.butler2.subset(self.task.config.rawDatasetType)
             dataPaths = getDataPaths(dataRefs)
             self.task.log.debug("Prepping files: %s", dataPaths)
             self._exposureData.extend(self.task.raws.prep(dataPaths))

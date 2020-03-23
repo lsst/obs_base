@@ -90,11 +90,23 @@ class ConvertGen2To3TestCase:
     instrument name and any refcats, if ``refcats`` is non-empty above.
     Typically the only additional one necessary would be "skymaps"."""
 
+    detectorKey = "ccd"
+    """Key to use in a gen2 dataId to refer to a detector."""
+
+    exposureKey = "visit"
+    """Key to use in a gen2 dataId to refer to a visit or exposure."""
+
     def setUp(self):
         self.gen3root = tempfile.mkdtemp()
         self.gen2Butler = lsst.daf.persistence.Butler(root=self.gen2root, calibRoot=self.gen2calib)
         # This command is in obs_base, and we use the one that has been setup and scons'ed.
         self.cmd = "convert_gen2_repo_to_gen3.py"
+
+        # if the collections set is empty we do not add to it, we create
+        # a new instance version. Without this each subclass would add
+        # to the same set.
+        if not self.collections:
+            self.collections = set()
         self.collections.add(self.instrumentName)
         if len(self.refcats) > 0:
             self.collections.add("refcats")
@@ -129,7 +141,7 @@ class ConvertGen2To3TestCase:
         detector : `int`
             The detector identifier to ``get`` from both butlers.
         """
-        dataIdGen2 = dict(ccd=detector, visit=exposure)
+        dataIdGen2 = {self.detectorKey: detector, self.exposureKey: exposure}
         try:
             gen2Exposure = self.gen2Butler.get("raw", dataId=dataIdGen2)
         except lsst.daf.persistence.butlerExceptions.NoResults:
@@ -179,8 +191,9 @@ class ConvertGen2To3TestCase:
             # know e.g. the "calibration_label". Use the first element of the
             # result because we only need to check one.
             datasets = list(gen3Butler.registry.queryDatasets("defects", collections=..., dataId=dataId))
-            gen3Defects = gen3Butler.get("defects", dataId=datasets[0].dataId)
-            self.assertIsInstance(gen3Defects, lsst.meas.algorithms.Defects)
+            if datasets:
+                gen3Defects = gen3Butler.get("defects", dataId=datasets[0].dataId)
+                self.assertIsInstance(gen3Defects, lsst.meas.algorithms.Defects)
 
     def check_refcat(self, gen3Butler):
         """Test that each expected refcat is in the gen3 repo.
@@ -214,8 +227,8 @@ class ConvertGen2To3TestCase:
         self.check_collections(gen3Butler)
 
         # check every raw detector that the gen2 butler knows about
-        detectors = self.gen2Butler.queryMetadata("raw", "ccd")
-        exposures = self.gen2Butler.queryMetadata("raw", "visit")
+        detectors = self.gen2Butler.queryMetadata("raw", self.detectorKey)
+        exposures = self.gen2Butler.queryMetadata("raw", self.exposureKey)
         for exposure, detector in itertools.product(exposures, detectors):
             self.check_raw(gen3Butler, exposure, detector)
 

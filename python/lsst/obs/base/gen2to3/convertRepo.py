@@ -184,6 +184,11 @@ class ConvertRepoConfig(Config):
                  "registry.sqlite3", "calibRegistry.sqlite3", "_mapper",
                  "_parent", "repositoryCfg.yaml"]
     )
+    rawDatasetType = Field(
+        "Gen2 dataset type to use for raw data.",
+        dtype=str,
+        default="raw",
+    )
     datasetIncludePatterns = ListField(
         "Glob-style patterns for dataset type names that should be converted.",
         dtype=str,
@@ -459,7 +464,12 @@ class ConvertRepoTask(Task):
         # DM-21246 should let us fix this, assuming we actually want to keep
         # the transaction open that long.
         if self.config.doRegisterInstrument:
-            self.instrument.register(self.registry)
+            # Allow registration to fail on the assumption that this means
+            # we are reusing a butler
+            try:
+                self.instrument.register(self.registry)
+            except Exception:
+                pass
 
         # Make and prep converters for all Gen2 repos.  This should not modify
         # the Registry database or filesystem at all, though it may query it.
@@ -503,7 +513,10 @@ class ConvertRepoTask(Task):
         # to convert, because Gen2 alone doesn't know enough about the
         # relationships between data IDs.
         for converter in converters:
-            converter.insertDimensionData()
+            try:
+                converter.insertDimensionData()
+            except Exception:
+                pass
 
         # Insert dimensions that are potentially shared by all Gen2
         # repositories (and are hence managed directly by the Task, rather

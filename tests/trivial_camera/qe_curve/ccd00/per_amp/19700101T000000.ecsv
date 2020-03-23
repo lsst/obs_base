@@ -14,7 +14,7 @@
 # - TYPE: QE
 # - CALIBDATE: '1970-01-01T00:00:00'
 # - INSTRUME: trivial_camera
-# - OBSTYPE: qe_curves
+# - OBSTYPE: qe_curve
 # - DETECTOR: 0
 # - CALIB_ID: raftName=None detectorName=ccd00 detector=0 calibDate=1970-01-01T00:00:00 ccd=0 ccdnum=0 filter=None
 # - DATE: '2019-09-27T22:15:13.518320'

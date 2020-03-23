@@ -92,6 +92,8 @@ def configure_translators(instrument, calibFilterType, ccdKey="ccd"):
                        instrument=instrument.getName(), gen2keys=("visit",), consume=False)
     Translator.addRule(ConstantKeyHandler("instrument", instrument.getName()),
                        instrument=instrument.getName(), gen2keys=(ccdKey,), consume=False)
+    Translator.addRule(ConstantKeyHandler("instrument", instrument.getName()),
+                       instrument=instrument.getName(), gen2keys=("calibDate",), consume=False)
 
     # Copy Gen2 'visit' to Gen3 'exposure' for raw only.  Also consume filter,
     # since that's implied by 'exposure' in Gen3.
@@ -174,7 +176,12 @@ def convert(gen2root, gen3root, instrumentClass, calibFilterType,
 
     configure_translators(instrument, calibFilterType, convertRepoConfig.ccdKey)
 
-    butlerConfig = lsst.daf.butler.Butler.makeRepo(gen3root)
+    # Allow a gen3 butler to be reused
+    try:
+        butlerConfig = lsst.daf.butler.Butler.makeRepo(gen3root)
+    except FileExistsError:
+        # Use the existing butler configuration
+        butlerConfig = gen3root
     butler = lsst.daf.butler.Butler(butlerConfig, run=instrument.getName())
     convertRepoTask = ConvertRepoTask(config=convertRepoConfig, butler3=butler)
     convertRepoTask.run(
