@@ -1422,7 +1422,7 @@ linearizerLut:
 linearizerSquared:
     description: "Quadratic polynomial coefficients for linearizer from MeasurePhotonTransferCurveTask"
     persistable: ignored
-    python: lsst.ip.isr.linearize.LinearizeSquared
+    python: lsst.ip.isr.linearize.Linearizer
     storage: YamlStorage
     tables: 'raw'
     template: ''
