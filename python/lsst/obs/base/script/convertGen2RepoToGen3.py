@@ -182,7 +182,7 @@ def convert(gen2root, gen3root, instrumentClass, calibFilterType,
     except FileExistsError:
         # Use the existing butler configuration
         butlerConfig = gen3root
-    butler = lsst.daf.butler.Butler(butlerConfig, run=instrument.getName())
+    butler = lsst.daf.butler.Butler(butlerConfig, run=f"raw/{instrument.getName()}")
     convertRepoTask = ConvertRepoTask(config=convertRepoConfig, butler3=butler)
     convertRepoTask.run(
         root=gen2root,

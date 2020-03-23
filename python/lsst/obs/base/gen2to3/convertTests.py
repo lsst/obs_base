@@ -88,9 +88,13 @@ class ConvertGen2To3TestCase:
     converted gen3 repo."""
 
     collections = set()
-    """Additional collections that should appear in the gen3 repo, beyond the
-    instrument name and any refcats, if ``refcats`` is non-empty above.
-    Typically the only additional one necessary would be "skymaps"."""
+    """Additional collections that should appear in the gen3 repo.
+
+    This will automatically be populated by the base `setUp` to include
+    ``"raw/{instrumentName}"``, ``"refcats"`` (if the ``refcats``
+    class attribute is non-empty), and ``"skymaps"`` (if ``skymapName`` is
+    not `None`).
+    """
 
     detectorKey = "ccd"
     """Key to use in a gen2 dataId to refer to a detector."""
@@ -111,9 +115,12 @@ class ConvertGen2To3TestCase:
     def setUp(self):
         self.gen3root = tempfile.mkdtemp()
         self.gen2Butler = lsst.daf.persistence.Butler(root=self.gen2root, calibRoot=self.gen2calib)
-        self.collections.add(self.instrumentName)
+        self.collections = set(type(self).collections)
+        self.collections.add(f"raw/{self.instrumentName}")
         if len(self.refcats) > 0:
             self.collections.add("refcats")
+        if self.skymapName is not None:
+            self.collections.add("skymaps")
 
     def tearDown(self):
         shutil.rmtree(self.gen3root, ignore_errors=True)
@@ -231,7 +238,7 @@ class ConvertGen2To3TestCase:
         """Test that all data are converted correctly.
         """
         self._run_convert()
-        gen3Butler = lsst.daf.butler.Butler(self.gen3root, run=self.instrumentName)
+        gen3Butler = lsst.daf.butler.Butler(self.gen3root, collections=f"raw/{self.instrumentName}")
         self.check_collections(gen3Butler)
 
         # check every raw detector that the gen2 butler knows about
