@@ -562,5 +562,8 @@ class ConvertRepoTask(Task):
         for spec in reruns:
             if spec.chainName is not None:
                 self.butler3.registry.registerCollection(spec.chainName, type=CollectionType.CHAINED)
-                chain = spec.parents + rootConverter.getCollectionChain()
+                chain = [spec.runName]
+                chain.extend(spec.parents)
+                chain.extend(rootConverter.getCollectionChain())
+                self.log.info("Defining %s from chain %s.", spec.chainName, chain)
                 self.butler3.registry.setCollectionChain(spec.chainName, chain)
