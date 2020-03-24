@@ -1412,7 +1412,7 @@ linearityTable:
     storage: YamlStorage
     tables: 'raw'
     template: ''
-linearizerLut:
+linearizeLut:
     description: "Lookup table linearizer from MeasurePhotonTransferCurveTask"
     persistable: ignored
     python: lsst.ip.isr.linearize.Linearizer
