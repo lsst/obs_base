@@ -482,12 +482,13 @@ class RepoConverter(ABC):
         """
         for datasetType, datasetsForType in self._fileDatasets.items():
             self.task.registry.registerDatasetType(datasetType)
-            self.task.log.info("Ingesting %s %s datasets.", len(datasetsForType), datasetType.name)
             try:
                 run = self.getRun(datasetType.name)
             except LookupError:
                 self.task.log.warn(f"No run configured for dataset type {datasetType.name}.")
                 continue
+            self.task.log.info("Ingesting %s %s datasets into run %s.", len(datasetsForType),
+                               datasetType.name, run)
             try:
                 self.task.registry.registerRun(run)
                 self.task.butler3.ingest(*datasetsForType, transfer=self.task.config.transfer, run=run)

@@ -187,7 +187,8 @@ class RootRepoConverter(StandardRepoConverter):
         # Docstring inherited from RepoConverter.
         self._chain = {}
         if self.task.raws is not None:
-            self.task.log.info(f"Ingesting raws from root {self.root}.")
+            self.task.log.info("Ingesting raws from root %s into run %s.", self.root,
+                               self.task.raws.butler.run)
             self.task.registry.registerDatasetType(self.task.raws.datasetType)
             self._chain.setdefault(self.task.raws.butler.run, set()).add(self.task.raws.datasetType.name)
             # We need te delegate to RawIngestTask to actually ingest raws,
