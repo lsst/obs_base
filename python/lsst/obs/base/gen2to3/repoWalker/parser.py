@@ -73,6 +73,9 @@ class FixedRegEx(FormattableRegEx):
         # Docstring inherited from FormattableRegEx.
         return self.regex
 
+    def __str__(self):
+        return f"{type(self).__name__}({self.regex})"
+
 
 class SubstitutableRegEx:
     """An implementation of `FormattableRegEx` formed from a concatenation of
@@ -182,6 +185,9 @@ class PathElementParser:
     """Regular expression that matches a single substitution in
     Gen2 CameraMapper template, such as "%(tract)04d".
     """
+
+    def __str__(self):
+        return f"{type(self).__name__}({self.regex})"
 
     def parse(self, name: str, lastDataId: dict, *, log: Optional[Log] = None) -> Optional[dict]:
         """Parse the path element.

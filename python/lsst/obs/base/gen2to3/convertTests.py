@@ -24,7 +24,6 @@
 
 import itertools
 import shutil
-import subprocess
 import tempfile
 import unittest
 
@@ -35,13 +34,15 @@ import lsst.daf.persistence
 import lsst.daf.butler
 import lsst.meas.algorithms
 import lsst.utils.tests
+from ..script.convertGen2RepoToGen3 import convert as convertGen2RepoToGen3
 
 
 class ConvertGen2To3TestCase:
     """Test the `convert_gen2_repo_to_gen3.py` script.
 
     Subclass this, and then `lsst.utils.tests.TestCase` and set the below
-    attributes.
+    attributes.  Uses the `lsst.obs.base.script.convertGen2RepoToGen3.convert`
+    function to do the conversion.
     """
     gen2root = ""
     """Root path to the gen2 repo to be converted."""
@@ -58,7 +59,7 @@ class ConvertGen2To3TestCase:
 
     config = None
     """Full path to a config override for ConvertRepoTask, to be applied after
-    the Instrument overrides when running `convert_gen2_repo_to_gen3.py`."""
+    the Instrument overrides when running the conversion function."""
 
     biases = []
     """List dataIds to use to load gen3 biases to test that they exist."""
@@ -78,17 +79,22 @@ class ConvertGen2To3TestCase:
     darkName = "dark"
     """Name of the dataset that the darks are loaded into."""
 
-    args = None
-    """Other arguments to pass directly to the converter script, as a tuple."""
+    kwargs = {}
+    """Other keyword arguments to pass directly to the converter function,
+    as a dict."""
 
     refcats = []
     """Names of the reference catalogs to query for the existence of in the
     converted gen3 repo."""
 
     collections = set()
-    """Additional collections that should appear in the gen3 repo, beyond the
-    instrument name and any refcats, if ``refcats`` is non-empty above.
-    Typically the only additional one necessary would be "skymaps"."""
+    """Additional collections that should appear in the gen3 repo.
+
+    This will automatically be populated by the base `setUp` to include
+    ``"raw/{instrumentName}"``, ``"refcats"`` (if the ``refcats``
+    class attribute is non-empty), and ``"skymaps"`` (if ``skymapName`` is
+    not `None`).
+    """
 
     detectorKey = "ccd"
     """Key to use in a gen2 dataId to refer to a detector."""
@@ -96,20 +102,25 @@ class ConvertGen2To3TestCase:
     exposureKey = "visit"
     """Key to use in a gen2 dataId to refer to a visit or exposure."""
 
+    calibFilterType = "physical_filter"
+    """Gen3 dimension that corresponds to Gen2 ``filter``. Should be
+    physical_filter or abstract_filter."""
+
+    skymapName = None
+    """Name of the Gen3 skymap."""
+
+    skymapConfig = None
+    """Path to skymap config file defining the new gen3 skymap."""
+
     def setUp(self):
         self.gen3root = tempfile.mkdtemp()
         self.gen2Butler = lsst.daf.persistence.Butler(root=self.gen2root, calibRoot=self.gen2calib)
-        # This command is in obs_base, and we use the one that has been setup and scons'ed.
-        self.cmd = "convert_gen2_repo_to_gen3.py"
-
-        # if the collections set is empty we do not add to it, we create
-        # a new instance version. Without this each subclass would add
-        # to the same set.
-        if not self.collections:
-            self.collections = set()
-        self.collections.add(self.instrumentName)
+        self.collections = set(type(self).collections)
+        self.collections.add(f"raw/{self.instrumentName}")
         if len(self.refcats) > 0:
             self.collections.add("refcats")
+        if self.skymapName is not None:
+            self.collections.add("skymaps")
 
     def tearDown(self):
         shutil.rmtree(self.gen3root, ignore_errors=True)
@@ -117,17 +128,17 @@ class ConvertGen2To3TestCase:
     def _run_convert(self):
         """Convert a gen2 repo to gen3 for testing.
         """
-        cmd = [self.cmd, self.instrumentClass,
-               "--gen2root", self.gen2root,
-               "--gen3root", self.gen3root,
-               "--calibs", self.gen2calib
-               ]
-        if self.config is not None:
-            cmd.extend(("--config", self.config))
-        if self.args is not None:
-            cmd.extend(self.args)
-        print(f"Running command: {' '.join(cmd)}")
-        subprocess.run(cmd, check=True)
+
+        # Turn on logging
+        log = lsst.log.Log.getLogger("convertRepo")
+        log.setLevel(log.INFO)
+        log.info("Converting %s to %s", self.gen2root, self.gen3root)
+
+        # Run the conversion
+        convertGen2RepoToGen3(self.gen2root, self.gen3root, self.instrumentClass,
+                              self.calibFilterType,
+                              skymapName=self.skymapName, skymapConfig=self.skymapConfig,
+                              config=self.config, calibs=self.gen2calib)
 
     def check_raw(self, gen3Butler, exposure, detector):
         """Check that a raw was converted correctly.
@@ -172,8 +183,10 @@ class ConvertGen2To3TestCase:
             The Butler to use to get the data.
         """
         for dataId in calibIds:
-            gen3Exposure = gen3Butler.get(calibName, dataId=dataId)
-            self.assertIsInstance(gen3Exposure, lsst.afw.image.ExposureF)
+            with self.subTest(dtype=calibName, dataId=dataId):
+                datasets = list(gen3Butler.registry.queryDatasets(calibName, collections=..., dataId=dataId))
+                gen3Exposure = gen3Butler.getDirect(datasets[0])
+                self.assertIsInstance(gen3Exposure, lsst.afw.image.ExposureF)
 
     def check_defects(self, gen3Butler, detectors):
         """Test that we can get converted defects from the gen3 repo.
@@ -182,7 +195,7 @@ class ConvertGen2To3TestCase:
         ----------
         gen3Butler : `lsst.daf.butler.Butler`
             The Butler to be tested.
-        detector : `int`
+        detectors : `list` of `int`
             The detector identifiers to ``get`` from the gen3 butler.
         """
         for detector in detectors:
@@ -190,10 +203,11 @@ class ConvertGen2To3TestCase:
             # Fill out the missing parts of the dataId, as we don't a-priori
             # know e.g. the "calibration_label". Use the first element of the
             # result because we only need to check one.
-            datasets = list(gen3Butler.registry.queryDatasets("defects", collections=..., dataId=dataId))
-            if datasets:
-                gen3Defects = gen3Butler.get("defects", dataId=datasets[0].dataId)
-                self.assertIsInstance(gen3Defects, lsst.meas.algorithms.Defects)
+            with self.subTest(dtype="defects", dataId=dataId):
+                datasets = list(gen3Butler.registry.queryDatasets("defects", collections=..., dataId=dataId))
+                if datasets:
+                    gen3Defects = gen3Butler.getDirect(datasets[0])
+                    self.assertIsInstance(gen3Defects, lsst.meas.algorithms.Defects)
 
     def check_refcat(self, gen3Butler):
         """Test that each expected refcat is in the gen3 repo.
@@ -217,20 +231,22 @@ class ConvertGen2To3TestCase:
         gen3Butler : `lsst.daf.butler.Butler`
             The Butler to be tested.
         """
-        self.assertEqual(self.collections, gen3Butler.registry.getAllCollections())
+        self.assertEqual(set(gen3Butler.registry.queryCollections()), self.collections,
+                         f"Compare with expected collections ({self.collections})")
 
     def test_convert(self):
-        """Test that raws are converted correctly.
+        """Test that all data are converted correctly.
         """
         self._run_convert()
-        gen3Butler = lsst.daf.butler.Butler(self.gen3root, run=self.instrumentName)
+        gen3Butler = lsst.daf.butler.Butler(self.gen3root, collections=f"raw/{self.instrumentName}")
         self.check_collections(gen3Butler)
 
         # check every raw detector that the gen2 butler knows about
         detectors = self.gen2Butler.queryMetadata("raw", self.detectorKey)
         exposures = self.gen2Butler.queryMetadata("raw", self.exposureKey)
         for exposure, detector in itertools.product(exposures, detectors):
-            self.check_raw(gen3Butler, exposure, detector)
+            with self.subTest(mode="raw", exposure=exposure, detector=detector):
+                self.check_raw(gen3Butler, exposure, detector)
 
         self.check_refcat(gen3Butler)
         self.check_defects(gen3Butler, detectors)

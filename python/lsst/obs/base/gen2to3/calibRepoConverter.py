@@ -138,16 +138,7 @@ class CalibRepoConverter(RepoConverter):
     def ingest(self):
         # Docstring inherited from RepoConverter.
         if self.task.config.doWriteCuratedCalibrations:
-            try:
-                collections = self.getCollections(None)
-            except LookupError as err:
-                raise ValueError("Cannot ingest curated calibration into a calibration repo with no "
-                                 "collections of its own; skipping.") from err
-            # TODO: associate the curated calibrations with any other
-            # collections and remove this assert; blocker is DM-23230.
-            assert len(collections) == 1, \
-                "Multiple collections for curated calibrations is not yet supported."
-            butler3 = Butler3(butler=self.task.butler3, run=collections[0])
+            butler3 = Butler3(butler=self.task.butler3, run=self._run)
             self.task.instrument.writeCuratedCalibrations(butler3)
         super().ingest()
 

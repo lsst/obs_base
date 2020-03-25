@@ -20,7 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
-__all__ = ["ConvertRepoConfig", "ConvertRepoTask", "ConvertRepoSkyMapConfig"]
+__all__ = ["ConvertRepoConfig", "ConvertRepoTask", "ConvertRepoSkyMapConfig", "Rerun"]
 
 import os
 import fnmatch
@@ -30,6 +30,7 @@ from typing import Iterable, Optional, List, Dict
 from lsst.utils import doImport
 from lsst.daf.butler import (
     Butler as Butler3,
+    CollectionType,
     SkyPixDimension
 )
 from lsst.pex.config import Config, ConfigurableField, ConfigDictField, DictField, ListField, Field
@@ -64,6 +65,36 @@ class ConfiguredSkyMap:
     used: bool = False
     """Whether this skymap has been found in at least one repository being
     converted.
+    """
+
+
+@dataclass
+class Rerun:
+    """Specification for a Gen2 processing-output repository to convert.
+    """
+
+    path: str
+    """Absolute or relative (to the root repository) path to the Gen2
+    repository (`str`).
+    """
+
+    runName: str
+    """Name of the `~lsst.daf.butler.CollectionType.RUN` collection datasets
+    will be inserted into (`str`).
+    """
+
+    chainName: Optional[str]
+    """Name of a `~lsst.daf.butler.CollectionType.CHAINED` collection that will
+    combine this repository's datasets with those of its parent repositories
+    (`str`, optional).
+    """
+
+    parents: List[str]
+    """Collection names associated with parent repositories, used to define the
+    chained collection (`list` [ `str` ]).
+
+    Ignored if `chainName` is `None`.  Runs used in the root repo are
+    automatically included.
     """
 
 
@@ -111,11 +142,11 @@ class ConvertRepoConfig(Config):
         optional=True,
         default=None,
     )
-    collections = DictField(
-        "Special collections (values) for certain dataset types (keys).  "
-        "These are used in addition to rerun collections for datasets in "
-        "reruns.  The 'raw' dataset must have an entry here if it is to be "
-        "converted.",
+    runs = DictField(
+        "A mapping from dataset type name to the RUN collection they should "
+        "be inserted into.  This must include all datasets that can be found "
+        "in the root repository; other repositories will use per-repository "
+        "runs.",
         keytype=str,
         itemtype=str,
         default={
@@ -411,9 +442,9 @@ class ConvertRepoTask(Task):
             for dimension in self._usedSkyPix:
                 subset.addSkyPix(self.registry, dimension)
 
-    def run(self, root: str, collections: List[str], *,
-            calibs: Dict[str, List[str]] = None,
-            reruns: Dict[str, List[str]] = None,
+    def run(self, root: str, *,
+            calibs: Dict[str, str] = None,
+            reruns: List[Rerun],
             visits: Optional[Iterable[int]] = None):
         """Convert a group of related data repositories.
 
@@ -423,33 +454,19 @@ class ConvertRepoTask(Task):
             Complete path to the root Gen2 data repository.  This should be
             a data repository that includes a Gen2 registry and any raw files
             and/or reference catalogs.
-        collections : `list` of `str`
-            Gen3 collections that datasets from the root repository should be
-            associated with.  This should include any rerun collection that
-            these datasets should also be considered to be part of; because of
-            structural difference between Gen2 parent/child relationships and
-            Gen3 collections, these cannot be reliably inferred.
         calibs : `dict`
-            Dictionary mapping calibration repository path to the collections
-            that the repository's datasets should be associated with.  The path
-            may be relative to ``root`` or absolute.  Collections should
-            include child repository collections as appropriate (see
-            documentation for ``collections``).
-        reruns : `dict`
-            Dictionary mapping rerun repository path to the collections that
-            the repository's datasets should be associated with.  The path may
-            be relative to ``root`` or absolute.  Collections should include
-            child repository collections as appropriate (see documentation for
-            ``collections``).
+            Dictionary mapping calibration repository path to the
+            `~lsst.daf.butler.CollectionType.RUN` collection that converted
+            datasets within it should be inserted into.
+        reruns : `list` of `Rerun`
+            Specifications for rerun (processing output) collections to
+            convert.
         visits : iterable of `int`, optional
             The integer IDs of visits to convert.  If not provided, all visits
             in the Gen2 root repository will be converted.
         """
-
         if calibs is None:
             calibs = {}
-        if reruns is None:
-            reruns = {}
         if visits is not None:
             subset = ConversionSubset(instrument=self.instrument.getName(), visits=frozenset(visits))
         else:
@@ -476,23 +493,24 @@ class ConvertRepoTask(Task):
         # The prep() calls here will be some of the slowest ones, because
         # that's when we walk the filesystem.
         converters = []
-        rootConverter = RootRepoConverter(task=self, root=root, collections=collections, subset=subset)
+        rootConverter = RootRepoConverter(task=self, root=root, subset=subset)
         rootConverter.prep()
         converters.append(rootConverter)
 
-        for root, collections in calibs.items():
-            if not os.path.isabs(root):
-                root = os.path.join(rootConverter.root, root)
-            converter = CalibRepoConverter(task=self, root=root, collections=collections,
+        for calibRoot, run in calibs.items():
+            if not os.path.isabs(calibRoot):
+                calibRoot = os.path.join(rootConverter.root, calibRoot)
+            converter = CalibRepoConverter(task=self, root=calibRoot, run=run,
                                            mapper=rootConverter.mapper,
                                            subset=rootConverter.subset)
             converter.prep()
             converters.append(converter)
 
-        for root, collections in reruns.items():
-            if not os.path.isabs(root):
-                root = os.path.join(rootConverter.root, root)
-            converter = StandardRepoConverter(task=self, root=root, collections=collections,
+        for spec in reruns:
+            runRoot = spec.path
+            if not os.path.isabs(runRoot):
+                runRoot = os.path.join(rootConverter.root, runRoot)
+            converter = StandardRepoConverter(task=self, root=runRoot, run=spec.runName,
                                               subset=rootConverter.subset)
             converter.prep()
             converters.append(converter)
@@ -539,3 +557,13 @@ class ConvertRepoTask(Task):
         # Actually ingest datasets.
         for converter in converters:
             converter.ingest()
+
+        # Add chained collections for reruns.
+        for spec in reruns:
+            if spec.chainName is not None:
+                self.butler3.registry.registerCollection(spec.chainName, type=CollectionType.CHAINED)
+                chain = [spec.runName]
+                chain.extend(spec.parents)
+                chain.extend(rootConverter.getCollectionChain())
+                self.log.info("Defining %s from chain %s.", spec.chainName, chain)
+                self.butler3.registry.setCollectionChain(spec.chainName, chain)

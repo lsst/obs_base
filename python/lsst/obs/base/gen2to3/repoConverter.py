@@ -202,12 +202,12 @@ class RepoConverter(ABC):
     implementation.
     """
 
-    def __init__(self, *, task: ConvertRepoTask, root: str, collections: List[str],
+    def __init__(self, *, task: ConvertRepoTask, root: str, run: Optional[str],
                  subset: Optional[ConversionSubset] = None):
         self.task = task
         self.root = root
         self.subset = subset
-        self._collections = list(collections)
+        self._run = run
         self._repoWalker = None  # Created in prep
         self._fileDatasets: MutableMapping[DatasetType, List[FileDataset]] = defaultdict(list)
 
@@ -482,25 +482,22 @@ class RepoConverter(ABC):
         """
         for datasetType, datasetsForType in self._fileDatasets.items():
             self.task.registry.registerDatasetType(datasetType)
-            self.task.log.info("Ingesting %s %s datasets.", len(datasetsForType), datasetType.name)
             try:
-                collections = self.getCollections(datasetType.name)
-            except LookupError as err:
-                self.task.log.warn(str(err))
+                run = self.getRun(datasetType.name)
+            except LookupError:
+                self.task.log.warn(f"No run configured for dataset type {datasetType.name}.")
                 continue
+            self.task.log.info("Ingesting %s %s datasets into run %s.", len(datasetsForType),
+                               datasetType.name, run)
             try:
-                self.task.registry.registerRun(collections[0])
-                self.task.butler3.ingest(*datasetsForType, transfer=self.task.config.transfer,
-                                         run=collections[0])
+                self.task.registry.registerRun(run)
+                self.task.butler3.ingest(*datasetsForType, transfer=self.task.config.transfer, run=run)
             except LookupError as err:
                 raise LookupError(f"Error expanding data ID for dataset type {datasetType.name}.") from err
-            for collection in collections[1:]:
-                self.task.registry.associate(collection,
-                                             [ref for dataset in datasetsForType for ref in dataset.refs])
 
-    def getCollections(self, datasetTypeName: str) -> List[str]:
-        """Return the set of collections a particular dataset type should be
-        associated with.
+    def getRun(self, datasetTypeName: str) -> str:
+        """Return the name of the run to insert instances of the given dataset
+        type into in this collection.
 
         Parameters
         ----------
@@ -509,17 +506,11 @@ class RepoConverter(ABC):
 
         Returns
         -------
-        collections : `list` of `str`
-            Collections the dataset should be associated with.  The first
-            item in the list is the run the dataset should be added to
-            initially.
+        run : `str`
+            Name of the `~lsst.daf.butler.CollectionType.RUN` collection.
         """
-        if datasetTypeName in self.task.config.collections:
-            return [self.task.config.collections[datasetTypeName]] + self._collections
-        elif self._collections:
-            return self._collections
-        else:
-            raise LookupError("No collection configured for dataset type {datasetTypeName}.")
+        assert self._run is not None, "Method must be overridden if self._run is allowed to be None"
+        return self._run
 
     def _guessStorageClass(self, datasetTypeName: str, mapping: CameraMapperMapping
                            ) -> Optional[StorageClass]:
