@@ -23,8 +23,9 @@ __all__ = ("Instrument", "makeExposureRecordFromObsInfo", "makeVisitRecordFromOb
            "addUnboundedCalibrationLabel")
 
 import os.path
-from datetime import datetime
 from abc import ABCMeta, abstractmethod
+
+from lsst.daf.butler import TIMESPAN_MIN, TIMESPAN_MAX
 
 
 class Instrument(metaclass=ABCMeta):
@@ -165,8 +166,8 @@ def makeExposureRecordFromObsInfo(obsInfo, universe):
         "id": obsInfo.exposure_id,
         "name": obsInfo.observation_id,
         "group": obsInfo.exposure_group,
-        "datetime_begin": obsInfo.datetime_begin.to_datetime(),
-        "datetime_end": obsInfo.datetime_end.to_datetime(),
+        "datetime_begin": obsInfo.datetime_begin,
+        "datetime_end": obsInfo.datetime_end,
         "exposure_time": obsInfo.exposure_time.to_value("s"),
         "dark_time": obsInfo.dark_time.to_value("s"),
         "observation_type": obsInfo.observation_type,
@@ -200,8 +201,8 @@ def makeVisitRecordFromObsInfo(obsInfo, universe, *, region=None):
         "instrument": obsInfo.instrument,
         "id": obsInfo.visit_id,
         "name": obsInfo.observation_id,
-        "datetime_begin": obsInfo.datetime_begin.to_datetime(),
-        "datetime_end": obsInfo.datetime_end.to_datetime(),
+        "datetime_begin": obsInfo.datetime_begin,
+        "datetime_end": obsInfo.datetime_end,
         "exposure_time": obsInfo.exposure_time.to_value("s"),
         "physical_filter": obsInfo.physical_filter,
         "region": region,
@@ -233,7 +234,7 @@ def addUnboundedCalibrationLabel(registry, instrumentName):
     except LookupError:
         pass
     entry = d.copy()
-    entry["datetime_begin"] = datetime.min
-    entry["datetime_end"] = datetime.max
+    entry["datetime_begin"] = TIMESPAN_MIN
+    entry["datetime_end"] = TIMESPAN_MAX
     registry.insertDimensionData("calibration_label", entry)
     return registry.expandDataId(d)

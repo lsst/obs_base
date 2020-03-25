@@ -24,7 +24,7 @@ __all__ = ["CalibRepoConverter"]
 
 import os
 import sqlite3
-from datetime import datetime, timedelta
+import astropy.time
 from typing import TYPE_CHECKING, Dict, Iterator, Tuple, Optional
 
 from lsst.daf.butler import Butler as Butler3
@@ -126,11 +126,14 @@ class CalibRepoConverter(RepoConverter):
             for row in results:
                 label = makeCalibrationLabel(datasetType.name, row["calibDate"],
                                              ccd=row[self.task.config.ccdKey], filter=row["filter"])
+                # For validity times we use TAI as some gen2 repos have validity
+                # dates very far in the past or future.
+                day = astropy.time.TimeDelta(1, format="jd", scale="tai")
                 records.append({
                     "instrument": self.task.instrument.getName(),
                     "name": label,
-                    "datetime_begin": datetime.strptime(row["validStart"], "%Y-%m-%d"),
-                    "datetime_end": datetime.strptime(row["validEnd"], "%Y-%m-%d") + timedelta(days=1),
+                    "datetime_begin": astropy.time.Time(row["validStart"], format="iso", scale="tai"),
+                    "datetime_end": astropy.time.Time(row["validEnd"], format="iso", scale="tai") + day
                 })
         if records:
             self.task.registry.insertDimensionData("calibration_label", *records)
