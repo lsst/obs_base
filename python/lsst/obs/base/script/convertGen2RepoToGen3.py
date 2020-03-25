@@ -30,9 +30,9 @@ import lsst.daf.butler
 import lsst.log
 import lsst.utils
 
-from lsst.obs.base.gen2to3 import (ConvertRepoTask, ConvertRepoSkyMapConfig,
-                                   Translator, ConstantKeyHandler, CopyKeyHandler,
-                                   CalibKeyHandler)
+from ..gen2to3 import (ConvertRepoTask, ConvertRepoSkyMapConfig,
+                       Translator, ConstantKeyHandler, CopyKeyHandler,
+                       CalibKeyHandler)
 
 
 def build_argparser():

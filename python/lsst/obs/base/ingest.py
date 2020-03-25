@@ -40,12 +40,12 @@ from lsst.daf.butler import (
     DimensionRecord,
     FileDataset,
 )
-from lsst.obs.base.instrument import makeExposureRecordFromObsInfo, makeVisitRecordFromObsInfo
 from lsst.geom import Box2D
 from lsst.pex.config import Config, Field, ChoiceField
 from lsst.pipe.base import Task
 from lsst.sphgeom import ConvexPolygon
 
+from .instrument import makeExposureRecordFromObsInfo, makeVisitRecordFromObsInfo
 from .fitsRawFormatterBase import FitsRawFormatterBase
 
 
