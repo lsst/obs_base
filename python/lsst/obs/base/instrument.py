@@ -164,6 +164,7 @@ def makeExposureRecordFromObsInfo(obsInfo, universe):
         "instrument": obsInfo.instrument,
         "id": obsInfo.exposure_id,
         "name": obsInfo.observation_id,
+        "group": obsInfo.exposure_group,
         "datetime_begin": obsInfo.datetime_begin.to_datetime(),
         "datetime_end": obsInfo.datetime_end.to_datetime(),
         "exposure_time": obsInfo.exposure_time.to_value("s"),
