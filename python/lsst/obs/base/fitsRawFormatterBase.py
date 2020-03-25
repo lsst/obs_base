@@ -32,8 +32,8 @@ from lsst.daf.butler import FileDescriptor
 from lsst.daf.butler.formatters.fitsExposureFormatter import FitsExposureFormatter
 import lsst.log
 
-from lsst.obs.base import MakeRawVisitInfoViaObsInfo
-from lsst.obs.base.utils import createInitialSkyWcs, InitialSkyWcsError
+from .makeRawVisitInfoViaObsInfo import MakeRawVisitInfoViaObsInfo
+from .utils import createInitialSkyWcs, InitialSkyWcsError
 
 
 class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
