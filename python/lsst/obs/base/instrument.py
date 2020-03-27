@@ -179,6 +179,26 @@ class Instrument(metaclass=ABCMeta):
             if os.path.exists(path):
                 config.load(path)
 
+    def writeCameraGeom(self, butler):
+        """Write the default camera geometry to the butler repository
+        with an infinite validity range.
+
+        Expected to be called from an instrument subclass
+        ``writeCuratedCalibrations`` implementation.
+
+        Parameters
+        ----------
+        butler : `lsst.daf.butler.Butler`
+            Butler to receive these calibration datasets.
+        """
+
+        datasetType = DatasetType("camera", ("instrument", "calibration_label"), "Camera",
+                                  universe=butler.registry.dimensions)
+        butler.registry.registerDatasetType(datasetType)
+        unboundedDataId = addUnboundedCalibrationLabel(butler.registry, self.getName())
+        camera = self.getCamera()
+        butler.put(camera, datasetType, unboundedDataId)
+
     def writeStandardTextCuratedCalibrations(self, butler):
         """Write the set of standardized curated text calibrations to
         the repository.
