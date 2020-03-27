@@ -1405,10 +1405,10 @@ photonTransferCurveDataset:
     storage: PickleStorage
     tables: 'raw'
     template: ''
-linearityTable:
-    description: "Lookup table from MeasurePhotonTransferCurveTask"
+linearizePolynomial:
+    description: "General polynomial coefficients for linearizer from MeasurePhotonTransferCurveTask"
     persistable: ignored
-    python: numpy.array
+    python: lsst.ip.isr.linearize.Linearizer
     storage: YamlStorage
     tables: 'raw'
     template: ''
