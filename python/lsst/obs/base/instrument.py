@@ -24,8 +24,19 @@ __all__ = ("Instrument", "makeExposureRecordFromObsInfo", "makeVisitRecordFromOb
 
 import os.path
 from abc import ABCMeta, abstractmethod
+import astropy.time
 
-from lsst.daf.butler import TIMESPAN_MIN, TIMESPAN_MAX
+from lsst.daf.butler import TIMESPAN_MIN, TIMESPAN_MAX, DatasetType, DataCoordinate
+from lsst.utils import getPackageDir
+
+# To be a standard text curated calibration means that we use a
+# standard definition for the corresponding DatasetType
+StandardCuratedCalibrationDatasetTypes = {
+    "defects": {"dimensions": ("instrument", "detector", "calibration_label"),
+                "storageClass": "Defects"},
+    "qe_curve": {"dimensions": ("instrument", "detector", "calibration_label"),
+                 "storageClass": "QECurve"},
+}
 
 
 class Instrument(metaclass=ABCMeta):
@@ -42,6 +53,22 @@ class Instrument(metaclass=ABCMeta):
     each of the Tasks that requires special configuration.
     """
 
+    policyName = None
+    """Instrument specific name to use when locating a policy or configuration
+    file in the file system."""
+
+    obsDataPackage = None
+    """Name of the package containing the text curated calibration files.
+    Usually a obs _data package.  If `None` no curated calibration files
+    will be read. (`str`)"""
+
+    standardCuratedDatasetTypes = ("defects", "qe_curve")
+    """The dataset types expected to be obtained from the obsDataPackage.
+    These dataset types are all required to have standard definitions and
+    must be known to the base class.  Clearing this list will prevent
+    any of these calibrations from being stored.
+    """
+
     @property
     @abstractmethod
     def filterDefinitions(self):
@@ -53,6 +80,7 @@ class Instrument(metaclass=ABCMeta):
     def __init__(self, *args, **kwargs):
         self.filterDefinitions.reset()
         self.filterDefinitions.defineFilters()
+        self._obsDataPackageDir = None
 
     @classmethod
     @abstractmethod
@@ -74,6 +102,16 @@ class Instrument(metaclass=ABCMeta):
         `Registry`.
         """
         raise NotImplementedError()
+
+    @property
+    def obsDataPackageDir(self):
+        if self.obsDataPackage is None:
+            return None
+        if self._obsDataPackageDir is None:
+            # Defer any problems with locating the package until
+            # we need to find it.
+            self._obsDataPackageDir = getPackageDir(self.obsDataPackage)
+        return self._obsDataPackageDir
 
     def _registerFilters(self, registry):
         """Register the physical and abstract filter Dimension relationships.
@@ -140,6 +178,103 @@ class Instrument(metaclass=ABCMeta):
             path = os.path.join(root, f"{name}.py")
             if os.path.exists(path):
                 config.load(path)
+
+    def writeStandardTextCuratedCalibrations(self, butler):
+        """Write the set of standardized curated text calibrations to
+        the repository.
+
+        Expected to be called from an instrument subclass
+        ``writeCuratedCalibrations`` implementation.
+
+        Parameters
+        ----------
+        butler : `lsst.daf.butler.Butler`
+            Butler to receive these calibration datasets.
+        """
+
+        for datasetTypeName in self.standardCuratedDatasetTypes:
+            # We need to define the dataset types.
+            if datasetTypeName not in StandardCuratedCalibrationDatasetTypes:
+                raise ValueError(f"DatasetType {datasetTypeName} not in understood list"
+                                 f" [{'.'.join(StandardCuratedCalibrationDatasetTypes)}]")
+            definition = StandardCuratedCalibrationDatasetTypes[datasetTypeName]
+            datasetType = DatasetType(datasetTypeName,
+                                      universe=butler.registry.dimensions,
+                                      **definition)
+            self._writeSpecificCuratedCalibrationDatasets(butler, datasetType)
+
+    def _writeSpecificCuratedCalibrationDatasets(self, butler, datasetType):
+        """Write standardized curated calibration datasets for this specific
+        dataset type from an obs data package.
+
+        Parameters
+        ----------
+        butler : `lsst.daf.butler.Butler`
+            Gen3 butler in which to put the calibrations.
+        datasetType : `lsst.daf.butler.DatasetType`
+            Dataset type to be put.
+
+        Notes
+        -----
+        This method scans the location defined in the ``obsDataPackageDir``
+        class attribute for curated calibrations corresponding to the
+        supplied dataset type.  The directory name in the data package much
+        match the name of the dataset type. They are assumed to use the
+        standard layout and can be read by
+        `~lsst.pipe.tasks.read_curated_calibs.read_all` and provide standard
+        metadata.
+        """
+        if self.obsDataPackageDir is None:
+            # if there is no data package then there can't be datasets
+            return
+
+        calibPath = os.path.join(self.obsDataPackageDir, self.policyName,
+                                 datasetType.name)
+
+        if not os.path.exists(calibPath):
+            return
+
+        # Register the dataset type
+        butler.registry.registerDatasetType(datasetType)
+
+        # obs_base can't depend on pipe_tasks but concrete obs packages
+        # can -- we therefore have to defer import
+        from lsst.pipe.tasks.read_curated_calibs import read_all
+
+        camera = self.getCamera()
+        calibsDict = read_all(calibPath, camera)[0]  # second return is calib type
+        endOfTime = TIMESPAN_MAX
+        dimensionRecords = []
+        datasetRecords = []
+        for det in calibsDict:
+            times = sorted([k for k in calibsDict[det]])
+            calibs = [calibsDict[det][time] for time in times]
+            times = [astropy.time.Time(t, format="datetime", scale="utc") for t in times]
+            times += [endOfTime]
+            for calib, beginTime, endTime in zip(calibs, times[:-1], times[1:]):
+                md = calib.getMetadata()
+                calibrationLabel = f"{datasetType.name}/{md['CALIBDATE']}/{md['DETECTOR']}"
+                dataId = DataCoordinate.standardize(
+                    universe=butler.registry.dimensions,
+                    instrument=self.getName(),
+                    calibration_label=calibrationLabel,
+                    detector=md["DETECTOR"],
+                )
+                datasetRecords.append((calib, dataId))
+                dimensionRecords.append({
+                    "instrument": self.getName(),
+                    "name": calibrationLabel,
+                    "datetime_begin": beginTime,
+                    "datetime_end": endTime,
+                })
+
+        # Second loop actually does the inserts and filesystem writes.
+        with butler.transaction():
+            butler.registry.insertDimensionData("calibration_label", *dimensionRecords)
+            # TODO: vectorize these puts, once butler APIs for that become
+            # available.
+            for calib, dataId in datasetRecords:
+                butler.put(calib, datasetType, dataId)
 
 
 def makeExposureRecordFromObsInfo(obsInfo, universe):
