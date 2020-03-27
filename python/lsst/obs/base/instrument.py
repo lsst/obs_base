@@ -218,7 +218,7 @@ class Instrument(metaclass=ABCMeta):
         -----
         This method scans the location defined in the ``obsDataPackageDir``
         class attribute for curated calibrations corresponding to the
-        supplied dataset type.  The directory name in the data package much
+        supplied dataset type.  The directory name in the data package must
         match the name of the dataset type. They are assumed to use the
         standard layout and can be read by
         `~lsst.pipe.tasks.read_curated_calibs.read_all` and provide standard
