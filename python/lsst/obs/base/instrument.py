@@ -30,7 +30,7 @@ from lsst.daf.butler import TIMESPAN_MIN, TIMESPAN_MAX, DatasetType, DataCoordin
 from lsst.utils import getPackageDir
 
 # To be a standard text curated calibration means that we use a
-# standard definition for the corresponding DatasetType
+# standard definition for the corresponding DatasetType.
 StandardCuratedCalibrationDatasetTypes = {
     "defects": {"dimensions": ("instrument", "detector", "calibration_label"),
                 "storageClass": "Defects"},
@@ -62,11 +62,13 @@ class Instrument(metaclass=ABCMeta):
     Usually a obs _data package.  If `None` no curated calibration files
     will be read. (`str`)"""
 
-    standardCuratedDatasetTypes = ("defects", "qe_curve")
+    standardCuratedDatasetTypes = tuple(StandardCuratedCalibrationDatasetTypes)
     """The dataset types expected to be obtained from the obsDataPackage.
     These dataset types are all required to have standard definitions and
     must be known to the base class.  Clearing this list will prevent
-    any of these calibrations from being stored.
+    any of these calibrations from being stored. If a dataset type is not
+    known to a specific instrument it can still be included in this list
+    since the data package is the source of truth.
     """
 
     @property
