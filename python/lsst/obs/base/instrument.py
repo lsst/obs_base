@@ -153,15 +153,22 @@ class Instrument(metaclass=ABCMeta):
         """
         raise NotImplementedError()
 
-    @abstractmethod
     def writeCuratedCalibrations(self, butler):
         """Write human-curated calibration Datasets to the given Butler with
         the appropriate validity ranges.
 
-        This is a temporary API that should go away once obs_ packages have
-        a standardized approach to this problem.
+        Parameters
+        ----------
+        butler : `lsst.daf.butler.Butler`
+            Butler to use to store these calibrations.
+
+        Notes
+        -----
+        Expected to be called from subclasses.  The base method calls
+        ``writeCameraGeom`` and ``writeStandardTextCuratedCalibrations``.
         """
-        raise NotImplementedError()
+        self.writeCameraGeom(butler)
+        self.writeStandardTextCuratedCalibrations(butler)
 
     def applyConfigOverrides(self, name, config):
         """Apply instrument-specific overrides for a task config.
