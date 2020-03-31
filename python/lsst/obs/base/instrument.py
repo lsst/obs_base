@@ -46,7 +46,7 @@ class Instrument(metaclass=ABCMeta):
     arguments.
     """
 
-    configPaths = []
+    configPaths = ()
     """Paths to config files to read for specific Tasks.
 
     The paths in this list should contain files of the form `task.py`, for
