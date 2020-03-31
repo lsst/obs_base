@@ -56,6 +56,11 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     RawIngestTask = lsst.obs.base.RawIngestTask
     """The task to use in the Ingest test."""
 
+    curatedCalibrationDatasetTypes = None
+    """List or tuple of Datasets types that should be present after calling
+    writeCuratedCalibrations. If `None` writeCuratedCalibrations will
+    not be called and the test will be skipped."""
+
     def setUp(self):
         # Use a temporary working directory
         self.root = tempfile.mkdtemp(dir=self.ingestDir)
@@ -154,3 +159,17 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         self.runIngest()
         with self.assertRaises(Exception):
             self.runIngest()
+
+    def testWriteCuratedCalibrations(self):
+        """Test that we can ingest the curated calibrations"""
+        if self.curatedCalibrationDatasetTypes is None:
+            raise unittest.SkipTest("Class requests disabling of writeCuratedCalibrations test")
+
+        self.instrument.writeCuratedCalibrations(self.butler)
+
+        dataId = {"instrument": self.instrument.getName()}
+        for datasetTypeName in self.curatedCalibrationDatasetTypes:
+            with self.subTest(dtype=datasetTypeName, dataId=dataId):
+                datasets = list(self.butler.registry.queryDatasets(datasetTypeName, collections=...,
+                                                                   dataId=dataId))
+                self.assertGreater(len(datasets), 0, f"Checking {datasetTypeName}")
