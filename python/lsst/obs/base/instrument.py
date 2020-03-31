@@ -192,9 +192,6 @@ class Instrument(metaclass=ABCMeta):
         """Write the default camera geometry to the butler repository
         with an infinite validity range.
 
-        Expected to be called from an instrument subclass
-        ``writeCuratedCalibrations`` implementation.
-
         Parameters
         ----------
         butler : `lsst.daf.butler.Butler`
@@ -211,9 +208,6 @@ class Instrument(metaclass=ABCMeta):
     def writeStandardTextCuratedCalibrations(self, butler):
         """Write the set of standardized curated text calibrations to
         the repository.
-
-        Expected to be called from an instrument subclass
-        ``writeCuratedCalibrations`` implementation.
 
         Parameters
         ----------
