@@ -159,14 +159,6 @@ dcrCoadd_calexp:
     python: lsst.afw.image.ExposureF
     template: dcrCoadd-results/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s/calexp-%(filter)s-%(tract)d-%(patch)s.fits
     level: None
-dcrCoadd_directWarp:
-    description: "An image which has been warped so it can be included in a dcrCoaddd."
-    template:    ''
-    python:      lsst.afw.image.ExposureF
-    persistable: ExposureF
-    storage:     FitsStorage
-    level:       Skytile
-    tables:      'raw'
 dcrCoadd_nImage:
     description: "The number of input images per pixel in a dcrCoadd, per patch and subfilter."
     persistable: ImageU
