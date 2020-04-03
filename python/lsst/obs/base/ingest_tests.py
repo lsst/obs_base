@@ -109,8 +109,20 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         for dataId in self.dataIds:
             exposure = self.butler.get("raw", dataId)
             metadata = self.butler.get("raw.metadata", dataId)
-            # only check the metadata, not the images, to speed up tests
             self.assertEqual(metadata.toDict(), exposure.getMetadata().toDict())
+
+            # Since components follow a different code path we check that
+            # WCS match and also we check that at least the shape
+            # of the image is the same (rather than doing per-pixel equality)
+            # Check the observation type before trying to check WCS
+            obsType = self.butler.registry.expandDataId(dataId).records["exposure"].observation_type
+            if obsType == "science":
+                wcs = self.butler.get("raw.wcs", dataId)
+                self.assertEqual(wcs, exposure.getWcs())
+
+            rawImage = self.butler.get("raw.image", dataId)
+            self.assertEqual(rawImage.getBBox(), exposure.getBBox())
+
             self.checkRepo(files=files)
 
     def checkRepo(self, files=None):
