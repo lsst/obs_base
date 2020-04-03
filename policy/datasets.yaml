@@ -1409,21 +1409,21 @@ linearizePolynomial:
     description: "General polynomial coefficients for linearizer from MeasurePhotonTransferCurveTask"
     persistable: ignored
     python: lsst.ip.isr.linearize.Linearizer
-    storage: YamlStorage
+    storage: FitsCatalogStorage
     tables: 'raw'
     template: ''
 linearizeLut:
     description: "Lookup table linearizer from MeasurePhotonTransferCurveTask"
     persistable: ignored
     python: lsst.ip.isr.linearize.Linearizer
-    storage: YamlStorage
+    storage: FitsCatalogStorage
     tables: 'raw'
     template: ''
 linearizeSquared:
     description: "Quadratic polynomial coefficients for linearizer from MeasurePhotonTransferCurveTask"
     persistable: ignored
     python: lsst.ip.isr.linearize.Linearizer
-    storage: YamlStorage
+    storage: FitsCatalogStorage
     tables: 'raw'
     template: ''
 cpPipePlotRoot:
