@@ -271,19 +271,26 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
         """
         return lsst.afw.image.Filter(self.observationInfo.physical_filter)
 
-    def readImageComponent(self, component):
-        """Read the image, mask, or variance component of an Exposure.
+    def readComponent(self, component, parameters=None):
+        """Read a component held by the Exposure.
 
         Parameters
         ----------
         component : `str`, optional
-            Component to read from the file.  Always one of "image",
-            "variance", or "mask".
+            Component to read from the file.
+        parameters : `dict`, optional
+            If specified, a dictionary of slicing parameters that
+            overrides those in ``fileDescriptor``.
 
         Returns
         -------
-        image : `~lsst.afw.image.Image` or `~lsst.afw.image.Mask`
-            In-memory image, variance, or mask component.
+        obj : component-dependent
+            In-memory component object.
+
+        Raises
+        ------
+        KeyError
+            Raised if the requested component cannot be handled.
         """
         if component == "image":
             return self.readImage()
@@ -291,26 +298,7 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
             return self.readMask()
         elif component == "variance":
             return self.readVariance()
-
-    def readInfoComponent(self, component):
-        """Read a component held by ExposureInfo.
-
-        The implementation provided by FitsRawFormatter provides only "wcs"
-        and "visitInfo".  When adding support for other components, subclasses
-        should delegate to `super()` for those and update `readFull` with
-        similar logic.
-
-        Parameters
-        ----------
-        component : `str`, optional
-            Component to read from the file.
-
-        Returns
-        -------
-        obj : component-dependent
-            In-memory component object.
-        """
-        if component == "filter":
+        elif component == "filter":
             return self.makeFilter()
         elif component == "visitInfo":
             return self.makeVisitInfo()
