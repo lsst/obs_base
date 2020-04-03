@@ -19,8 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-__all__ = ("Instrument", "makeExposureRecordFromObsInfo", "makeVisitRecordFromObsInfo",
-           "addUnboundedCalibrationLabel", "loadCamera")
+__all__ = ("Instrument", "makeExposureRecordFromObsInfo", "addUnboundedCalibrationLabel", "loadCamera")
 
 import os.path
 from abc import ABCMeta, abstractmethod
@@ -371,40 +370,6 @@ def makeExposureRecordFromObsInfo(obsInfo, universe):
         "dark_time": obsInfo.dark_time.to_value("s"),
         "observation_type": obsInfo.observation_type,
         "physical_filter": obsInfo.physical_filter,
-        "visit": obsInfo.visit_id,
-    })
-
-
-def makeVisitRecordFromObsInfo(obsInfo, universe, *, region=None):
-    """Construct a visit `DimensionRecord` from
-    `astro_metadata_translator.ObservationInfo`.
-
-    Parameters
-    ----------
-    obsInfo : `astro_metadata_translator.ObservationInfo`
-        A `~astro_metadata_translator.ObservationInfo` object corresponding to
-        the exposure.
-    universe : `DimensionUniverse`
-        Set of all known dimensions.
-    region : `lsst.sphgeom.Region`, optional
-        Spatial region for the visit.
-
-    Returns
-    -------
-    record : `DimensionRecord`
-        A record containing visit metadata, suitable for insertion into a
-        `Registry`.
-    """
-    dimension = universe["visit"]
-    return dimension.RecordClass.fromDict({
-        "instrument": obsInfo.instrument,
-        "id": obsInfo.visit_id,
-        "name": obsInfo.observation_id,
-        "datetime_begin": obsInfo.datetime_begin,
-        "datetime_end": obsInfo.datetime_end,
-        "exposure_time": obsInfo.exposure_time.to_value("s"),
-        "physical_filter": obsInfo.physical_filter,
-        "region": region,
     })
 
 

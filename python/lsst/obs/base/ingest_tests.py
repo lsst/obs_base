@@ -72,8 +72,6 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
         # Make a default config for test methods to play with
         self.config = self.RawIngestTask.ConfigClass()
-        self.config.instrument = \
-            f"{self.instrument.__class__.__module__}.{self.instrument.__class__.__name__}"
 
     def tearDown(self):
         if os.path.exists(self.root):

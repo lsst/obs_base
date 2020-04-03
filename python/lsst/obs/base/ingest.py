@@ -23,14 +23,12 @@
 __all__ = ("RawIngestTask", "RawIngestConfig", "makeTransferChoiceField")
 
 import os.path
-import itertools
-from dataclasses import dataclass
-from typing import List, Dict, Iterator, Iterable, Type, Optional, Any, Mapping
+from dataclasses import dataclass, InitVar
+from typing import List, Iterator, Iterable, Type, Optional, Any
 from collections import defaultdict
 from multiprocessing import Pool
 
 from astro_metadata_translator import ObservationInfo, fix_header, merge_headers
-from lsst.utils import doImport
 from lsst.afw.fits import readMetadata
 from lsst.daf.butler import (
     Butler,
@@ -38,20 +36,19 @@ from lsst.daf.butler import (
     DatasetRef,
     DatasetType,
     DimensionRecord,
+    DimensionUniverse,
     FileDataset,
 )
-from lsst.geom import Box2D
-from lsst.pex.config import Config, Field, ChoiceField
+from lsst.pex.config import Config, ChoiceField
 from lsst.pipe.base import Task
-from lsst.sphgeom import ConvexPolygon
 
-from .instrument import makeExposureRecordFromObsInfo, makeVisitRecordFromObsInfo
+from .instrument import Instrument, makeExposureRecordFromObsInfo
 from .fitsRawFormatterBase import FitsRawFormatterBase
 
 
 @dataclass
 class RawFileDatasetInfo:
-    """Structure that hold information about a single dataset within a
+    """Structure that holds information about a single dataset within a
     raw file.
     """
 
@@ -65,11 +62,6 @@ class RawFileDatasetInfo:
     obsInfo: ObservationInfo
     """Standardized observation metadata extracted directly from the file
     headers (`astro_metadata_translator.ObservationInfo`).
-    """
-
-    region: ConvexPolygon
-    """Region on the sky covered by this file, possibly with padding
-    (`lsst.sphgeom.ConvexPolygon`).
     """
 
 
@@ -91,8 +83,8 @@ class RawFileData:
     """
 
     FormatterClass: Type[FitsRawFormatterBase]
-    """Formatter class that should be used to ingest this file and compute
-    a spatial region for it (`type`; as subclass of `FitsRawFormatterBase`).
+    """Formatter class that should be used to ingest this file (`type`; as
+    subclass of `FitsRawFormatterBase`).
     """
 
 
@@ -113,15 +105,19 @@ class RawExposureData:
     """List of structures containing file-level information.
     """
 
-    records: Optional[Dict[str, List[DimensionRecord]]] = None
-    """Dictionary containing `DimensionRecord` instances that must be inserted
-    into the `~lsst.daf.butler.Registry` prior to file-level ingest (`dict`).
-
-    Keys are the names of dimension elements ("exposure" and optionally "visit"
-    and "visit_detector_region"), while values are lists of `DimensionRecord`.
-
-    May be `None` during some ingest steps.
+    universe: InitVar[DimensionUniverse]
+    """Set of all known dimensions.
     """
+
+    record: Optional[DimensionRecord] = None
+    """The exposure `DimensionRecord` that must be inserted into the
+    `~lsst.daf.butler.Registry` prior to file-level ingest (`DimensionRecord`).
+    """
+
+    def __post_init__(self, universe: DimensionUniverse):
+        # We don't care which file or dataset we read metadata from, because
+        # we're assuming they'll all be the same; just use the first ones.
+        self.record = makeExposureRecordFromObsInfo(self.files[0].datasets[0].obsInfo, universe)
 
 
 def makeTransferChoiceField(doc="How to transfer files (None for no transfer).", default=None):
@@ -159,44 +155,27 @@ def makeTransferChoiceField(doc="How to transfer files (None for no transfer).",
 
 class RawIngestConfig(Config):
     transfer = makeTransferChoiceField()
-    padRegionAmount = Field(
-        dtype=int,
-        default=0,
-        doc="Pad an image with specified number of pixels before calculating region"
-    )
-    instrument = Field(
-        doc=("Fully-qualified Python name of the `Instrument` subclass to "
-             "associate with all raws."),
-        dtype=str,
-        optional=False,
-        default=None,
-    )
 
 
 class RawIngestTask(Task):
     """Driver Task for ingesting raw data into Gen3 Butler repositories.
-
-    This Task is intended to be runnable from the command-line, but it doesn't
-    meet the other requirements of CmdLineTask or PipelineTask, and wouldn't
-    gain much from being one.  It also wouldn't really be appropriate as a
-    subtask of a CmdLineTask or PipelineTask; it's a Task essentially just to
-    leverage the logging and configurability functionality that provides.
-
-    Each instance of `RawIngestTask` writes to the same Butler.  Each
-    invocation of `RawIngestTask.run` ingests a list of files.
 
     Parameters
     ----------
     config : `RawIngestConfig`
         Configuration for the task.
     butler : `~lsst.daf.butler.Butler`
-        Butler instance.  Ingested Datasets will be created as part of
-        ``butler.run`` and associated with its Collection.
-    kwds
+        Writeable butler instance, with ``butler.run`` set to the appropriate
+        `~lsst.daf.butler.CollectionType.RUN` collection for these raw
+        datasets.
+    **kwargs
         Additional keyword arguments are forwarded to the `lsst.pipe.base.Task`
         constructor.
 
-    Other keyword arguments are forwarded to the Task base class constructor.
+    Notes
+    -----
+    Each instance of `RawIngestTask` writes to the same Butler.  Each
+    invocation of `RawIngestTask.run` ingests a list of files.
     """
 
     ConfigClass = RawIngestConfig
@@ -204,22 +183,16 @@ class RawIngestTask(Task):
     _DefaultName = "ingest"
 
     def getDatasetType(self):
-        """Return the DatasetType of the Datasets ingested by this Task.
+        """Return the DatasetType of the datasets ingested by this Task.
         """
         return DatasetType("raw", ("instrument", "detector", "exposure"), "Exposure",
                            universe=self.butler.registry.dimensions)
 
-    def __init__(self, config: Optional[RawIngestConfig] = None, *, butler: Butler, **kwds: Any):
+    def __init__(self, config: Optional[RawIngestConfig] = None, *, butler: Butler, **kwargs: Any):
         config.validate()  # Not a CmdlineTask nor PipelineTask, so have to validate the config here.
-        super().__init__(config, **kwds)
+        super().__init__(config, **kwargs)
         self.butler = butler
         self.universe = self.butler.registry.dimensions
-        self.instrument = doImport(self.config.instrument)()
-        # For now, we get a nominal Camera from the Instrument.
-        # In the future, we may want to load one from a Butler calibration
-        # collection that's appropriate for the observation timestamp of
-        # the exposure.
-        self.camera = self.instrument.getCamera()
         self.datasetType = self.getDatasetType()
 
     def extractMetadata(self, filename: str) -> RawFileData:
@@ -254,7 +227,8 @@ class RawIngestTask(Task):
         # The data model currently assumes that whilst multiple datasets
         # can be associated with a single file, they must all share the
         # same formatter.
-        FormatterClass = self.instrument.getRawFormatter(datasets[0].dataId)
+        instrument = Instrument.fromName(datasets[0].dataId["instrument"], self.butler.registry)
+        FormatterClass = instrument.getRawFormatter(datasets[0].dataId)
 
         return RawFileData(datasets=datasets, filename=filename,
                            FormatterClass=FormatterClass)
@@ -272,54 +246,15 @@ class RawIngestTask(Task):
         Returns
         -------
         dataset : `RawFileDatasetInfo`
-            The region, dataId, and observation information associated with
-            this dataset.
+            The dataId, and observation information associated with this
+            dataset.
         """
         obsInfo = ObservationInfo(header)
         dataId = DataCoordinate.standardize(instrument=obsInfo.instrument,
                                             exposure=obsInfo.exposure_id,
                                             detector=obsInfo.detector_num,
                                             universe=self.universe)
-        if obsInfo.instrument != self.instrument.getName():
-            raise ValueError(f"Incorrect instrument (expected {self.instrument.getName()}, "
-                             f"got {obsInfo.instrument}) for file {filename}.")
-
-        FormatterClass = self.instrument.getRawFormatter(dataId)
-        region = self._calculate_region_from_dataset_metadata(obsInfo, header, FormatterClass)
-        return RawFileDatasetInfo(obsInfo=obsInfo, region=region, dataId=dataId)
-
-    def _calculate_region_from_dataset_metadata(self, obsInfo, header, FormatterClass):
-        """Calculate the sky region covered by the supplied observation
-        information.
-
-        Parameters
-        ----------
-        obsInfo : `~astro_metadata_translator.ObservationInfo`
-            Summary information of this dataset.
-        header : `Mapping`
-            Header from the dataset.
-        FormatterClass: `type` as subclass of  `FitsRawFormatterBase`
-            Formatter class that should be used to compute the spatial region.
-
-        Returns
-        -------
-        region : `lsst.sphgeom.ConvexPolygon`
-            Region of sky covered by this observation.
-        """
-        if obsInfo.visit_id is not None and obsInfo.tracking_radec is not None:
-            formatter = FormatterClass.fromMetadata(metadata=header, obsInfo=obsInfo)
-            visitInfo = formatter.makeVisitInfo()
-            detector = self.camera[obsInfo.detector_num]
-            wcs = formatter.makeWcs(visitInfo, detector)
-            pixBox = Box2D(detector.getBBox())
-            if self.config.padRegionAmount > 0:
-                pixBox.grow(self.config.padRegionAmount)
-            pixCorners = pixBox.getCorners()
-            sphCorners = [wcs.pixelToSky(point).getVector() for point in pixCorners]
-            region = ConvexPolygon(sphCorners)
-        else:
-            region = None
-        return region
+        return RawFileDatasetInfo(obsInfo=obsInfo, dataId=dataId)
 
     def groupByExposure(self, files: Iterable[RawFileData]) -> List[RawExposureData]:
         """Group an iterable of `RawFileData` by exposure.
@@ -333,8 +268,7 @@ class RawIngestTask(Task):
         -------
         exposures : `list` of `RawExposureData`
             A list of structures that group the file-level information by
-            exposure.  The `RawExposureData.records` attributes of elements
-            will be `None`, but all other fields will be populated.  The
+            exposure. All fields will be populated.  The
             `RawExposureData.dataId` attributes will be minimal (unexpanded)
             `DataCoordinate` instances.
         """
@@ -344,63 +278,8 @@ class RawIngestTask(Task):
             # Assume that the first dataset is representative for the file
             byExposure[f.datasets[0].dataId.subset(exposureDimensions)].append(f)
 
-        return [RawExposureData(dataId=dataId, files=exposureFiles)
+        return [RawExposureData(dataId=dataId, files=exposureFiles, universe=self.universe)
                 for dataId, exposureFiles in byExposure.items()]
-
-    def collectDimensionRecords(self, exposure: RawExposureData) -> RawExposureData:
-        """Collect the `DimensionRecord` instances that must be inserted into
-        the `~lsst.daf.butler.Registry` before an exposure's raw files may be.
-
-        Parameters
-        ----------
-        exposure : `RawExposureData`
-            A structure containing information about the exposure to be
-            ingested.  Should be considered consumed upon return.
-
-        Returns
-        -------
-        exposure : `RawExposureData`
-            An updated version of the input structure, with
-            `RawExposureData.records` populated.
-        """
-        firstFile = exposure.files[0]
-        firstDataset = firstFile.datasets[0]
-        VisitDetectorRegionRecordClass = self.universe["visit_detector_region"].RecordClass
-        exposure.records = {
-            "exposure": [makeExposureRecordFromObsInfo(firstDataset.obsInfo, self.universe)],
-        }
-        if firstDataset.obsInfo.visit_id is not None:
-            exposure.records["visit_detector_region"] = []
-            visitVertices = []
-            for file in exposure.files:
-                for dataset in file.datasets:
-                    if dataset.obsInfo.visit_id != firstDataset.obsInfo.visit_id:
-                        raise ValueError(f"Inconsistent visit/exposure relationship for "
-                                         f"exposure {firstDataset.obsInfo.exposure_id} between "
-                                         f"{file.filename} and {firstFile.filename}: "
-                                         f"{dataset.obsInfo.visit_id} != {firstDataset.obsInfo.visit_id}.")
-                    if dataset.region is None:
-                        self.log.warn("No region found for visit=%s, detector=%s.", dataset.obsInfo.visit_id,
-                                      dataset.obsInfo.detector_num)
-                        continue
-                    visitVertices.extend(dataset.region.getVertices())
-                    exposure.records["visit_detector_region"].append(
-                        VisitDetectorRegionRecordClass.fromDict({
-                            "instrument": dataset.obsInfo.instrument,
-                            "visit": dataset.obsInfo.visit_id,
-                            "detector": dataset.obsInfo.detector_num,
-                            "region": dataset.region,
-                        })
-                    )
-            if visitVertices:
-                visitRegion = ConvexPolygon(visitVertices)
-            else:
-                self.log.warn("No region found for visit=%s.", firstDataset.obsInfo.visit_id)
-                visitRegion = None
-            exposure.records["visit"] = [
-                makeVisitRecordFromObsInfo(firstDataset.obsInfo, self.universe, region=visitRegion)
-            ]
-        return exposure
 
     def expandDataIds(self, data: RawExposureData) -> RawExposureData:
         """Expand the data IDs associated with a raw exposure to include
@@ -420,7 +299,6 @@ class RawIngestTask(Task):
             `RawExposureData.dataId` and nested `RawFileData.dataId` attributes
             containing `~lsst.daf.butler.ExpandedDataCoordinate` instances.
         """
-        hasVisit = "visit" in data.records
         # We start by expanded the exposure-level data ID; we won't use that
         # directly in file ingest, but this lets us do some database lookups
         # once per exposure instead of once per file later.
@@ -431,24 +309,21 @@ class RawIngestTask(Task):
             # records to be retrieved from the database here (though the
             # Registry may cache them so there isn't a lookup every time).
             records={
-                "exposure": data.records["exposure"][0],
-                "visit": data.records["visit"][0] if hasVisit else None,
+                "exposure": data.record,
             }
         )
         # Now we expand the per-file (exposure+detector) data IDs.  This time
         # we pass in the records we just retrieved from the exposure data ID
-        # expansion as well as the visit_detector_region record, if there is
-        # one.
-        vdrRecords = data.records["visit_detector_region"] if hasVisit else itertools.repeat(None)
-        for file, vdrRecord in zip(data.files, vdrRecords):
+        # expansion.
+        for file in data.files:
             for dataset in file.datasets:
                 dataset.dataId = self.butler.registry.expandDataId(
                     dataset.dataId,
-                    records=dict(data.dataId.records, visit_detector_region=vdrRecord)
+                    records=dict(data.dataId.records)
                 )
         return data
 
-    def prep(self, files, pool: Optional[Pool] = None, processes: int = 1) -> Iterator[RawExposureData]:
+    def prep(self, files, *, pool: Optional[Pool] = None, processes: int = 1) -> Iterator[RawExposureData]:
         """Perform all ingest preprocessing steps that do not involve actually
         modifying the database.
 
@@ -481,19 +356,13 @@ class RawIngestTask(Task):
         # step.
         exposureData: List[RawExposureData] = self.groupByExposure(fileData)
 
-        # The next few operations operate on RawExposureData instances (one at
-        # a time) in-place and then return the modified instance.  We call them
-        # as pass-throughs instead of relying on the arguments we pass in to
+        # The next operation operates on RawExposureData instances (one at
+        # a time) in-place and then returns the modified instance.  We call it
+        # as a pass-through instead of relying on the arguments we pass in to
         # have been modified because in the parallel case those arguments are
         # going to be pickled and unpickled, and I'm not certain
         # multiprocessing is careful enough with that for output arguments to
-        # work.  We use the same variable names to reflect the fact that we
-        # consider the arguments to have been consumed/invalidated.
-
-        # Extract DimensionRecords from the metadata that will need to be
-        # inserted into the Registry before the raw datasets themselves are
-        # ingested.
-        exposureData: Iterator[RawExposureData] = mapFunc(self.collectDimensionRecords, exposureData)
+        # work.
 
         # Expand the data IDs to include all dimension metadata; we need this
         # because we may need to generate path templates that rely on that
@@ -504,40 +373,7 @@ class RawIngestTask(Task):
         # down, it'll happen here.
         return mapFunc(self.expandDataIds, exposureData)
 
-    def insertDimensionData(self, records: Mapping[str, List[DimensionRecord]]):
-        """Insert dimension records for one or more exposures.
-
-        Parameters
-        ----------
-        records : `dict` mapping `str` to `list`
-            Dimension records to be inserted, organized as a mapping from
-            dimension name to a list of records for that dimension.  This
-            may be a single `RawExposureData.records` dict, or an aggregate
-            for multiple exposures created by concatenating the value lists
-            of those dictionaries.
-
-        Returns
-        -------
-        refs : `list` of `lsst.daf.butler.DatasetRef`
-            Dataset references for ingested raws.
-        """
-        # TODO: This currently assumes that either duplicate inserts of
-        # visit records are ignored, or there is exactly one visit per
-        # exposure.  I expect us to switch up the visit-exposure
-        # relationship and hence rewrite some of this code before that
-        # becomes a practical problem.
-        # Iterate over dimensions explicitly to order for foreign key
-        # relationships.
-        for dimension in ("visit", "exposure", "visit_detector_region"):
-            recordsForDimension = records.get(dimension)
-            if recordsForDimension:
-                # TODO: once Registry has options to ignore or replace
-                # existing dimension records with the same primary keys
-                # instead of aborting on conflicts, add configuration
-                # options and logic to use them.
-                self.butler.registry.insertDimensionData(dimension, *recordsForDimension)
-
-    def ingestExposureDatasets(self, exposure: RawExposureData, butler: Optional[Butler] = None
+    def ingestExposureDatasets(self, exposure: RawExposureData, *, run: Optional[str] = None
                                ) -> List[DatasetRef]:
         """Ingest all raw files in one exposure.
 
@@ -547,25 +383,23 @@ class RawIngestTask(Task):
             A structure containing information about the exposure to be
             ingested.  Must have `RawExposureData.records` populated and all
             data ID attributes expanded.
-        butler : `lsst.daf.butler.Butler`, optional
-            Butler to use for ingest.  If not provided, ``self.butler`` will
-            be used.
+        run : `str`, optional
+            Name of a RUN-type collection to write to, overriding
+            ``self.butler.run``.
 
         Returns
         -------
         refs : `list` of `lsst.daf.butler.DatasetRef`
             Dataset references for ingested raws.
         """
-        if butler is None:
-            butler = self.butler
         datasets = [FileDataset(path=os.path.abspath(file.filename),
                                 refs=[DatasetRef(self.datasetType, d.dataId) for d in file.datasets],
                                 formatter=file.FormatterClass)
                     for file in exposure.files]
-        butler.ingest(*datasets, transfer=self.config.transfer)
+        self.butler.ingest(*datasets, transfer=self.config.transfer, run=run)
         return [ref for dataset in datasets for ref in dataset.refs]
 
-    def run(self, files, pool: Optional[Pool] = None, processes: int = 1):
+    def run(self, files, *, pool: Optional[Pool] = None, processes: int = 1, run: Optional[str] = None):
         """Ingest files into a Butler data repository.
 
         This creates any new exposure or visit Dimension entries needed to
@@ -584,6 +418,9 @@ class RawIngestTask(Task):
             operations.
         processes : `int`, optional
             The number of processes to use.  Ignored if ``pool`` is not `None`.
+        run : `str`, optional
+            Name of a RUN-type collection to write to, overriding
+            ``self.butler.run``.
 
         Returns
         -------
@@ -592,9 +429,12 @@ class RawIngestTask(Task):
 
         Notes
         -----
-        This method inserts all records (dimensions and datasets) for an
-        exposure within a transaction, guaranteeing that partial exposures
-        are never ingested.
+        This method inserts all datasets for an exposure within a transaction,
+        guaranteeing that partial exposures are never ingested.  The exposure
+        dimension record is inserted with `Registry.syncDimensionData` first
+        (in its own transaction), which inserts only if a record with the same
+        primary key does not already exist.  This allows different files within
+        the same exposure to be incremented in different runs.
         """
         exposureData = self.prep(files, pool=pool, processes=processes)
         # Up to this point, we haven't modified the data repository at all.
@@ -608,7 +448,7 @@ class RawIngestTask(Task):
         self.butler.registry.registerDatasetType(self.datasetType)
         refs = []
         for exposure in exposureData:
+            self.butler.registry.syncDimensionData("exposure", exposure.record)
             with self.butler.transaction():
-                self.insertDimensionData(exposure.records)
-                refs.extend(self.ingestExposureDatasets(exposure))
+                refs.extend(self.ingestExposureDatasets(exposure, run=run))
         return refs
