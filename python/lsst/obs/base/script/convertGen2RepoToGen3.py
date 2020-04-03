@@ -32,7 +32,7 @@ import lsst.utils
 
 from ..gen2to3 import (ConvertRepoTask, ConvertRepoSkyMapConfig,
                        Translator, ConstantKeyHandler, CopyKeyHandler,
-                       CalibKeyHandler)
+                       CalibKeyHandler, Rerun)
 
 
 def build_argparser():
@@ -50,7 +50,9 @@ def build_argparser():
     parser.add_argument("--skymapConfig", default=None,
                         help="Path to skymap config file defining the new gen3 skymap.")
     parser.add_argument("--calibs", default=None,
-                        help="Path to calibration repo; absolute, or relative to gen2root.")
+                        help="Path to the gen 2 calibration repo; absolute, or relative to gen2root.")
+    parser.add_argument("--reruns", default=[], nargs="*",
+                        help="List of gen 2 reruns to convert.")
     parser.add_argument("-v", "--verbose", action="store_const", dest="verbose",
                         default=lsst.log.Log.INFO, const=lsst.log.Log.DEBUG,
                         help="Set the log level to DEBUG.")
@@ -132,7 +134,7 @@ def configure_translators(instrument, calibFilterType, ccdKey="ccd"):
 
 def convert(gen2root, gen3root, instrumentClass, calibFilterType,
             skymapName=None, skymapConfig=None,
-            calibs=None, config=None):
+            calibs=None, reruns=[], config=None):
     """Convert the gen 2 Butler repo living at gen2root into a gen 3 repo
     living at gen3root.
 
@@ -156,6 +158,9 @@ def convert(gen2root, gen3root, instrumentClass, calibFilterType,
     calibs : `str`, optional
         Path to the gen2 calibration repository to be converted.
         If a relative path, it is assumed to be relative to ``gen2root``.
+    reruns : `list` [`str`], optional
+        List of reruns to convert. They will be placed in the
+        ``shared/INSTRUMENT/RERUN`` collection.
     config : `str`, optional
         Path to `lsst.obs.base.ConvertRepoConfig` configuration to load
         after all default/instrument configurations.
@@ -171,10 +176,14 @@ def convert(gen2root, gen3root, instrumentClass, calibFilterType,
     if skymapName is not None:
         convertRepoConfig.skyMaps[skymapName] = ConvertRepoSkyMapConfig()
         convertRepoConfig.skyMaps[skymapName].load(skymapConfig)
+        convertRepoConfig.rootSkyMapName = skymapName
     if config is not None:
         convertRepoConfig.load(config)
 
     configure_translators(instrument, calibFilterType, convertRepoConfig.ccdKey)
+
+    rerunsArg = [Rerun(rerun, runName=f"shared/{instrument.getName()}/{rerun}",
+                       chainName=f"shared/{instrument.getName()}", parents=[]) for rerun in reruns]
 
     # Allow a gen3 butler to be reused
     try:
@@ -186,7 +195,7 @@ def convert(gen2root, gen3root, instrumentClass, calibFilterType,
     convertRepoTask = ConvertRepoTask(config=convertRepoConfig, butler3=butler)
     convertRepoTask.run(
         root=gen2root,
-        reruns=[],
+        reruns=rerunsArg,
         calibs=None if calibs is None else {calibs: f"calib/{instrument.getName()}"}
     )
 
@@ -206,4 +215,4 @@ def main():
 
     convert(args.gen2root, args.gen3root, args.instrumentClass, args.calibFilterType,
             skymapName=args.skymapName, skymapConfig=args.skymapConfig,
-            calibs=args.calibs, config=args.config)
+            calibs=args.calibs, reruns=args.reruns, config=args.config)
