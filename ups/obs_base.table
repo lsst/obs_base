@@ -12,3 +12,4 @@ setupOptional(skymap)
 
 envPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
 envPrepend(PATH, ${PRODUCT_DIR}/bin)
+envPrepend(DAF_BUTLER_PLUGINS, lsst.obs.base.cli.cmd)
