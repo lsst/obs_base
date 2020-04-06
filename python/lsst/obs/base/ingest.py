@@ -149,7 +149,9 @@ def makeTransferChoiceField(doc="How to transfer files (None for no transfer).",
                  "auto": "choice will depend on datastore",
                  "link": "hard link falling back to symbolic link",
                  "hardlink": "hard link",
-                 "symlink": "symbolic (soft) link"},
+                 "symlink": "symbolic (soft) link",
+                 "relsymlink": "relative symbolic link",
+                 },
         optional=True,
         default=default
     )
