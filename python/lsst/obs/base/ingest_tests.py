@@ -138,6 +138,10 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         """
         pass
 
+    def testLink(self):
+        self.config.transfer = "link"
+        self.runIngestTest()
+
     def testSymLink(self):
         self.config.transfer = "symlink"
         self.runIngestTest()

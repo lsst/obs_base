@@ -53,6 +53,9 @@ def build_argparser():
                         help="Path to the gen 2 calibration repo; absolute, or relative to gen2root.")
     parser.add_argument("--reruns", default=[], nargs="*",
                         help="List of gen 2 reruns to convert.")
+    parser.add_argument("--transferMode", default="auto",
+                        choices=["auto", "link", "symlink", "hardlink", "copy", "move"],
+                        help="Mode to use to transfer files into the new repository.")
     parser.add_argument("-v", "--verbose", action="store_const", dest="verbose",
                         default=lsst.log.Log.INFO, const=lsst.log.Log.DEBUG,
                         help="Set the log level to DEBUG.")
@@ -134,7 +137,7 @@ def configure_translators(instrument, calibFilterType, ccdKey="ccd"):
 
 def convert(gen2root, gen3root, instrumentClass, calibFilterType,
             skymapName=None, skymapConfig=None,
-            calibs=None, reruns=[], config=None):
+            calibs=None, reruns=[], config=None, transferMode="auto"):
     """Convert the gen 2 Butler repo living at gen2root into a gen 3 repo
     living at gen3root.
 
@@ -164,6 +167,8 @@ def convert(gen2root, gen3root, instrumentClass, calibFilterType,
     config : `str`, optional
         Path to `lsst.obs.base.ConvertRepoConfig` configuration to load
         after all default/instrument configurations.
+    transferMode : `str`, optional
+        Mode to use when transferring data into the gen3 repository.
     """
     # instantiate the correct instrument
     instrument = lsst.utils.doImport(instrumentClass)()
@@ -172,7 +177,7 @@ def convert(gen2root, gen3root, instrumentClass, calibFilterType,
     instrument.applyConfigOverrides(ConvertRepoTask._DefaultName, convertRepoConfig)
     if convertRepoConfig.raws.instrument is None:
         convertRepoConfig.raws.instrument = instrumentClass
-    convertRepoConfig.raws.transfer = "symlink"
+    convertRepoConfig.raws.transfer = transferMode
     if skymapName is not None:
         convertRepoConfig.skyMaps[skymapName] = ConvertRepoSkyMapConfig()
         convertRepoConfig.skyMaps[skymapName].load(skymapConfig)
@@ -215,4 +220,4 @@ def main():
 
     convert(args.gen2root, args.gen3root, args.instrumentClass, args.calibFilterType,
             skymapName=args.skymapName, skymapConfig=args.skymapConfig,
-            calibs=args.calibs, reruns=args.reruns, config=args.config)
+            calibs=args.calibs, reruns=args.reruns, config=args.config, transferMode=args.transferMode)
