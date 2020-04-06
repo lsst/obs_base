@@ -1439,3 +1439,8 @@ matchedVisitMetrics_config:
     storage: ConfigStorage
     python: lsst.validate.drp.matchedVisitMetricsTask.MatchedVisitMetricsConfig
     template: config/matchedVisitMetrics.py
+crosstalk:
+    persistable: ignored
+    storage: YamlStorage
+    python:
+    template: 'CALIB/crosstalk/crosstalk-det%(detector)03d.yaml'
