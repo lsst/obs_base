@@ -23,6 +23,7 @@ import unittest
 
 from lsst.obs.base import Instrument, FilterDefinitionCollection
 from lsst.obs.base.instrument_tests import InstrumentTests, InstrumentTestData
+from lsst.daf.butler.core.utils import getFullTypeName
 
 """Tests of the Instrument class.
 """
@@ -43,7 +44,7 @@ class DummyCam(Instrument):
         """Insert Instrument, physical_filter, and detector entries into a
         `Registry`.
         """
-        dataId = {"instrument": self.getName()}
+        dataId = {"instrument": self.getName(), "class_name": getFullTypeName(DummyCam)}
         registry.insertDimensionData("instrument", dataId)
         for f in ("dummy_g", "dummy_u"):
             registry.insertDimensionData("physical_filter",

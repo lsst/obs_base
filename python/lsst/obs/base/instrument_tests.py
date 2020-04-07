@@ -28,6 +28,7 @@ to get a functional test of an Instrument.
 import abc
 import dataclasses
 
+from lsst.obs.base import Instrument
 from lsst.daf.butler import Registry
 from lsst.daf.butler import ButlerConfig
 
@@ -96,3 +97,7 @@ class InstrumentTests(metaclass=abc.ABCMeta):
         physicalFilterDataIds = list(registry.queryDimensions(["physical_filter"]))
         filterNames = {dataId['physical_filter'] for dataId in physicalFilterDataIds}
         self.assertGreaterEqual(filterNames, self.data.physical_filters)
+
+        # Check that the instrument class can be retrieved
+        registeredInstrument = Instrument.fromName(self.instrument.getName(), registry)
+        self.assertEqual(type(registeredInstrument), type(self.instrument))
