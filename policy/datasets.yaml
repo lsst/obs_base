@@ -1443,4 +1443,4 @@ crosstalk:
     persistable: ignored
     storage: YamlStorage
     python:
-    template: 'CALIB/crosstalk/crosstalk-det%(detector)03d.yaml'
+    template: 
