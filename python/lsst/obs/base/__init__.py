@@ -31,3 +31,4 @@ from .makeRawVisitInfoViaObsInfo import *
 from .fitsRawFormatterBase import *
 from .utils import *
 from .ingest import *
+from .defineVisits import *
