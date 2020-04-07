@@ -54,7 +54,7 @@ def build_argparser():
     parser.add_argument("--reruns", default=[], nargs="*",
                         help="List of gen 2 reruns to convert.")
     parser.add_argument("--transferMode", default="auto",
-                        choices=["auto", "link", "symlink", "hardlink", "copy", "move"],
+                        choices=["auto", "link", "symlink", "hardlink", "copy", "move", "relsymlink"],
                         help="Mode to use to transfer files into the new repository.")
     parser.add_argument("-v", "--verbose", action="store_const", dest="verbose",
                         default=lsst.log.Log.INFO, const=lsst.log.Log.DEBUG,
