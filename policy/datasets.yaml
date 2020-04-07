@@ -1405,6 +1405,27 @@ photonTransferCurveDataset:
     storage: PickleStorage
     tables: 'raw'
     template: ''
+linearizePolynomial:
+    description: "General polynomial coefficients for linearizer from MeasurePhotonTransferCurveTask"
+    persistable: ignored
+    python: lsst.ip.isr.linearize.Linearizer
+    storage: FitsCatalogStorage
+    tables: 'raw'
+    template: ''
+linearizeLut:
+    description: "Lookup table linearizer from MeasurePhotonTransferCurveTask"
+    persistable: ignored
+    python: lsst.ip.isr.linearize.Linearizer
+    storage: FitsCatalogStorage
+    tables: 'raw'
+    template: ''
+linearizeSquared:
+    description: "Quadratic polynomial coefficients for linearizer from MeasurePhotonTransferCurveTask"
+    persistable: ignored
+    python: lsst.ip.isr.linearize.Linearizer
+    storage: FitsCatalogStorage
+    tables: 'raw'
+    template: ''
 cpPipePlotRoot:
     description: "A dataset for the root path for cp_pipe plots"
     persistable: ignored
