@@ -544,6 +544,27 @@ src:
     python: lsst.afw.table.SourceCatalog
     tables: raw
     template: ''
+source:
+    description: parquet version of `src`
+    persistable: ignored
+    storage: ParquetStorage
+    python: lsst.pipe.tasks.parquetTable.ParquetTable
+    tables: raw
+    template: ''
+sourceTable:
+    description: Per-ccd parquet version of `src`
+    persistable: ignored
+    storage: ParquetStorage
+    python: lsst.pipe.tasks.parquetTable.ParquetTable
+    tables: raw
+    template: ''
+sourceTable_visit:
+    description: Per-visit parquet concatenation of `sourceTable`
+    persistable: ignored
+    storage: ParquetStorage
+    python: lsst.pipe.tasks.parquetTable.ParquetTable
+    tables: raw
+    template: ''
 fakes_src:
     description: "Full depth source catalog with fake objects procduced by processCcdWithFakes."
     persistable: SourceCatalog
@@ -1238,6 +1259,13 @@ deepCoadd_sg_features_tract:
     storage: ParquetStorage
     python: lsst.pipe.tasks.parquetTable.ParquetTable
     template: deepCoadd-results/merged/%(tract)d/sg-feats-%(tract)d.parq
+transformSourceTable_config:
+    description: >
+        Configuration for Task to transform `source` table into sourceTable
+    persistable: Config
+    python: lsst.pipe.tasks.postprocess.TransformSourceTableConfig
+    storage: ConfigStorage
+    template: config/transformSourceTable.py
 transformObjectCatalog_config:
     description: >
         Configuration for Task to transform deepCoadd_obj table into objectTable
