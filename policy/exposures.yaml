@@ -26,6 +26,13 @@ deepCoaddPsfMatched:
     python: lsst.afw.image.ExposureF
     template: deepCoadd/%(filter)s/%(tract)d/psfMatched-%(patch)s.fits
     level: Skytile
+deepCoaddPsfMatched_nImage:
+    description: "The number of input images per pixel in a PSF-matched deepCoadd, per patch."
+    persistable: ImageU
+    storage: FitsStorage
+    python: lsst.afw.image.ImageU
+    template: deepCoadd/%(filter)s/%(tract)d/psfMatched-%(patch)s_nImage.fits
+    level: Skytile
 deepCoadd_calexp:
     description: >
       An exposure that holds stacked data, after DetectCoaddSourcesTask
@@ -150,6 +157,13 @@ dcrCoadd:
     python: lsst.afw.image.ExposureF
     template: dcrCoadd/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s.fits
     level: Skytile
+dcrCoaddPsfMatched:
+    description: "A coadd assembled from PSF-matched warps, produced by DcrAssembleCoaddTask."
+    persistable: ExposureF
+    storage: FitsStorage
+    python: lsst.afw.image.ExposureF
+    template: dcrCoadd/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/psfMatched-%(patch)s.fits
+    level: Skytile
 dcrCoadd_calexp:
     description: >
       An exposure that holds stacked data, after DetectDcrCoaddSourcesTask
@@ -159,20 +173,19 @@ dcrCoadd_calexp:
     python: lsst.afw.image.ExposureF
     template: dcrCoadd-results/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s/calexp-%(filter)s-%(tract)d-%(patch)s.fits
     level: None
-dcrCoadd_directWarp:
-    description: "An image which has been warped so it can be included in a dcrCoaddd."
-    template:    ''
-    python:      lsst.afw.image.ExposureF
-    persistable: ExposureF
-    storage:     FitsStorage
-    level:       Skytile
-    tables:      'raw'
 dcrCoadd_nImage:
     description: "The number of input images per pixel in a dcrCoadd, per patch and subfilter."
     persistable: ImageU
     storage: FitsStorage
     python: lsst.afw.image.ImageU
     template: dcrCoadd/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/%(patch)s_nImage.fits
+    level: Skytile
+dcrCoaddPsfMatched_nImage:
+    description: "The number of input images per pixel in a PSF-matched dcrCoadd, per patch and subfilter."
+    persistable: ImageU
+    storage: FitsStorage
+    python: lsst.afw.image.ImageU
+    template: dcrCoadd/%(filter)s%(subfilter)dof%(numSubfilters)d/%(tract)d/psfMatched-%(patch)s_nImage.fits
     level: Skytile
 dcrDiff_differenceExp:
     description: "The result of image differencing an image against a dcrCoadd."
