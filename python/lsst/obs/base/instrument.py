@@ -27,7 +27,7 @@ from abc import ABCMeta, abstractmethod
 import astropy.time
 
 from lsst.daf.butler import TIMESPAN_MIN, TIMESPAN_MAX, DatasetType, DataCoordinate
-from lsst.utils import getPackageDir
+from lsst.utils import getPackageDir, doImport
 
 # To be a standard text curated calibration means that we use a
 # standard definition for the corresponding DatasetType.
@@ -114,6 +114,45 @@ class Instrument(metaclass=ABCMeta):
             # we need to find it.
             self._obsDataPackageDir = getPackageDir(self.obsDataPackage)
         return self._obsDataPackageDir
+
+    @classmethod
+    def fromName(cls, name, registry):
+        """Given an instrument name and a butler, retrieve a corresponding
+        instantiated instrument object.
+
+        Parameters
+        ----------
+        name : `str`
+            Name of the instrument (must match the name property of
+            an instrument class).
+        registry : `lsst.daf.butler.Registry`
+            Butler registry to query to find the information.
+
+        Returns
+        -------
+        instrument : `Instrument`
+            An instance of the relevant `Instrument`.
+
+        Notes
+        -----
+        The instrument must be registered in the corresponding butler.
+
+        Raises
+        ------
+        LookupError
+            Raised if the instrument is not known to the supplied registry.
+        ModuleNotFoundError
+            Raised if the class could not be imported.  This could mean
+            that the relevant obs package has not been setup.
+        TypeError
+            Raised if the class name retrieved is not a string.
+        """
+        dimensions = list(registry.queryDimensions("instrument", dataId={"instrument": name}))
+        cls = dimensions[0].records["instrument"].class_name
+        if not isinstance(cls, str):
+            raise TypeError(f"Unexpected class name retrieved from {name} instrument dimension (got {cls})")
+        instrument = doImport(cls)
+        return instrument()
 
     def _registerFilters(self, registry):
         """Register the physical and abstract filter Dimension relationships.
