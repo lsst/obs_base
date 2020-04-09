@@ -467,7 +467,7 @@ class _GroupExposuresOneToOneConfig(GroupExposuresConfig):
         doc=("Integer ID of the visit_system implemented by this grouping "
              "algorithm."),
         dtype=int,
-        default=1,
+        default=0,
     )
     visitSystemName = Field(
         doc=("String name of the visit_system implemented by this grouping "
@@ -494,6 +494,58 @@ class _GroupExposuresOneToOneTask(GroupExposuresTask, metaclass=ABCMeta):
                 name=exposure.name,
                 exposures=[exposure],
             )
+
+    def getVisitSystem(self) -> Tuple[int, str]:
+        # Docstring inherited from GroupExposuresTask.
+        return (self.config.visitSystemId, self.config.visitSystemName)
+
+
+class _GroupExposuresByGroupMetadataConfig(GroupExposuresConfig):
+    visitSystemId = Field(
+        doc=("Integer ID of the visit_system implemented by this grouping "
+             "algorithm."),
+        dtype=int,
+        default=1,
+    )
+    visitSystemName = Field(
+        doc=("String name of the visit_system implemented by this grouping "
+             "algorithm."),
+        dtype=str,
+        default="by-group-metadata",
+    )
+
+
+@registerConfigurable("by-group-metadata", GroupExposuresTask.registry)
+class _GroupExposuresByGroupMetadataTask(GroupExposuresTask, metaclass=ABCMeta):
+    """An exposure grouping algorithm that uses exposure.group_name and
+    exposure.group_id.
+
+    This algorithm _assumes_ exposure.group_id (generally populated from
+    `astro_metadata_translator.ObservationInfo.visit_id`) is not just unique,
+    but disjoint from all `ObservationInfo.exposure_id` values - if it isn't,
+    it will be impossible to ever use both this grouping algorithm and the
+    one-to-one algorithm for a particular camera in the same data repository.
+    """
+
+    ConfigClass = _GroupExposuresOneToOneConfig
+
+    def group(self, exposures: List[DimensionRecord]) -> Iterable[VisitDefinitionData]:
+        # Docstring inherited from GroupExposuresTask.
+        groups = defaultdict(list)
+        for exposure in exposures:
+            groups[exposure.group_name].append(exposure)
+        for visitName, exposuresInGroup in groups.items():
+            instrument = exposuresInGroup[0].instrument
+            visitId = exposuresInGroup[0].group_id
+            assert all(e.group_id == visitId for e in exposuresInGroup), \
+                "Grouping by exposure.group_name does not yield consistent group IDs"
+            # The check below is not a complete one (that's impossible to do in
+            # this context), but it should catch the most naively-misbehaving
+            # ObservationInfo problems.
+            assert not any(e.id == visitId for e in exposures), \
+                "exposure.group_id values are not disjoint from exposure.id values"
+            yield VisitDefinitionData(instrument=instrument, id=visitId, name=visitName,
+                                      exposures=exposuresInGroup)
 
     def getVisitSystem(self) -> Tuple[int, str]:
         # Docstring inherited from GroupExposuresTask.
