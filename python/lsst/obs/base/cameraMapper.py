@@ -25,8 +25,6 @@ import re
 import traceback
 import weakref
 
-from deprecated.sphinx import deprecated
-
 from astro_metadata_translator import fix_header
 import lsst.daf.persistence as dafPersist
 from . import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping
@@ -954,29 +952,6 @@ class CameraMapper(dafPersist.Mapper):
             Detector name
         """
         raise NotImplementedError("No _extractDetectorName() function specified")
-
-    @deprecated("This method is no longer used for ISR (will be removed after v11)", category=FutureWarning)
-    def _extractAmpId(self, dataId):
-        """Extract the amplifier identifer from a dataset identifier.
-
-        .. note:: Deprecated in 11_0
-
-        amplifier identifier has two parts: the detector name for the CCD
-        containing the amplifier and index of the amplifier in the detector.
-
-        Parameters
-        ----------
-        dataId : `dict`
-            Dataset identifer
-
-        Returns
-        -------
-        `tuple`
-            Amplifier identifier
-        """
-
-        trDataId = self._transformId(dataId)
-        return (trDataId["ccd"], int(trDataId['amp']))
 
     def _setAmpDetector(self, item, dataId, trimmed=True):
         """Set the detector object in an Exposure for an amplifier.
