@@ -539,11 +539,6 @@ class _GroupExposuresByGroupMetadataTask(GroupExposuresTask, metaclass=ABCMeta):
             visitId = exposuresInGroup[0].group_id
             assert all(e.group_id == visitId for e in exposuresInGroup), \
                 "Grouping by exposure.group_name does not yield consistent group IDs"
-            # The check below is not a complete one (that's impossible to do in
-            # this context), but it should catch the most naively-misbehaving
-            # ObservationInfo problems.
-            assert not any(e.id == visitId for e in exposures), \
-                "exposure.group_id values are not disjoint from exposure.id values"
             yield VisitDefinitionData(instrument=instrument, id=visitId, name=visitName,
                                       exposures=exposuresInGroup)
 
