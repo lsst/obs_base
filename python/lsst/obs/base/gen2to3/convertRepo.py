@@ -38,6 +38,7 @@ from lsst.pipe.base import Task
 from lsst.skymap import skyMapRegistry, BaseSkyMap
 
 from ..ingest import RawIngestTask
+from ..defineVisits import DefineVisitsTask
 from .repoConverter import ConversionSubset
 from .rootRepoConverter import RootRepoConverter
 from .calibRepoConverter import CalibRepoConverter
@@ -124,8 +125,13 @@ class ConvertRepoSkyMapConfig(Config):
 class ConvertRepoConfig(Config):
     raws = ConfigurableField(
         "Configuration for subtask responsible for ingesting raws and adding "
-        "visit and exposure dimension entries.",
+        "exposure dimension entries.",
         target=RawIngestTask,
+    )
+    defineVisits = ConfigurableField(
+        "Configuration for the subtask responsible for defining visits from "
+        "exposures.",
+        target=DefineVisitsTask,
     )
     skyMaps = ConfigDictField(
         "Mapping from Gen3 skymap name to the parameters used to construct a "
@@ -255,6 +261,13 @@ class ConvertRepoConfig(Config):
                  "transmission_atmosphere",
                  "bfKernel"]
     )
+    instrument = Field(
+        doc=("Fully-qualified Python name of the `Instrument` subclass for "
+             "all converted datasets."),
+        dtype=str,
+        optional=False,
+        default=None,
+    )
 
     @property
     def transfer(self):
@@ -263,14 +276,6 @@ class ConvertRepoConfig(Config):
     @transfer.setter
     def transfer(self, value):
         self.raws.transfer = value
-
-    @property
-    def instrument(self):
-        return self.raws.instrument
-
-    @instrument.setter
-    def instrument(self, value):
-        self.raws.instrument = value
 
     def setDefaults(self):
         self.transfer = None
@@ -288,11 +293,14 @@ class ConvertRepoTask(Task):
     config: `ConvertRepoConfig`
         Configuration for this task.
     butler3: `lsst.daf.butler.Butler`
-        Gen3 Butler instance that represents the data repository datasets will
-        be ingested into.  The collection and/or run associated with this
-        Butler will be ignored in favor of collections/runs passed via config
-        or to `run`.
-    kwds
+        A writeable Gen3 Butler instance that represents the data repository
+        that datasets will be ingested into.  If the 'raw' dataset is
+        configured to be included in the conversion, ``butler3.run`` should be
+        set to the name of the collection raws should be ingested into, and
+        ``butler3.collections`` should include a calibration collection from
+        which the ``camera`` dataset can be loaded, unless a calibration repo
+        is converted and ``doWriteCuratedCalibrations`` is `True`.
+    **kwargs
         Other keyword arguments are forwarded to the `Task` constructor.
 
     Notes
@@ -310,18 +318,19 @@ class ConvertRepoTask(Task):
 
     _DefaultName = "convertRepo"
 
-    def __init__(self, config=None, *, butler3: Butler3, **kwds):
+    def __init__(self, config=None, *, butler3: Butler3, **kwargs):
         config.validate()  # Not a CmdlineTask nor PipelineTask, so have to validate the config here.
-        super().__init__(config, **kwds)
+        super().__init__(config, **kwargs)
         self.butler3 = butler3
         self.registry = self.butler3.registry
         self.universe = self.registry.dimensions
         if self.isDatasetTypeIncluded("raw"):
             self.makeSubtask("raws", butler=butler3)
-            self.instrument = self.raws.instrument
+            self.makeSubtask("defineVisits", butler=butler3)
         else:
             self.raws = None
-            self.instrument = doImport(self.config.instrument)()
+            self.defineVisits = None
+        self.instrument = doImport(self.config.instrument)()
         self._configuredSkyMapsBySha1 = {}
         self._configuredSkyMapsByName = {}
         for name, config in self.config.skyMaps.items():
@@ -475,11 +484,26 @@ class ConvertRepoTask(Task):
                               "no filtering will be done.")
             subset = None
 
-        # We can't wrap database writes sanely in transactions (yet) because we
-        # keep initializing new Butler instances just so we can write into new
-        # runs/collections, and transactions are managed at the Butler level.
-        # DM-21246 should let us fix this, assuming we actually want to keep
-        # the transaction open that long.
+        # Make converters for all Gen2 repos.
+        converters = []
+        rootConverter = RootRepoConverter(task=self, root=root, subset=subset)
+        converters.append(rootConverter)
+        for calibRoot, run in calibs.items():
+            if not os.path.isabs(calibRoot):
+                calibRoot = os.path.join(rootConverter.root, calibRoot)
+            converter = CalibRepoConverter(task=self, root=calibRoot, run=run,
+                                           mapper=rootConverter.mapper,
+                                           subset=rootConverter.subset)
+            converters.append(converter)
+        for spec in reruns:
+            runRoot = spec.path
+            if not os.path.isabs(runRoot):
+                runRoot = os.path.join(rootConverter.root, runRoot)
+            converter = StandardRepoConverter(task=self, root=runRoot, run=spec.runName,
+                                              subset=rootConverter.subset)
+            converters.append(converter)
+
+        # Register the instrument if we're configured to do so.
         if self.config.doRegisterInstrument:
             # Allow registration to fail on the assumption that this means
             # we are reusing a butler
@@ -488,42 +512,32 @@ class ConvertRepoTask(Task):
             except Exception:
                 pass
 
-        # Make and prep converters for all Gen2 repos.  This should not modify
-        # the Registry database or filesystem at all, though it may query it.
-        # The prep() calls here will be some of the slowest ones, because
-        # that's when we walk the filesystem.
-        converters = []
-        rootConverter = RootRepoConverter(task=self, root=root, subset=subset)
-        rootConverter.prep()
-        converters.append(rootConverter)
+        # Run raw ingest (does nothing if we weren't configured to convert the
+        # 'raw' dataset type).
+        rootConverter.runRawIngest()
 
-        for calibRoot, run in calibs.items():
-            if not os.path.isabs(calibRoot):
-                calibRoot = os.path.join(rootConverter.root, calibRoot)
-            converter = CalibRepoConverter(task=self, root=calibRoot, run=run,
-                                           mapper=rootConverter.mapper,
-                                           subset=rootConverter.subset)
+        # Write curated calibrations to all calibration repositories.
+        # Add new collections to the list of collections the butler was
+        # initialized to pass to DefineVisitsTask, to deal with the (likely)
+        # case the only 'camera' dataset in the repo will be one we're adding
+        # here.
+        if self.config.doWriteCuratedCalibrations:
+            for run in calibs.values():
+                butler3 = Butler3(butler=self.butler3, run=run)
+                self.instrument.writeCuratedCalibrations(butler3)
+
+        # Define visits (also does nothing if we weren't configurd to convert
+        # the 'raw' dataset type).
+        rootConverter.runDefineVisits()
+
+        # Walk Gen2 repos to find datasets convert.
+        for converter in converters:
             converter.prep()
-            converters.append(converter)
 
-        for spec in reruns:
-            runRoot = spec.path
-            if not os.path.isabs(runRoot):
-                runRoot = os.path.join(rootConverter.root, runRoot)
-            converter = StandardRepoConverter(task=self, root=runRoot, run=spec.runName,
-                                              subset=rootConverter.subset)
-            converter.prep()
-            converters.append(converter)
-
-        # Actual database writes start here.  We can't wrap these sanely in
-        # transactions (yet) because we keep initializing new Butler instances
-        # just so we can write into new runs/collections, and transactions
-        # are managed at the Butler level (DM-21246 should let us fix this).
-
-        # Insert dimensions needed by any converters.  These are only the
-        # dimensions that a converter expects to be uniquely derived from the
-        # Gen2 repository it is reponsible for - e.g. visits, exposures, and
-        # calibration_labels.
+        # Insert dimensions needed by any converters.  In practice this is just
+        # calibration_labels right now, because exposures and visits (and
+        # things related to them) are handled by RawIngestTask and
+        # DefineVisitsTask earlier and skymaps are handled later.
         #
         # Note that we do not try to filter dimensions down to just those
         # related to the given visits, even if config.relatedOnly is True; we
@@ -531,10 +545,7 @@ class ConvertRepoTask(Task):
         # to convert, because Gen2 alone doesn't know enough about the
         # relationships between data IDs.
         for converter in converters:
-            try:
-                converter.insertDimensionData()
-            except Exception:
-                pass
+            converter.insertDimensionData()
 
         # Insert dimensions that are potentially shared by all Gen2
         # repositories (and are hence managed directly by the Task, rather
