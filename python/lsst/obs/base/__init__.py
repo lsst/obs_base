@@ -23,9 +23,9 @@ from .version import *
 
 from .filters import *
 from .mapping import *
+from .instrument import *
 from .cameraMapper import *
 from .exposureIdInfo import *
-from .instrument import *
 from .makeRawVisitInfo import *
 from .makeRawVisitInfoViaObsInfo import *
 from .fitsRawFormatterBase import *
