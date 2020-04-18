@@ -27,8 +27,6 @@ import sqlite3
 import astropy.time
 from typing import TYPE_CHECKING, Dict, Iterator, Tuple, Optional
 
-from lsst.daf.butler import Butler as Butler3
-
 from .repoConverter import RepoConverter
 from .repoWalker import RepoWalker
 from .translators import makeCalibrationLabel
@@ -137,13 +135,6 @@ class CalibRepoConverter(RepoConverter):
                 })
         if records:
             self.task.registry.insertDimensionData("calibration_label", *records)
-
-    def ingest(self):
-        # Docstring inherited from RepoConverter.
-        if self.task.config.doWriteCuratedCalibrations:
-            butler3 = Butler3(butler=self.task.butler3, run=self._run)
-            self.task.instrument.writeCuratedCalibrations(butler3)
-        super().ingest()
 
     # Class attributes that will be shadowed by public instance attributes;
     # defined here only for documentation purposes.

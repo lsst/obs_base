@@ -19,14 +19,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-__all__ = ("Instrument", "makeExposureRecordFromObsInfo", "makeVisitRecordFromObsInfo",
-           "addUnboundedCalibrationLabel")
+__all__ = ("Instrument", "makeExposureRecordFromObsInfo", "addUnboundedCalibrationLabel", "loadCamera")
 
 import os.path
 from abc import ABCMeta, abstractmethod
+from typing import Any, Tuple
 import astropy.time
 
-from lsst.daf.butler import TIMESPAN_MIN, TIMESPAN_MAX, DatasetType, DataCoordinate
+from lsst.afw.cameraGeom import Camera
+from lsst.daf.butler import Butler, DataId, TIMESPAN_MIN, TIMESPAN_MAX, DatasetType, DataCoordinate
 from lsst.utils import getPackageDir, doImport
 
 # To be a standard text curated calibration means that we use a
@@ -363,46 +364,13 @@ def makeExposureRecordFromObsInfo(obsInfo, universe):
         "id": obsInfo.exposure_id,
         "name": obsInfo.observation_id,
         "group_name": obsInfo.exposure_group,
+        "group_id": obsInfo.visit_id,
         "datetime_begin": obsInfo.datetime_begin,
         "datetime_end": obsInfo.datetime_end,
         "exposure_time": obsInfo.exposure_time.to_value("s"),
         "dark_time": obsInfo.dark_time.to_value("s"),
         "observation_type": obsInfo.observation_type,
         "physical_filter": obsInfo.physical_filter,
-        "visit": obsInfo.visit_id,
-    })
-
-
-def makeVisitRecordFromObsInfo(obsInfo, universe, *, region=None):
-    """Construct a visit `DimensionRecord` from
-    `astro_metadata_translator.ObservationInfo`.
-
-    Parameters
-    ----------
-    obsInfo : `astro_metadata_translator.ObservationInfo`
-        A `~astro_metadata_translator.ObservationInfo` object corresponding to
-        the exposure.
-    universe : `DimensionUniverse`
-        Set of all known dimensions.
-    region : `lsst.sphgeom.Region`, optional
-        Spatial region for the visit.
-
-    Returns
-    -------
-    record : `DimensionRecord`
-        A record containing visit metadata, suitable for insertion into a
-        `Registry`.
-    """
-    dimension = universe["visit"]
-    return dimension.RecordClass.fromDict({
-        "instrument": obsInfo.instrument,
-        "id": obsInfo.visit_id,
-        "name": obsInfo.observation_id,
-        "datetime_begin": obsInfo.datetime_begin,
-        "datetime_end": obsInfo.datetime_end,
-        "exposure_time": obsInfo.exposure_time.to_value("s"),
-        "physical_filter": obsInfo.physical_filter,
-        "region": region,
     })
 
 
@@ -435,3 +403,47 @@ def addUnboundedCalibrationLabel(registry, instrumentName):
     entry["datetime_end"] = TIMESPAN_MAX
     registry.insertDimensionData("calibration_label", entry)
     return registry.expandDataId(d)
+
+
+def loadCamera(butler: Butler, dataId: DataId, *, collections: Any = None) -> Tuple[Camera, bool]:
+    """Attempt to load versioned camera geometry from a butler, but fall back
+    to obtaining a nominal camera from the `Instrument` class if that fails.
+
+    Parameters
+    ----------
+    butler : `lsst.daf.butler.Butler`
+        Butler instance to attempt to query for and load a ``camera`` dataset
+        from.
+    dataId : `dict` or `DataCoordinate`
+        Data ID that identifies at least the ``instrument`` and ``exposure``
+        dimensions.
+    collections : Any, optional
+        Collections to be searched, overriding ``self.butler.collections``.
+        Can be any of the types supported by the ``collections`` argument
+        to butler construction.
+
+    Returns
+    -------
+    camera : `lsst.afw.cameraGeom.Camera`
+        Camera object.
+    versioned : `bool`
+        If `True`, the camera was obtained from the butler and should represent
+        a versioned camera from a calibration repository.  If `False`, no
+        camera datasets were found, and the returned camera was produced by
+        instantiating the appropriate `Instrument` class and calling
+        `Instrument.getCamera`.
+    """
+    if collections is None:
+        collections = butler.collections
+    # Registry would do data ID expansion internally if we didn't do it first,
+    # but we might want an expanded data ID ourselves later, so we do it here
+    # to ensure it only happens once.
+    # This will also catch problems with the data ID not having keys we need.
+    dataId = butler.registry.expandDataId(dataId, graph=butler.registry.dimensions["exposure"].graph)
+    cameraRefs = list(butler.registry.queryDatasets("camera", dataId=dataId, collections=collections,
+                                                    deduplicate=True))
+    if cameraRefs:
+        assert len(cameraRefs) == 1, "Should be guaranteed by deduplicate=True above."
+        return butler.getDirect(cameraRefs[0]), True
+    instrument = Instrument.fromName(dataId["instrument"], butler.registry)
+    return instrument.getCamera(), False

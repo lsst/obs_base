@@ -28,7 +28,7 @@ import itertools
 from typing import TYPE_CHECKING, Iterator, Optional, Tuple, List, Set
 
 from lsst.skymap import BaseSkyMap
-from lsst.daf.butler import DatasetType, DatasetRef, FileDataset
+from lsst.daf.butler import DatasetType, DatasetRef, DimensionGraph, FileDataset
 from .standardRepoConverter import StandardRepoConverter
 
 SKYMAP_DATASET_TYPES = {
@@ -37,7 +37,6 @@ SKYMAP_DATASET_TYPES = {
 
 if TYPE_CHECKING:
     from lsst.daf.butler import SkyPixDimension
-    from ..ingest import RawExposureData
 
 
 def getDataPaths(dataRefs):
@@ -75,13 +74,13 @@ class RootRepoConverter(StandardRepoConverter):
 
     def __init__(self, **kwds):
         super().__init__(run=None, **kwds)
-        self._exposureData: List[RawExposureData] = []
         self._refCats: List[Tuple[str, SkyPixDimension]] = []
         if self.task.config.rootSkyMapName is not None:
             self._rootSkyMap = self.task.config.skyMaps[self.task.config.rootSkyMapName].skyMap.apply()
         else:
             self._rootSkyMap = None
         self._chain = None
+        self._rawRefs = []
 
     def isDatasetTypeSpecial(self, datasetTypeName: str) -> bool:
         # Docstring inherited from RepoConverter.
@@ -108,21 +107,32 @@ class RootRepoConverter(StandardRepoConverter):
             name = self.task.config.rootSkyMapName
         return skyMap, name
 
+    def runRawIngest(self):
+        if self.task.raws is None:
+            return
+        self.task.log.info(f"Finding raws in root {self.root}.")
+        if self.subset is not None:
+            dataRefs = itertools.chain.from_iterable(
+                self.butler2.subset(self.task.config.rawDatasetType,
+                                    visit=visit) for visit in self.subset.visits
+            )
+        else:
+            dataRefs = self.butler2.subset(self.task.config.rawDatasetType)
+        dataPaths = getDataPaths(dataRefs)
+        self.task.log.info("Ingesting raws from root %s into run %s.", self.root, self.task.raws.butler.run)
+        self._rawRefs.extend(self.task.raws.run(dataPaths))
+        self._chain = {self.task.raws.butler.run: {self.task.raws.datasetType.name}}
+
+    def runDefineVisits(self):
+        if self.task.defineVisits is None:
+            return
+        dimensions = DimensionGraph(self.task.universe, names=["exposure"])
+        exposureDataIds = set(ref.dataId.subset(dimensions) for ref in self._rawRefs)
+        self.task.log.info("Defining visits from exposures.")
+        self.task.defineVisits.run(exposureDataIds)
+
     def prep(self):
         # Docstring inherited from RepoConverter.
-        # Gather information about raws.
-        if self.task.raws is not None:
-            self.task.log.info(f"Preparing raws from root {self.root}.")
-            if self.subset is not None:
-                dataRefs = itertools.chain.from_iterable(
-                    self.butler2.subset(self.task.config.rawDatasetType,
-                                        visit=visit) for visit in self.subset.visits
-                )
-            else:
-                dataRefs = self.butler2.subset(self.task.config.rawDatasetType)
-            dataPaths = getDataPaths(dataRefs)
-            self.task.log.debug("Prepping files: %s", dataPaths)
-            self._exposureData.extend(self.task.raws.prep(dataPaths))
         # Gather information about reference catalogs.
         if self.task.isDatasetTypeIncluded("ref_cat") and len(self.task.config.refCats) != 0:
             from lsst.meas.algorithms import DatasetConfig as RefCatDatasetConfig
@@ -151,15 +161,6 @@ class RootRepoConverter(StandardRepoConverter):
             self.task.useSkyMap(self._rootSkyMap, self.task.config.rootSkyMapName)
         super().prep()
 
-    def insertDimensionData(self):
-        # Docstring inherited from RepoConverter.
-        self.task.log.info(f"Inserting observation dimension records from {self.root}.")
-        records = {"visit": [], "exposure": [], "visit_detector_region": []}
-        for exposure in self._exposureData:
-            for dimension, recordsForDimension in exposure.records.items():
-                records[dimension].extend(recordsForDimension)
-        self.task.raws.insertDimensionData(records)
-
     def iterDatasets(self) -> Iterator[FileDataset]:
         # Docstring inherited from RepoConverter.
         # Iterate over reference catalog files.
@@ -182,22 +183,6 @@ class RootRepoConverter(StandardRepoConverter):
                         yield FileDataset(path=os.path.join(self.root, "ref_cats", refCat, f"{htmId}.fits"),
                                           refs=DatasetRef(datasetType, dataId))
         yield from super().iterDatasets()
-
-    def ingest(self):
-        # Docstring inherited from RepoConverter.
-        self._chain = {}
-        if self.task.raws is not None:
-            self.task.log.info("Ingesting raws from root %s into run %s.", self.root,
-                               self.task.raws.butler.run)
-            self.task.registry.registerDatasetType(self.task.raws.datasetType)
-            self._chain.setdefault(self.task.raws.butler.run, set()).add(self.task.raws.datasetType.name)
-            # We need te delegate to RawIngestTask to actually ingest raws,
-            # rather than just including those datasets in iterDatasets for
-            # the base class to handle, because we don't want to assume we
-            # can use the Datastore-configured Formatter for raw data.
-            for exposure in self._exposureData:
-                self.task.raws.ingestExposureDatasets(exposure)
-        super().ingest()
 
     def getRun(self, datasetTypeName: str) -> str:
         # Docstring inherited from RepoConverter.

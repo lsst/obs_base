@@ -61,6 +61,21 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     writeCuratedCalibrations. If `None` writeCuratedCalibrations will
     not be called and the test will be skipped."""
 
+    DefineVisitsTask = lsst.obs.base.DefineVisitsTask
+    """The task to use to define visits from groups of exposures.
+
+    This is ignored if ``visits`` is `None`.
+    """
+
+    visits = {}
+    """A dictionary mapping visit data IDs the lists of exposure data IDs that
+    are associated with them.
+
+    If this is empty (but not `None`), visit definition will be run but no
+    visits will be expected (e.g. because no exposures are on-sky
+    observations).
+    """
+
     def setUp(self):
         # Use a temporary working directory
         self.root = tempfile.mkdtemp(dir=self.ingestDir)
@@ -72,8 +87,6 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
         # Make a default config for test methods to play with
         self.config = self.RawIngestTask.ConfigClass()
-        self.config.instrument = \
-            f"{self.instrument.__class__.__module__}.{self.instrument.__class__.__name__}"
 
     def tearDown(self):
         if os.path.exists(self.root):
@@ -189,3 +202,31 @@ class IngestTestBase(metaclass=abc.ABCMeta):
                 datasets = list(self.butler.registry.queryDatasets(datasetTypeName, collections=...,
                                                                    dataId=dataId))
                 self.assertGreater(len(datasets), 0, f"Checking {datasetTypeName}")
+
+    def testDefineVisits(self):
+        if self.visits is None:
+            self.skipTest("Expected visits were not defined.")
+        self.config.transfer = "link"
+        self.runIngest()
+        config = self.DefineVisitsTask.ConfigClass()
+        self.instrument.applyConfigOverrides(self.DefineVisitsTask._DefaultName, config)
+        task = self.DefineVisitsTask(config=config, butler=self.butler)
+        task.run(self.dataIds)
+        # Test that we got the visits we expected.
+        visits = set(self.butler.registry.queryDimensions(["visit"], expand=True))
+        self.assertCountEqual(visits, self.visits.keys())
+        camera = self.instrument.getCamera()
+        for foundVisit, (expectedVisit, expectedExposures) in zip(visits, self.visits.items()):
+            # Test that this visit is associated with the expected exposures.
+            foundExposures = set(self.butler.registry.queryDimensions(["exposure"], dataId=expectedVisit,
+                                                                      expand=True))
+            self.assertCountEqual(foundExposures, expectedExposures)
+            # Test that we have a visit region, and that it contains all of the
+            # detector+visit regions.
+            self.assertIsNotNone(foundVisit.region)
+            detectorVisitDataIds = set(self.butler.registry.queryDimensions(["visit", "detector"],
+                                                                            dataId=expectedVisit,
+                                                                            expand=True))
+            self.assertEqual(len(detectorVisitDataIds), len(camera))
+            for dataId in detectorVisitDataIds:
+                self.assertTrue(foundVisit.region.contains(dataId.region))

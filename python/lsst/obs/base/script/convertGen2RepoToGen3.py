@@ -175,8 +175,7 @@ def convert(gen2root, gen3root, instrumentClass, calibFilterType,
 
     convertRepoConfig = ConvertRepoTask.ConfigClass()
     instrument.applyConfigOverrides(ConvertRepoTask._DefaultName, convertRepoConfig)
-    if convertRepoConfig.raws.instrument is None:
-        convertRepoConfig.raws.instrument = instrumentClass
+    convertRepoConfig.instrument = instrumentClass
     convertRepoConfig.raws.transfer = transferMode
     if skymapName is not None:
         convertRepoConfig.skyMaps[skymapName] = ConvertRepoSkyMapConfig()
