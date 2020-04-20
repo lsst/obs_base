@@ -378,6 +378,11 @@ deepMergedCoaddId_bits:
     storage: ignored
     python: lsst.daf.base.PropertySet
     template: ignored
+processCcdWithFakesDriver_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.drivers.processCcdWithFakesDriver.ProcessCcdWithFakesDriverConfig
+    template: config/processCcdWithFakesDriver.py
 singleFrameDriver_config:
     persistable: Config
     storage: ConfigStorage
@@ -577,6 +582,13 @@ fakeSourceCat:
     persistable: ignored
     storage: ParquetStorage
     python: lsst.pipe.tasks.parquetTable.MultilevelParquetTable
+    tables: raw
+    template: ''
+fakes_source:
+    description: parquet version of `fakes_src`
+    persistable: ignored
+    storage: ParquetStorage
+    python: lsst.pipe.tasks.parquetTable.ParquetTable
     tables: raw
     template: ''
 deepCoadd_fakeSourceCat:
