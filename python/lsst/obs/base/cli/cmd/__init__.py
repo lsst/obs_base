@@ -19,16 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from .version import *
+__all__ = ["register_instrument", "write_curated_calibrations"]
 
-from .filters import *
-from .mapping import *
-from .instrument import *
-from .cameraMapper import *
-from .exposureIdInfo import *
-from .makeRawVisitInfo import *
-from .makeRawVisitInfoViaObsInfo import *
-from .fitsRawFormatterBase import *
-from .utils import *
-from .ingest import *
-from .defineVisits import *
+from .register_instrument import register_instrument
+from .write_curated_calibrations import write_curated_calibrations

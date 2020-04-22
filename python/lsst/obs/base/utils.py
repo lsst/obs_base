@@ -24,10 +24,12 @@ __all__ = ('InitialSkyWcsError', 'createInitialSkyWcs', 'bboxFromIraf')
 import re
 import lsst.geom as geom
 
+from . import Instrument
 from lsst.afw.cameraGeom import PIXELS, FIELD_ANGLE
 from lsst.afw.image import RotType
 from lsst.afw.geom.skyWcs import makeSkyWcs
 import lsst.pex.exceptions
+from lsst.utils import doImport
 
 
 class InitialSkyWcsError(Exception):
@@ -93,3 +95,50 @@ def bboxFromIraf(irafBBoxStr):
     x0, x1, y0, y1 = [int(_) for _ in mat.groups()]
 
     return geom.BoxI(geom.PointI(x0 - 1, y0 - 1), geom.PointI(x1 - 1, y1 - 1))
+
+
+def getInstrument(instrumentName, registry=None):
+    """Return an instance of a named instrument.
+
+    If the instrument name not is qualified (does not contain a '.') and a
+    butler registry is provided, this will attempt to load the instrument using
+    Instrument.fromName. Otherwise the instrument will be imported and
+    instantiated.
+
+    Parameters
+    ----------
+    instrumentName : string
+        The name of an instrument, may be qualified with package names to look
+        in to import the instrument.
+    registry : `lsst.daf.butler.Registry`, optional
+        Butler registry to query to find information about the instrument, by
+        default None
+
+    Returns
+    -------
+    Instrument subclass instance
+        The instantiated instrument.
+
+    Raises
+    ------
+    RuntimeError
+        If the instrument can not be imported, instantiated, or obtained from
+        the registry.
+    TypeError
+        If the instrument is not a subclass of lsst.obs.base.Instrument.
+    """
+    if "." not in instrumentName and registry is not None:
+        try:
+            instr = Instrument.fromName(instrumentName, registry)
+        except Exception as err:
+            raise RuntimeError(
+                f"Could not get instrument from name: {instrumentName}. Failed with exception: {err}")
+    else:
+        try:
+            instr = doImport(instrumentName)
+        except Exception as err:
+            raise RuntimeError(f"Could not import instrument: {instrumentName}. Failed with exception: {err}")
+        instr = instr()
+    if not isinstance(instr, Instrument):
+        raise TypeError(f"{instrumentName} is not an Instrument subclass.")
+    return instr

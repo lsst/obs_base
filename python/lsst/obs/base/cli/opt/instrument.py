@@ -1,8 +1,8 @@
-# This file is part of obs_base.
+# This file is part of daf_butler.
 #
 # Developed for the LSST Data Management System.
 # This product includes software developed by the LSST Project
-# (https://www.lsst.org).
+# (http://www.lsst.org).
 # See the COPYRIGHT file at the top-level directory of this distribution
 # for details of code ownership.
 #
@@ -17,18 +17,18 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from .version import *
 
-from .filters import *
-from .mapping import *
-from .instrument import *
-from .cameraMapper import *
-from .exposureIdInfo import *
-from .makeRawVisitInfo import *
-from .makeRawVisitInfoViaObsInfo import *
-from .fitsRawFormatterBase import *
-from .utils import *
-from .ingest import *
-from .defineVisits import *
+import click
+
+
+class instrument_option:  # noqa: N801
+    def __init__(self, required=False, helpMsg=None):
+        self.required = required
+        self.help = helpMsg if helpMsg is not None else "The name of an Instrument subclass."
+
+    def __call__(self, f):
+        return click.option("-i", "--instrument",
+                            required=self.required,
+                            help=self.help)(f)
