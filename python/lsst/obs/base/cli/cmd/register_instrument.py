@@ -30,7 +30,7 @@ from ...utils import getInstrument
 log = logging.getLogger(__name__)
 
 
-@click.command("register_instrument")
+@click.command()
 @instrument_option(required=True, helpMsg="The fully-qualified name of an Instrument subclass.")
 @repo_option(required=True)
 @click.pass_context
