@@ -1130,6 +1130,11 @@ writeObjectTable_config:
     python: lsst.pipe.tasks.postprocess.WriteObjectTableConfig
     storage: ConfigStorage
     template: config/writeObjectTable.py
+writeSourceTable_config:
+    persistable: Config
+    python: lsst.pipe.tasks.postprocess.WriteSourceTableConfig
+    storage: ConfigStorage
+    template: config/writeSourceTable.py
 deepCoadd_qa:
     description: >
         Quantities useful for QA, computed from the deepCoadd_obj catalog.
