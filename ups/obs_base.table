@@ -11,4 +11,4 @@ setupOptional(skymap)
 
 envPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
 envPrepend(PATH, ${PRODUCT_DIR}/bin)
-envPrepend(DAF_BUTLER_PLUGINS, $OBS_BASE_DIR/python/lsst/obs/base/cli/resources.yaml)
+envPrepend(DAF_BUTLER_PLUGINS, ${PRODUCT_DIR}/python/lsst/obs/base/cli/resources.yaml)
