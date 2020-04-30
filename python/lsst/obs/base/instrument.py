@@ -88,6 +88,12 @@ class Instrument(metaclass=ABCMeta):
     @classmethod
     @abstractmethod
     def getName(cls):
+        """Return the short (dimension) name for this instrument.
+
+        This is not (in general) the same as the class name - it's what is used
+        as the value of the "instrument" field in data IDs, and is usually an
+        abbreviation of the full name.
+        """
         raise NotImplementedError()
 
     @abstractmethod
@@ -108,6 +114,9 @@ class Instrument(metaclass=ABCMeta):
 
     @property
     def obsDataPackageDir(self):
+        """The root of the obs package that provides specializations for
+        this instrument (`str`).
+        """
         if self.obsDataPackage is None:
             return None
         if self._obsDataPackageDir is None:
@@ -124,8 +133,7 @@ class Instrument(metaclass=ABCMeta):
         Parameters
         ----------
         name : `str`
-            Name of the instrument (must match the name property of
-            an instrument class).
+            Name of the instrument (must match the return value of `getName`).
         registry : `lsst.daf.butler.Registry`
             Butler registry to query to find the information.
 
