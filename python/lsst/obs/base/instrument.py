@@ -19,16 +19,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+
 __all__ = ("Instrument", "makeExposureRecordFromObsInfo", "addUnboundedCalibrationLabel", "loadCamera")
 
 import os.path
 from abc import ABCMeta, abstractmethod
-from typing import Any, Tuple
+from typing import Any, Tuple, TYPE_CHECKING
 import astropy.time
 
 from lsst.afw.cameraGeom import Camera
 from lsst.daf.butler import Butler, DataId, TIMESPAN_MIN, TIMESPAN_MAX, DatasetType, DataCoordinate
 from lsst.utils import getPackageDir, doImport
+
+if TYPE_CHECKING:
+    from .gen2to3 import TranslatorFactory
 
 # To be a standard text curated calibration means that we use a
 # standard definition for the corresponding DatasetType.
@@ -346,6 +351,24 @@ class Instrument(metaclass=ABCMeta):
             # available.
             for calib, dataId in datasetRecords:
                 butler.put(calib, datasetType, dataId)
+
+    @abstractmethod
+    def makeDataIdTranslatorFactory(self) -> TranslatorFactory:
+        """Return a factory for creating Gen2->Gen3 data ID translators,
+        specialized for this instrument.
+
+        Derived class implementations should generally call
+        `TranslatorFactory.addGenericInstrumentRules` with appropriate
+        arguments, but are not required to (and may not be able to if their
+        Gen2 raw data IDs are sufficiently different from the HSC/DECam/CFHT
+        norm).
+
+        Returns
+        -------
+        factory : `TranslatorFactory`.
+            Factory for `Translator` objects.
+        """
+        raise NotImplementedError("Must be implemented by derived classes.")
 
 
 def makeExposureRecordFromObsInfo(obsInfo, universe):

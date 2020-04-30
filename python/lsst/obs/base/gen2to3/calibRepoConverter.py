@@ -78,6 +78,7 @@ class CalibRepoConverter(RepoConverter):
             universe=self.task.registry.dimensions,
             formatter=formatter,
             targetHandler=targetHandler,
+            translatorFactory=self.task.translatorFactory,
         )
         self._datasetTypes.add(target.datasetType)
         return target

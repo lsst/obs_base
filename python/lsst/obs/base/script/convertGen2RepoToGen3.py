@@ -30,9 +30,7 @@ import lsst.daf.butler
 import lsst.log
 import lsst.utils
 
-from ..gen2to3 import (ConvertRepoTask, ConvertRepoSkyMapConfig,
-                       Translator, ConstantKeyHandler, CopyKeyHandler,
-                       CalibKeyHandler, Rerun)
+from ..gen2to3 import ConvertRepoTask, ConvertRepoSkyMapConfig, Rerun
 
 
 def build_argparser():
@@ -59,8 +57,6 @@ def build_argparser():
     parser.add_argument("-v", "--verbose", action="store_const", dest="verbose",
                         default=lsst.log.Log.INFO, const=lsst.log.Log.DEBUG,
                         help="Set the log level to DEBUG.")
-    parser.add_argument("--calibFilterType", default="physical_filter",
-                        help="physical_filter or abstract_filter as the id in the gen2 calibRegistry.")
     parser.add_argument("-c", "--config", default=None,
                         help=("Path to a `ConvertRepoConfig` override to be included after "
                               "the Instrument config overrides are applied."))
@@ -78,64 +74,7 @@ def parse_args(parser):
     return args
 
 
-def configure_translators(instrument, calibFilterType, ccdKey="ccd"):
-    """Configure the gen3 translators so they know the correct instrument name.
-
-    Parameters
-    ----------
-    instrument : `lsst.obs.base.Instrument`
-        The instrument that conversion is going to be run on.
-    calibFilterType : `str`
-        Whether the gen2 calibRegistry uses ``physical_filter`` or
-        ``abstract_filter`` as the ``filter`` key.
-    ccdKey : `str`, optional
-        The gen2 key used to identify what in gen3 is `detector`.
-    """
-    # Add instrument to Gen3 data ID if Gen2 contains "visit" or ccdKey.
-    # (Both rules will match, so we'll actually set instrument in the same dict twice).
-    Translator.addRule(ConstantKeyHandler("instrument", instrument.getName()),
-                       instrument=instrument.getName(), gen2keys=("visit",), consume=False)
-    Translator.addRule(ConstantKeyHandler("instrument", instrument.getName()),
-                       instrument=instrument.getName(), gen2keys=(ccdKey,), consume=False)
-    Translator.addRule(ConstantKeyHandler("instrument", instrument.getName()),
-                       instrument=instrument.getName(), gen2keys=("calibDate",), consume=False)
-
-    # Copy Gen2 'visit' to Gen3 'exposure' for raw only.  Also consume filter,
-    # since that's implied by 'exposure' in Gen3.
-    Translator.addRule(CopyKeyHandler("exposure", "visit"),
-                       instrument=instrument.getName(), datasetTypeName="raw", gen2keys=("visit",),
-                       consume=("visit", "filter"))
-
-    # Copy Gen2 'visit' to Gen3 'visit' otherwise.  Also consume filter.
-    Translator.addRule(CopyKeyHandler("visit"), instrument=instrument.getName(), gen2keys=("visit",),
-                       consume=("visit", "filter"))
-
-    # Copy Gen2 'ccd' to Gen3 'detector;
-    Translator.addRule(CopyKeyHandler("detector", ccdKey),
-                       instrument=instrument.getName(),
-                       gen2keys=(ccdKey,))
-
-    # Add instrument for transmission curve datasets (transmission_sensor is
-    # already handled by the above translators).
-    Translator.addRule(ConstantKeyHandler("instrument", instrument),
-                       instrument=instrument.getName(), datasetTypeName="transmission_optics")
-    Translator.addRule(ConstantKeyHandler("instrument", instrument),
-                       instrument=instrument.getName(), datasetTypeName="transmission_atmosphere")
-    Translator.addRule(ConstantKeyHandler("instrument", instrument),
-                       instrument=instrument.getName(), datasetTypeName="transmission_filter")
-    Translator.addRule(CopyKeyHandler("physical_filter", "filter"),
-                       instrument=instrument.getName(), datasetTypeName="transmission_filter")
-
-    # Add calibration mapping for filter dependent types
-    for calibType in ('flat', 'sky', 'fringe'):
-        Translator.addRule(CopyKeyHandler(calibFilterType, "filter"),
-                           instrument=instrument.getName(), datasetTypeName=calibType)
-
-    # Translate Gen2 calibDate and datasetType to Gen3 calibration_label.
-    Translator.addRule(CalibKeyHandler(ccdKey), gen2keys=("calibDate",))
-
-
-def convert(gen2root, gen3root, instrumentClass, calibFilterType,
+def convert(gen2root, gen3root, instrumentClass,
             skymapName=None, skymapConfig=None,
             calibs=None, reruns=[], config=None, transferMode="auto"):
     """Convert the gen 2 Butler repo living at gen2root into a gen 3 repo
@@ -150,9 +89,6 @@ def convert(gen2root, gen3root, instrumentClass, calibFilterType,
     instrumentClass : `str`
         Full python path to the `lsst.obs.base.Instrument` class of the repo
         being converted.
-    calibFilterType : `str`
-        `abstract_filter` or `physical_filter`, depending on the type of
-        ``filter`` in the gen2 calib registry.
     skymapName : `str`, optional
         Name of the skymap to be converted in the repo.
     skymapConfig : `str`, optional
@@ -183,8 +119,6 @@ def convert(gen2root, gen3root, instrumentClass, calibFilterType,
         convertRepoConfig.rootSkyMapName = skymapName
     if config is not None:
         convertRepoConfig.load(config)
-
-    configure_translators(instrument, calibFilterType, convertRepoConfig.ccdKey)
 
     rerunsArg = [Rerun(rerun, runName=f"shared/{instrument.getName()}/{rerun}",
                        chainName=f"shared/{instrument.getName()}", parents=[]) for rerun in reruns]
@@ -217,6 +151,6 @@ def main():
     logger.setLevel(lsst.log.LevelTranslator.lsstLog2logging(log.getLevel()))
     logger.addHandler(lsst.log.LogHandler())
 
-    convert(args.gen2root, args.gen3root, args.instrumentClass, args.calibFilterType,
+    convert(args.gen2root, args.gen3root, args.instrumentClass,
             skymapName=args.skymapName, skymapConfig=args.skymapConfig,
             calibs=args.calibs, reruns=args.reruns, config=args.config, transferMode=args.transferMode)

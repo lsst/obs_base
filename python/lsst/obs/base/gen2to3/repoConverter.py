@@ -372,7 +372,8 @@ class RepoConverter(ABC):
                         formatter=self.task.config.formatterClasses.get(datasetTypeName),
                         targetHandler=targetHandler,
                     )
-                    self.task.log.debug("Adding template to walker: %s", template)
+                    self.task.log.debug("Adding template to walker: %s, for %s", template,
+                                        walkerInput.datasetType)
                 walkerInputs.append(walkerInput)
 
         for dirPath in self.getSpecialDirectories():

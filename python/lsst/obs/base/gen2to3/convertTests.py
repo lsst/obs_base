@@ -136,7 +136,6 @@ class ConvertGen2To3TestCase:
 
         # Run the conversion
         convertGen2RepoToGen3(self.gen2root, self.gen3root, self.instrumentClass,
-                              self.calibFilterType,
                               skymapName=self.skymapName, skymapConfig=self.skymapConfig,
                               config=self.config, calibs=self.gen2calib)
 

@@ -29,6 +29,7 @@ import abc
 import dataclasses
 
 from lsst.obs.base import Instrument
+from lsst.obs.base.gen2to3 import TranslatorFactory
 from lsst.daf.butler import Registry
 from lsst.daf.butler import ButlerConfig
 
@@ -101,3 +102,8 @@ class InstrumentTests(metaclass=abc.ABCMeta):
         # Check that the instrument class can be retrieved
         registeredInstrument = Instrument.fromName(self.instrument.getName(), registry)
         self.assertEqual(type(registeredInstrument), type(self.instrument))
+
+    def testMakeTranslatorFactory(self):
+        factory = self.instrument.makeDataIdTranslatorFactory()
+        self.assertIsInstance(factory, TranslatorFactory)
+        str(factory)  # just make sure this doesn't raise.
