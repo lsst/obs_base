@@ -108,8 +108,7 @@ def getInstrument(instrumentName, registry=None):
     Parameters
     ----------
     instrumentName : string
-        The name of an instrument, may be qualified with package names to look
-        in to import the instrument.
+        The name or fully-qualified class name of an instrument.
     registry : `lsst.daf.butler.Registry`, optional
         Butler registry to query to find information about the instrument, by
         default None

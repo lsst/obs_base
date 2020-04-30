@@ -40,7 +40,7 @@ def write_curated_calibrations(context, repo, instrument, output_run):
     """
     butler = Butler(repo, writeable=True, run=output_run)
     try:
-        instr = getInstrument(instrument)
+        instr = getInstrument(instrument, butler.registry)
     except RuntimeError as err:
         log.critical(f"Exception getting instrument: {err}")
         raise click.BadParameter(f"Failed getting instrument {instrument} from repo {repo}")
