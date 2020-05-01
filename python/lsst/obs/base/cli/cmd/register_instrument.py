@@ -22,7 +22,7 @@
 import click
 import logging
 
-from lsst.daf.butler.cli.opt.repo import repo_option
+from lsst.daf.butler.cli.opt import repo_argument
 from lsst.daf.butler import Butler
 from ..opt import instrument_option
 from ...utils import getInstrument
@@ -31,8 +31,8 @@ log = logging.getLogger(__name__)
 
 
 @click.command()
+@repo_argument(required=True)
 @instrument_option(required=True, helpMsg="The fully-qualified name of an Instrument subclass.")
-@repo_option(required=True)
 @click.pass_context
 def register_instrument(context, repo, instrument):
     """Add an instrument to the data repository.

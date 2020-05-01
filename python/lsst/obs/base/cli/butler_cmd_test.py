@@ -46,14 +46,14 @@ class ButlerCmdTestBase(metaclass=abc.ABCMeta):
     def test_cli(self):
         runner = click.testing.CliRunner()
         with runner.isolated_filesystem():
-            result = runner.invoke(butler.cli, ["create", "--repo", "here"])
+            result = runner.invoke(butler.cli, ["create", "here"])
             self.assertEqual(result.exit_code, 0, result.output)
             result = runner.invoke(butler.cli, ["register-instrument",
-                                                "--repo", "here",
+                                                "here",
                                                 "-i", self.instrument_class])
             self.assertEqual(result.exit_code, 0, result.output)
             result = runner.invoke(butler.cli, ["write-curated-calibrations",
-                                                "--repo", "here",
+                                                "here",
                                                 "-i", self.instrument_name,
                                                 "--output-run", "calib/hsc"])
             self.assertEqual(result.exit_code, 0, result.output)

@@ -22,7 +22,7 @@
 import click
 import logging
 
-from lsst.daf.butler.cli.opt import repo_option, run_option
+from lsst.daf.butler.cli.opt import repo_argument, run_option
 from lsst.daf.butler import Butler
 from ..opt import instrument_option
 from ...utils import getInstrument
@@ -30,9 +30,9 @@ from ...utils import getInstrument
 log = logging.getLogger(__name__)
 
 
-@click.command(name="write-curated-calibrations")
+@click.command()
+@repo_argument(required=True)
 @instrument_option(required=True)
-@repo_option(required=True)
 @run_option(required=True)
 @click.pass_context
 def write_curated_calibrations(context, repo, instrument, output_run):
