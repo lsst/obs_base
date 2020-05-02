@@ -40,7 +40,7 @@ from typing import (
 )
 
 from lsst.daf.butler import DatasetType, DimensionUniverse, StorageClass, FormatterParameter
-from ..translators import Translator
+from ..translators import TranslatorFactory
 from .parser import PathElementParser
 from .scanner import PathElementHandler, DirectoryScanner
 from .handlers import (IgnoreHandler, SubdirectoryHandler, SkipHandler,
@@ -194,6 +194,8 @@ class BuilderTargetInput(BuilderInput):
         All candidate dimensions for the Gen3 dataset type.
     formatter : `lsst.daf.butler.Formatter` or `str`, optional
         A Gen 3 formatter class or fully-qualified name.
+    translatorFactory : `TranslatorFactory`
+        Object that can be used to construct data ID translators.
     targetHandler : `PathElementHandler`, optional
         Override target handler for this dataset type.
     kwargs:
@@ -202,12 +204,12 @@ class BuilderTargetInput(BuilderInput):
     """
     def __init__(self, *, datasetTypeName: str, template: str, keys: Dict[str, type],
                  storageClass: StorageClass, universe: DimensionUniverse,
-                 formatter: FormatterParameter,
+                 formatter: FormatterParameter, translatorFactory: TranslatorFactory,
                  targetHandler: Optional[PathElementHandler] = None, **kwargs: Any):
         # strip off [%HDU] identifiers from e.g. DECAM Community Pipeline products
         template = template.split('[%(')[0]
         super().__init__(template=template, keys=keys)
-        self._translator = Translator.makeMatching(datasetTypeName, keys, **kwargs)
+        self._translator = translatorFactory.makeMatching(datasetTypeName, keys, **kwargs)
         self.datasetType = DatasetType(datasetTypeName, dimensions=self._translator.dimensionNames,
                                        storageClass=storageClass, universe=universe)
         self._formatter = formatter

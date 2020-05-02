@@ -337,6 +337,7 @@ class ConvertRepoTask(Task):
             instance = config.skyMap.apply()
             self._populateSkyMapDicts(name, instance)
         self._usedSkyPix = set()
+        self.translatorFactory = self.instrument.makeDataIdTranslatorFactory()
 
     def _populateSkyMapDicts(self, name, instance):
         struct = ConfiguredSkyMap(name=name, sha1=instance.getSha1(), instance=instance)

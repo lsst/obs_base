@@ -182,6 +182,7 @@ class StandardRepoConverter(RepoConverter):
             skyMapName=skyMapName,
             formatter=formatter,
             targetHandler=targetHandler,
+            translatorFactory=self.task.translatorFactory,
         )
 
     def iterDatasets(self) -> Iterator[FileDataset]:

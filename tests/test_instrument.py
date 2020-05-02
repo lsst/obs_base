@@ -22,6 +22,7 @@
 import unittest
 
 from lsst.obs.base import Instrument, FilterDefinitionCollection
+from lsst.obs.base.gen2to3 import TranslatorFactory
 from lsst.obs.base.instrument_tests import InstrumentTests, InstrumentTestData
 from lsst.daf.butler.core.utils import getFullTypeName
 
@@ -62,6 +63,9 @@ class DummyCam(Instrument):
 
     def applyConfigOverrides(self, name, config):
         pass
+
+    def makeDataIdTranslatorFactory(self) -> TranslatorFactory:
+        return TranslatorFactory()
 
 
 class InstrumentTestCase(InstrumentTests, unittest.TestCase):

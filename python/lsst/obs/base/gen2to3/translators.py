@@ -19,7 +19,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-__all__ = ("Translator", "KeyHandler", "CopyKeyHandler", "ConstantKeyHandler",
+from __future__ import annotations
+
+__all__ = ("Translator", "TranslatorFactory", "KeyHandler", "CopyKeyHandler", "ConstantKeyHandler",
            "CalibKeyHandler", "AbstractToPhysicalFilterKeyHandler", "PhysicalToAbstractFilterKeyHandler",
            "makeCalibrationLabel")
 
@@ -276,55 +278,42 @@ class AbstractToPhysicalFilterKeyHandler(KeyHandler):
         return self._map.get(abstract, abstract)
 
 
-class Translator:
-    """Callable object that translates Gen2 Data IDs to Gen3 Data IDs for a
-    particular DatasetType.
-
-    Translators should usually be constructed via the `makeMatching` method.
-
-    Parameters
-    ----------
-    handlers : `list`
-        A list of KeyHandlers this Translator should use.
-    skyMap : `BaseSkyMap`, optional
-        SkyMap instance used to define any tract or patch Dimensions.
-    skyMapName : `str`
-        Gen3 SkyMap Dimension name to be associated with any tract or patch
-        Dimensions.
-    datasetTypeName : `str`
-        Name of the dataset type whose data IDs this translator handles.
+class TranslatorFactory:
+    """A class that manages a system of rules for translating Gen2 data IDs
+    to Gen3 data IDs, and uses these to construct translators for particular
+    dataset types.
     """
-    def __init__(self, handlers: List[KeyHandler], skyMap: Optional[BaseSkyMap], skyMapName: Optional[str],
-                 datasetTypeName: str):
-        self.handlers = handlers
-        self.skyMap = skyMap
-        self.skyMapName = skyMapName
-        self.datasetTypeName = datasetTypeName
-
-    __slots__ = ("handlers", "skyMap", "skyMapName", "datasetTypeName")
-
-    # Rules used to match Handlers when constring a Translator.
-    # outer key is instrument name, or None for any
-    # inner key is DatasetType name, or None for any
-    # values are 3-tuples of (frozenset(gen2keys), handler, consume)
-    _rules: Dict[
-        Optional[str],
-        Dict[
-            Optional[str],
-            Tuple[FrozenSet[str], KeyHandler, bool]
-        ]
-    ] = {
-        None: {
-            None: []
+    def __init__(self):
+        # The rules used to match KeyHandlers when constructing a Translator.
+        self._rules: Dict[
+            Optional[str],  # instrument name (or None to match any)
+            Dict[
+                Optional[str],  # dataset type name (or None to match any)
+                # gen2keys, handler, consume
+                List[Tuple[FrozenSet[str], KeyHandler, bool]]
+            ]
+        ] = {
+            None: {
+                None: []
+            }
         }
-    }
+        self._addDefaultRules()
 
     def __str__(self):
-        hstr = ",".join(str(h) for h in self.handlers)
-        return f"{type(self).__name__}(dtype={self.datasetTypeName}, handlers=[{hstr}])"
+        lines = []
+        for instrumentName, nested in self._rules.items():
+            if instrumentName is None:
+                instrumentName = "[any instrument]"
+            for datasetTypeName, rules in nested.items():
+                if datasetTypeName is None:
+                    datasetTypeName = "[any dataset type]"
+                lines.append(f"{instrumentName} + {datasetTypeName}:")
+                for gen2keys, handler, consume in rules:
+                    consumed = " (consumed)" if consume else ""
+                    lines.append(f"   {gen2keys}{consumed}: {handler}")
+        return "\n".join(lines)
 
-    @classmethod
-    def addRule(cls, handler: KeyHandler, instrument: Optional[str] = None,
+    def addRule(self, handler: KeyHandler, instrument: Optional[str] = None,
                 datasetTypeName: Optional[str] = None, gen2keys: Iterable[str] = (),
                 consume: bool = True):
         """Add a KeyHandler and an associated matching rule.
@@ -360,12 +349,110 @@ class Translator:
         # find the rules for this instrument, or if we haven't seen it before,
         # add a nested dictionary that matches any DatasetType name and then
         # append this rule.
-        rulesForInstrument = cls._rules.setdefault(instrument, {None: []})
+        rulesForInstrument = self._rules.setdefault(instrument, {None: []})
         rulesForInstrumentAndDatasetType = rulesForInstrument.setdefault(datasetTypeName, [])
         rulesForInstrumentAndDatasetType.append((frozenset(gen2keys), handler, consume))
 
-    @classmethod
-    def makeMatching(cls, datasetTypeName: str, gen2keys: Dict[str, type], instrument: Optional[str] = None,
+    def _addDefaultRules(self):
+        """Add translator rules that should always be present, and don't depend
+        at all on the instrument whose datasets are being converted.
+
+        This is called by `TranslatorFactory` construction.
+        """
+        # Add "skymap" to Gen3 ID if Gen2 ID has a "tract" key.
+        self.addRule(SkyMapKeyHandler(), gen2keys=("tract",), consume=False)
+
+        # Add "skymap" to Gen3 ID if DatasetType is one of a few specific ones
+        for coaddName in ("deep", "goodSeeing", "psfMatched", "dcr"):
+            self.addRule(SkyMapKeyHandler(), datasetTypeName=f"{coaddName}Coadd_skyMap")
+
+        # Translate Gen2 str patch IDs to Gen3 sequential integers.
+        self.addRule(PatchKeyHandler(), gen2keys=("patch",))
+
+        # Copy Gen2 "tract" to Gen3 "tract".
+        self.addRule(CopyKeyHandler("tract", dtype=int), gen2keys=("tract",))
+
+        # Add valid_first, valid_last to instrument-level transmission/ datasets;
+        # these are considered calibration products in Gen3.
+        for datasetTypeName in ("transmission_sensor", "transmission_optics", "transmission_filter"):
+            self.addRule(ConstantKeyHandler("calibration_label", "unbounded"),
+                         datasetTypeName=datasetTypeName)
+
+        # Translate Gen2 pixel_id to Gen3 skypix.
+        #
+        # TODO: For now, we just assume that the refcat indexer uses htm7,
+        # since that's what we have generated most of our refcats at.
+        # Eventually that may have to change, but it's not clear enough how to
+        # do that for us to have a ticket yet.  If you found this note because
+        # you've run into this limitation, please let the middleware team know
+        # that it's time to make this a priority.
+        self.addRule(CopyKeyHandler("htm7", gen2key="pixel_id", dtype=int), gen2keys=("pixel_id",))
+
+    def addGenericInstrumentRules(self, instrumentName: str,
+                                  calibFilterType: str = "physical_filter",
+                                  detectorKey: str = "ccd",
+                                  exposureKey: str = "visit"):
+        """Add translation rules that depend on some properties of the
+        instrument but are otherwise generic.
+
+        Parameters
+        ----------
+        instrument : `str`
+            The short (dimension) name of the instrument that conversion is
+            going to be run on.
+        calibFilterType : `str`, optional
+            One of ``physical_filter`` or ``abstract_filter``, indicating which
+            of those the gen2 calibRegistry uses as the ``filter`` key.
+        detectorKey : `str`, optional
+            The gen2 key used to identify what in gen3 is `detector`.
+        exposureKey : `str`, optional
+            The gen2 key used to identify what in gen3 is `exposure`.
+        """
+        # Add instrument to Gen3 data ID if Gen2 contains exposureKey or
+        # detectorKey.  (Both rules will match, so we'll actually set
+        # instrument in the same dict twice).
+        self.addRule(ConstantKeyHandler("instrument", instrumentName),
+                     instrument=instrumentName, gen2keys=(exposureKey,), consume=False)
+        self.addRule(ConstantKeyHandler("instrument", instrumentName),
+                     instrument=instrumentName, gen2keys=(detectorKey,), consume=False)
+        self.addRule(ConstantKeyHandler("instrument", instrumentName),
+                     instrument=instrumentName, gen2keys=("calibDate",), consume=False)
+
+        # Copy Gen2 exposureKey to Gen3 'exposure' for raw only.  Also consume
+        # filter, since that's implied by 'exposure' in Gen3.
+        self.addRule(CopyKeyHandler("exposure", exposureKey),
+                     instrument=instrumentName, datasetTypeName="raw", gen2keys=(exposureKey,),
+                     consume=(exposureKey, "filter"))
+
+        # Copy Gen2 'visit' to Gen3 'visit' otherwise.  Also consume filter.
+        self.addRule(CopyKeyHandler("visit"), instrument=instrumentName, gen2keys=("visit",),
+                     consume=("visit", "filter"))
+
+        # Copy Gen2 'ccd' to Gen3 'detector;
+        self.addRule(CopyKeyHandler("detector", detectorKey),
+                     instrument=instrumentName,
+                     gen2keys=(detectorKey,))
+
+        # Add instrument for transmission curve datasets (transmission_sensor is
+        # already handled by the above rules).
+        self.addRule(ConstantKeyHandler("instrument", instrumentName),
+                     instrument=instrumentName, datasetTypeName="transmission_optics")
+        self.addRule(ConstantKeyHandler("instrument", instrumentName),
+                     instrument=instrumentName, datasetTypeName="transmission_atmosphere")
+        self.addRule(ConstantKeyHandler("instrument", instrumentName),
+                     instrument=instrumentName, datasetTypeName="transmission_filter")
+        self.addRule(CopyKeyHandler("physical_filter", "filter"),
+                     instrument=instrumentName, datasetTypeName="transmission_filter")
+
+        # Add calibration mapping for filter dependent types
+        for calibType in ('flat', 'sky', 'fringe'):
+            self.addRule(CopyKeyHandler(calibFilterType, "filter"),
+                         instrument=instrumentName, datasetTypeName=calibType)
+
+        # Translate Gen2 calibDate and datasetType to Gen3 calibration_label.
+        self.addRule(CalibKeyHandler(detectorKey), gen2keys=("calibDate",))
+
+    def makeMatching(self, datasetTypeName: str, gen2keys: Dict[str, type], instrument: Optional[str] = None,
                      skyMap: Optional[BaseSkyMap] = None, skyMapName: Optional[str] = None):
         """Construct a Translator appropriate for instances of the given
         dataset.
@@ -392,10 +479,10 @@ class Translator:
             data IDs to Gen3 dataIds.
         """
         if instrument is not None:
-            rulesForInstrument = cls._rules.get(instrument, {None: []})
+            rulesForInstrument = self._rules.get(instrument, {None: []})
         else:
             rulesForInstrument = {None: []}
-        rulesForAnyInstrument = cls._rules[None]
+        rulesForAnyInstrument = self._rules[None]
         candidateRules = itertools.chain(
             rulesForInstrument.get(datasetTypeName, []),     # this instrument, this DatasetType
             rulesForInstrument[None],                         # this instrument, any DatasetType
@@ -410,6 +497,39 @@ class Translator:
                 targetKeys -= consume
         return Translator(matchedHandlers, skyMap=skyMap, skyMapName=skyMapName,
                           datasetTypeName=datasetTypeName)
+
+
+class Translator:
+    """Callable object that translates Gen2 Data IDs to Gen3 Data IDs for a
+    particular DatasetType.
+
+    Translators should usually be constructed via
+    `TranslatorFactory.makeMatching`.
+
+    Parameters
+    ----------
+    handlers : `list`
+        A list of KeyHandlers this Translator should use.
+    skyMap : `BaseSkyMap`, optional
+        SkyMap instance used to define any tract or patch Dimensions.
+    skyMapName : `str`
+        Gen3 SkyMap Dimension name to be associated with any tract or patch
+        Dimensions.
+    datasetTypeName : `str`
+        Name of the dataset type whose data IDs this translator handles.
+    """
+    def __init__(self, handlers: List[KeyHandler], skyMap: Optional[BaseSkyMap], skyMapName: Optional[str],
+                 datasetTypeName: str):
+        self.handlers = handlers
+        self.skyMap = skyMap
+        self.skyMapName = skyMapName
+        self.datasetTypeName = datasetTypeName
+
+    __slots__ = ("handlers", "skyMap", "skyMapName", "datasetTypeName")
+
+    def __str__(self):
+        hstr = ",".join(str(h) for h in self.handlers)
+        return f"{type(self).__name__}(dtype={self.datasetTypeName}, handlers=[{hstr}])"
 
     def __call__(self, gen2id: Dict[str, Any], *, partial: bool = False, log: Optional[Log] = None):
         """Return a Gen3 data ID that corresponds to the given Gen2 data ID.
@@ -434,28 +554,3 @@ class Translator:
         (`frozenset`).
         """
         return frozenset(h.dimension for h in self.handlers)
-
-
-# Add "skymap" to Gen3 ID if Gen2 ID has a "tract" key.
-Translator.addRule(SkyMapKeyHandler(), gen2keys=("tract",), consume=False)
-
-# Add "skymap" to Gen3 ID if DatasetType is one of a few specific ones
-for coaddName in ("deep", "goodSeeing", "psfMatched", "dcr"):
-    Translator.addRule(SkyMapKeyHandler(), datasetTypeName=f"{coaddName}Coadd_skyMap")
-
-# Translate Gen2 str patch IDs to Gen3 sequential integers.
-Translator.addRule(PatchKeyHandler(), gen2keys=("patch",))
-
-# Copy Gen2 "tract" to Gen3 "tract".
-Translator.addRule(CopyKeyHandler("tract", dtype=int), gen2keys=("tract",))
-
-# Add valid_first, valid_last to instrument-level transmission/ datasets;
-# these are considered calibration products in Gen3.
-for datasetTypeName in ("transmission_sensor", "transmission_optics", "transmission_filter"):
-    Translator.addRule(ConstantKeyHandler("calibration_label", "unbounded"),
-                       datasetTypeName=datasetTypeName)
-
-# Translate Gen2 pixel_id to Gen3 skypix.
-# TODO: For now, we just assume that the refcat indexer uses htm7, since that's
-# what we have generated most of our refcats at.
-Translator.addRule(CopyKeyHandler("htm7", gen2key="pixel_id", dtype=int), gen2keys=("pixel_id",))

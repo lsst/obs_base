@@ -19,16 +19,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+
 __all__ = ("Instrument", "makeExposureRecordFromObsInfo", "addUnboundedCalibrationLabel", "loadCamera")
 
 import os.path
 from abc import ABCMeta, abstractmethod
-from typing import Any, Tuple
+from typing import Any, Tuple, TYPE_CHECKING
 import astropy.time
 
 from lsst.afw.cameraGeom import Camera
 from lsst.daf.butler import Butler, DataId, TIMESPAN_MIN, TIMESPAN_MAX, DatasetType, DataCoordinate
 from lsst.utils import getPackageDir, doImport
+
+if TYPE_CHECKING:
+    from .gen2to3 import TranslatorFactory
 
 # To be a standard text curated calibration means that we use a
 # standard definition for the corresponding DatasetType.
@@ -88,6 +93,12 @@ class Instrument(metaclass=ABCMeta):
     @classmethod
     @abstractmethod
     def getName(cls):
+        """Return the short (dimension) name for this instrument.
+
+        This is not (in general) the same as the class name - it's what is used
+        as the value of the "instrument" field in data IDs, and is usually an
+        abbreviation of the full name.
+        """
         raise NotImplementedError()
 
     @abstractmethod
@@ -108,6 +119,9 @@ class Instrument(metaclass=ABCMeta):
 
     @property
     def obsDataPackageDir(self):
+        """The root of the obs package that provides specializations for
+        this instrument (`str`).
+        """
         if self.obsDataPackage is None:
             return None
         if self._obsDataPackageDir is None:
@@ -124,8 +138,7 @@ class Instrument(metaclass=ABCMeta):
         Parameters
         ----------
         name : `str`
-            Name of the instrument (must match the name property of
-            an instrument class).
+            Name of the instrument (must match the return value of `getName`).
         registry : `lsst.daf.butler.Registry`
             Butler registry to query to find the information.
 
@@ -338,6 +351,24 @@ class Instrument(metaclass=ABCMeta):
             # available.
             for calib, dataId in datasetRecords:
                 butler.put(calib, datasetType, dataId)
+
+    @abstractmethod
+    def makeDataIdTranslatorFactory(self) -> TranslatorFactory:
+        """Return a factory for creating Gen2->Gen3 data ID translators,
+        specialized for this instrument.
+
+        Derived class implementations should generally call
+        `TranslatorFactory.addGenericInstrumentRules` with appropriate
+        arguments, but are not required to (and may not be able to if their
+        Gen2 raw data IDs are sufficiently different from the HSC/DECam/CFHT
+        norm).
+
+        Returns
+        -------
+        factory : `TranslatorFactory`.
+            Factory for `Translator` objects.
+        """
+        raise NotImplementedError("Must be implemented by derived classes.")
 
 
 def makeExposureRecordFromObsInfo(obsInfo, universe):
