@@ -3,3 +3,4 @@ cmd:
   commands:
     - register-instrument
     - write-curated-calibrations
+    - ingest-raws
