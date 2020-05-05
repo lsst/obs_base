@@ -28,7 +28,7 @@ from lsst.daf.butler.cli.utils import cli_handle_exception
 from lsst.daf.butler import Butler
 from ..opt import instrument_option
 from ... import RawIngestTask, RawIngestConfig
-from ...utils import getInstrument
+from ...utils import getInstrument, setDottedAttrs
 
 log = logging.getLogger(__name__)
 
@@ -64,11 +64,15 @@ def ingest_raws(repo, config, config_file, instrument, output_run, dir, transfer
     """
     butler = Butler(repo, run=output_run)
     instr = cli_handle_exception(getInstrument, instrument, butler.registry)
-    config = RawIngestConfig()
-    instr.applyConfigOverrides("ingest-gen3", config)
-    config.transfer = transfer
+    ingestConfig = RawIngestConfig()
+    instr.applyConfigOverrides("ingest-gen3", ingestConfig)
+    ingestConfig.transfer = transfer
     if config_file is not None:
-        config.load(config_file)
+        ingestConfig.load(config_file)
+    try:
+        setDottedAttrs(ingestConfig, config)
+    except Exception as e:
+        raise click.ClickException(f"Failed to set config override: {e.what()}")
     ingester = RawIngestTask(config=config, butler=butler)
     files = [os.path.join(dir, f) for f in os.listdir(dir)
              if f.endswith("fits") or f.endswith("FITS")]
