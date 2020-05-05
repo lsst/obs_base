@@ -42,7 +42,25 @@ log = logging.getLogger(__name__)
 @click.option("-d", "--dir", help="The path to the directory containing the raws to ingest.")
 @click.option("-t", "--transfer", help="The external data transfer type.", default="auto")
 def ingest_raws(repo, config, config_file, instrument, output_run, dir, transfer):
-    """"Ingests raw frames into the butler registry"
+    """Ingests raw frames into the butler registry
+    /f
+
+    Parameters
+    ----------
+    repo : `str`
+        URI to the repository.
+    config : `dict` [`str`, `str`]
+        Key-vaule pairs to apply as overrides to the ingest config.
+    config_file : `str`
+        Path to a config file that contains overrides to the ingest config.
+    instrument : `str`
+        The name or fully-qualified class name of an instrument.
+    output_run : `str`
+        The path to the location, the run, where datasets should be put.
+    dir : `str`
+        Path to the directory containing the raws to ingest.
+    transfer : `str`
+        The external data transfer type.
     """
     butler = Butler(repo, run=output_run)
     instr = cli_handle_exception(getInstrument, instrument, butler.registry)
