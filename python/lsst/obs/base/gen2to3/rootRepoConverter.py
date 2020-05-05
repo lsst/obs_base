@@ -78,8 +78,8 @@ class RootRepoConverter(StandardRepoConverter):
         if self.task.config.rootSkyMapName is not None:
             self._rootSkyMap = self.task.config.skyMaps[self.task.config.rootSkyMapName].skyMap.apply()
         else:
-            self._rootSkyMap = None
-        self._chain = None
+            self._rootSkyMap = None  # All access to _rootSkyMap is guarded
+        self._chain = {}
         self._rawRefs = []
 
     def isDatasetTypeSpecial(self, datasetTypeName: str) -> bool:
