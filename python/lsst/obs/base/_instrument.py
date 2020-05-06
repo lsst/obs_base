@@ -43,6 +43,8 @@ StandardCuratedCalibrationDatasetTypes = {
                 "storageClass": "Defects"},
     "qe_curve": {"dimensions": ("instrument", "detector", "calibration_label"),
                  "storageClass": "QECurve"},
+    "crosstalk": {"dimensions": ("instrument", "detector", "calibration_label"),
+                  "storageClass": "CrosstalkCalib"},
 }
 
 

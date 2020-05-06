@@ -170,6 +170,7 @@ class ConvertRepoConfig(Config):
             "dark": "ExposureF",
             "flat": "ExposureF",
             "defects": "Defects",
+            "crosstalk": "CrosstalkCalib",
             "BaseSkyMap": "SkyMap",
             "BaseCatalog": "Catalog",
             "BackgroundList": "Background",
