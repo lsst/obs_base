@@ -36,12 +36,27 @@ class ButlerCmdTestBase(metaclass=abc.ABCMeta):
     Subclass from this, then `unittest.TestCase` to get a working test suite.
     """
 
-    instrument_class = None
-    """The fully qualified instrument class.
-    """
+    @abc.abstractmethod
+    def instrumentClass(self):
+        """Get the fully qualified instrument class.
 
-    instrument_name = None
-    """The instrument name."""
+        Returns
+        -------
+        `str`
+            The fully qualified instrument class.
+        """
+        pass
+
+    @abc.abstractmethod
+    def instrumentName(self):
+        """Get the instrument name.
+
+        Returns
+        -------
+        `str`
+            The name of the instrument.
+        """
+        pass
 
     def test_cli(self):
         runner = click.testing.CliRunner()
@@ -50,10 +65,10 @@ class ButlerCmdTestBase(metaclass=abc.ABCMeta):
             self.assertEqual(result.exit_code, 0, result.output)
             result = runner.invoke(butler.cli, ["register-instrument",
                                                 "here",
-                                                "-i", self.instrument_class])
+                                                "-i", self.instrumentClass()])
             self.assertEqual(result.exit_code, 0, result.output)
             result = runner.invoke(butler.cli, ["write-curated-calibrations",
                                                 "here",
-                                                "-i", self.instrument_name,
-                                                "--output-run", "calib/hsc"])
+                                                "-i", self.instrumentName(),
+                                                "--output-run", "output_run"])
             self.assertEqual(result.exit_code, 0, result.output)
