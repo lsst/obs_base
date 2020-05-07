@@ -26,9 +26,10 @@ import os
 from lsst.daf.butler.cli.opt import repo_argument, config_option, config_file_option, run_option
 from lsst.daf.butler.cli.utils import cli_handle_exception
 from lsst.daf.butler import Butler
+from lsst.pipe.base.configOverrides import ConfigOverrides
 from ..opt import instrument_option
 from ... import RawIngestTask, RawIngestConfig
-from ...utils import getInstrument, setDottedAttrs
+from ...utils import getInstrument
 
 log = logging.getLogger(__name__)
 
@@ -37,11 +38,10 @@ log = logging.getLogger(__name__)
 @repo_argument(required=True)
 @config_option()
 @config_file_option()
-@instrument_option(required=True)
 @run_option(required=True)
 @click.option("-d", "--dir", help="The path to the directory containing the raws to ingest.")
 @click.option("-t", "--transfer", help="The external data transfer type.", default="auto")
-def ingest_raws(repo, config, config_file, instrument, output_run, dir, transfer):
+def ingest_raws(repo, config, config_file, output_run, dir, transfer):
     """Ingests raw frames into the butler registry
     /f
 
@@ -53,8 +53,6 @@ def ingest_raws(repo, config, config_file, instrument, output_run, dir, transfer
         Key-vaule pairs to apply as overrides to the ingest config.
     config_file : `str`
         Path to a config file that contains overrides to the ingest config.
-    instrument : `str`
-        The name or fully-qualified class name of an instrument.
     output_run : `str`
         The path to the location, the run, where datasets should be put.
     dir : `str`
@@ -63,17 +61,14 @@ def ingest_raws(repo, config, config_file, instrument, output_run, dir, transfer
         The external data transfer type.
     """
     butler = Butler(repo, run=output_run)
-    instr = cli_handle_exception(getInstrument, instrument, butler.registry)
     ingestConfig = RawIngestConfig()
-    instr.applyConfigOverrides("ingest-gen3", ingestConfig)
     ingestConfig.transfer = transfer
+    configOverrides = ConfigOverrides()
     if config_file is not None:
-        ingestConfig.load(config_file)
-    try:
-        setDottedAttrs(ingestConfig, config)
-    except Exception as e:
-        raise click.ClickException(f"Failed to set config override: {e.what()}")
-    ingester = RawIngestTask(config=config, butler=butler)
-    files = [os.path.join(dir, f) for f in os.listdir(dir)
-             if f.endswith("fits") or f.endswith("FITS")]
+        configOverrides.addFileOverride(config_file)
+    for name, value in config:
+        configOverrides.addValueOverride(name, value)
+    cli_handle_exception(configOverrides.applyTo, ingestConfig)
+    ingester = RawIngestTask(config=ingestConfig, butler=butler)
+    files = [os.path.join(dir, f) for f in os.listdir(dir) if f.endswith("fits") or f.endswith("FITS")]
     ingester.run(files)
