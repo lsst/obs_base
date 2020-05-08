@@ -196,3 +196,15 @@ class RootRepoConverter(StandardRepoConverter):
         converted root repository (`list` [ `tuple` ]).
         """
         return list(self._chain.items())
+
+    def ingest(self):
+        super().ingest()
+        datasetType = DatasetType(name="deepCoadd_skyMap", dimensions=["skymap"], storageClass="SkyMap",
+                                  universe=self.task.universe)
+        self.task.registry.registerDatasetType(datasetType)
+        if (self.task.isDatasetTypeIncluded("brightObjectMask") and self.task.config.rootSkyMapName
+                and self.task.isDatasetTypeIncluded(datasetType.name)):
+            run = self.getRun(datasetType.name)
+            self.task.registry.registerRun(run)
+            self.task.butler3.put(self._rootSkyMap, datasetType, skymap=self.task.config.rootSkyMapName,
+                                  run=run)
