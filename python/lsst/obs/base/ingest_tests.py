@@ -25,12 +25,15 @@
 __all__ = ("IngestTestBase",)
 
 import abc
+import click
+import click.testing
 import tempfile
 import unittest
 import os
 import shutil
 
 from lsst.daf.butler import Butler
+from lsst.daf.butler.cli.butler import cli as butlerCli
 import lsst.obs.base
 
 
@@ -107,7 +110,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         task.log.setLevel(task.log.FATAL)  # silence logs, since we expect a lot of warnings
         task.run(files)
 
-    def runIngestTest(self, files=None):
+    def runIngestTest(self, files=None, cli=False):
         """
         Test that RawIngestTask ingested the expected files.
 
@@ -116,21 +119,28 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         files : `list` [`str`], or None
             List of files to be ingested, or None to use ``self.file``
         """
-        self.runIngest(files)
-        datasets = self.butler.registry.queryDatasets('raw', collections=...)
+        if cli:
+            # Don't reuse self.butler here; a different butler instance in the
+            # command line tools made changes to the repo and an
+            # already-instantiated butler will not know about it.
+            butler = Butler(self.root, run="raw")
+        else:
+            butler = self.butler
+            self.runIngest(files)
+        datasets = butler.registry.queryDatasets("raw", collections=...)
         self.assertEqual(len(list(datasets)), len(self.dataIds))
         for dataId in self.dataIds:
-            exposure = self.butler.get("raw", dataId)
-            metadata = self.butler.get("raw.metadata", dataId)
+            exposure = butler.get("raw", dataId)
+            metadata = butler.get("raw.metadata", dataId)
             self.assertEqual(metadata.toDict(), exposure.getMetadata().toDict())
 
             # Since components follow a different code path we check that
             # WCS match and also we check that at least the shape
             # of the image is the same (rather than doing per-pixel equality)
-            wcs = self.butler.get("raw.wcs", dataId)
+            wcs = butler.get("raw.wcs", dataId)
             self.assertEqual(wcs, exposure.getWcs())
 
-            rawImage = self.butler.get("raw.image", dataId)
+            rawImage = butler.get("raw.image", dataId)
             self.assertEqual(rawImage.getBBox(), exposure.getBBox())
 
             self.checkRepo(files=files)
@@ -152,13 +162,40 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         self.config.transfer = "link"
         self.runIngestTest()
 
+    def testLinkCli(self):
+        runner = click.testing.CliRunner()
+        result = runner.invoke(butlerCli, ["ingest-raws", self.root,
+                                           "--transfer", "link",
+                                           "--output-run", "raw",
+                                           "--file", self.file])
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.runIngestTest(cli=True)
+
     def testSymLink(self):
         self.config.transfer = "symlink"
         self.runIngestTest()
 
+    def testSymLinkCli(self):
+        runner = click.testing.CliRunner()
+        result = runner.invoke(butlerCli, ["ingest-raws", self.root,
+                                           "--transfer", "symlink",
+                                           "--output-run", "raw",
+                                           "--file", self.file])
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.runIngestTest(cli=True)
+
     def testCopy(self):
         self.config.transfer = "copy"
         self.runIngestTest()
+
+    def testCopyCli(self):
+        runner = click.testing.CliRunner()
+        result = runner.invoke(butlerCli, ["ingest-raws", self.root,
+                                           "--transfer", "copy",
+                                           "--output-run", "raw",
+                                           "--file", self.file])
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.runIngestTest(cli=True)
 
     def testHardLink(self):
         self.config.transfer = "hardlink"
@@ -167,6 +204,19 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         except PermissionError as err:
             raise unittest.SkipTest("Skipping hard-link test because input data"
                                     " is on a different filesystem.") from err
+
+    def testHardLinkCli(self):
+        runner = click.testing.CliRunner()
+        try:
+            result = runner.invoke(butlerCli, ["ingest-raws", self.root,
+                                               "--transfer", "hardlink",
+                                               "--output-run", "raw",
+                                               "--file", self.file])
+        except PermissionError as err:
+            raise unittest.SkipTest("Skipping hard-link test because input data"
+                                    " is on a different filesystem.") from err
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.runIngestTest(cli=True)
 
     def testInPlace(self):
         """Test that files already in the directory can be added to the
@@ -178,6 +228,15 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         self.config.transfer = None
         self.runIngestTest([newPath])
 
+    def testInPlaceCli(self):
+        runner = click.testing.CliRunner()
+        result = runner.invoke(butlerCli, ["ingest-raws", self.root,
+                                           "--transfer", "copy",
+                                           "--output-run", "raw",
+                                           "--file", self.file])
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.runIngestTest(cli=True)
+
     def testFailOnConflict(self):
         """Re-ingesting the same data into the repository should fail.
         """
@@ -185,6 +244,21 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         self.runIngest()
         with self.assertRaises(Exception):
             self.runIngest()
+
+    def testFailOnConflictCli(self):
+        """Re-ingesting the same data into the repository should fail.
+        """
+        runner = click.testing.CliRunner()
+        arguments = ["ingest-raws", self.root,
+                     "--transfer", "copy",
+                     "--output-run", "raw",
+                     "--file", self.file]
+        result = runner.invoke(butlerCli, arguments)
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.runIngestTest(cli=True)
+        result = runner.invoke(butlerCli, arguments)
+        self.assertEqual(result.exit_code, 1, result.output)
+        self.assertIsInstance(result.exception, Exception)
 
     def testWriteCuratedCalibrations(self):
         """Test that we can ingest the curated calibrations"""

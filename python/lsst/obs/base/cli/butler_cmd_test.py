@@ -36,8 +36,9 @@ class ButlerCmdTestBase(metaclass=abc.ABCMeta):
     Subclass from this, then `unittest.TestCase` to get a working test suite.
     """
 
+    @staticmethod
     @abc.abstractmethod
-    def instrumentClass(self):
+    def instrumentClass():
         """Get the fully qualified instrument class.
 
         Returns
@@ -47,8 +48,9 @@ class ButlerCmdTestBase(metaclass=abc.ABCMeta):
         """
         pass
 
+    @staticmethod
     @abc.abstractmethod
-    def instrumentName(self):
+    def instrumentName():
         """Get the instrument name.
 
         Returns

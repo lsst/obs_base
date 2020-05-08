@@ -39,9 +39,11 @@ log = logging.getLogger(__name__)
 @config_option()
 @config_file_option()
 @run_option(required=True)
-@click.option("-d", "--dir", help="The path to the directory containing the raws to ingest.")
+@click.option("-d", "--dir", "directory",
+              help="The path to the directory containing the raws to ingest.")
+@click.option("-f", "--file", help="The name of a file containing raws to ingest.")
 @click.option("-t", "--transfer", help="The external data transfer type.", default="auto")
-def ingest_raws(repo, config, config_file, output_run, dir, transfer):
+def ingest_raws(repo, config, config_file, output_run, directory, file, transfer):
     """Ingests raw frames into the butler registry
     /f
 
@@ -55,8 +57,10 @@ def ingest_raws(repo, config, config_file, output_run, dir, transfer):
         Path to a config file that contains overrides to the ingest config.
     output_run : `str`
         The path to the location, the run, where datasets should be put.
-    dir : `str`
+    directory : `str`
         Path to the directory containing the raws to ingest.
+    file : `str`
+        Path to a file containing raws to ingest.
     transfer : `str`
         The external data transfer type.
     """
@@ -70,5 +74,8 @@ def ingest_raws(repo, config, config_file, output_run, dir, transfer):
         configOverrides.addValueOverride(name, value)
     cli_handle_exception(configOverrides.applyTo, ingestConfig)
     ingester = RawIngestTask(config=ingestConfig, butler=butler)
-    files = [os.path.join(dir, f) for f in os.listdir(dir) if f.endswith("fits") or f.endswith("FITS")]
+    files = [file] if file is not None else []
+    if directory is not None:
+        files.extend(
+            [os.path.join(directory, f) for f in os.listdir(directory) if f.lower().endswith("fits")])
     ingester.run(files)
