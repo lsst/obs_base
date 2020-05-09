@@ -64,13 +64,13 @@ class ButlerCmdTestBase(metaclass=abc.ABCMeta):
         runner = click.testing.CliRunner()
         with runner.isolated_filesystem():
             result = runner.invoke(butler.cli, ["create", "here"])
-            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
             result = runner.invoke(butler.cli, ["register-instrument",
                                                 "here",
                                                 "-i", self.instrumentClass()])
-            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
             result = runner.invoke(butler.cli, ["write-curated-calibrations",
                                                 "here",
                                                 "-i", self.instrumentName(),
                                                 "--output-run", "output_run"])
-            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
