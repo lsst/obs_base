@@ -29,7 +29,7 @@ from ...script import registerInstrument
 
 @click.command()
 @repo_argument(required=True)
-@instrument_option(required=True, helpMsg="The fully-qualified name of an Instrument subclass.")
+@instrument_option(required=True, help="The fully-qualified name of an Instrument subclass.")
 def register_instrument(*args, **kwargs):
     """Add an instrument to the data repository.
     """
