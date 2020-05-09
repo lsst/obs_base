@@ -19,18 +19,28 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import click
-
-from lsst.daf.butler.cli.opt import repo_argument
-from lsst.daf.butler.cli.utils import cli_handle_exception
-from ..opt import instrument_option
-from ...script import registerInstrument
+from lsst.daf.butler import Butler
+from ..utils import getInstrument
 
 
-@click.command()
-@repo_argument(required=True)
-@instrument_option(required=True, helpMsg="The fully-qualified name of an Instrument subclass.")
-def register_instrument(*args, **kwargs):
+def registerInstrument(repo, instrument):
     """Add an instrument to the data repository.
+
+    Parameters
+    ----------
+    repo : `str`
+        URI to the location to create the repo.
+    instrument : `str`
+        The fully-qualified name of an Instrument subclass.
+
+    Raises
+    ------
+    RuntimeError
+        If the instrument can not be imported, instantiated, or obtained from
+        the registry.
+    TypeError
+        If the instrument is not a subclass of lsst.obs.base.Instrument.
     """
-    cli_handle_exception(registerInstrument, *args, **kwargs)
+    butler = Butler(repo, writeable=True)
+    instr = getInstrument(instrument, butler.registry)
+    instr.register(butler.registry)

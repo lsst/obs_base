@@ -20,18 +20,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import click
-import logging
-import os
 
 from lsst.daf.butler.cli.opt import repo_argument, config_option, config_file_option, run_option
 from lsst.daf.butler.cli.utils import cli_handle_exception
-from lsst.daf.butler import Butler
-from lsst.pipe.base.configOverrides import ConfigOverrides
-from ..opt import instrument_option
-from ... import RawIngestTask, RawIngestConfig
-from ...utils import getInstrument
-
-log = logging.getLogger(__name__)
+from ...script import ingestRaws
 
 
 @click.command()
@@ -43,39 +35,7 @@ log = logging.getLogger(__name__)
               help="The path to the directory containing the raws to ingest.")
 @click.option("-f", "--file", help="The name of a file containing raws to ingest.")
 @click.option("-t", "--transfer", help="The external data transfer type.", default="auto")
-def ingest_raws(repo, config, config_file, output_run, directory, file, transfer):
-    """Ingests raw frames into the butler registry
-    /f
-
-    Parameters
-    ----------
-    repo : `str`
-        URI to the repository.
-    config : `dict` [`str`, `str`]
-        Key-vaule pairs to apply as overrides to the ingest config.
-    config_file : `str`
-        Path to a config file that contains overrides to the ingest config.
-    output_run : `str`
-        The path to the location, the run, where datasets should be put.
-    directory : `str`
-        Path to the directory containing the raws to ingest.
-    file : `str`
-        Path to a file containing raws to ingest.
-    transfer : `str`
-        The external data transfer type.
-    """
-    butler = Butler(repo, run=output_run)
-    ingestConfig = RawIngestConfig()
-    ingestConfig.transfer = transfer
-    configOverrides = ConfigOverrides()
-    if config_file is not None:
-        configOverrides.addFileOverride(config_file)
-    for name, value in config:
-        configOverrides.addValueOverride(name, value)
-    cli_handle_exception(configOverrides.applyTo, ingestConfig)
-    ingester = RawIngestTask(config=ingestConfig, butler=butler)
-    files = [file] if file is not None else []
-    if directory is not None:
-        files.extend(
-            [os.path.join(directory, f) for f in os.listdir(directory) if f.lower().endswith("fits")])
-    ingester.run(files)
+@click.option("--ingest-task", default="lsst.obs.base.RawIngestTask", help="The fully qualified class name "
+              "of the ingest task to use.")
+def ingest_raws(*args, **kwargs):
+    cli_handle_exception(ingestRaws, *args, **kwargs)
