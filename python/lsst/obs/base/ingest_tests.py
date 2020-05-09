@@ -25,7 +25,6 @@
 __all__ = ("IngestTestBase",)
 
 import abc
-import click
 import tempfile
 import unittest
 import os
