@@ -47,7 +47,7 @@ class ConvertGen2To3TestCase:
     gen2root = ""
     """Root path to the gen2 repo to be converted."""
 
-    gen2calib = ""
+    gen2calib = None
     """Path to the gen2 calib repo to be converted."""
 
     instrumentName = None

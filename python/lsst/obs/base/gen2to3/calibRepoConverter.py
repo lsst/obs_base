@@ -88,7 +88,16 @@ class CalibRepoConverter(RepoConverter):
         # This has only been tested on HSC, and it's not clear how general it
         # is.  The catch is that it needs to generate calibration_label strings
         # consistent with those produced by the Translator system.
-        db = sqlite3.connect(os.path.join(self.root, "calibRegistry.sqlite3"))
+
+        calibFile = os.path.join(self.root, "calibRegistry.sqlite3")
+
+        # If the registry file does not exist this indicates a problem.
+        # We check explicitly because sqlite will try to create the
+        # missing file if it can.
+        if not os.path.exists(calibFile):
+            raise RuntimeError("Attempting to convert calibrations but no registry database"
+                               f" found in {self.root}")
+        db = sqlite3.connect(calibFile)
         db.row_factory = sqlite3.Row
         records = []
         for datasetType in self._datasetTypes:
