@@ -203,7 +203,7 @@ class MakeRawVisitInfoViaObsInfo(object):
         for key in list(argDict.keys()):  # use a copy because we may delete items
             if argDict[key] is None:
                 if log is not None:
-                    log.warn("argDict[{}] is None; stripping".format(key, argDict[key]))
+                    log.warn("argDict[%s] is None; stripping", key)
                 del argDict[key]
 
         return VisitInfo(**argDict)
