@@ -668,9 +668,9 @@ class CameraMapper(dafPersist.Mapper):
             keyDict = self.mappings[datasetType].keys()
         if level is not None and level in self.levels:
             keyDict = copy.copy(keyDict)
-            for l in self.levels[level]:
-                if l in keyDict:
-                    del keyDict[l]
+            for lev in self.levels[level]:
+                if lev in keyDict:
+                    del keyDict[lev]
         return keyDict
 
     def getDefaultLevel(self):
