@@ -454,24 +454,25 @@ class RepoConverter(ABC):
         guaranteed to be called between `insertDimensionData` and `ingest`.
         """
         import itertools
-        for datasetType, datasetsForType in self._fileDatasets.items():
-            self.task.log.info("Expanding data IDs for %s %s datasets.", len(datasetsForType),
-                               datasetType.name)
-            expanded = []
-            for dataset in datasetsForType:
-                for i, ref in enumerate(dataset.refs):
-                    try:
-                        dataId = self.task.registry.expandDataId(ref.dataId)
-                        dataset.refs[i] = ref.expanded(dataId)
-                    except LookupError as err:
-                        self.task.log.warn("Skipping ingestion for '%s': %s", dataset.path, err)
-                        # Remove skipped datasets from multi-extension FileDatasets
-                        dataset.refs[i] = None  # We will strip off the `None`s after the loop.
-                dataset.refs[:] = itertools.filterfalse(lambda x: x is None, dataset.refs)
-                if dataset.refs:
-                    expanded.append(dataset)
+        with self.task.registry.cachedDimensions() as cache:
+            for datasetType, datasetsForType in self._fileDatasets.items():
+                self.task.log.info("Expanding data IDs for %s %s datasets.", len(datasetsForType),
+                                   datasetType.name)
+                expanded = []
+                for dataset in datasetsForType:
+                    for i, ref in enumerate(dataset.refs):
+                        try:
+                            dataId = cache.expandDataId(ref.dataId)
+                            dataset.refs[i] = ref.expanded(dataId)
+                        except LookupError as err:
+                            self.task.log.warn("Skipping ingestion for '%s': %s", dataset.path, err)
+                            # Remove skipped datasets from multi-extension FileDatasets
+                            dataset.refs[i] = None  # We will strip off the `None`s after the loop.
+                    dataset.refs[:] = itertools.filterfalse(lambda x: x is None, dataset.refs)
+                    if dataset.refs:
+                        expanded.append(dataset)
 
-            datasetsForType[:] = expanded
+                datasetsForType[:] = expanded
 
     def ingest(self):
         """Insert converted datasets into the Gen3 repository.

@@ -393,9 +393,10 @@ class DefineVisitsTask(Task):
         # Normalize, expand, and deduplicate data IDs.
         self.log.info("Preprocessing data IDs.")
         dimensions = DimensionGraph(self.universe, names=["exposure"])
-        dataIds = set(mapFunc(lambda d: self.butler.registry.expandDataId(d, graph=dimensions), dataIds))
-        if not dataIds:
-            raise RuntimeError("No exposures given.")
+        with self.butler.registry.cachedDimensions() as cache:
+            dataIds = set(mapFunc(lambda d: cache.expandDataId(d, graph=dimensions), dataIds))
+            if not dataIds:
+                raise RuntimeError("No exposures given.")
         # Extract exposure DimensionRecords, check that there's only one
         # instrument in play, and check for non-science exposures.
         exposures = []
