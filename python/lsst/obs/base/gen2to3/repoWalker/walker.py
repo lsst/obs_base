@@ -78,11 +78,14 @@ class RepoWalker:
                     raise ValueError(f"Multiple types for key '{key}': {dtype} "
                                      f"(from {leaf.template}) vs. {allKeys[key]}.")
         tree, messages, pruned = tree.prune()
-        if pruned:
-            raise RuntimeError(f"Nothing to search for after pruning skipped datasets:"
-                               f" {'; '.join(messages)}.")
-        self._scanner = DirectoryScanner()
-        tree.fill(self._scanner, allKeys, {}, fileIgnoreRegEx=fileIgnoreRegEx, dirIgnoreRegEx=dirIgnoreRegEx)
+        if not pruned:
+            self._scanner = DirectoryScanner()
+            tree.fill(self._scanner, allKeys, {}, fileIgnoreRegEx=fileIgnoreRegEx,
+                      dirIgnoreRegEx=dirIgnoreRegEx)
+        else:
+            # Nothing to do; just remember this for later to avoid disturbing
+            # higher-level code with the fact that walk() will be a no-op.
+            self._scanner = None
 
     Target: ClassVar[type] = BuilderTargetInput
     """An input struct type whose instances represent a dataset type to be
@@ -121,5 +124,6 @@ class RepoWalker:
             def predicate(dataId: DataCoordinate) -> bool:
                 return True
         datasets = defaultdict(list)
-        self._scanner.scan(root, datasets, log=log, predicate=predicate)
+        if self._scanner is not None:
+            self._scanner.scan(root, datasets, log=log, predicate=predicate)
         return datasets
