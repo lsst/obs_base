@@ -24,9 +24,9 @@ import click
 
 
 class instrument_option:  # noqa: N801
-    def __init__(self, required=False, helpMsg=None):
+    def __init__(self, required=False, help=None):
         self.required = required
-        self.help = "The name or fully-qualified class name of an instrument." if helpMsg is None else helpMsg
+        self.help = "The name or fully-qualified class name of an instrument." if help is None else help
 
     def __call__(self, f):
         return click.option("-i", "--instrument",

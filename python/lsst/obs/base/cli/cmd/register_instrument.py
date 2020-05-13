@@ -20,29 +20,17 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import click
-import logging
 
 from lsst.daf.butler.cli.opt import repo_argument
-from lsst.daf.butler import Butler
+from lsst.daf.butler.cli.utils import cli_handle_exception
 from ..opt import instrument_option
-from ...utils import getInstrument
-
-log = logging.getLogger(__name__)
+from ...script import registerInstrument
 
 
 @click.command()
 @repo_argument(required=True)
-@instrument_option(required=True, helpMsg="The fully-qualified name of an Instrument subclass.")
-@click.pass_context
-def register_instrument(context, repo, instrument):
+@instrument_option(required=True, help="The fully-qualified name of an Instrument subclass.")
+def register_instrument(*args, **kwargs):
     """Add an instrument to the data repository.
     """
-    butler = Butler(repo, writeable=True)
-    try:
-        instr = getInstrument(instrument, butler.registry)
-    except RuntimeError as err:
-        log.critical("Failed getting instrument %s with exception %s", instrument, err)
-        raise click.ClickException("Could not import instrument.")
-    except TypeError:
-        raise click.ClickException(f"{instrument} is not a subclass of obs.base.Instrument")
-    instr.register(butler.registry)
+    cli_handle_exception(registerInstrument, *args, **kwargs)

@@ -31,7 +31,10 @@ import os
 import shutil
 
 from lsst.daf.butler import Butler
+from lsst.daf.butler.script import createRepo
 import lsst.obs.base
+from .utils import getInstrument
+from .script import ingestRaws, registerInstrument, writeCuratedCalibrations
 
 
 class IngestTestBase(metaclass=abc.ABCMeta):
@@ -53,7 +56,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     file = ""
     """Full path to a file to ingest in tests."""
 
-    RawIngestTask = lsst.obs.base.RawIngestTask
+    RawIngestTask = "lsst.obs.base.RawIngestTask"
     """The task to use in the Ingest test."""
 
     curatedCalibrationDatasetTypes = None
@@ -76,38 +79,31 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     observations).
     """
 
+    instrument = ""
+    """The fully qualified name of the instrument.
+    """
+
+    instrumentName = ""
+    """The name of the instrument.
+    """
+
+    outputRun = "raw"
+    """The name of the output run to use in tests.
+    """
+
     def setUp(self):
         # Use a temporary working directory
         self.root = tempfile.mkdtemp(dir=self.ingestDir)
-        Butler.makeRepo(self.root)
-        self.butler = Butler(self.root, run="raw")
+        createRepo(self.root)
 
         # Register the instrument and its static metadata
-        self.instrument.register(self.butler.registry)
-
-        # Make a default config for test methods to play with
-        self.config = self.RawIngestTask.ConfigClass()
+        registerInstrument(self.root, self.instrument)
 
     def tearDown(self):
         if os.path.exists(self.root):
             shutil.rmtree(self.root, ignore_errors=True)
 
-    def runIngest(self, files=None):
-        """
-        Initialize and run RawIngestTask on a list of files.
-
-        Parameters
-        ----------
-        files : `list` [`str`], or None
-            List of files to be ingested, or None to use ``self.file``
-        """
-        if files is None:
-            files = [self.file]
-        task = self.RawIngestTask(config=self.config, butler=self.butler)
-        task.log.setLevel(task.log.FATAL)  # silence logs, since we expect a lot of warnings
-        task.run(files)
-
-    def runIngestTest(self, files=None):
+    def verifyIngest(self, files=None, cli=False):
         """
         Test that RawIngestTask ingested the expected files.
 
@@ -116,21 +112,21 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         files : `list` [`str`], or None
             List of files to be ingested, or None to use ``self.file``
         """
-        self.runIngest(files)
-        datasets = self.butler.registry.queryDatasets('raw', collections=...)
+        butler = Butler(self.root, run=self.outputRun)
+        datasets = butler.registry.queryDatasets(self.outputRun, collections=...)
         self.assertEqual(len(list(datasets)), len(self.dataIds))
         for dataId in self.dataIds:
-            exposure = self.butler.get("raw", dataId)
-            metadata = self.butler.get("raw.metadata", dataId)
+            exposure = butler.get(self.outputRun, dataId)
+            metadata = butler.get("raw.metadata", dataId)
             self.assertEqual(metadata.toDict(), exposure.getMetadata().toDict())
 
             # Since components follow a different code path we check that
             # WCS match and also we check that at least the shape
             # of the image is the same (rather than doing per-pixel equality)
-            wcs = self.butler.get("raw.wcs", dataId)
+            wcs = butler.get("raw.wcs", dataId)
             self.assertEqual(wcs, exposure.getWcs())
 
-            rawImage = self.butler.get("raw.image", dataId)
+            rawImage = butler.get("raw.image", dataId)
             self.assertEqual(rawImage.getBBox(), exposure.getBBox())
 
             self.checkRepo(files=files)
@@ -149,21 +145,23 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         pass
 
     def testLink(self):
-        self.config.transfer = "link"
-        self.runIngestTest()
+        ingestRaws(self.root, self.outputRun, file=self.file, transfer="link", ingest_task=self.RawIngestTask)
+        self.verifyIngest()
 
     def testSymLink(self):
-        self.config.transfer = "symlink"
-        self.runIngestTest()
+        ingestRaws(self.root, self.outputRun, file=self.file, transfer="symlink",
+                   ingest_task=self.RawIngestTask)
+        self.verifyIngest()
 
     def testCopy(self):
-        self.config.transfer = "copy"
-        self.runIngestTest()
+        ingestRaws(self.root, self.outputRun, file=self.file, transfer="copy", ingest_task=self.RawIngestTask)
+        self.verifyIngest()
 
     def testHardLink(self):
-        self.config.transfer = "hardlink"
         try:
-            self.runIngestTest()
+            ingestRaws(self.root, self.outputRun, file=self.file, transfer="hardlink",
+                       ingest_task=self.RawIngestTask)
+            self.verifyIngest()
         except PermissionError as err:
             raise unittest.SkipTest("Skipping hard-link test because input data"
                                     " is on a different filesystem.") from err
@@ -173,57 +171,63 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         registry in-place.
         """
         # symlink into repo root manually
-        newPath = os.path.join(self.butler.datastore.root, os.path.basename(self.file))
+        butler = Butler(self.root, run=self.outputRun)
+        newPath = os.path.join(butler.datastore.root, os.path.basename(self.file))
         os.symlink(os.path.abspath(self.file), newPath)
-        self.config.transfer = None
-        self.runIngestTest([newPath])
+        ingestRaws(self.root, self.outputRun, file=newPath, transfer=None, ingest_task=self.RawIngestTask)
+        self.verifyIngest()
 
     def testFailOnConflict(self):
         """Re-ingesting the same data into the repository should fail.
         """
-        self.config.transfer = "symlink"
-        self.runIngest()
+        ingestRaws(self.root, self.outputRun, file=self.file, transfer="symlink",
+                   ingest_task=self.RawIngestTask)
         with self.assertRaises(Exception):
-            self.runIngest()
+            ingestRaws(self.root, self.outputRun, file=self.file, transfer="symlink",
+                       ingest_task=self.RawIngestTask)
 
     def testWriteCuratedCalibrations(self):
         """Test that we can ingest the curated calibrations"""
         if self.curatedCalibrationDatasetTypes is None:
             raise unittest.SkipTest("Class requests disabling of writeCuratedCalibrations test")
 
-        self.instrument.writeCuratedCalibrations(self.butler)
+        writeCuratedCalibrations(self.root, self.instrumentName, self.outputRun)
 
-        dataId = {"instrument": self.instrument.getName()}
+        dataId = {"instrument": self.instrumentName}
+        butler = Butler(self.root, run=self.outputRun)
         for datasetTypeName in self.curatedCalibrationDatasetTypes:
             with self.subTest(dtype=datasetTypeName, dataId=dataId):
-                datasets = list(self.butler.registry.queryDatasets(datasetTypeName, collections=...,
-                                                                   dataId=dataId))
+                datasets = list(butler.registry.queryDatasets(datasetTypeName, collections=...,
+                                                              dataId=dataId))
                 self.assertGreater(len(datasets), 0, f"Checking {datasetTypeName}")
 
     def testDefineVisits(self):
         if self.visits is None:
             self.skipTest("Expected visits were not defined.")
-        self.config.transfer = "link"
-        self.runIngest()
+        ingestRaws(self.root, self.outputRun, file=self.file, transfer="link", ingest_task=self.RawIngestTask)
+
         config = self.DefineVisitsTask.ConfigClass()
-        self.instrument.applyConfigOverrides(self.DefineVisitsTask._DefaultName, config)
-        task = self.DefineVisitsTask(config=config, butler=self.butler)
+        butler = Butler(self.root, run=self.outputRun)
+        instrument = getInstrument(self.instrumentName, butler.registry)
+        instrument.applyConfigOverrides(self.DefineVisitsTask._DefaultName, config)
+        task = self.DefineVisitsTask(config=config, butler=butler)
         task.run(self.dataIds)
+
         # Test that we got the visits we expected.
-        visits = set(self.butler.registry.queryDimensions(["visit"], expand=True))
+        visits = set(butler.registry.queryDimensions(["visit"], expand=True))
         self.assertCountEqual(visits, self.visits.keys())
-        camera = self.instrument.getCamera()
+        camera = instrument.getCamera()
         for foundVisit, (expectedVisit, expectedExposures) in zip(visits, self.visits.items()):
             # Test that this visit is associated with the expected exposures.
-            foundExposures = set(self.butler.registry.queryDimensions(["exposure"], dataId=expectedVisit,
-                                                                      expand=True))
+            foundExposures = set(butler.registry.queryDimensions(["exposure"], dataId=expectedVisit,
+                                                                 expand=True))
             self.assertCountEqual(foundExposures, expectedExposures)
             # Test that we have a visit region, and that it contains all of the
             # detector+visit regions.
             self.assertIsNotNone(foundVisit.region)
-            detectorVisitDataIds = set(self.butler.registry.queryDimensions(["visit", "detector"],
-                                                                            dataId=expectedVisit,
-                                                                            expand=True))
+            detectorVisitDataIds = set(butler.registry.queryDimensions(["visit", "detector"],
+                                                                       dataId=expectedVisit,
+                                                                       expand=True))
             self.assertEqual(len(detectorVisitDataIds), len(camera))
             for dataId in detectorVisitDataIds:
                 self.assertTrue(foundVisit.region.contains(dataId.region))

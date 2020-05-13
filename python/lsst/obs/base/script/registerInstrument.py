@@ -2,7 +2,7 @@
 #
 # Developed for the LSST Data Management System.
 # This product includes software developed by the LSST Project
-# (https://www.lsst.org).
+# (http://www.lsst.org).
 # See the COPYRIGHT file at the top-level directory of this distribution
 # for details of code ownership.
 #
@@ -17,10 +17,30 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-__all__ = ["register_instrument", "write_curated_calibrations"]
+from lsst.daf.butler import Butler
+from ..utils import getInstrument
 
-from .register_instrument import register_instrument
-from .write_curated_calibrations import write_curated_calibrations
-from .ingest_raws import ingest_raws
+
+def registerInstrument(repo, instrument):
+    """Add an instrument to the data repository.
+
+    Parameters
+    ----------
+    repo : `str`
+        URI to the location to create the repo.
+    instrument : `str`
+        The fully-qualified name of an Instrument subclass.
+
+    Raises
+    ------
+    RuntimeError
+        If the instrument can not be imported, instantiated, or obtained from
+        the registry.
+    TypeError
+        If the instrument is not a subclass of lsst.obs.base.Instrument.
+    """
+    butler = Butler(repo, writeable=True)
+    instr = getInstrument(instrument, butler.registry)
+    instr.register(butler.registry)
