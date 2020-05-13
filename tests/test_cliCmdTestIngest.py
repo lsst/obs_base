@@ -27,7 +27,7 @@ import click.testing
 import unittest
 
 from lsst.daf.butler.cli import butler
-from lsst.daf.butler.cli.utils import DAF_BUTLER_MOCK, verifyFunctionInfo
+from lsst.daf.butler.cli.utils import Mocker, mockEnvVar
 
 
 def makeExpectedKwargs(**kwargs):
@@ -55,15 +55,16 @@ class Suite(unittest.TestCase):
             The expected arguments to the ingestRaws command function, keys are
             the argument name and values are the argument value.
         """
-        runner = click.testing.CliRunner(env=DAF_BUTLER_MOCK)
+        runner = click.testing.CliRunner(env=mockEnvVar)
         result = runner.invoke(butler.cli, inputs)
         self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
-        verifyFunctionInfo(self, result.output, "ingestRaws", (), expectedKwargs)
+        Mocker.mock.assert_called_with(**expectedKwargs)
 
     def test_repoAndOutput(self):
         """Test the most basic required arguments, repo and output run"""
         expected = makeExpectedKwargs(repo="here", output_run="out")
-        self.run_test(["ingest-raws", "here", "--output-run", "out"], expected)
+        self.run_test(["ingest-raws", "here",
+                       "--output-run", "out"], expected)
 
     def test_configMulti(self):
         """Test config overrides"""
