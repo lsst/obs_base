@@ -29,6 +29,7 @@ import click
 import click.testing
 
 from lsst.daf.butler.cli import butler
+from lsst.utils import doImport
 
 
 class ButlerCmdTestBase(metaclass=abc.ABCMeta):
@@ -36,29 +37,33 @@ class ButlerCmdTestBase(metaclass=abc.ABCMeta):
     Subclass from this, then `unittest.TestCase` to get a working test suite.
     """
 
-    @staticmethod
+    @property
     @abc.abstractmethod
-    def instrumentClass():
-        """Get the fully qualified instrument class.
+    def instrumentClassName(self):
+        """The fully qualified instrument class name.
 
         Returns
         -------
         `str`
-            The fully qualified instrument class.
+            The fully qualified instrument class name.
         """
         pass
 
-    @staticmethod
-    @abc.abstractmethod
-    def instrumentName():
-        """Get the instrument name.
+    @property
+    def instrument(self):
+        """The instrument class."""
+        return doImport(self.instrumentClassName)
+
+    @property
+    def instrumentName(self):
+        """The name of the instrument.
 
         Returns
         -------
         `str`
             The name of the instrument.
         """
-        pass
+        return self.instrument.getName()
 
     def test_cli(self):
         runner = click.testing.CliRunner()
@@ -67,10 +72,10 @@ class ButlerCmdTestBase(metaclass=abc.ABCMeta):
             self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
             result = runner.invoke(butler.cli, ["register-instrument",
                                                 "here",
-                                                "-i", self.instrumentClass()])
+                                                "-i", self.instrumentClassName])
             self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
             result = runner.invoke(butler.cli, ["write-curated-calibrations",
                                                 "here",
-                                                "-i", self.instrumentName(),
+                                                "-i", self.instrumentName,
                                                 "--output-run", "output_run"])
             self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")

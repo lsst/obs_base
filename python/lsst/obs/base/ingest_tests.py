@@ -33,6 +33,7 @@ import shutil
 from lsst.daf.butler import Butler
 from lsst.daf.butler.script import createRepo
 import lsst.obs.base
+from lsst.utils import doImport
 from .utils import getInstrument
 from .script import ingestRaws, registerInstrument, writeCuratedCalibrations
 
@@ -46,9 +47,6 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     """Root path to ingest files into. Typically `obs_package/tests/`; the
     actual directory will be a tempdir under this one.
     """
-
-    instrument = None
-    """The instrument to be registered and tested."""
 
     dataIds = []
     """list of butler data IDs of files that should have been ingested."""
@@ -66,30 +64,48 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
     defineVisitsTask = lsst.obs.base.DefineVisitsTask
     """The task to use to define visits from groups of exposures.
-
     This is ignored if ``visits`` is `None`.
     """
 
     visits = {}
     """A dictionary mapping visit data IDs the lists of exposure data IDs that
     are associated with them.
-
     If this is empty (but not `None`), visit definition will be run but no
     visits will be expected (e.g. because no exposures are on-sky
     observations).
     """
 
-    instrument = ""
-    """The fully qualified name of the instrument.
-    """
-
-    instrumentName = ""
-    """The name of the instrument.
-    """
-
     outputRun = "raw"
     """The name of the output run to use in tests.
     """
+
+    @property
+    @abc.abstractmethod
+    def instrumentClassName(self):
+        """The fully qualified instrument class name.
+
+        Returns
+        -------
+        `str`
+            The fully qualified instrument class name.
+        """
+        pass
+
+    @property
+    def instrument(self):
+        """The instrument class."""
+        return doImport(self.instrumentClassName)
+
+    @property
+    def instrumentName(self):
+        """The name of the instrument.
+
+        Returns
+        -------
+        `str`
+            The name of the instrument.
+        """
+        return self.instrument.getName()
 
     def setUp(self):
         # Use a temporary working directory
@@ -97,7 +113,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         createRepo(self.root)
 
         # Register the instrument and its static metadata
-        registerInstrument(self.root, self.instrument)
+        registerInstrument(self.root, self.instrumentClassName)
 
     def tearDown(self):
         if os.path.exists(self.root):
@@ -211,15 +227,15 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
         config = self.defineVisitsTask.ConfigClass()
         butler = Butler(self.root, run=self.outputRun)
-        instrument = getInstrument(self.instrumentName, butler.registry)
-        instrument.applyConfigOverrides(self.defineVisitsTask._DefaultName, config)
+        instr = getInstrument(self.instrumentName, butler.registry)
+        instr.applyConfigOverrides(self.defineVisitsTask._DefaultName, config)
         task = self.defineVisitsTask(config=config, butler=butler)
         task.run(self.dataIds)
 
         # Test that we got the visits we expected.
         visits = set(butler.registry.queryDimensions(["visit"], expand=True))
         self.assertCountEqual(visits, self.visits.keys())
-        camera = instrument.getCamera()
+        camera = instr.getCamera()
         for foundVisit, (expectedVisit, expectedExposures) in zip(visits, self.visits.items()):
             # Test that this visit is associated with the expected exposures.
             foundExposures = set(butler.registry.queryDimensions(["exposure"], dataId=expectedVisit,
