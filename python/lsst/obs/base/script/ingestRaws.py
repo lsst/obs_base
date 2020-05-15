@@ -68,6 +68,7 @@ def ingestRaws(repo, output_run, config=None, config_file=None, directory=None, 
     ingester = TaskClass(config=ingestConfig, butler=butler)
     files = [file] if file is not None else []
     if directory is not None:
+        suffixes = (".fits", ".fits.gz", ".fits.fz")
         files.extend(
-            [os.path.join(directory, f) for f in os.listdir(directory) if f.lower().endswith("fits")])
+            [os.path.join(directory, f) for f in os.listdir(directory) if f.lower().endswith(suffixes)])
     ingester.run(files)
