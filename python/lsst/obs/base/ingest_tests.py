@@ -92,7 +92,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         pass
 
     @property
-    def instrument(self):
+    def instrumentClass(self):
         """The instrument class."""
         return doImport(self.instrumentClassName)
 
@@ -105,7 +105,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         `str`
             The name of the instrument.
         """
-        return self.instrument.getName()
+        return self.instrumentClass.getName()
 
     def setUp(self):
         # Use a temporary working directory
