@@ -64,7 +64,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     writeCuratedCalibrations. If `None` writeCuratedCalibrations will
     not be called and the test will be skipped."""
 
-    DefineVisitsTask = lsst.obs.base.DefineVisitsTask
+    defineVisitsTask = lsst.obs.base.DefineVisitsTask
     """The task to use to define visits from groups of exposures.
 
     This is ignored if ``visits`` is `None`.
@@ -209,11 +209,11 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         ingestRaws(self.root, self.outputRun, file=self.file, transfer="link",
                    ingest_task=self.rawIngestTask)
 
-        config = self.DefineVisitsTask.ConfigClass()
+        config = self.defineVisitsTask.ConfigClass()
         butler = Butler(self.root, run=self.outputRun)
         instrument = getInstrument(self.instrumentName, butler.registry)
-        instrument.applyConfigOverrides(self.DefineVisitsTask._DefaultName, config)
-        task = self.DefineVisitsTask(config=config, butler=butler)
+        instrument.applyConfigOverrides(self.defineVisitsTask._DefaultName, config)
+        task = self.defineVisitsTask(config=config, butler=butler)
         task.run(self.dataIds)
 
         # Test that we got the visits we expected.
