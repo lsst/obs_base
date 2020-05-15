@@ -56,7 +56,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     file = ""
     """Full path to a file to ingest in tests."""
 
-    RawIngestTask = "lsst.obs.base.RawIngestTask"
+    rawIngestTask = "lsst.obs.base.RawIngestTask"
     """The task to use in the Ingest test."""
 
     curatedCalibrationDatasetTypes = None
@@ -145,22 +145,24 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         pass
 
     def testLink(self):
-        ingestRaws(self.root, self.outputRun, file=self.file, transfer="link", ingest_task=self.RawIngestTask)
+        ingestRaws(self.root, self.outputRun, file=self.file, transfer="link",
+                   ingest_task=self.rawIngestTask)
         self.verifyIngest()
 
     def testSymLink(self):
         ingestRaws(self.root, self.outputRun, file=self.file, transfer="symlink",
-                   ingest_task=self.RawIngestTask)
+                   ingest_task=self.rawIngestTask)
         self.verifyIngest()
 
     def testCopy(self):
-        ingestRaws(self.root, self.outputRun, file=self.file, transfer="copy", ingest_task=self.RawIngestTask)
+        ingestRaws(self.root, self.outputRun, file=self.file, transfer="copy",
+                   ingest_task=self.rawIngestTask)
         self.verifyIngest()
 
     def testHardLink(self):
         try:
             ingestRaws(self.root, self.outputRun, file=self.file, transfer="hardlink",
-                       ingest_task=self.RawIngestTask)
+                       ingest_task=self.rawIngestTask)
             self.verifyIngest()
         except PermissionError as err:
             raise unittest.SkipTest("Skipping hard-link test because input data"
@@ -174,17 +176,17 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         butler = Butler(self.root, run=self.outputRun)
         newPath = os.path.join(butler.datastore.root, os.path.basename(self.file))
         os.symlink(os.path.abspath(self.file), newPath)
-        ingestRaws(self.root, self.outputRun, file=newPath, transfer=None, ingest_task=self.RawIngestTask)
+        ingestRaws(self.root, self.outputRun, file=newPath, transfer=None, ingest_task=self.rawIngestTask)
         self.verifyIngest()
 
     def testFailOnConflict(self):
         """Re-ingesting the same data into the repository should fail.
         """
         ingestRaws(self.root, self.outputRun, file=self.file, transfer="symlink",
-                   ingest_task=self.RawIngestTask)
+                   ingest_task=self.rawIngestTask)
         with self.assertRaises(Exception):
             ingestRaws(self.root, self.outputRun, file=self.file, transfer="symlink",
-                       ingest_task=self.RawIngestTask)
+                       ingest_task=self.rawIngestTask)
 
     def testWriteCuratedCalibrations(self):
         """Test that we can ingest the curated calibrations"""
@@ -204,7 +206,8 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     def testDefineVisits(self):
         if self.visits is None:
             self.skipTest("Expected visits were not defined.")
-        ingestRaws(self.root, self.outputRun, file=self.file, transfer="link", ingest_task=self.RawIngestTask)
+        ingestRaws(self.root, self.outputRun, file=self.file, transfer="link",
+                   ingest_task=self.rawIngestTask)
 
         config = self.DefineVisitsTask.ConfigClass()
         butler = Butler(self.root, run=self.outputRun)
