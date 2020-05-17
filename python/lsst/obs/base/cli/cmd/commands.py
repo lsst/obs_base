@@ -23,7 +23,8 @@ import click
 
 from lsst.daf.butler.cli.opt import repo_argument, config_option, config_file_option, run_option
 from lsst.daf.butler.cli.utils import cli_handle_exception
-from ...script import ingestRaws
+from ..opt import instrument_option
+from ...script import ingestRaws, writeCuratedCalibrations
 
 
 @click.command()
@@ -39,3 +40,13 @@ from ...script import ingestRaws
               "of the ingest task to use.")
 def ingest_raws(*args, **kwargs):
     cli_handle_exception(ingestRaws, *args, **kwargs)
+
+
+@click.command()
+@repo_argument(required=True)
+@instrument_option(required=True)
+@run_option(required=True)
+def write_curated_calibrations(*args, **kwargs):
+    """Add an instrument's curated calibrations to the data repository.
+    """
+    cli_handle_exception(writeCuratedCalibrations, *args, **kwargs)
