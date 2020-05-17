@@ -21,5 +21,4 @@
 
 __all__ = ["ingest_raws", "register_instrument", "write_curated_calibrations"]
 
-from .register_instrument import register_instrument
-from .commands import ingest_raws, write_curated_calibrations
+from .commands import ingest_raws, register_instrument, write_curated_calibrations
