@@ -83,10 +83,10 @@ class Suite(unittest.TestCase):
 
     def test_transfer(self):
         """Test the transfer argument"""
-        expected = makeExpectedKwargs(repo="here", output_run="out", transfer="foo")
+        expected = makeExpectedKwargs(repo="here", output_run="out", transfer="symlink")
         self.run_test(["ingest-raws", "here",
                        "--output-run", "out",
-                       "--transfer", "foo"], expected)
+                       "--transfer", "symlink"], expected)
 
     def test_ingestTask(self):
         """Test the ingest task argument"""

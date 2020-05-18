@@ -59,7 +59,7 @@ def convert(*args, **kwargs):
 @click.option("-d", "--dir", "directory",
               help="The path to the directory containing the raws to ingest.")
 @click.option("-f", "--file", help="The name of a file containing raws to ingest.")
-@click.option("-t", "--transfer", help="The external data transfer type.", default="auto")
+@transfer_option()
 @click.option("--ingest-task", default="lsst.obs.base.RawIngestTask", help="The fully qualified class name "
               "of the ingest task to use.")
 def ingest_raws(*args, **kwargs):
