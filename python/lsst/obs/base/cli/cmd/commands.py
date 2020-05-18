@@ -22,9 +22,33 @@
 import click
 
 from lsst.daf.butler.cli.opt import repo_argument, config_option, config_file_option, run_option
-from lsst.daf.butler.cli.utils import cli_handle_exception
-from ..opt import instrument_option
-from ...script import ingestRaws, writeCuratedCalibrations, registerInstrument
+from lsst.daf.butler.cli.utils import cli_handle_exception, split_commas
+from ..opt import instrument_option, transfer_option
+from ... import script
+
+
+@click.command()
+@repo_argument(required=True,
+               help="REPO is the URI or path to the gen3 repository. Will be created if it does not already "
+               "exist")
+@instrument_option(required=True,
+                   help="The fully-qualified name of the gen3 Instrument subclass for this camera.")
+@click.option("--gen2root", required=True,
+              help="Root path of the gen 2 repo to be converted.")
+@click.option("--skymap-name",
+              help="Name of the new gen3 skymap (e.g. 'discrete/ci_hsc').")
+@click.option("--skymap-config",
+              help="Path to skymap config file defining the new gen3 skymap.")
+@click.option("--calibs",
+              help="Path to the gen 2 calibration repo. It can be absolute or relative to gen2root.")
+@click.option("--reruns", multiple=True, callback=split_commas,
+              help="List of gen 2 reruns to convert.")
+@transfer_option(help="Mode to use to transfer files into the new repository.")
+@config_file_option(help="Path to a `ConvertRepoConfig` override to be included after the Instrument config "
+                    "overrides are applied.")
+def convert(*args, **kwargs):
+    """Convert a Butler gen 2 repository into a gen 3 repository."""
+    cli_handle_exception(script.convert, *args, **kwargs)
 
 
 @click.command()
@@ -39,7 +63,7 @@ from ...script import ingestRaws, writeCuratedCalibrations, registerInstrument
 @click.option("--ingest-task", default="lsst.obs.base.RawIngestTask", help="The fully qualified class name "
               "of the ingest task to use.")
 def ingest_raws(*args, **kwargs):
-    cli_handle_exception(ingestRaws, *args, **kwargs)
+    cli_handle_exception(script.ingestRaws, *args, **kwargs)
 
 
 @click.command()
@@ -48,7 +72,7 @@ def ingest_raws(*args, **kwargs):
 def register_instrument(*args, **kwargs):
     """Add an instrument to the data repository.
     """
-    cli_handle_exception(registerInstrument, *args, **kwargs)
+    cli_handle_exception(script.registerInstrument, *args, **kwargs)
 
 
 @click.command()
@@ -58,4 +82,4 @@ def register_instrument(*args, **kwargs):
 def write_curated_calibrations(*args, **kwargs):
     """Add an instrument's curated calibrations to the data repository.
     """
-    cli_handle_exception(writeCuratedCalibrations, *args, **kwargs)
+    cli_handle_exception(script.writeCuratedCalibrations, *args, **kwargs)

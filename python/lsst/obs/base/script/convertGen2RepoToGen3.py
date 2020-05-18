@@ -43,7 +43,7 @@ def build_argparser():
                         help="Root path of the gen 2 repo to be converted.")
     parser.add_argument("--gen3root", required=True,
                         help="Root path of the gen 3 repo to be produced.")
-    parser.add_argument("--skymapName", default=None,
+    parser.add_argument("--skymapName",
                         help="Name of the new gen3 skymap (e.g. 'discrete/ci_hsc').")
     parser.add_argument("--skymapConfig", default=None,
                         help="Path to skymap config file defining the new gen3 skymap.")
