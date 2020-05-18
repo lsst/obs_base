@@ -36,27 +36,51 @@ import lsst.daf.butler
 import lsst.meas.algorithms
 from lsst.obs.base.script import convert
 import lsst.utils.tests
+from lsst.utils import doImport
 
 
-class ConvertGen2To3TestCase:
+class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
     """Test the `butler convert` command.
 
     Subclass this, and then `lsst.utils.tests.TestCase` and set the below
     attributes.  Uses the `butler convert` command line command to do the
     conversion.
     """
+
     gen2root = ""
     """Root path to the gen2 repo to be converted."""
 
     gen2calib = None
     """Path to the gen2 calib repo to be converted."""
 
-    instrumentName = None
-    """Name of the instrument for the gen3 registry, e.g. "DECam"."""
+    @property
+    @abc.abstractmethod
+    def instrumentClassName(self):
+        """Full path to the `Instrument` class of the data to be converted,
+        e.g. ``lsst.obs.decam.DarkEnergyCamera``.
 
-    instrumentClass = None
-    """Full path to the `Instrument` class of the data to be converted, e.g.
-    ``lsst.obs.decam.DarkEnergyCamera``."""
+        Returns
+        -------
+        className : `str`
+            The fully qualified instrument class name.
+        """
+        pass
+
+    @property
+    def instrumentClass(self):
+        """The instrument class."""
+        return doImport(self.instrumentClassName)
+
+    @property
+    def instrumentName(self):
+        """Name of the instrument for the gen3 registry, e.g. "DECam".
+
+        Returns
+        -------
+        name : `str`
+            The name of the instrument.
+        """
+        return self.instrumentClass.getName()
 
     config = None
     """Full path to a config override for ConvertRepoTask, to be applied after
