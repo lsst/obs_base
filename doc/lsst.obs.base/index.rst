@@ -20,13 +20,6 @@ You can find Jira issues for this module under the `obs_base <https://jira.lsstc
 
 .. _lsst.obs.base-scripts:
 
-Command Line Scripts
-====================
-
-.. autoprogram:: lsst.obs.base.script.convertGen2RepoToGen3:build_argparser()
-   :prog: convert_gen2_repo_to_gen3.py
-   :groups:
-
 .. _lsst.obs.base-pyapi:
 
 Python API reference
