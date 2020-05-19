@@ -21,10 +21,34 @@
 
 import click
 
-from lsst.daf.butler.cli.opt import repo_argument, run_option
+from lsst.daf.butler.cli.opt import repo_argument, config_option, config_file_option, run_option
 from lsst.daf.butler.cli.utils import cli_handle_exception
 from ..opt import instrument_option
-from ...script import writeCuratedCalibrations
+from ...script import ingestRaws, writeCuratedCalibrations, registerInstrument
+
+
+@click.command()
+@repo_argument(required=True)
+@config_option()
+@config_file_option()
+@run_option(required=True)
+@click.option("-d", "--dir", "directory",
+              help="The path to the directory containing the raws to ingest.")
+@click.option("-f", "--file", help="The name of a file containing raws to ingest.")
+@click.option("-t", "--transfer", help="The external data transfer type.", default="auto")
+@click.option("--ingest-task", default="lsst.obs.base.RawIngestTask", help="The fully qualified class name "
+              "of the ingest task to use.")
+def ingest_raws(*args, **kwargs):
+    cli_handle_exception(ingestRaws, *args, **kwargs)
+
+
+@click.command()
+@repo_argument(required=True)
+@instrument_option(required=True, help="The fully-qualified name of an Instrument subclass.")
+def register_instrument(*args, **kwargs):
+    """Add an instrument to the data repository.
+    """
+    cli_handle_exception(registerInstrument, *args, **kwargs)
 
 
 @click.command()

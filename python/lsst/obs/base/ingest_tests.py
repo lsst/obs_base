@@ -25,17 +25,17 @@
 __all__ = ("IngestTestBase",)
 
 import abc
+import click.testing
 import tempfile
 import unittest
 import os
 import shutil
 
 from lsst.daf.butler import Butler
-from lsst.daf.butler.script import createRepo
+from lsst.daf.butler.cli.butler import cli as butlerCli
 import lsst.obs.base
 from lsst.utils import doImport
 from .utils import getInstrument
-from .script import ingestRaws, registerInstrument, writeCuratedCalibrations
 
 
 class IngestTestBase(metaclass=abc.ABCMeta):
@@ -110,10 +110,10 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     def setUp(self):
         # Use a temporary working directory
         self.root = tempfile.mkdtemp(dir=self.ingestDir)
-        createRepo(self.root)
+        self._createRepo()
 
         # Register the instrument and its static metadata
-        registerInstrument(self.root, self.instrumentClassName)
+        self._registerInstrument()
 
     def tearDown(self):
         if os.path.exists(self.root):
@@ -160,25 +160,62 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         """
         pass
 
+    def _createRepo(self):
+        """Use the Click `testing` module to call the butler command line api
+        to create a repository."""
+        runner = click.testing.CliRunner()
+        result = runner.invoke(butlerCli, ["create", self.root])
+        self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
+
+    def _ingestRaws(self, transfer):
+        """Use the Click `testing` module to call the butler command line api
+        to ingest raws.
+
+        Parameters
+        ----------
+        transfer : `str`
+            The external data transfer type.
+        """
+        runner = click.testing.CliRunner()
+        result = runner.invoke(butlerCli, ["ingest-raws", self.root,
+                                           "--output-run", self.outputRun,
+                                           "--file", self.file,
+                                           "--transfer", transfer,
+                                           "--ingest-task", self.rawIngestTask])
+        self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
+
+    def _registerInstrument(self):
+        """Use the Click `testing` module to call the butler command line api
+        to register the instrument."""
+        runner = click.testing.CliRunner()
+        result = runner.invoke(butlerCli, ["register-instrument", self.root,
+                                           "--instrument", self.instrumentClassName])
+        self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
+
+    def _writeCuratedCalibrations(self):
+        """Use the Click `testing` module to call the butler command line api
+        to write curated calibrations."""
+        runner = click.testing.CliRunner()
+        result = runner.invoke(butlerCli, ["write-curated-calibrations", self.root,
+                                           "--instrument", self.instrumentName,
+                                           "--output-run", self.outputRun])
+        self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
+
     def testLink(self):
-        ingestRaws(self.root, self.outputRun, file=self.file, transfer="link",
-                   ingest_task=self.rawIngestTask)
+        self._ingestRaws(transfer="link")
         self.verifyIngest()
 
     def testSymLink(self):
-        ingestRaws(self.root, self.outputRun, file=self.file, transfer="symlink",
-                   ingest_task=self.rawIngestTask)
+        self._ingestRaws(transfer="symlink")
         self.verifyIngest()
 
     def testCopy(self):
-        ingestRaws(self.root, self.outputRun, file=self.file, transfer="copy",
-                   ingest_task=self.rawIngestTask)
+        self._ingestRaws(transfer="copy")
         self.verifyIngest()
 
     def testHardLink(self):
         try:
-            ingestRaws(self.root, self.outputRun, file=self.file, transfer="hardlink",
-                       ingest_task=self.rawIngestTask)
+            self._ingestRaws(transfer="hardlink")
             self.verifyIngest()
         except PermissionError as err:
             raise unittest.SkipTest("Skipping hard-link test because input data"
@@ -192,24 +229,22 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         butler = Butler(self.root, run=self.outputRun)
         newPath = os.path.join(butler.datastore.root, os.path.basename(self.file))
         os.symlink(os.path.abspath(self.file), newPath)
-        ingestRaws(self.root, self.outputRun, file=newPath, transfer=None, ingest_task=self.rawIngestTask)
+        self._ingestRaws(transfer=None)
         self.verifyIngest()
 
     def testFailOnConflict(self):
         """Re-ingesting the same data into the repository should fail.
         """
-        ingestRaws(self.root, self.outputRun, file=self.file, transfer="symlink",
-                   ingest_task=self.rawIngestTask)
+        self._ingestRaws(transfer="symlink")
         with self.assertRaises(Exception):
-            ingestRaws(self.root, self.outputRun, file=self.file, transfer="symlink",
-                       ingest_task=self.rawIngestTask)
+            self._ingestRaws(transfer="symlink")
 
     def testWriteCuratedCalibrations(self):
         """Test that we can ingest the curated calibrations"""
         if self.curatedCalibrationDatasetTypes is None:
             raise unittest.SkipTest("Class requests disabling of writeCuratedCalibrations test")
 
-        writeCuratedCalibrations(self.root, self.instrumentName, self.outputRun)
+        self._writeCuratedCalibrations()
 
         dataId = {"instrument": self.instrumentName}
         butler = Butler(self.root, run=self.outputRun)
@@ -222,8 +257,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     def testDefineVisits(self):
         if self.visits is None:
             self.skipTest("Expected visits were not defined.")
-        ingestRaws(self.root, self.outputRun, file=self.file, transfer="link",
-                   ingest_task=self.rawIngestTask)
+        self._ingestRaws(transfer="link")
 
         config = self.defineVisitsTask.ConfigClass()
         butler = Butler(self.root, run=self.outputRun)
