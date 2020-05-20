@@ -41,7 +41,7 @@ def makeExpectedKwargs(**kwargs):
     return expected
 
 
-class Suite(unittest.TestCase):
+class Case(unittest.TestCase):
 
     def run_test(self, inputs, expectedKwargs):
         """Test command line interaction with ingest_raws command function.
