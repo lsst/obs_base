@@ -377,6 +377,18 @@ class TranslatorFactory:
         # Translate Gen2 str patch IDs to Gen3 sequential integers.
         self.addRule(PatchKeyHandler(), gen2keys=("patch",))
 
+        # Translate any "filter" values that appear alongside "tract" to
+        # "abstract_filter".  This is _not_ the right choice for instruments
+        # that use "physical_filter" values for coadds in Gen2 (like HSC);
+        # those will need to add a rule that invokes
+        # PhysicalToAbstractFilterKey instead for just that instrument, but the
+        # same criteria otherwise.  That will override this one, because
+        # instrument-specific rules match first, and that rule will consume
+        # the Gen2 "filter" key before this rule has a chance to fire.
+        self.addRule(CopyKeyHandler("abstract_filter", "filter"),
+                     gen2keys=("filter", "tract"),
+                     consume=("filter",))
+
         # Copy Gen2 "tract" to Gen3 "tract".
         self.addRule(CopyKeyHandler("tract", dtype=int), gen2keys=("tract",))
 
