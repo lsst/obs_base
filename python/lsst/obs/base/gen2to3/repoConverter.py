@@ -372,7 +372,7 @@ class RepoConverter(ABC):
                         formatter=self.task.config.formatterClasses.get(datasetTypeName),
                         targetHandler=targetHandler,
                     )
-                    self.task.log.debug("Adding template to walker: %s, for %s", template,
+                    self.task.log.debug("Adding template to walker: %s + %s, for %s", template, extension,
                                         walkerInput.datasetType)
                 walkerInputs.append(walkerInput)
 
