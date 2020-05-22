@@ -53,6 +53,19 @@ def convert(*args, **kwargs):
 
 @click.command()
 @repo_argument(required=True)
+@config_file_option(help="Path to a pex_config override to be included after the Instrument config overrides "
+                         "are applied.")
+@click.option("--collections",
+              help="The collections to be searched (in order) when reading datasets.",
+              multiple=True,
+              callback=split_commas)
+@instrument_option(required=True)
+def define_visits(*args, **kwargs):
+    cli_handle_exception(script.defineVisits, *args, **kwargs)
+
+
+@click.command()
+@repo_argument(required=True)
 @config_option()
 @config_file_option()
 @run_option(required=True)

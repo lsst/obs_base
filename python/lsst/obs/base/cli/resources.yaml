@@ -2,6 +2,7 @@ cmd:
   import: lsst.obs.base.cli.cmd
   commands:
     - convert
+    - define-visits
     - register-instrument
     - write-curated-calibrations
     - ingest-raws
