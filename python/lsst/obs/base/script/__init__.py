@@ -20,6 +20,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from .convert import convert
+from .defineVisits import defineVisits
 from .ingestRaws import ingestRaws
 from .registerInstrument import registerInstrument
 from .writeCuratedCalibrations import writeCuratedCalibrations
