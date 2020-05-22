@@ -205,7 +205,8 @@ class BuilderTargetInput(BuilderInput):
     def __init__(self, *, datasetTypeName: str, template: str, keys: Dict[str, type],
                  storageClass: StorageClass, universe: DimensionUniverse,
                  formatter: FormatterParameter, translatorFactory: TranslatorFactory,
-                 targetHandler: Optional[PathElementHandler] = None, **kwargs: Any):
+                 targetHandler: Optional[PathElementHandler] = None,
+                 **kwargs: Any):
         # strip off [%HDU] identifiers from e.g. DECAM Community Pipeline products
         template = template.split('[%(')[0]
         super().__init__(template=template, keys=keys)
@@ -220,6 +221,7 @@ class BuilderTargetInput(BuilderInput):
     def build(self, parser: PathElementParser, allKeys: Dict[str, type], cumulativeKeys: Dict[str, type], *,
               fileIgnoreRegEx: Optional[re.Pattern], dirIgnoreRegEx: Optional[re.Pattern]
               ) -> PathElementHandler:
+        # Docstring inherited from BuilderNode.
         return self._handler(parser=parser, translator=self._translator, datasetType=self.datasetType,
                              formatter=self._formatter)
 

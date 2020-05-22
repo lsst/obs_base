@@ -65,10 +65,17 @@ class RepoWalker:
     dirIgnoreRegEx : `re.Pattern`, optional
         A regular expression pattern that identifies non-dataset subdirectories
         that can be ignored, to be applied at all levels of the directory tree.
+    log : `Log`, optional
+            Logger for warnings and diagnostic information.
     """
     def __init__(self, inputs: Iterable[Union[Target, Skip]], *,
-                 fileIgnoreRegEx: Optional[re.Pattern] = None, dirIgnoreRegEx: Optional[re.Pattern] = None):
+                 fileIgnoreRegEx: Optional[re.Pattern] = None,
+                 dirIgnoreRegEx: Optional[re.Pattern] = None,
+                 log: Optional[Log] = None):
         super().__init__()
+        if log is None:
+            log = Log.getLogger("obs.base.gen2to3.TranslatorFactory")
+        self.log = log
         tree = BuilderTree()
         allKeys: Dict[str, type] = {}
         for leaf in inputs:
@@ -79,7 +86,7 @@ class RepoWalker:
                                      f"(from {leaf.template}) vs. {allKeys[key]}.")
         tree, messages, pruned = tree.prune()
         if not pruned:
-            self._scanner = DirectoryScanner()
+            self._scanner = DirectoryScanner(log=self.log)
             tree.fill(self._scanner, allKeys, {}, fileIgnoreRegEx=fileIgnoreRegEx,
                       dirIgnoreRegEx=dirIgnoreRegEx)
         else:
@@ -97,7 +104,7 @@ class RepoWalker:
     explicitly skipped.
     """
 
-    def walk(self, root: str, *, log: Log, predicate: Optional[Callable[[DataCoordinate], bool]]
+    def walk(self, root: str, *, predicate: Optional[Callable[[DataCoordinate], bool]]
              ) -> Mapping[DatasetType, List[FileDataset]]:
         """Walk a Gen2 repository root to extract Gen3 `FileDataset` instances
         from it.
@@ -106,8 +113,6 @@ class RepoWalker:
         ----------
         root : `str`
             Absolute path to the repository root.
-        log : `Log`
-            Logger for warnings and diagnostic information.
         predicate : `~collections.abc.Callable`, optional
             If not `None`, a callable that returns `True` if a `DataCoordinate`
             is consistent with what we want to extract.  If ``predicate``
@@ -125,5 +130,5 @@ class RepoWalker:
                 return True
         datasets = defaultdict(list)
         if self._scanner is not None:
-            self._scanner.scan(root, datasets, log=log, predicate=predicate)
+            self._scanner.scan(root, datasets, predicate=predicate)
         return datasets
