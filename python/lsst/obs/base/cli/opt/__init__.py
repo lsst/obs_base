@@ -20,4 +20,3 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from .instrument import instrument_option
-from .transfer import transfer_option
