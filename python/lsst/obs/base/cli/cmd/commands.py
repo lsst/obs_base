@@ -21,9 +21,10 @@
 
 import click
 
-from lsst.daf.butler.cli.opt import repo_argument, config_option, config_file_option, run_option
+from lsst.daf.butler.cli.opt import (repo_argument, config_option, config_file_option, run_option,
+                                     transfer_option)
 from lsst.daf.butler.cli.utils import cli_handle_exception, split_commas
-from ..opt import instrument_option, transfer_option
+from ..opt import instrument_option
 from ... import script
 
 
