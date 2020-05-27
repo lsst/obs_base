@@ -29,9 +29,9 @@ import lsst.afw.fits
 import lsst.afw.geom
 import lsst.afw.image
 from lsst.daf.butler import FileDescriptor
-from lsst.daf.butler.formatters.fitsExposureFormatter import FitsExposureFormatter
 import lsst.log
 
+from .fitsExposureFormatter import FitsExposureFormatter
 from .makeRawVisitInfoViaObsInfo import MakeRawVisitInfoViaObsInfo
 from .utils import createInitialSkyWcs, InitialSkyWcsError
 
