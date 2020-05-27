@@ -309,7 +309,7 @@ class RawIngestTask(Task):
             # records to be retrieved from the database here (though the
             # Registry may cache them so there isn't a lookup every time).
             records={
-                "exposure": data.record,
+                self.butler.registry.dimensions["exposure"]: data.record,
             }
         )
         # Now we expand the per-file (exposure+detector) data IDs.  This time
