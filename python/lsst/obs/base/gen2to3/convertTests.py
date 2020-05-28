@@ -22,6 +22,7 @@
 """Unit test base class for the gen2 to gen3 converter.
 """
 
+import abc
 import itertools
 import shutil
 import tempfile
@@ -33,29 +34,53 @@ import lsst.afw.table
 import lsst.daf.persistence
 import lsst.daf.butler
 import lsst.meas.algorithms
+from lsst.obs.base.script import convert
 import lsst.utils.tests
-from ..script.convertGen2RepoToGen3 import convert as convertGen2RepoToGen3
+from lsst.utils import doImport
 
 
-class ConvertGen2To3TestCase:
-    """Test the `convert_gen2_repo_to_gen3.py` script.
+class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
+    """Test the `butler convert` command.
 
     Subclass this, and then `lsst.utils.tests.TestCase` and set the below
-    attributes.  Uses the `lsst.obs.base.script.convertGen2RepoToGen3.convert`
-    function to do the conversion.
+    attributes.  Uses the `butler convert` command line command to do the
+    conversion.
     """
+
     gen2root = ""
     """Root path to the gen2 repo to be converted."""
 
     gen2calib = None
     """Path to the gen2 calib repo to be converted."""
 
-    instrumentName = None
-    """Name of the instrument for the gen3 registry, e.g. "DECam"."""
+    @property
+    @abc.abstractmethod
+    def instrumentClassName(self):
+        """Full path to the `Instrument` class of the data to be converted,
+        e.g. ``lsst.obs.decam.DarkEnergyCamera``.
 
-    instrumentClass = None
-    """Full path to the `Instrument` class of the data to be converted, e.g.
-    ``lsst.obs.decam.DarkEnergyCamera``."""
+        Returns
+        -------
+        className : `str`
+            The fully qualified instrument class name.
+        """
+        pass
+
+    @property
+    def instrumentClass(self):
+        """The instrument class."""
+        return doImport(self.instrumentClassName)
+
+    @property
+    def instrumentName(self):
+        """Name of the instrument for the gen3 registry, e.g. "DECam".
+
+        Returns
+        -------
+        name : `str`
+            The name of the instrument.
+        """
+        return self.instrumentClass.getName()
 
     config = None
     """Full path to a config override for ConvertRepoTask, to be applied after
@@ -134,10 +159,15 @@ class ConvertGen2To3TestCase:
         log.setLevel(log.INFO)
         log.info("Converting %s to %s", self.gen2root, self.gen3root)
 
-        # Run the conversion
-        convertGen2RepoToGen3(self.gen2root, self.gen3root, self.instrumentClass,
-                              skymapName=self.skymapName, skymapConfig=self.skymapConfig,
-                              config=self.config, calibs=self.gen2calib)
+        convert(repo=self.gen3root,
+                gen2root=self.gen2root,
+                instrument=self.instrumentClassName,
+                skymap_name=self.skymapName,
+                skymap_config=self.skymapConfig,
+                config_file=self.config,
+                calibs=self.gen2calib,
+                reruns=None,
+                transfer="auto")
 
     def check_raw(self, gen3Butler, exposure, detector):
         """Check that a raw was converted correctly.

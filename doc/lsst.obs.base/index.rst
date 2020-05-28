@@ -18,14 +18,17 @@ Contributing
 ``lsst.obs.base`` is developed at https://github.com/lsst/obs_base.
 You can find Jira issues for this module under the `obs_base <https://jira.lsstcorp.org/issues/?jql=project%20%3D%20DM%20AND%20component%20%3D%20obs_base>`_ component.
 
-.. _lsst.obs.base-scripts:
+.. _lsst.obs.base-cli:
 
-Command Line Scripts
-====================
+Command Line Interface
+======================
 
-.. autoprogram:: lsst.obs.base.script.convertGen2RepoToGen3:build_argparser()
-   :prog: convert_gen2_repo_to_gen3.py
-   :groups:
+``daf_butler`` implements a command line interface command called ``butler``. The following subcommands are
+implemented by this package and available to the ``butler`` command when this package is setup.
+
+.. click:: lsst.obs.base.cli.doc.butlerCmdDocGen:cli
+   :prog: butler
+   :show-nested:
 
 .. _lsst.obs.base-pyapi:
 

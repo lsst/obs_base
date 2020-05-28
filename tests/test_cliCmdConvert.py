@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Unit tests for daf_butler CLI config-dump command.
+"""Unit tests for daf_butler CLI convert command.
 """
 
 import click
@@ -31,11 +31,11 @@ from lsst.daf.butler.cli.utils import Mocker, mockEnvVar
 
 
 def makeExpectedKwargs(**kwargs):
-    expected = dict(directory=None,
-                    file=None,
+    expected = dict(skymap_name=None,
+                    skymap_config=None,
+                    calibs=None,
+                    reruns=[],
                     transfer="auto",
-                    ingest_task="lsst.obs.base.RawIngestTask",
-                    config={},
                     config_file=None)
     expected.update(kwargs)
     return expected
@@ -44,7 +44,7 @@ def makeExpectedKwargs(**kwargs):
 class Case(unittest.TestCase):
 
     def run_test(self, inputs, expectedKwargs):
-        """Test command line interaction with ingest_raws command function.
+        """Test command line interaction with convert command function.
 
         Parameters
         ----------
@@ -60,40 +60,33 @@ class Case(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
         Mocker.mock.assert_called_with(**expectedKwargs)
 
-    def test_repoAndOutput(self):
-        """Test the most basic required arguments, repo and output run"""
-        expected = makeExpectedKwargs(repo="here", output_run="out")
-        self.run_test(["ingest-raws", "here",
-                       "--output-run", "out"], expected)
+    def test_repoInstrGen2root(self):
+        """Test the most basic required arguments."""
+        expected = makeExpectedKwargs(repo="here", gen2root="from", instrument="a.b.c")
+        self.run_test(["convert", "here",
+                       "--gen2root", "from",
+                       "--instrument", "a.b.c"], expected)
 
-    def test_configMulti(self):
-        """Test config overrides"""
-        expected = makeExpectedKwargs(repo="here", output_run="out", config=dict(foo="1", bar="2", baz="3"))
-        self.run_test(["ingest-raws", "here",
-                       "--output-run", "out",
-                       "-c", "foo=1",
-                       "--config", "bar=2,baz=3"], expected)
+    def test_all(self):
+        """Test all the arguments."""
+        expected = dict(repo="here", gen2root="from", instrument="a.b.c", skymap_name="sky",
+                        skymap_config="/path/to/config", calibs="path/to/calib/repo",
+                        reruns=["one", "two", "three"], transfer="symlink", config_file="/path/to/config")
+        self.run_test(["convert", "here",
+                       "--gen2root", "from",
+                       "--instrument", "a.b.c",
+                       "--skymap-name", "sky",
+                       "--skymap-config", "/path/to/config",
+                       "--calibs", "path/to/calib/repo",
+                       "--reruns", "one,two",
+                       "--reruns", "three",
+                       "--transfer", "symlink",
+                       "--config-file", "/path/to/config"], expected)
 
-    def test_configFile(self):
-        """Test config file override"""
-        expected = makeExpectedKwargs(repo="here", output_run="out", config_file="path/to/file.txt")
-        self.run_test(["ingest-raws", "here",
-                       "--output-run", "out",
-                       "--config-file", "path/to/file.txt"], expected)
-
-    def test_transfer(self):
-        """Test the transfer argument"""
-        expected = makeExpectedKwargs(repo="here", output_run="out", transfer="symlink")
-        self.run_test(["ingest-raws", "here",
-                       "--output-run", "out",
-                       "--transfer", "symlink"], expected)
-
-    def test_ingestTask(self):
-        """Test the ingest task argument"""
-        expected = makeExpectedKwargs(repo="here", output_run="out", ingest_task="foo.bar.baz")
-        self.run_test(["ingest-raws", "here",
-                       "--output-run", "out",
-                       "--ingest-task", "foo.bar.baz"], expected)
+    def test_missing(self):
+        """test a missing argument"""
+        with self.assertRaises(TypeError):
+            self.run_test(["convert", "--gen2root", "from"])
 
 
 if __name__ == "__main__":

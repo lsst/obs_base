@@ -19,6 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["ingest_raws", "register_instrument", "write_curated_calibrations"]
+__all__ = ["convert", "ingest_raws", "register_instrument", "write_curated_calibrations"]
 
-from .commands import ingest_raws, register_instrument, write_curated_calibrations
+from .commands import convert, ingest_raws, register_instrument, write_curated_calibrations
