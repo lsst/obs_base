@@ -38,7 +38,6 @@ from typing import (
 )
 
 import lsst.afw.fits
-from lsst.log import Log
 from lsst.daf.butler import (
     DataCoordinate,
     DatasetRef,
@@ -89,7 +88,7 @@ class IgnoreHandler(PathElementHandler):
         return 0
 
     def __call__(self, path: str, name: str, datasets: Mapping[DatasetType, List[FileDataset]], *,
-                 log: Log, predicate: Callable[[DataCoordinate], bool]) -> bool:
+                 predicate: Callable[[DataCoordinate], bool]) -> bool:
         # Docstring inherited from PathElementHandler.
         if self._pattern.fullmatch(name):
             return True
@@ -117,12 +116,12 @@ class ParsedPathElementHandler(PathElementHandler):
         return f"{type(self).__name__}(parser={self._parser})"
 
     def __call__(self, path: str, name: str, datasets: Mapping[DatasetType, List[FileDataset]], *,
-                 log: Log, predicate: Callable[[DataCoordinate], bool]) -> bool:
+                 predicate: Callable[[DataCoordinate], bool]) -> bool:
         # Docstring inherited from PathElementParser.
-        nextDataId2 = self._parser.parse(name, self.lastDataId2, log=log)
+        nextDataId2 = self._parser.parse(name, self.lastDataId2)
         if nextDataId2 is None:
             return False
-        self.handle(path, nextDataId2, datasets, log=log, predicate=predicate)
+        self.handle(path, nextDataId2, datasets, predicate=predicate)
         return True
 
     @property
@@ -132,7 +131,7 @@ class ParsedPathElementHandler(PathElementHandler):
 
     @abstractmethod
     def handle(self, path: str, nextDataId2: dict, datasets: Mapping[DatasetType, List[FileDataset]], *,
-               log: Log, predicate: Callable[[DataCoordinate], bool]):
+               predicate: Callable[[DataCoordinate], bool]):
         """Customization hook for ``__call__``.
 
         Subclasses must override this method, while external callers (i.e.
@@ -146,8 +145,6 @@ class ParsedPathElementHandler(PathElementHandler):
             Gen2 data ID (usually partial) extracted from the path so far.
         datasets : `dict` [`DatasetType`, `list` [`FileDataset`] ]
             Dictionary that found datasets should be added to.
-        log : `Log`, optional
-            Log to use to report warnings and debug information.
         predicate : `~collections.abc.Callable`
             A callable taking a single `DataCoordinate` argument and returning
             `bool`, indicating whether that (Gen3) data ID represents one
@@ -190,10 +187,10 @@ class SkipHandler(ParsedPathElementHandler):
         return self._isForFiles
 
     def handle(self, path: str, nextDataId2: dict, datasets: Mapping[DatasetType, List[FileDataset]], *,
-               log: Log, predicate: Callable[[DataCoordinate], bool]):
+               predicate: Callable[[DataCoordinate], bool]):
         # Docstring inherited from ParsedPathElementHandler.
         if self._message is not None:
-            log.warn("Skipping %s: %s", path, self._message)
+            self.log.warn("Skipping %s: %s", path, self._message)
 
 
 class SubdirectoryHandler(ParsedPathElementHandler):
@@ -222,7 +219,7 @@ class SubdirectoryHandler(ParsedPathElementHandler):
         return False
 
     def handle(self, path: str, nextDataId2, datasets: Mapping[DatasetType, List[FileDataset]], *,
-               log: Log, predicate: Callable[[DataCoordinate], bool]):
+               predicate: Callable[[DataCoordinate], bool]):
         # Docstring inherited from ParsedPathElementHandler.
         if not nextDataId2:
             # We matched, and there's no data ID at all yet.  That means the
@@ -230,7 +227,7 @@ class SubdirectoryHandler(ParsedPathElementHandler):
             # and the match is exclusive.
             scan = True
         else:
-            dataId3 = self.translate(nextDataId2, partial=True, log=log)
+            dataId3 = self.translate(nextDataId2, partial=True)
             if dataId3 is not None:
                 scan = predicate(dataId3)
             else:
@@ -238,15 +235,15 @@ class SubdirectoryHandler(ParsedPathElementHandler):
         if scan:
             for handler in self.scanner:
                 handler.lastDataId2 = nextDataId2
-            self.scanner.scan(path, datasets, log=log, predicate=predicate)
+            self.scanner.scan(path, datasets, predicate=predicate)
 
-    def translate(self, dataId2: dict, *, partial: bool = False, log: Log) -> Optional[DataCoordinate]:
+    def translate(self, dataId2: dict, *, partial: bool = False) -> Optional[DataCoordinate]:
         # Docstring inherited from PathElementHandler.
         for handler in self.scanner:
             # Since we're recursing, we're always asking for a partial match,
             # because the data ID we have corresponds to different level than
             # the one child handlers operate at.
-            result = handler.translate(dataId2, partial=True, log=log)
+            result = handler.translate(dataId2, partial=True)
             if result is not None:
                 return result
         return None
@@ -290,16 +287,16 @@ class TargetFileHandler(ParsedPathElementHandler):
         return True
 
     def handle(self, path: str, nextDataId2, datasets: Mapping[DatasetType, List[FileDataset]], *,
-               log: Log, predicate: Callable[[DataCoordinate], bool]):
+               predicate: Callable[[DataCoordinate], bool]):
         # Docstring inherited from ParsedPathElementHandler.
-        dataId3 = self.translate(nextDataId2, partial=False, log=log)
+        dataId3 = self.translate(nextDataId2, partial=False)
         if predicate(dataId3):
             datasets[self._datasetType].append(FileDataset(refs=[DatasetRef(self._datasetType, dataId3)],
                                                            path=path, formatter=self._formatter))
 
-    def translate(self, dataId2: dict, *, partial: bool = False, log: Log) -> Optional[DataCoordinate]:
+    def translate(self, dataId2: dict, *, partial: bool = False) -> Optional[DataCoordinate]:
         # Docstring inherited from PathElementHandler.
-        rawDataId3 = self._translator(dataId2, partial=partial, log=log)
+        rawDataId3 = self._translator(dataId2, partial=partial)
         if partial:
             return DataCoordinate.standardize(rawDataId3, universe=self._datasetType.dimensions.universe)
         else:
@@ -317,8 +314,8 @@ class MultiExtensionFileHandler(TargetFileHandler):
     with other obs packages.
     """
     def handle(self, path: str, nextDataId2, datasets: Mapping[DatasetType, List[FileDataset]], *,
-               log: Log, predicate: Callable[[DataCoordinate], bool]):
-        dataId3 = self.translate(nextDataId2, partial=True, log=log)
+               predicate: Callable[[DataCoordinate], bool]):
+        dataId3 = self.translate(nextDataId2, partial=True)
 
         def get_detectors(filename):
             fitsData = lsst.afw.fits.Fits(filename, 'r')
@@ -344,7 +341,7 @@ class MultiExtensionFileHandler(TargetFileHandler):
 
             datasets[self._datasetType].append(FileDataset(refs=refs, path=path, formatter=self._formatter))
 
-    def translate(self, dataId2: dict, *, partial: bool = False, log: Log) -> Optional[DataCoordinate]:
+    def translate(self, dataId2: dict, *, partial: bool = False) -> Optional[DataCoordinate]:
         assert partial is True, "We always require partial, to ignore 'ccdnum'"
-        rawDataId3 = self._translator(dataId2, partial=partial, log=log)
+        rawDataId3 = self._translator(dataId2, partial=partial)
         return DataCoordinate.standardize(rawDataId3, universe=self._datasetType.dimensions.universe)

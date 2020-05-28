@@ -372,7 +372,7 @@ class RepoConverter(ABC):
                         formatter=self.task.config.formatterClasses.get(datasetTypeName),
                         targetHandler=targetHandler,
                     )
-                    self.task.log.debug("Adding template to walker: %s, for %s", template,
+                    self.task.log.debug("Adding template to walker: %s + %s, for %s", template, extension,
                                         walkerInput.datasetType)
                 walkerInputs.append(walkerInput)
 
@@ -392,7 +392,8 @@ class RepoConverter(ABC):
             fileIgnoreRegEx = re.compile("|".join(fileIgnoreRegExTerms))
         else:
             fileIgnoreRegEx = None
-        self._repoWalker = RepoWalker(walkerInputs, fileIgnoreRegEx=fileIgnoreRegEx)
+        self._repoWalker = RepoWalker(walkerInputs, fileIgnoreRegEx=fileIgnoreRegEx,
+                                      log=self.task.log.getChild("repoWalker"))
 
     def iterDatasets(self) -> Iterator[FileDataset]:
         """Iterate over datasets in the repository that should be ingested into
@@ -423,7 +424,6 @@ class RepoConverter(ABC):
         self._fileDatasets.update(
             self._repoWalker.walk(
                 self.root,
-                log=self.task.log,
                 predicate=(self.subset.isRelated if self.subset is not None else None)
             )
         )

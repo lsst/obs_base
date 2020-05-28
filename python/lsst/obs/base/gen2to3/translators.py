@@ -78,8 +78,8 @@ class KeyHandler(metaclass=ABCMeta):
 
     __slots__ = ("dimension",)
 
-    def __str__(self):
-        return f"{type(self).__name__}({self.dimension})"
+    def __repr__(self):
+        return f"{type(self).__name__}({self.dimension}, ...)"
 
     def translate(self, gen2id: dict, gen3id: dict,
                   skyMap: Optional[BaseSkyMap], skyMapName: Optional[str],
@@ -282,8 +282,13 @@ class TranslatorFactory:
     """A class that manages a system of rules for translating Gen2 data IDs
     to Gen3 data IDs, and uses these to construct translators for particular
     dataset types.
+
+    Parameters
+    ----------
+    log : `lsst.log.Log`, optional
+        A logger for diagnostic messages.
     """
-    def __init__(self):
+    def __init__(self, log: Optional[Log] = None):
         # The rules used to match KeyHandlers when constructing a Translator.
         self._rules: Dict[
             Optional[str],  # instrument name (or None to match any)
@@ -298,6 +303,9 @@ class TranslatorFactory:
             }
         }
         self._addDefaultRules()
+        if log is None:
+            log = Log.getLogger("obs.base.gen2to3.TranslatorFactory")
+        self.log = log
 
     def __str__(self):
         lines = []
@@ -368,6 +376,18 @@ class TranslatorFactory:
 
         # Translate Gen2 str patch IDs to Gen3 sequential integers.
         self.addRule(PatchKeyHandler(), gen2keys=("patch",))
+
+        # Translate any "filter" values that appear alongside "tract" to
+        # "abstract_filter".  This is _not_ the right choice for instruments
+        # that use "physical_filter" values for coadds in Gen2 (like HSC);
+        # those will need to add a rule that invokes
+        # PhysicalToAbstractFilterKey instead for just that instrument, but the
+        # same criteria otherwise.  That will override this one, because
+        # instrument-specific rules match first, and that rule will consume
+        # the Gen2 "filter" key before this rule has a chance to fire.
+        self.addRule(CopyKeyHandler("abstract_filter", "filter"),
+                     gen2keys=("filter", "tract"),
+                     consume=("filter",))
 
         # Copy Gen2 "tract" to Gen3 "tract".
         self.addRule(CopyKeyHandler("tract", dtype=int), gen2keys=("tract",))
@@ -491,12 +511,16 @@ class TranslatorFactory:
         )
         matchedHandlers = []
         targetKeys = set(gen2keys)
+        self.log.debug("Constructing data ID translator for %s with Gen2 keys %s...",
+                       datasetTypeName, gen2keys)
         for ruleKeys, ruleHandlers, consume in candidateRules:
             if ruleKeys.issubset(targetKeys):
                 matchedHandlers.append(ruleHandlers)
                 targetKeys -= consume
+        self.log.debug("...matched %d handlers: %s, with %s unmatched.",
+                       len(matchedHandlers), matchedHandlers, targetKeys)
         return Translator(matchedHandlers, skyMap=skyMap, skyMapName=skyMapName,
-                          datasetTypeName=datasetTypeName)
+                          datasetTypeName=datasetTypeName, log=self.log)
 
 
 class Translator:
@@ -519,19 +543,20 @@ class Translator:
         Name of the dataset type whose data IDs this translator handles.
     """
     def __init__(self, handlers: List[KeyHandler], skyMap: Optional[BaseSkyMap], skyMapName: Optional[str],
-                 datasetTypeName: str):
+                 datasetTypeName: str, log: Log):
         self.handlers = handlers
         self.skyMap = skyMap
         self.skyMapName = skyMapName
         self.datasetTypeName = datasetTypeName
+        self.log = log
 
-    __slots__ = ("handlers", "skyMap", "skyMapName", "datasetTypeName")
+    __slots__ = ("handlers", "skyMap", "skyMapName", "datasetTypeName", "log")
 
     def __str__(self):
         hstr = ",".join(str(h) for h in self.handlers)
         return f"{type(self).__name__}(dtype={self.datasetTypeName}, handlers=[{hstr}])"
 
-    def __call__(self, gen2id: Dict[str, Any], *, partial: bool = False, log: Optional[Log] = None):
+    def __call__(self, gen2id: Dict[str, Any], *, partial: bool = False):
         """Return a Gen3 data ID that corresponds to the given Gen2 data ID.
         """
         gen3id = {}
@@ -541,8 +566,8 @@ class Translator:
                                   datasetTypeName=self.datasetTypeName)
             except KeyError:
                 if partial:
-                    if log is not None:
-                        log.debug("Failed to translate %s from %s.", handler.dimension, gen2id)
+                    self.log.debug("Failed to translate %s from %s (this may not be an error).",
+                                   handler.dimension, gen2id)
                     continue
                 else:
                     raise

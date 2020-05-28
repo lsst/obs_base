@@ -198,14 +198,15 @@ class BuilderTargetInput(BuilderInput):
         Object that can be used to construct data ID translators.
     targetHandler : `PathElementHandler`, optional
         Override target handler for this dataset type.
-    kwargs:
+    **kwargs:
         Additional keyword arguments are passed to `Translator.makeMatching`,
         in along with ``datasetTypeName`` and ``keys``.
     """
     def __init__(self, *, datasetTypeName: str, template: str, keys: Dict[str, type],
                  storageClass: StorageClass, universe: DimensionUniverse,
                  formatter: FormatterParameter, translatorFactory: TranslatorFactory,
-                 targetHandler: Optional[PathElementHandler] = None, **kwargs: Any):
+                 targetHandler: Optional[PathElementHandler] = None,
+                 **kwargs: Any):
         # strip off [%HDU] identifiers from e.g. DECAM Community Pipeline products
         template = template.split('[%(')[0]
         super().__init__(template=template, keys=keys)
@@ -220,7 +221,7 @@ class BuilderTargetInput(BuilderInput):
     def build(self, parser: PathElementParser, allKeys: Dict[str, type], cumulativeKeys: Dict[str, type], *,
               fileIgnoreRegEx: Optional[re.Pattern], dirIgnoreRegEx: Optional[re.Pattern]
               ) -> PathElementHandler:
-
+        # Docstring inherited from BuilderNode.
         return self._handler(parser=parser, translator=self._translator, datasetType=self.datasetType,
                              formatter=self._formatter)
 
@@ -370,6 +371,13 @@ class BuilderTree(BuilderNode):
             A dictionary containing key strings and types for Gen2 data ID keys
             that have been extracted from previous path elements of the same
             template.
+        fileIgnoreRegEx : `re.Pattern`, optional
+            A regular expression pattern that identifies non-dataset files that
+            can be ignored, to be applied at all levels of the directory tree.
+        dirIgnoreRegEx : `re.Pattern`, optional
+            A regular expression pattern that identifies non-dataset
+            subdirectories that can be ignored, to be applied at all levels of
+            the directory tree.
         """
         if fileIgnoreRegEx is not None:
             scanner.add(IgnoreHandler(fileIgnoreRegEx, isForFiles=True))

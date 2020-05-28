@@ -52,13 +52,13 @@ class PathElementHandler(ABC):
     """An interface for objects that handle a single path element (directory or
     file) in a Gen2 data repository.
 
-    Handlers added to a `DirectoryScanner` instance, which then calls them
-    until one succeeds when it processes each element in a directoy.
+    Handlers are added to a `DirectoryScanner` instance, which then calls them
+    until one succeeds when it processes each element in a directory.
     """
     def __init__(self):
         self.lastDataId2 = {}
 
-    __slots__ = ("lastDataId2",)
+    __slots__ = ("lastDataId2", "log")
 
     @abstractmethod
     def isForFiles(self) -> bool:
@@ -73,7 +73,7 @@ class PathElementHandler(ABC):
 
     @abstractmethod
     def __call__(self, path: str, name: str, datasets: Mapping[DatasetType, List[FileDataset]], *,
-                 log: Log, predicate: Callable[[DataCoordinate], bool]) -> bool:
+                 predicate: Callable[[DataCoordinate], bool]) -> bool:
         """Apply the handler to a file path.
 
         Parameters
@@ -84,8 +84,6 @@ class PathElementHandler(ABC):
             Local name of the file or directory within its parent directory.
         datasets : `dict` [`DatasetType`, `list` [`FileDataset`] ]
             Dictionary that found datasets should be added to.
-        log : `Log`, optional
-            Log to use to report warnings and debug information.
         predicate : `~collections.abc.Callable`
             A callable taking a single `DataCoordinate` argument and returning
             `bool`, indicating whether that (Gen3) data ID represents one
@@ -109,7 +107,7 @@ class PathElementHandler(ABC):
         """
         raise NotImplementedError()
 
-    def translate(self, dataId2: dict, *, partial: bool = False, log: Log) -> Optional[DataCoordinate]:
+    def translate(self, dataId2: dict, *, partial: bool = False) -> Optional[DataCoordinate]:
         """Translate the given data ID from Gen2 to Gen3.
 
         The default implementation returns `None`.  Subclasses that are able
@@ -122,8 +120,6 @@ class PathElementHandler(ABC):
         partial : `bool`, optional
             If `True` (`False` is default) this is a partial data ID for some
             dataset, and missing keys are expected.
-        log : log : `Log`, optional
-            Log to use to report warnings and debug information.
 
         Returns
         -------
@@ -147,16 +143,31 @@ class PathElementHandler(ABC):
     directory is entered, before invoking `__call__`.
     """
 
+    log: Log
+    """A logger to use for all diagnostic messages (`lsst.log.Log`).
+
+    This attribute is set on a handler in `DirectoryScanner.add`; this avoids
+    needing to forward one through all subclass constructors.
+    """
+
 
 class DirectoryScanner:
     """An object that uses `PathElementHandler` instances to process the files
     and subdirectories in a directory tree.
+
+    Parameters
+    ----------
+    log : `Log`, optional
+        Log to use to report warnings and debug information.
     """
-    def __init__(self):
+    def __init__(self, log: Optional[Log] = None):
         self._files = []
         self._subdirectories = []
+        if log is None:
+            log = Log.getLogger("obs.base.gen2to3.walker")
+        self.log = log
 
-    __slots__ = ("_files", "_subdirectories")
+    __slots__ = ("_files", "_subdirectories", "log")
 
     def add(self, handler: PathElementHandler):
         """Add a new handler to the scanner.
@@ -166,6 +177,7 @@ class DirectoryScanner:
         handler : `PathElementHandler`
             The handler to be added.
         """
+        handler.log = self.log
         if handler.isForFiles():
             bisect.insort(self._files, handler)
         else:
@@ -178,7 +190,7 @@ class DirectoryScanner:
         yield from self._subdirectories
 
     def scan(self, path: str, datasets: Mapping[DatasetType, List[FileDataset]], *,
-             log: Log, predicate: Callable[[DataCoordinate], bool]):
+             predicate: Callable[[DataCoordinate], bool]):
         """Process a directory.
 
         Parameters
@@ -187,8 +199,6 @@ class DirectoryScanner:
             Full path to the directory to be processed.
         datasets : `dict` [`DatasetType`, `list` [`FileDataset`] ]
             Dictionary that found datasets should be added to.
-        log : `Log`, optional
-            Log to use to report warnings and debug information.
         predicate : `~collections.abc.Callable`
             A callable taking a single `DataCoordinate` argument and returning
             `bool`, indicating whether that (Gen3) data ID represents one
@@ -203,9 +213,9 @@ class DirectoryScanner:
             else:
                 continue
             for handler in handlers:
-                if handler(entry.path, entry.name, datasets, log=log, predicate=predicate):
+                if handler(entry.path, entry.name, datasets, predicate=predicate):
                     break
             else:
                 unrecognized.append(entry.name)
         if unrecognized:
-            log.warn("Skipped unrecognized entries in %s: %s", path, unrecognized)
+            self.log.warn("Skipped unrecognized entries in %s: %s", path, unrecognized)
