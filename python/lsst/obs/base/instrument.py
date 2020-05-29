@@ -34,6 +34,7 @@ from lsst.utils import getPackageDir, doImport
 
 if TYPE_CHECKING:
     from .gen2to3 import TranslatorFactory
+    from lsst.daf.butler import Registry
 
 # To be a standard text curated calibration means that we use a
 # standard definition for the corresponding DatasetType.
@@ -85,7 +86,7 @@ class Instrument(metaclass=ABCMeta):
         """
         return None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         self.filterDefinitions.reset()
         self.filterDefinitions.defineFilters()
         self._obsDataPackageDir = None
@@ -130,8 +131,8 @@ class Instrument(metaclass=ABCMeta):
             self._obsDataPackageDir = getPackageDir(self.obsDataPackage)
         return self._obsDataPackageDir
 
-    @classmethod
-    def fromName(cls, name, registry):
+    @staticmethod
+    def fromName(name: str, registry: Registry) -> Instrument:
         """Given an instrument name and a butler, retrieve a corresponding
         instantiated instrument object.
 
@@ -167,6 +168,31 @@ class Instrument(metaclass=ABCMeta):
             raise TypeError(f"Unexpected class name retrieved from {name} instrument dimension (got {cls})")
         instrument = doImport(cls)
         return instrument()
+
+    @staticmethod
+    def importAll(registry: Registry) -> None:
+        """Import all the instruments known to this registry.
+
+        This will ensure that all metadata translators have been registered.
+
+        Parameters
+        ----------
+        registry : `lsst.daf.butler.Registry`
+            Butler registry to query to find the information.
+
+        Notes
+        -----
+        It is allowed for a particular instrument class to fail on import.
+        This might simply indicate that a particular obs package has
+        not been setup.
+        """
+        dimensions = list(registry.queryDimensions("instrument"))
+        for dim in dimensions:
+            cls = dim.records["instrument"].class_name
+            try:
+                doImport(cls)
+            except Exception:
+                pass
 
     def _registerFilters(self, registry):
         """Register the physical and abstract filter Dimension relationships.
