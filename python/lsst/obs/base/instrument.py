@@ -169,6 +169,31 @@ class Instrument(metaclass=ABCMeta):
         instrument = doImport(cls)
         return instrument()
 
+    @staticmethod
+    def importAll(registry: Registry) -> None:
+        """Import all the instruments known to this registry.
+
+        This will ensure that all metadata translators have been registered.
+
+        Parameters
+        ----------
+        registry : `lsst.daf.butler.Registry`
+            Butler registry to query to find the information.
+
+        Notes
+        -----
+        It is allowed for a particular instrument class to fail on import.
+        This might simply indicate that a particular obs package has
+        not been setup.
+        """
+        dimensions = list(registry.queryDimensions("instrument"))
+        for dim in dimensions:
+            cls = dim.records["instrument"].class_name
+            try:
+                doImport(cls)
+            except Exception:
+                pass
+
     def _registerFilters(self, registry):
         """Register the physical and abstract filter Dimension relationships.
         This should be called in the ``register`` implementation.
