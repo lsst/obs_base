@@ -86,7 +86,7 @@ class Instrument(metaclass=ABCMeta):
         """
         return None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         self.filterDefinitions.reset()
         self.filterDefinitions.defineFilters()
         self._obsDataPackageDir = None
