@@ -42,7 +42,7 @@ from lsst.daf.butler import (
 from lsst.pex.config import Config, ChoiceField
 from lsst.pipe.base import Task
 
-from .instrument import Instrument, makeExposureRecordFromObsInfo
+from ._instrument import Instrument, makeExposureRecordFromObsInfo
 from .fitsRawFormatterBase import FitsRawFormatterBase
 
 

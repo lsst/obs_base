@@ -23,7 +23,7 @@ from .version import *
 
 from .filters import *
 from .mapping import *
-from .instrument import *
+from ._instrument import *
 from .cameraMapper import *
 from .exposureIdInfo import *
 from .makeRawVisitInfo import *

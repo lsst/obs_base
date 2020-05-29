@@ -47,7 +47,7 @@ from lsst.pex.config import Config, Field, makeRegistry, registerConfigurable
 from lsst.afw.cameraGeom import FOCAL_PLANE, PIXELS
 from lsst.pipe.base import Task
 from lsst.sphgeom import ConvexPolygon, Region, UnitVector3d
-from .instrument import loadCamera
+from ._instrument import loadCamera
 
 
 @dataclasses.dataclass
