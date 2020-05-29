@@ -195,6 +195,10 @@ class RawIngestTask(Task):
         self.universe = self.butler.registry.dimensions
         self.datasetType = self.getDatasetType()
 
+        # Import all the instrument classes so that we ensure that we
+        # have all the relevant metadata translators loaded.
+        Instrument.importAll(self.butler.registry)
+
     def extractMetadata(self, filename: str) -> RawFileData:
         """Extract and process metadata from a single raw file.
 
