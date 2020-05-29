@@ -34,6 +34,7 @@ from lsst.utils import getPackageDir, doImport
 
 if TYPE_CHECKING:
     from .gen2to3 import TranslatorFactory
+    from lsst.daf.butler import Registry
 
 # To be a standard text curated calibration means that we use a
 # standard definition for the corresponding DatasetType.
@@ -130,8 +131,8 @@ class Instrument(metaclass=ABCMeta):
             self._obsDataPackageDir = getPackageDir(self.obsDataPackage)
         return self._obsDataPackageDir
 
-    @classmethod
-    def fromName(cls, name, registry):
+    @staticmethod
+    def fromName(name: str, registry: Registry) -> Instrument:
         """Given an instrument name and a butler, retrieve a corresponding
         instantiated instrument object.
 
