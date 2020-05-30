@@ -36,6 +36,7 @@ from lsst.daf.butler.cli.butler import cli as butlerCli
 import lsst.obs.base
 from lsst.utils import doImport
 from .utils import getInstrument
+from . import script
 
 
 class IngestTestBase(metaclass=abc.ABCMeta):
@@ -259,16 +260,17 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             self.skipTest("Expected visits were not defined.")
         self._ingestRaws(transfer="link")
 
-        config = self.defineVisitsTask.ConfigClass()
-        butler = Butler(self.root, run=self.outputRun)
-        instr = getInstrument(self.instrumentName, butler.registry)
-        instr.applyConfigOverrides(self.defineVisitsTask._DefaultName, config)
-        task = self.defineVisitsTask(config=config, butler=butler)
-        task.run(self.dataIds)
+        # Calling defineVisits tests the implementation of the butler command line interface "define-visits"
+        # subcommand. Functions in the script folder are generally considered protected and should not be used
+        # as public api.
+        script.defineVisits(self.root, config_file=None, collections=self.outputRun,
+                            instrument=self.instrumentName)
 
         # Test that we got the visits we expected.
+        butler = Butler(self.root, run=self.outputRun)
         visits = set(butler.registry.queryDimensions(["visit"], expand=True))
         self.assertCountEqual(visits, self.visits.keys())
+        instr = getInstrument(self.instrumentName, butler.registry)
         camera = instr.getCamera()
         for foundVisit, (expectedVisit, expectedExposures) in zip(visits, self.visits.items()):
             # Test that this visit is associated with the expected exposures.

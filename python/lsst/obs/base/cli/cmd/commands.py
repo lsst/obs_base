@@ -21,9 +21,10 @@
 
 import click
 
-from lsst.daf.butler.cli.opt import repo_argument, config_option, config_file_option, run_option
-from lsst.daf.butler.cli.utils import cli_handle_exception, split_commas
-from ..opt import instrument_option, transfer_option
+from lsst.daf.butler.cli.opt import (repo_argument, config_option, config_file_option, run_option,
+                                     transfer_option)
+from lsst.daf.butler.cli.utils import cli_handle_exception, split_commas, typeStrAcceptsMultiple
+from ..opt import instrument_option
 from ... import script
 
 
@@ -41,7 +42,7 @@ from ... import script
               help="Path to skymap config file defining the new gen3 skymap.")
 @click.option("--calibs",
               help="Path to the gen 2 calibration repo. It can be absolute or relative to gen2root.")
-@click.option("--reruns", multiple=True, callback=split_commas,
+@click.option("--reruns", multiple=True, callback=split_commas, metavar=typeStrAcceptsMultiple,
               help="List of gen 2 reruns to convert.")
 @transfer_option(help="Mode to use to transfer files into the new repository.")
 @config_file_option(help="Path to a `ConvertRepoConfig` override to be included after the Instrument config "
@@ -49,6 +50,20 @@ from ... import script
 def convert(*args, **kwargs):
     """Convert a Butler gen 2 repository into a gen 3 repository."""
     cli_handle_exception(script.convert, *args, **kwargs)
+
+
+@click.command()
+@repo_argument(required=True)
+@config_file_option(help="Path to a pex_config override to be included after the Instrument config overrides "
+                         "are applied.")
+@click.option("--collections",
+              help="The collections to be searched (in order) when reading datasets.",
+              multiple=True,
+              callback=split_commas,
+              metavar=typeStrAcceptsMultiple)
+@instrument_option(required=True)
+def define_visits(*args, **kwargs):
+    cli_handle_exception(script.defineVisits, *args, **kwargs)
 
 
 @click.command()
