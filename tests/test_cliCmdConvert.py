@@ -22,56 +22,31 @@
 """Unit tests for daf_butler CLI convert command.
 """
 
-import click
-import click.testing
 import unittest
 
-from lsst.daf.butler.cli import butler
-from lsst.daf.butler.cli.utils import Mocker, mockEnvVar
+from lsst.daf.butler.tests.mockeredTest import MockeredTestBase
 
 
-def makeExpectedKwargs(**kwargs):
-    expected = dict(skymap_name=None,
-                    skymap_config=None,
-                    calibs=None,
-                    reruns=[],
-                    transfer="auto",
-                    config_file=None)
-    expected.update(kwargs)
-    return expected
+class ConvertTestCase(MockeredTestBase):
 
-
-class Case(unittest.TestCase):
-
-    def run_test(self, inputs, expectedKwargs):
-        """Test command line interaction with convert command function.
-
-        Parameters
-        ----------
-        inputs : [`str`]
-            A list of the arguments to the butler command, starting with
-            `ingest-raws`
-        expectedKwargs : `dict` [`str`, `str`]
-            The expected arguments to the ingestRaws command function, keys are
-            the argument name and values are the argument value.
-        """
-        runner = click.testing.CliRunner(env=mockEnvVar)
-        result = runner.invoke(butler.cli, inputs)
-        self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
-        Mocker.mock.assert_called_with(**expectedKwargs)
+    defaultExpected = dict(skymap_name=None,
+                           skymap_config=None,
+                           calibs=None,
+                           reruns=[],
+                           transfer="auto",
+                           config_file=None)
 
     def test_repoInstrGen2root(self):
         """Test the most basic required arguments."""
-        expected = makeExpectedKwargs(repo="here", gen2root="from", instrument="a.b.c")
         self.run_test(["convert", "here",
                        "--gen2root", "from",
-                       "--instrument", "a.b.c"], expected)
+                       "--instrument", "a.b.c"],
+                      self.makeExpected(repo="here",
+                                        gen2root="from",
+                                        instrument="a.b.c"))
 
     def test_all(self):
         """Test all the arguments."""
-        expected = dict(repo="here", gen2root="from", instrument="a.b.c", skymap_name="sky",
-                        skymap_config="/path/to/config", calibs="path/to/calib/repo",
-                        reruns=["one", "two", "three"], transfer="symlink", config_file="/path/to/config")
         self.run_test(["convert", "here",
                        "--gen2root", "from",
                        "--instrument", "a.b.c",
@@ -81,12 +56,23 @@ class Case(unittest.TestCase):
                        "--reruns", "one,two",
                        "--reruns", "three",
                        "--transfer", "symlink",
-                       "--config-file", "/path/to/config"], expected)
+                       "--config-file", "/path/to/config"],
+                      self.makeExpected(repo="here",
+                                        gen2root="from",
+                                        instrument="a.b.c",
+                                        skymap_name="sky",
+                                        skymap_config="/path/to/config",
+                                        calibs="path/to/calib/repo",
+                                        reruns=["one", "two", "three"],
+                                        transfer="symlink",
+                                        config_file="/path/to/config"))
 
     def test_missing(self):
         """test a missing argument"""
-        with self.assertRaises(TypeError):
-            self.run_test(["convert", "--gen2root", "from"])
+        self.run_missing(["convert"], 'Missing argument "REPO"')
+        self.run_missing(["convert", "here", "--gen2root", "from"], 'Missing option "-i" / "--instrument"')
+        self.run_missing(["convert", "here", "--gen2root", "from"], 'Missing option "-i" / "--instrument"')
+        self.run_missing(["convert", "here", "--instrument", "instr"], 'Missing option "--gen2root"')
 
 
 if __name__ == "__main__":
