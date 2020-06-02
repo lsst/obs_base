@@ -1472,10 +1472,10 @@ photonTransferCurveDataset:
     storage: PickleStorage
     tables: 'raw'
     template: ''
-photonTransferCurveCovsAstierDataset:
+photonTransferCurveCovAstierDataset:
     description: "Persisted output from the MeasurePhotonTransferCurveTask with covariances as in Astier+19"
     persistable: ignored
-    python: lsst.cp.pipe.ptc.PhotonTransferCurveCovsAstierDataset
+    python: lsst.cp.pipe.ptc.PhotonTransferCurveCovAstierDataset
     storage: PickleStorage
     tables: 'raw'
     template: ''
