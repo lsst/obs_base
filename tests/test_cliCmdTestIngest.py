@@ -19,81 +19,63 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Unit tests for daf_butler CLI config-dump command.
+"""Unit tests for daf_butler CLI ingest-raws command.
 """
 
-import click
-import click.testing
 import unittest
 
-from lsst.daf.butler.cli import butler
-from lsst.daf.butler.cli.utils import Mocker, mockEnvVar
+from lsst.daf.butler.tests.mockeredTest import MockeredTestBase
 
 
-def makeExpectedKwargs(**kwargs):
-    expected = dict(directory=None,
-                    file=None,
-                    transfer="auto",
-                    ingest_task="lsst.obs.base.RawIngestTask",
-                    config={},
-                    config_file=None)
-    expected.update(kwargs)
-    return expected
+class IngestRawsTestCase(MockeredTestBase):
 
-
-class Case(unittest.TestCase):
-
-    def run_test(self, inputs, expectedKwargs):
-        """Test command line interaction with ingest_raws command function.
-
-        Parameters
-        ----------
-        inputs : [`str`]
-            A list of the arguments to the butler command, starting with
-            `ingest-raws`
-        expectedKwargs : `dict` [`str`, `str`]
-            The expected arguments to the ingestRaws command function, keys are
-            the argument name and values are the argument value.
-        """
-        runner = click.testing.CliRunner(env=mockEnvVar)
-        result = runner.invoke(butler.cli, inputs)
-        self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
-        Mocker.mock.assert_called_with(**expectedKwargs)
+    defaultExpected = dict(directory=None,
+                           file=None,
+                           transfer="auto",
+                           ingest_task="lsst.obs.base.RawIngestTask",
+                           config={},
+                           config_file=None)
 
     def test_repoAndOutput(self):
         """Test the most basic required arguments, repo and output run"""
-        expected = makeExpectedKwargs(repo="here", output_run="out")
         self.run_test(["ingest-raws", "here",
-                       "--output-run", "out"], expected)
+                       "--output-run", "out"],
+                      self.makeExpected(repo="here", output_run="out"))
 
     def test_configMulti(self):
         """Test config overrides"""
-        expected = makeExpectedKwargs(repo="here", output_run="out", config=dict(foo="1", bar="2", baz="3"))
         self.run_test(["ingest-raws", "here",
                        "--output-run", "out",
                        "-c", "foo=1",
-                       "--config", "bar=2,baz=3"], expected)
+                       "--config", "bar=2,baz=3"],
+                      self.makeExpected(repo="here",
+                                        output_run="out",
+                                        config=dict(foo="1", bar="2", baz="3")))
 
     def test_configFile(self):
         """Test config file override"""
-        expected = makeExpectedKwargs(repo="here", output_run="out", config_file="path/to/file.txt")
         self.run_test(["ingest-raws", "here",
                        "--output-run", "out",
-                       "--config-file", "path/to/file.txt"], expected)
+                       "--config-file", "path/to/file.txt"],
+                      self.makeExpected(repo="here",
+                                        output_run="out",
+                                        config_file="path/to/file.txt"))
 
     def test_transfer(self):
         """Test the transfer argument"""
-        expected = makeExpectedKwargs(repo="here", output_run="out", transfer="symlink")
         self.run_test(["ingest-raws", "here",
                        "--output-run", "out",
-                       "--transfer", "symlink"], expected)
+                       "--transfer", "symlink"],
+                      self.makeExpected(repo="here",
+                                        output_run="out",
+                                        transfer="symlink"))
 
     def test_ingestTask(self):
         """Test the ingest task argument"""
-        expected = makeExpectedKwargs(repo="here", output_run="out", ingest_task="foo.bar.baz")
         self.run_test(["ingest-raws", "here",
                        "--output-run", "out",
-                       "--ingest-task", "foo.bar.baz"], expected)
+                       "--ingest-task", "foo.bar.baz"],
+                      self.makeExpected(repo="here", output_run="out", ingest_task="foo.bar.baz"))
 
 
 if __name__ == "__main__":

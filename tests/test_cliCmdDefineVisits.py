@@ -22,62 +22,43 @@
 """Unit tests for daf_butler CLI define-visits command.
 """
 
-import click
-import click.testing
 import unittest
 
-from lsst.daf.butler.cli import butler
-from lsst.daf.butler.cli.utils import Mocker, mockEnvVar
+from lsst.daf.butler.tests.mockeredTest import MockeredTestBase
 
 
-def makeExpectedKwargs(**kwargs):
-    expected = dict(config_file=None,
-                    collections=[])
-    expected.update(kwargs)
-    return expected
+class DefineVisitsTest(MockeredTestBase):
 
-
-class DefineVisitsTest(unittest.TestCase):
-
-    def run_test(self, inputs, expectedKwargs):
-        """Test command line interaction with the defineVisits command function.
-
-        Parameters
-        ----------
-        inputs : [`str`]
-            A list of the arguments to the butler command, starting with
-            `define-visits`
-        expectedKwargs : `dict` [`str`, `str`]
-            The expected arguments to the define-visits command function, keys are
-            the argument name and values are the argument value.
-        """
-        runner = click.testing.CliRunner(env=mockEnvVar)
-        result = runner.invoke(butler.cli, inputs)
-        self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
-        Mocker.mock.assert_called_with(**expectedKwargs)
+    defaultExpected = dict(config_file=None,
+                           collections=[])
 
     def test_repoBasic(self):
         """Test the most basic required arguments."""
-        expected = makeExpectedKwargs(repo="here", instrument="a.b.c")
         self.run_test(["define-visits", "here",
-                       "--instrument", "a.b.c"], expected)
+                       "--instrument", "a.b.c"],
+                      self.makeExpected(repo="here",
+                                        instrument="a.b.c"))
 
     def test_all(self):
         """Test all the arguments."""
-        expected = dict(repo="here", instrument="a.b.c", config_file="/path/to/config",
-                        # The list of collections must be in exactly the same order as it is passed in the
-                        # list of arguments to run_test.
-                        collections=["foo/bar", "baz", "boz"])
         self.run_test(["define-visits", "here",
                        "--instrument", "a.b.c",
                        "--collections", "foo/bar,baz",
                        "--config-file", "/path/to/config",
-                       "--collections", "boz"], expected)
+                       "--collections", "boz"],
+                      self.makeExpected(repo="here",
+                                        instrument="a.b.c",
+                                        config_file="/path/to/config",
+                                        # The list of collections must be in
+                                        # exactly the same order as it is
+                                        # passed in the list of arguments to
+                                        # run_test.
+                                        collections=["foo/bar", "baz", "boz"]))
 
     def test_missing(self):
         """test a missing argument"""
-        with self.assertRaises(TypeError):
-            self.run_test(["define-visits", "from"])
+        self.run_missing(["define-visits"], 'Missing argument "REPO"')
+        self.run_missing(["define-visits", "here"], 'Missing option "-i" / "--instrument"')
 
 
 if __name__ == "__main__":
