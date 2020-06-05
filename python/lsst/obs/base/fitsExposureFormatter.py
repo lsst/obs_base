@@ -202,7 +202,7 @@ class FitsExposureFormatter(Formatter):
                 raise ValueError("Storage class inconsistency ({} vs {}) but no"
                                  " component requested".format(fileDescriptor.readStorageClass.name,
                                                                fileDescriptor.storageClass.name))
-        return self.readFull()
+        return self.readFull(parameters=parameters)
 
     def write(self, inMemoryDataset):
         """Write a Python object to a file.
