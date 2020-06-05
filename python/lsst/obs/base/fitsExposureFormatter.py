@@ -24,6 +24,7 @@ __all__ = ("FitsExposureFormatter", )
 from astro_metadata_translator import fix_header
 from lsst.daf.butler import Formatter
 from lsst.afw.image import ExposureFitsReader
+from lsst.daf.base import PropertySet
 
 
 class FitsExposureFormatter(Formatter):
@@ -31,6 +32,7 @@ class FitsExposureFormatter(Formatter):
     """
     extension = ".fits"
     _metadata = None
+    supportedWriteParameters = frozenset({"recipe"})
 
     @property
     def metadata(self):
@@ -219,5 +221,133 @@ class FitsExposureFormatter(Formatter):
         """
         # Update the location with the formatter-preferred file extension
         self.fileDescriptor.location.updateExtension(self.extension)
-        inMemoryDataset.writeFits(self.fileDescriptor.location.path)
+        outputPath = self.fileDescriptor.location.path
+
+        # check to see if we have a recipe requested
+        recipeName = self.writeParameters.get("recipe")
+        recipe = self.getImageCompressionSettings(recipeName)
+        if recipe:
+            # Can not construct a PropertySet from a hierarchical
+            # dict but can update one.
+            ps = PropertySet()
+            ps.update(recipe)
+            inMemoryDataset.writeFitsWithOptions(outputPath, options=ps)
+        else:
+            inMemoryDataset.writeFits(outputPath)
         return self.fileDescriptor.location.pathInStore
+
+    def getImageCompressionSettings(self, recipeName):
+        """Retrieve the relevant compression settings for this recipe.
+
+        Parameters
+        ----------
+        recipeName : `str`
+            Label associated with the collection of compression parameters
+            to select.
+
+        Returns
+        -------
+        settings : `dict`
+            The selected settings.
+        """
+        # if no recipe has been provided and there is no default
+        # return immediately
+        if not recipeName:
+            if "default" not in self.writeRecipes:
+                return {}
+            recipeName = "default"
+
+        if recipeName not in self.writeRecipes:
+            raise RuntimeError(f"Unrecognized recipe option given for compression: {recipeName}")
+
+        recipe = self.writeRecipes[recipeName]
+
+        # Set the seed based on dataId
+        seed = hash(tuple(self.dataId.items())) % 2**31
+        for plane in ("image", "mask", "variance"):
+            if plane in recipe and "scaling" in recipe[plane]:
+                scaling = recipe[plane]["scaling"]
+                if "seed" in scaling and scaling["seed"] == 0:
+                    scaling["seed"] = seed
+
+        return recipe
+
+    @classmethod
+    def validateWriteRecipes(cls, recipes):
+        """Validate supplied recipes for this formatter.
+
+        The recipes are supplemented with default values where appropriate.
+
+        TODO: replace this custom validation code with Cerberus (DM-11846)
+
+        Parameters
+        ----------
+        recipes : `dict`
+            Recipes to validate. Can be empty dict or `None`.
+
+        Returns
+        -------
+        validated : `dict`
+            Validated recipes. Returns what was given if there are no
+            recipes listed.
+
+        Raises
+        ------
+        RuntimeError
+            Raised if validation fails.
+        """
+        # Schemas define what should be there, and the default values (and by the default
+        # value, the expected type).
+        compressionSchema = {
+            "algorithm": "NONE",
+            "rows": 1,
+            "columns": 0,
+            "quantizeLevel": 0.0,
+        }
+        scalingSchema = {
+            "algorithm": "NONE",
+            "bitpix": 0,
+            "maskPlanes": ["NO_DATA"],
+            "seed": 0,
+            "quantizeLevel": 4.0,
+            "quantizePad": 5.0,
+            "fuzz": True,
+            "bscale": 1.0,
+            "bzero": 0.0,
+        }
+
+        if not recipes:
+            # We can not insist on recipes being specified
+            return recipes
+
+        def checkUnrecognized(entry, allowed, description):
+            """Check to see if the entry contains unrecognised keywords"""
+            unrecognized = set(entry) - set(allowed)
+            if unrecognized:
+                raise RuntimeError(
+                    f"Unrecognized entries when parsing image compression recipe {description}: "
+                    f"{unrecognized}")
+
+        validated = {}
+        for name in recipes:
+            checkUnrecognized(recipes[name], ["image", "mask", "variance"], name)
+            validated[name] = {}
+            for plane in ("image", "mask", "variance"):
+                checkUnrecognized(recipes[name][plane], ["compression", "scaling"],
+                                  f"{name}->{plane}")
+
+                np = {}
+                validated[name][plane] = np
+                for settings, schema in (("compression", compressionSchema),
+                                         ("scaling", scalingSchema)):
+                    np[settings] = {}
+                    if settings not in recipes[name][plane]:
+                        for key in schema:
+                            np[settings][key] = schema[key]
+                        continue
+                    entry = recipes[name][plane][settings]
+                    checkUnrecognized(entry, schema.keys(), f"{name}->{plane}->{settings}")
+                    for key in schema:
+                        value = type(schema[key])(entry[key]) if key in entry else schema[key]
+                        np[settings][key] = value
+        return validated
