@@ -29,6 +29,48 @@ from lsst.daf.base import PropertySet
 
 class FitsExposureFormatter(Formatter):
     """Interface for reading and writing Exposures to and from FITS files.
+
+    This Formatter supports write recipes.
+
+    Each ``FitsExposureFormatter`` recipe for FITS compression should
+    define ``image``, ``mask`` and ``variance`` entries, each of which may
+    contain ``compression`` and ``scaling`` entries. Defaults will be
+    provided for any missing elements under ``compression`` and
+    ``scaling``.
+
+    The allowed entries under ``compression`` are:
+
+    * algorithm (string): compression algorithm to use
+    * rows (int): number of rows per tile (0 = entire dimension)
+    * columns (int): number of columns per tile (0 = entire dimension)
+    * quantizeLevel (float): cfitsio quantization level
+
+    The allowed entries under ``scaling`` are:
+
+    * algorithm (string): scaling algorithm to use
+    * bitpix (int): bits per pixel (0,8,16,32,64,-32,-64)
+    * fuzz (bool): fuzz the values when quantising floating-point values?
+    * seed (long): seed for random number generator when fuzzing
+    * maskPlanes (list of string): mask planes to ignore when doing
+      statistics
+    * quantizeLevel: divisor of the standard deviation for STDEV_* scaling
+    * quantizePad: number of stdev to allow on the low side (for
+      STDEV_POSITIVE/NEGATIVE)
+    * bscale: manually specified BSCALE (for MANUAL scaling)
+    * bzero: manually specified BSCALE (for MANUAL scaling)
+
+    A very simple example YAML recipe:
+
+    .. code-block:: yaml
+
+        lsst.obs.base.fitsExposureFormatter.FitsExposureFormatter:
+          default:
+            image: &default
+              compression:
+                algorithm: GZIP_SHUFFLE
+            mask: *default
+            variance: *default
+
     """
     extension = ".fits"
     _metadata = None
