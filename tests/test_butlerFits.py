@@ -33,6 +33,7 @@ import lsst.utils.tests
 import lsst.afw.image
 from lsst.afw.image import LOCAL
 from lsst.geom import Box2I, Point2I
+from lsst.daf.base import PropertyList, PropertySet
 
 from lsst.daf.butler import Config
 from lsst.daf.butler import StorageClassFactory
@@ -90,6 +91,13 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
             storageClass = cls.storageClassFactory.getStorageClass(storageClassName)
             addDatasetType(cls.creatorButler, datasetTypeName, set(dataIds), storageClass)
 
+        # And some dataset types that have no dimensions for easy testing
+        for datasetTypeName, storageClassName in (("ps", "PropertySet"),
+                                                  ("pl", "PropertyList"),
+                                                  ):
+            storageClass = cls.storageClassFactory.getStorageClass(storageClassName)
+            addDatasetType(cls.creatorButler, datasetTypeName, {}, storageClass)
+
     @classmethod
     def tearDownClass(cls):
         if cls.root is not None:
@@ -131,6 +139,30 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         self.assertFloatsAlmostEqual(
             inputRecord.getShapeErr()[2, 2],
             outputRecord.getShapeErr()[2, 2], rtol=1e-6)
+
+    def runFundamentalTypeTest(self, datasetTypeName, entity):
+        """Put and get the supplied entity and compare."""
+        ref = self.butler.put(entity, datasetTypeName)
+        butler_ps = self.butler.get(ref)
+        self.assertEqual(butler_ps, entity)
+
+        # Break the contact by ensuring that we are writing YAML
+        uri = self.butler.getURI(ref)
+        self.assertTrue(uri.path.endswith(".yaml"), f"Check extension of {uri}")
+
+    def testFundamentalTypes(self) -> None:
+        """Ensure that some fundamental stack types round trip."""
+        ps = PropertySet()
+        ps["a.b"] = 5
+        ps["c.d.e"] = "string"
+        self.runFundamentalTypeTest("ps", ps)
+
+        pl = PropertyList()
+        pl["A"] = 1
+        pl.setComment("A", "An int comment")
+        pl["B"] = "string"
+        pl.setComment("B", "A string comment")
+        self.runFundamentalTypeTest("pl", pl)
 
     def testFitsCatalog(self) -> None:
         catalog = self.makeExampleCatalog()
