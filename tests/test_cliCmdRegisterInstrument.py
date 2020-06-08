@@ -25,11 +25,14 @@
 import unittest
 
 from lsst.daf.butler.tests.mockeredTest import MockeredTestBase
+from lsst.obs.base.cli.cmd import register_instrument
 
 
 class RegisterInstrumentTest(MockeredTestBase):
 
     defaultExpected = dict()
+
+    command = register_instrument
 
     def test_repoBasic(self):
         """Test the most basic required arguments."""
@@ -42,6 +45,9 @@ class RegisterInstrumentTest(MockeredTestBase):
         """test a missing argument"""
         self.run_missing(["register-instrument"], 'Missing argument "REPO"')
         self.run_missing(["register-instrument", "here"], 'Missing option "-i" / "--instrument"')
+
+    def test_help(self):
+        self.help_test()
 
 
 if __name__ == "__main__":

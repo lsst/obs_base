@@ -28,7 +28,7 @@ from ..opt import instrument_option
 from ... import script
 
 
-@click.command()
+@click.command(short_help="Convert a gen2 repo to gen3.")
 @repo_argument(required=True,
                help="REPO is the URI or path to the gen3 repository. Will be created if it does not already "
                "exist")
@@ -52,7 +52,7 @@ def convert(*args, **kwargs):
     cli_handle_exception(script.convert, *args, **kwargs)
 
 
-@click.command()
+@click.command(short_help="Define visits from exposures.")
 @repo_argument(required=True)
 @config_file_option(help="Path to a pex_config override to be included after the Instrument config overrides "
                          "are applied.")
@@ -67,7 +67,7 @@ def define_visits(*args, **kwargs):
     cli_handle_exception(script.defineVisits, *args, **kwargs)
 
 
-@click.command()
+@click.command(short_help="Ingest raw frames.")
 @repo_argument(required=True)
 @config_option()
 @config_file_option()
@@ -83,7 +83,7 @@ def ingest_raws(*args, **kwargs):
     cli_handle_exception(script.ingestRaws, *args, **kwargs)
 
 
-@click.command()
+@click.command(short_help="Add an instrument to the repository")
 @repo_argument(required=True)
 @instrument_option(required=True, help="The fully-qualified name of an Instrument subclass.")
 def register_instrument(*args, **kwargs):
@@ -92,7 +92,7 @@ def register_instrument(*args, **kwargs):
     cli_handle_exception(script.registerInstrument, *args, **kwargs)
 
 
-@click.command()
+@click.command(short_help="Add an instrument's curated calibrations.")
 @repo_argument(required=True)
 @instrument_option(required=True)
 @run_option(required=True)

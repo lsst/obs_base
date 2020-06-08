@@ -25,6 +25,7 @@
 import unittest
 
 from lsst.daf.butler.tests.mockeredTest import MockeredTestBase
+from lsst.obs.base.cli.cmd import convert
 
 
 class ConvertTestCase(MockeredTestBase):
@@ -35,6 +36,8 @@ class ConvertTestCase(MockeredTestBase):
                            reruns=[],
                            transfer="auto",
                            config_file=None)
+
+    command = convert
 
     def test_repoInstrGen2root(self):
         """Test the most basic required arguments."""
@@ -73,6 +76,9 @@ class ConvertTestCase(MockeredTestBase):
         self.run_missing(["convert", "here", "--gen2root", "from"], 'Missing option "-i" / "--instrument"')
         self.run_missing(["convert", "here", "--gen2root", "from"], 'Missing option "-i" / "--instrument"')
         self.run_missing(["convert", "here", "--instrument", "instr"], 'Missing option "--gen2root"')
+
+    def test_help(self):
+        self.help_test()
 
 
 if __name__ == "__main__":

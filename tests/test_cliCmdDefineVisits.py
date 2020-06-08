@@ -25,12 +25,15 @@
 import unittest
 
 from lsst.daf.butler.tests.mockeredTest import MockeredTestBase
+from lsst.obs.base.cli.cmd import define_visits
 
 
 class DefineVisitsTest(MockeredTestBase):
 
     defaultExpected = dict(config_file=None,
                            collections=[])
+
+    command = define_visits
 
     def test_repoBasic(self):
         """Test the most basic required arguments."""
@@ -59,6 +62,10 @@ class DefineVisitsTest(MockeredTestBase):
         """test a missing argument"""
         self.run_missing(["define-visits"], 'Missing argument "REPO"')
         self.run_missing(["define-visits", "here"], 'Missing option "-i" / "--instrument"')
+
+    def test_help(self):
+        """Test the help docstrings."""
+        self.help_test()
 
 
 if __name__ == "__main__":

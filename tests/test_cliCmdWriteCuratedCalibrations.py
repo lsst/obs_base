@@ -25,11 +25,14 @@
 import unittest
 
 from lsst.daf.butler.tests.mockeredTest import MockeredTestBase
+from lsst.obs.base.cli.cmd import write_curated_calibrations
 
 
 class WriteCuratedCalibrationsTest(MockeredTestBase):
 
     defaultExpected = dict()
+
+    command = write_curated_calibrations
 
     def test_repoBasic(self):
         """Test the most basic required arguments."""
@@ -46,6 +49,9 @@ class WriteCuratedCalibrationsTest(MockeredTestBase):
         self.run_missing(["write-curated-calibrations", "here"], 'Missing option "-i" / "--instrument"')
         self.run_missing(["write-curated-calibrations", "here", "-i", "a.b.c"],
                          'Missing option "--output-run"')
+
+    def test_help(self):
+        self.help_test()
 
 
 if __name__ == "__main__":

@@ -25,6 +25,7 @@
 import unittest
 
 from lsst.daf.butler.tests.mockeredTest import MockeredTestBase
+from lsst.obs.base.cli.cmd import ingest_raws
 
 
 class IngestRawsTestCase(MockeredTestBase):
@@ -35,6 +36,8 @@ class IngestRawsTestCase(MockeredTestBase):
                            ingest_task="lsst.obs.base.RawIngestTask",
                            config={},
                            config_file=None)
+
+    command = ingest_raws
 
     def test_repoAndOutput(self):
         """Test the most basic required arguments, repo and output run"""
@@ -76,6 +79,9 @@ class IngestRawsTestCase(MockeredTestBase):
                        "--output-run", "out",
                        "--ingest-task", "foo.bar.baz"],
                       self.makeExpected(repo="here", output_run="out", ingest_task="foo.bar.baz"))
+
+    def test_help(self):
+        self.help_test()
 
 
 if __name__ == "__main__":
