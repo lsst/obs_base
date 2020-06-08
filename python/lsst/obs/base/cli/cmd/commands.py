@@ -63,6 +63,7 @@ def convert(*args, **kwargs):
               metavar=typeStrAcceptsMultiple)
 @instrument_option(required=True)
 def define_visits(*args, **kwargs):
+    """Define visits from exposures in the butler registry."""
     cli_handle_exception(script.defineVisits, *args, **kwargs)
 
 
@@ -78,6 +79,7 @@ def define_visits(*args, **kwargs):
 @click.option("--ingest-task", default="lsst.obs.base.RawIngestTask", help="The fully qualified class name "
               "of the ingest task to use.")
 def ingest_raws(*args, **kwargs):
+    """Ingest raw frames into from a directory into the butler registry"""
     cli_handle_exception(script.ingestRaws, *args, **kwargs)
 
 
