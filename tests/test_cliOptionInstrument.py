@@ -26,10 +26,13 @@ import click
 import click.testing
 import unittest
 
+from lsst.daf.butler.tests.cliOptionTest import OptionTestBase
 from lsst.obs.base.cli.opt import instrument_option
 
 
-class Case(unittest.TestCase):
+class InstrumentOptionTestCase(OptionTestBase):
+
+    optionClass = instrument_option
 
     def test_set(self):
 
@@ -38,10 +41,11 @@ class Case(unittest.TestCase):
         def cli(instrument):
             click.echo(instrument, nl=False)
 
-        runner = click.testing.CliRunner()
-        result = runner.invoke(cli, ["--instrument", "myInstr"])
-        self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
-        self.assertEqual(result.stdout, "myInstr")
+        def verify(result, verifyArgs):
+            self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
+            self.assertEqual(result.stdout, "myInstr")
+
+        self.run_test(cli, ["--instrument", "myInstr"], verify, None)
 
     def test_required(self):
 
@@ -50,10 +54,11 @@ class Case(unittest.TestCase):
         def cli(instrument):
             click.echo(instrument, nl=False)
 
-        runner = click.testing.CliRunner()
-        result = runner.invoke(cli, [])
-        self.assertNotEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
-        self.assertIn('Missing option "-i" / "--instrument"', result.output)
+        def verify(result, verifyArgs):
+            self.assertNotEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
+            self.assertIn('Missing option "-i" / "--instrument"', result.output)
+
+        self.run_test(cli, [], verify, None)
 
     def test_notRequired(self):
 
@@ -62,22 +67,14 @@ class Case(unittest.TestCase):
         def cli(instrument):
             click.echo(instrument, nl=False)
 
-        runner = click.testing.CliRunner()
-        result = runner.invoke(cli, [])
-        self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
-        self.assertEqual(result.stdout, "")
+        def verify(result, verifyArgs):
+            self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
+            self.assertEqual(result.stdout, "")
+
+        self.run_test(cli, [], verify, None)
 
     def test_help(self):
-
-        @click.command()
-        @instrument_option(help="test instrument option")
-        def cli(instrument):
-            click.echo(instrument, nl=False)
-
-        runner = click.testing.CliRunner()
-        result = runner.invoke(cli, ["--help"])
-        self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
-        self.assertIn("test instrument option", result.stdout)
+        self.custom_help_test()
 
 
 if __name__ == "__main__":
