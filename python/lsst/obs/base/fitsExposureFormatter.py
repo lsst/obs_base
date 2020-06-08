@@ -40,24 +40,27 @@ class FitsExposureFormatter(Formatter):
 
     The allowed entries under ``compression`` are:
 
-    * algorithm (string): compression algorithm to use
-    * rows (int): number of rows per tile (0 = entire dimension)
-    * columns (int): number of columns per tile (0 = entire dimension)
-    * quantizeLevel (float): cfitsio quantization level
+    * ``algorithm`` (`str`): compression algorithm to use
+    * ``rows`` (`int`): number of rows per tile (0 = entire dimension)
+    * ``columns`` (`int`): number of columns per tile (0 = entire dimension)
+    * ``quantizeLevel`` (`float`): cfitsio quantization level
 
     The allowed entries under ``scaling`` are:
 
-    * algorithm (string): scaling algorithm to use
-    * bitpix (int): bits per pixel (0,8,16,32,64,-32,-64)
-    * fuzz (bool): fuzz the values when quantising floating-point values?
-    * seed (long): seed for random number generator when fuzzing
-    * maskPlanes (list of string): mask planes to ignore when doing
+    * ``algorithm`` (`str`): scaling algorithm to use
+    * ``bitpix`` (`int`): bits per pixel (0,8,16,32,64,-32,-64)
+    * ``fuzz`` (`bool`): fuzz the values when quantising floating-point values?
+    * ``seed`` (`int`): seed for random number generator when fuzzing
+    * ``maskPlanes`` (`list` of `str`): mask planes to ignore when doing
       statistics
-    * quantizeLevel: divisor of the standard deviation for STDEV_* scaling
-    * quantizePad: number of stdev to allow on the low side (for
-      STDEV_POSITIVE/NEGATIVE)
-    * bscale: manually specified BSCALE (for MANUAL scaling)
-    * bzero: manually specified BSCALE (for MANUAL scaling)
+    * ``quantizeLevel`` (`float`): divisor of the standard deviation for
+      ``STDEV_*`` scaling
+    * ``quantizePad`` (`float`): number of stdev to allow on the low side (for
+      ``STDEV_POSITIVE``/``NEGATIVE``)
+    * ``bscale`` (`float`): manually specified ``BSCALE``
+      (for ``MANUAL`` scaling)
+    * ``bzero`` (`float`): manually specified ``BSCALE``
+      (for ``MANUAL`` scaling)
 
     A very simple example YAML recipe:
 
@@ -187,7 +190,7 @@ class FitsExposureFormatter(Formatter):
         ----------
         parameters : `dict`, optional
             If specified a dictionary of slicing parameters that overrides
-            those in ``fileDescriptor`.
+            those in ``fileDescriptor``.
 
         Returns
         -------

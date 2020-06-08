@@ -34,11 +34,11 @@ import lsst.afw.image.utils
 
 
 class FilterDefinitionCollection(collections.abc.Sequence):
-    """An order-preserving collection of `FilterDefinition`s.
+    """An order-preserving collection of multiple `FilterDefinition`.
 
     Parameters
     ----------
-    filters : sequence
+    filters : `~collections.abc.Sequence`
         The filters in this collection.
     """
 
