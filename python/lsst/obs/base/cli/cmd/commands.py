@@ -23,8 +23,9 @@ import click
 
 from lsst.daf.butler.cli.opt import (repo_argument, config_option, config_file_option, run_option,
                                      transfer_option)
-from lsst.daf.butler.cli.utils import cli_handle_exception, split_commas, typeStrAcceptsMultiple
-from ..opt import instrument_option
+from lsst.daf.butler.cli.utils import (cli_handle_exception, ParameterType, split_commas,
+                                       typeStrAcceptsMultiple)
+from ..opt import instrument_parameter
 from ... import script
 
 
@@ -32,8 +33,8 @@ from ... import script
 @repo_argument(required=True,
                help="REPO is the URI or path to the gen3 repository. Will be created if it does not already "
                "exist")
-@instrument_option(required=True,
-                   help="The fully-qualified name of the gen3 Instrument subclass for this camera.")
+@instrument_parameter(required=True,
+                      help="The fully-qualified name of the gen3 Instrument subclass for this camera.")
 @click.option("--gen2root", required=True,
               help="Root path of the gen 2 repo to be converted.")
 @click.option("--skymap-name",
@@ -61,7 +62,7 @@ def convert(*args, **kwargs):
               multiple=True,
               callback=split_commas,
               metavar=typeStrAcceptsMultiple)
-@instrument_option(required=True)
+@instrument_parameter(required=True)
 def define_visits(*args, **kwargs):
     """Define visits from exposures in the butler registry."""
     cli_handle_exception(script.defineVisits, *args, **kwargs)
@@ -85,7 +86,8 @@ def ingest_raws(*args, **kwargs):
 
 @click.command(short_help="Add an instrument to the repository")
 @repo_argument(required=True)
-@instrument_option(required=True, help="The fully-qualified name of an Instrument subclass.")
+@instrument_parameter(parameterType=ParameterType.ARGUMENT, required=True,
+                      help="The fully-qualified name of an Instrument subclass.")
 def register_instrument(*args, **kwargs):
     """Add an instrument to the data repository.
     """
@@ -94,7 +96,7 @@ def register_instrument(*args, **kwargs):
 
 @click.command(short_help="Add an instrument's curated calibrations.")
 @repo_argument(required=True)
-@instrument_option(required=True)
+@instrument_parameter(required=True)
 @run_option(required=True)
 def write_curated_calibrations(*args, **kwargs):
     """Add an instrument's curated calibrations to the data repository.

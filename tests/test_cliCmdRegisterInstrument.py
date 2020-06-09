@@ -36,15 +36,14 @@ class RegisterInstrumentTest(MockeredTestBase):
 
     def test_repoBasic(self):
         """Test the most basic required arguments."""
-        self.run_test(["register-instrument", "here",
-                       "--instrument", "a.b.c"],
+        self.run_test(["register-instrument", "here", "a.b.c"],
                       self.makeExpected(repo="here",
                                         instrument="a.b.c"))
 
     def test_missing(self):
         """test a missing argument"""
         self.run_missing(["register-instrument"], 'Missing argument "REPO"')
-        self.run_missing(["register-instrument", "here"], 'Missing option "-i" / "--instrument"')
+        self.run_missing(["register-instrument", "here"], 'Missing argument "INSTRUMENT"')
 
     def test_help(self):
         self.help_test()
