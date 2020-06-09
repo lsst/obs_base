@@ -106,7 +106,7 @@ class Instrument(metaclass=ABCMeta):
     def getCamera(self):
         """Retrieve the cameraGeom representation of this instrument.
 
-        This is a temporary API that should go away once obs_ packages have
+        This is a temporary API that should go away once ``obs_`` packages have
         a standardized approach to writing versioned cameras to a Gen3 repo.
         """
         raise NotImplementedError()

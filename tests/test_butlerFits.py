@@ -56,6 +56,18 @@ datastore:
   cls: lsst.daf.butler.datastores.posixDatastore.PosixDatastore
   formatters:
     ExposureCompositeF: lsst.obs.base.fitsExposureFormatter.FitsExposureFormatter
+    lossless:
+      formatter: lsst.obs.base.fitsExposureFormatter.FitsExposureFormatter
+      parameters:
+        recipe: lossless
+    uncompressed:
+      formatter: lsst.obs.base.fitsExposureFormatter.FitsExposureFormatter
+      parameters:
+        recipe: noCompression
+    lossy:
+      formatter: lsst.obs.base.fitsExposureFormatter.FitsExposureFormatter
+      parameters:
+        recipe: lossyBasic
   composites:
     disassembled:
       ExposureCompositeF: True
@@ -78,7 +90,7 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         dataIds = {
             "instrument": ["DummyCam"],
             "physical_filter": ["d-r"],
-            "visit": [42],
+            "visit": [42, 43, 44],
         }
 
         cls.creatorButler = makeTestRepo(cls.root, dataIds, config=Config.fromYaml(BUTLER_CONFIG))
@@ -87,6 +99,9 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         for datasetTypeName, storageClassName in (("calexp", "ExposureF"),
                                                   ("unknown", "ExposureCompositeF"),
                                                   ("testCatalog", "SourceCatalog"),
+                                                  ("lossless", "ExposureF"),
+                                                  ("uncompressed", "ExposureF"),
+                                                  ("lossy", "ExposureF"),
                                                   ):
             storageClass = cls.storageClassFactory.getStorageClass(storageClassName)
             addDatasetType(cls.creatorButler, datasetTypeName, set(dataIds), storageClass)
@@ -251,6 +266,40 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         self.assertImagesEqual(subset.getImage(), exposure.subset(inBBox, origin=LOCAL).getImage())
 
         return ref
+
+    def putFits(self, exposure, datasetTypeName, visit):
+        """Put different datasetTypes and return information."""
+        dataId = {"visit": visit, "instrument": "DummyCam", "physical_filter": "d-r"}
+        refC = self.butler.put(exposure, datasetTypeName, dataId)
+        uriC = self.butler.getURI(refC)
+        stat = os.stat(uriC.path)
+        size = stat.st_size
+        meta = self.butler.get(f"{datasetTypeName}.metadata", dataId)
+        return meta, size
+
+    def testCompression(self):
+        """Test that we can write compressed and uncompressed FITS."""
+        example = os.path.join(TESTDIR, "data", "small.fits")
+        exposure = lsst.afw.image.ExposureF(example)
+
+        # Write a lossless compressed
+        metaC, sizeC = self.putFits(exposure, "lossless", 42)
+        self.assertEqual(metaC["TTYPE1"], "COMPRESSED_DATA")
+        self.assertEqual(metaC["ZCMPTYPE"], "GZIP_2")
+
+        # Write an uncompressed FITS file
+        metaN, sizeN = self.putFits(exposure, "uncompressed", 43)
+        self.assertNotIn("ZCMPTYPE", metaN)
+
+        # Write an uncompressed FITS file
+        metaL, sizeL = self.putFits(exposure, "lossy", 44)
+        self.assertEqual(metaL["TTYPE1"], "COMPRESSED_DATA")
+        self.assertEqual(metaL["ZCMPTYPE"], "RICE_1")
+
+        self.assertNotEqual(sizeC, sizeN)
+        # Data file is so small that Lossy and Compressed are dominated
+        # by the extra compression tables
+        self.assertEqual(sizeL, sizeC)
 
 
 if __name__ == "__main__":
