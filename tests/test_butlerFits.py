@@ -33,6 +33,7 @@ import lsst.utils.tests
 import lsst.afw.image
 from lsst.afw.image import LOCAL
 from lsst.geom import Box2I, Point2I
+from lsst.base import Packages
 from lsst.daf.base import PropertyList, PropertySet
 
 from lsst.daf.butler import Config
@@ -109,6 +110,7 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         # And some dataset types that have no dimensions for easy testing
         for datasetTypeName, storageClassName in (("ps", "PropertySet"),
                                                   ("pl", "PropertyList"),
+                                                  ("pkg", "Packages")
                                                   ):
             storageClass = cls.storageClassFactory.getStorageClass(storageClassName)
             addDatasetType(cls.creatorButler, datasetTypeName, {}, storageClass)
@@ -178,6 +180,9 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         pl["B"] = "string"
         pl.setComment("B", "A string comment")
         self.runFundamentalTypeTest("pl", pl)
+
+        pkg = Packages.fromSystem()
+        self.runFundamentalTypeTest("pkg", pkg)
 
     def testFitsCatalog(self) -> None:
         catalog = self.makeExampleCatalog()
