@@ -24,11 +24,11 @@
 
 import unittest
 
-from lsst.daf.butler.tests.mockeredTest import MockeredTestBase
+from lsst.daf.butler.tests import CliCmdTestBase
 from lsst.obs.base.cli.cmd import ingest_raws
 
 
-class IngestRawsTestCase(MockeredTestBase):
+class IngestRawsTestCase(CliCmdTestBase):
 
     defaultExpected = dict(directory=None,
                            file=None,

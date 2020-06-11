@@ -24,11 +24,11 @@
 
 import unittest
 
-from lsst.daf.butler.tests.mockeredTest import MockeredTestBase
+from lsst.daf.butler.tests import CliCmdTestBase
 from lsst.obs.base.cli.cmd import register_instrument
 
 
-class RegisterInstrumentTest(MockeredTestBase):
+class RegisterInstrumentTest(CliCmdTestBase):
 
     defaultExpected = dict()
 

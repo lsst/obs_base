@@ -27,11 +27,11 @@ import click.testing
 import unittest
 
 from lsst.daf.butler.cli.utils import ParameterType
-from lsst.daf.butler.tests.cliOptionTest import OptionTestBase
+from lsst.daf.butler.tests import CliOptionTestBase
 from lsst.obs.base.cli.opt import instrument_parameter
 
 
-class InstrumentTestCase(OptionTestBase):
+class InstrumentTestCase(CliOptionTestBase):
 
     optionClass = instrument_parameter
 

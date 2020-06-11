@@ -24,11 +24,11 @@
 
 import unittest
 
-from lsst.daf.butler.tests.mockeredTest import MockeredTestBase
+from lsst.daf.butler.tests import CliCmdTestBase
 from lsst.obs.base.cli.cmd import define_visits
 
 
-class DefineVisitsTest(MockeredTestBase):
+class DefineVisitsTest(CliCmdTestBase):
 
     defaultExpected = dict(config_file=None,
                            collections=[])
