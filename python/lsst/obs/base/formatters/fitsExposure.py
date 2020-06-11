@@ -75,6 +75,7 @@ class FitsExposureFormatter(Formatter):
             variance: *default
 
     """
+    supportedExtensions = frozenset({".fits", ".fits.gz", ".fits.fz"})
     extension = ".fits"
     _metadata = None
     supportedWriteParameters = frozenset({"recipe"})
