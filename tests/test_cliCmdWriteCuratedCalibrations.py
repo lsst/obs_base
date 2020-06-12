@@ -28,7 +28,7 @@ from lsst.daf.butler.tests import CliCmdTestBase
 from lsst.obs.base.cli.cmd import write_curated_calibrations
 
 
-class WriteCuratedCalibrationsTest(CliCmdTestBase):
+class WriteCuratedCalibrationsTest(CliCmdTestBase, unittest.TestCase):
 
     defaultExpected = dict()
 
@@ -49,9 +49,6 @@ class WriteCuratedCalibrationsTest(CliCmdTestBase):
         self.run_missing(["write-curated-calibrations", "here"], 'Missing option "-i" / "--instrument"')
         self.run_missing(["write-curated-calibrations", "here", "-i", "a.b.c"],
                          'Missing option "--output-run"')
-
-    def test_help(self):
-        self.help_test()
 
 
 if __name__ == "__main__":

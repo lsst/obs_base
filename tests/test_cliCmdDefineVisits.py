@@ -28,7 +28,7 @@ from lsst.daf.butler.tests import CliCmdTestBase
 from lsst.obs.base.cli.cmd import define_visits
 
 
-class DefineVisitsTest(CliCmdTestBase):
+class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
 
     defaultExpected = dict(config_file=None,
                            collections=[])
@@ -62,10 +62,6 @@ class DefineVisitsTest(CliCmdTestBase):
         """test a missing argument"""
         self.run_missing(["define-visits"], 'Missing argument "REPO"')
         self.run_missing(["define-visits", "here"], 'Missing option "-i" / "--instrument"')
-
-    def test_help(self):
-        """Test the help docstrings."""
-        self.help_test()
 
 
 if __name__ == "__main__":

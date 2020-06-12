@@ -28,7 +28,7 @@ from lsst.daf.butler.tests import CliCmdTestBase
 from lsst.obs.base.cli.cmd import convert
 
 
-class ConvertTestCase(CliCmdTestBase):
+class ConvertTestCase(CliCmdTestBase, unittest.TestCase):
 
     defaultExpected = dict(skymap_name=None,
                            skymap_config=None,
@@ -76,9 +76,6 @@ class ConvertTestCase(CliCmdTestBase):
         self.run_missing(["convert", "here", "--gen2root", "from"], 'Missing option "-i" / "--instrument"')
         self.run_missing(["convert", "here", "--gen2root", "from"], 'Missing option "-i" / "--instrument"')
         self.run_missing(["convert", "here", "--instrument", "instr"], 'Missing option "--gen2root"')
-
-    def test_help(self):
-        self.help_test()
 
 
 if __name__ == "__main__":

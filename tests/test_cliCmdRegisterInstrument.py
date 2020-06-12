@@ -28,7 +28,7 @@ from lsst.daf.butler.tests import CliCmdTestBase
 from lsst.obs.base.cli.cmd import register_instrument
 
 
-class RegisterInstrumentTest(CliCmdTestBase):
+class RegisterInstrumentTest(CliCmdTestBase, unittest.TestCase):
 
     defaultExpected = dict()
 
@@ -44,9 +44,6 @@ class RegisterInstrumentTest(CliCmdTestBase):
         """test a missing argument"""
         self.run_missing(["register-instrument"], 'Missing argument "REPO"')
         self.run_missing(["register-instrument", "here"], 'Missing argument "INSTRUMENT"')
-
-    def test_help(self):
-        self.help_test()
 
 
 if __name__ == "__main__":

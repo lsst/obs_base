@@ -28,7 +28,7 @@ from lsst.daf.butler.tests import CliCmdTestBase
 from lsst.obs.base.cli.cmd import ingest_raws
 
 
-class IngestRawsTestCase(CliCmdTestBase):
+class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
 
     defaultExpected = dict(directory=None,
                            file=None,
@@ -79,9 +79,6 @@ class IngestRawsTestCase(CliCmdTestBase):
                        "--output-run", "out",
                        "--ingest-task", "foo.bar.baz"],
                       self.makeExpected(repo="here", output_run="out", ingest_task="foo.bar.baz"))
-
-    def test_help(self):
-        self.help_test()
 
 
 if __name__ == "__main__":

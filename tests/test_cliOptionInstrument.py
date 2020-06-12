@@ -106,10 +106,6 @@ class InstrumentTestCase(CliOptionTestBase):
         self.run_test(cli, ["--instrument", "foo*", "--instrument", "bar", "--instrument", "b?z"],
                       self.verify, "('foo*', 'bar', 'b?z')")
 
-    def test_help(self):
-        self.help_test()
-        self.custom_help_test()
-
 
 if __name__ == "__main__":
     unittest.main()
