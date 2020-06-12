@@ -31,7 +31,7 @@ import lsst.afw.image
 from lsst.daf.butler import FileDescriptor
 import lsst.log
 
-from .fitsExposureFormatter import FitsExposureFormatter
+from .formatters.fitsExposure import FitsExposureFormatter
 from .makeRawVisitInfoViaObsInfo import MakeRawVisitInfoViaObsInfo
 from .utils import createInitialSkyWcs, InitialSkyWcsError
 

@@ -43,7 +43,7 @@ from lsst.pex.config import Config, ChoiceField
 from lsst.pipe.base import Task
 
 from ._instrument import Instrument, makeExposureRecordFromObsInfo
-from .fitsRawFormatterBase import FitsRawFormatterBase
+from ._fitsRawFormatterBase import FitsRawFormatterBase
 
 
 @dataclass

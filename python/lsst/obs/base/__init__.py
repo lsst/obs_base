@@ -28,7 +28,7 @@ from .cameraMapper import *
 from .exposureIdInfo import *
 from .makeRawVisitInfo import *
 from .makeRawVisitInfoViaObsInfo import *
-from .fitsRawFormatterBase import *
+from ._fitsRawFormatterBase import *
 from .utils import *
 from .ingest import *
 from .defineVisits import *
