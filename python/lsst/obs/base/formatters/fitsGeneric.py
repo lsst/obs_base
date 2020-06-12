@@ -23,7 +23,7 @@ __all__ = ("FitsGenericFormatter", )
 
 import os.path
 
-from lsst.daf.butler.formatters.fileFormatter import FileFormatter
+from lsst.daf.butler.formatters.file import FileFormatter
 
 
 class FitsGenericFormatter(FileFormatter):

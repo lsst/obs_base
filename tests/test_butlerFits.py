@@ -55,17 +55,17 @@ datastore:
   # Want to check disassembly so can't use InMemory
   cls: lsst.daf.butler.datastores.posixDatastore.PosixDatastore
   formatters:
-    ExposureCompositeF: lsst.obs.base.fitsExposureFormatter.FitsExposureFormatter
+    ExposureCompositeF: lsst.obs.base.formatters.fitsExposure.FitsExposureFormatter
     lossless:
-      formatter: lsst.obs.base.fitsExposureFormatter.FitsExposureFormatter
+      formatter: lsst.obs.base.formatters.fitsExposure.FitsExposureFormatter
       parameters:
         recipe: lossless
     uncompressed:
-      formatter: lsst.obs.base.fitsExposureFormatter.FitsExposureFormatter
+      formatter: lsst.obs.base.formatters.fitsExposure.FitsExposureFormatter
       parameters:
         recipe: noCompression
     lossy:
-      formatter: lsst.obs.base.fitsExposureFormatter.FitsExposureFormatter
+      formatter: lsst.obs.base.formatters.fitsExposure.FitsExposureFormatter
       parameters:
         recipe: lossyBasic
   composites:
