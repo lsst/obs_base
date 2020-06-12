@@ -86,7 +86,7 @@ def ingest_raws(*args, **kwargs):
 
 @click.command(short_help="Add an instrument to the repository")
 @repo_argument(required=True)
-@instrument_parameter(parameterType=ParameterType.ARGUMENT, required=True,
+@instrument_parameter(parameterType=ParameterType.ARGUMENT, required=True, multiple=True,
                       help="The fully-qualified name of an Instrument subclass.")
 def register_instrument(*args, **kwargs):
     """Add an instrument to the data repository.

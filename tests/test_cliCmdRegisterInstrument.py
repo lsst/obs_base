@@ -38,12 +38,12 @@ class RegisterInstrumentTest(CliCmdTestBase, unittest.TestCase):
         """Test the most basic required arguments."""
         self.run_test(["register-instrument", "here", "a.b.c"],
                       self.makeExpected(repo="here",
-                                        instrument="a.b.c"))
+                                        instrument=("a.b.c",)))
 
     def test_missing(self):
         """test a missing argument"""
         self.run_missing(["register-instrument"], 'Missing argument "REPO"')
-        self.run_missing(["register-instrument", "here"], 'Missing argument "INSTRUMENT"')
+        self.run_missing(["register-instrument", "here"], 'Missing argument "INSTRUMENT ..."')
 
 
 if __name__ == "__main__":
