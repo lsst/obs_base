@@ -64,6 +64,28 @@ class PackagesFormatter(FileFormatter):
 
         return pytype.read(path)
 
+    def _fromBytes(self, serializedDataset, pytype=None):
+        """Read the bytes object as a python object.
+
+        Parameters
+        ----------
+        serializedDataset : `bytes`
+            Bytes object to unserialize.
+        pytype : `type`
+            The Python type to be instantiated. Required.
+
+        Returns
+        -------
+        inMemoryDataset : `object`
+            The requested data as an object, or None if the string could
+            not be read.
+        """
+        # The format can not come from the formatter configuration
+        # because the current configuration has no connection to how
+        # the data were stored.
+        format = "yaml" if serializedDataset.startswith(b"!<lsst.base.Packages>") else "pickle"
+        return pytype.fromBytes(serializedDataset, format)
+
     def _writeFile(self, inMemoryDataset):
         """Write the in memory dataset to file on disk.
 
@@ -78,3 +100,24 @@ class PackagesFormatter(FileFormatter):
             The file could not be written.
         """
         inMemoryDataset.write(self.fileDescriptor.location.path)
+
+    def _toBytes(self, inMemoryDataset):
+        """Write the in memory dataset to a bytestring.
+
+        Parameters
+        ----------
+        inMemoryDataset : `object`
+            Object to serialize
+
+        Returns
+        -------
+        serializedDataset : `bytes`
+            YAML string encoded to bytes.
+
+        Raises
+        ------
+        Exception
+            The object could not be serialized.
+        """
+        format = "yaml" if self.extension == ".yaml" else "pickle"
+        return inMemoryDataset.toBytes(format)
