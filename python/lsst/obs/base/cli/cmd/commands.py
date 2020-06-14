@@ -23,17 +23,18 @@ import click
 
 from lsst.daf.butler.cli.opt import (repo_argument, config_option, config_file_option, run_option,
                                      transfer_option)
-from lsst.daf.butler.cli.utils import cli_handle_exception, split_commas, typeStrAcceptsMultiple
-from ..opt import instrument_option
+from lsst.daf.butler.cli.utils import (cli_handle_exception, ParameterType, split_commas,
+                                       typeStrAcceptsMultiple)
+from ..opt import instrument_parameter
 from ... import script
 
 
-@click.command()
+@click.command(short_help="Convert a gen2 repo to gen3.")
 @repo_argument(required=True,
                help="REPO is the URI or path to the gen3 repository. Will be created if it does not already "
                "exist")
-@instrument_option(required=True,
-                   help="The fully-qualified name of the gen3 Instrument subclass for this camera.")
+@instrument_parameter(required=True,
+                      help="The fully-qualified name of the gen3 Instrument subclass for this camera.")
 @click.option("--gen2root", required=True,
               help="Root path of the gen 2 repo to be converted.")
 @click.option("--skymap-name",
@@ -52,7 +53,7 @@ def convert(*args, **kwargs):
     cli_handle_exception(script.convert, *args, **kwargs)
 
 
-@click.command()
+@click.command(short_help="Define visits from exposures.")
 @repo_argument(required=True)
 @config_file_option(help="Path to a pex_config override to be included after the Instrument config overrides "
                          "are applied.")
@@ -61,12 +62,13 @@ def convert(*args, **kwargs):
               multiple=True,
               callback=split_commas,
               metavar=typeStrAcceptsMultiple)
-@instrument_option(required=True)
+@instrument_parameter(required=True)
 def define_visits(*args, **kwargs):
+    """Define visits from exposures in the butler registry."""
     cli_handle_exception(script.defineVisits, *args, **kwargs)
 
 
-@click.command()
+@click.command(short_help="Ingest raw frames.")
 @repo_argument(required=True)
 @config_option()
 @config_file_option()
@@ -78,21 +80,23 @@ def define_visits(*args, **kwargs):
 @click.option("--ingest-task", default="lsst.obs.base.RawIngestTask", help="The fully qualified class name "
               "of the ingest task to use.")
 def ingest_raws(*args, **kwargs):
+    """Ingest raw frames into from a directory into the butler registry"""
     cli_handle_exception(script.ingestRaws, *args, **kwargs)
 
 
-@click.command()
+@click.command(short_help="Add an instrument to the repository")
 @repo_argument(required=True)
-@instrument_option(required=True, help="The fully-qualified name of an Instrument subclass.")
+@instrument_parameter(parameterType=ParameterType.ARGUMENT, required=True, multiple=True,
+                      help="The fully-qualified name of an Instrument subclass.")
 def register_instrument(*args, **kwargs):
     """Add an instrument to the data repository.
     """
     cli_handle_exception(script.registerInstrument, *args, **kwargs)
 
 
-@click.command()
+@click.command(short_help="Add an instrument's curated calibrations.")
 @repo_argument(required=True)
-@instrument_option(required=True)
+@instrument_parameter(required=True)
 @run_option(required=True)
 def write_curated_calibrations(*args, **kwargs):
     """Add an instrument's curated calibrations to the data repository.

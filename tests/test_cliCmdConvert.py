@@ -24,10 +24,11 @@
 
 import unittest
 
-from lsst.daf.butler.tests.mockeredTest import MockeredTestBase
+from lsst.daf.butler.tests import CliCmdTestBase
+from lsst.obs.base.cli.cmd import convert
 
 
-class ConvertTestCase(MockeredTestBase):
+class ConvertTestCase(CliCmdTestBase, unittest.TestCase):
 
     defaultExpected = dict(skymap_name=None,
                            skymap_config=None,
@@ -35,6 +36,8 @@ class ConvertTestCase(MockeredTestBase):
                            reruns=[],
                            transfer="auto",
                            config_file=None)
+
+    command = convert
 
     def test_repoInstrGen2root(self):
         """Test the most basic required arguments."""

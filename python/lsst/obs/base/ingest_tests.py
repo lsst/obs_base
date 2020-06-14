@@ -189,8 +189,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         """Use the Click `testing` module to call the butler command line api
         to register the instrument."""
         runner = click.testing.CliRunner()
-        result = runner.invoke(butlerCli, ["register-instrument", self.root,
-                                           "--instrument", self.instrumentClassName])
+        result = runner.invoke(butlerCli, ["register-instrument", self.root, self.instrumentClassName])
         self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
 
     def _writeCuratedCalibrations(self):

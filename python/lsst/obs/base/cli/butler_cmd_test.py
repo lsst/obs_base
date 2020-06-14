@@ -50,6 +50,17 @@ class ButlerCmdTestBase(metaclass=abc.ABCMeta):
         pass
 
     @property
+    def secondInstrumentClassName(self):
+        """Optional; if provided the register-instrument test will try to
+        register two instruments.
+
+        Returns
+        -------
+        `str` or `None`
+            The fully qualified instrument class name.
+        """
+
+    @property
     def instrument(self):
         """The instrument class."""
         return doImport(self.instrumentClassName)
@@ -70,12 +81,13 @@ class ButlerCmdTestBase(metaclass=abc.ABCMeta):
         with runner.isolated_filesystem():
             result = runner.invoke(butler.cli, ["create", "here"])
             self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
-            result = runner.invoke(butler.cli, ["register-instrument",
-                                                "here",
-                                                "-i", self.instrumentClassName])
+            registerInstrumentArgs = ["register-instrument", "here", self.instrumentClassName]
+            if self.secondInstrumentClassName is not None:
+                registerInstrumentArgs.append(self.secondInstrumentClassName)
+            result = runner.invoke(butler.cli, registerInstrumentArgs)
             self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
             result = runner.invoke(butler.cli, ["write-curated-calibrations",
                                                 "here",
-                                                "-i", self.instrumentName,
+                                                "--instrument", self.instrumentName,
                                                 "--output-run", "output_run"])
             self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")

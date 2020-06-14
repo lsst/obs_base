@@ -25,43 +25,30 @@
 import unittest
 
 from lsst.daf.butler.tests import CliCmdTestBase
-from lsst.obs.base.cli.cmd import define_visits
+from lsst.obs.base.cli.cmd import write_curated_calibrations
 
 
-class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
+class WriteCuratedCalibrationsTest(CliCmdTestBase, unittest.TestCase):
 
-    defaultExpected = dict(config_file=None,
-                           collections=[])
+    defaultExpected = dict()
 
-    command = define_visits
+    command = write_curated_calibrations
 
     def test_repoBasic(self):
         """Test the most basic required arguments."""
-        self.run_test(["define-visits", "here",
-                       "--instrument", "a.b.c"],
-                      self.makeExpected(repo="here",
-                                        instrument="a.b.c"))
-
-    def test_all(self):
-        """Test all the arguments."""
-        self.run_test(["define-visits", "here",
+        self.run_test(["write-curated-calibrations", "here",
                        "--instrument", "a.b.c",
-                       "--collections", "foo/bar,baz",
-                       "--config-file", "/path/to/config",
-                       "--collections", "boz"],
+                       "--output-run", "foo"],
                       self.makeExpected(repo="here",
                                         instrument="a.b.c",
-                                        config_file="/path/to/config",
-                                        # The list of collections must be in
-                                        # exactly the same order as it is
-                                        # passed in the list of arguments to
-                                        # run_test.
-                                        collections=["foo/bar", "baz", "boz"]))
+                                        output_run="foo"))
 
     def test_missing(self):
         """test a missing argument"""
-        self.run_missing(["define-visits"], 'Missing argument "REPO"')
-        self.run_missing(["define-visits", "here"], 'Missing option "-i" / "--instrument"')
+        self.run_missing(["write-curated-calibrations"], 'Missing argument "REPO"')
+        self.run_missing(["write-curated-calibrations", "here"], 'Missing option "-i" / "--instrument"')
+        self.run_missing(["write-curated-calibrations", "here", "-i", "a.b.c"],
+                         'Missing option "--output-run"')
 
 
 if __name__ == "__main__":

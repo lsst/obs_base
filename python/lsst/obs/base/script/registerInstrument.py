@@ -30,7 +30,7 @@ def registerInstrument(repo, instrument):
     ----------
     repo : `str`
         URI to the location to create the repo.
-    instrument : `str`
+    instrument : `list` [`str`]
         The fully-qualified name of an Instrument subclass.
 
     Raises
@@ -42,5 +42,6 @@ def registerInstrument(repo, instrument):
         If the instrument is not a subclass of lsst.obs.base.Instrument.
     """
     butler = Butler(repo, writeable=True)
-    instr = getInstrument(instrument, butler.registry)
-    instr.register(butler.registry)
+    for instr in instrument:
+        instrInstance = getInstrument(instr, butler.registry)
+        instrInstance.register(butler.registry)

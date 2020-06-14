@@ -22,13 +22,28 @@
 
 import click
 
+from lsst.daf.butler.cli.utils import addArgumentHelp, ParameterType
 
-class instrument_option:  # noqa: N801
-    def __init__(self, required=False, help=None):
+
+class instrument_parameter:  # noqa: N801
+
+    defaultHelp = "The name or fully-qualified class name of an instrument."
+
+    def __init__(self, parameterType=ParameterType.OPTION, required=False, help=defaultHelp, multiple=False):
+        self.parameterType = parameterType
         self.required = required
-        self.help = "The name or fully-qualified class name of an instrument." if help is None else help
+        self.help = help
+        self.multiple = multiple
 
     def __call__(self, f):
-        return click.option("-i", "--instrument",
-                            required=self.required,
-                            help=self.help)(f)
+        if self.parameterType == ParameterType.OPTION:
+            return click.option("-i", "--instrument",
+                                required=self.required,
+                                help=self.help,
+                                multiple=self.multiple)(f)
+        if self.parameterType == ParameterType.ARGUMENT:
+            f.__doc__ = addArgumentHelp(f.__doc__, self.help)
+            return click.argument("instrument",
+                                  required=self.required,
+                                  nargs=-1 if self.multiple else 1,
+                                  metavar="INSTRUMENT ..." if self.multiple else "INSTRUMENT")(f)
