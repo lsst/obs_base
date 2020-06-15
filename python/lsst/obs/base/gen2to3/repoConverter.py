@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from collections import defaultdict
 from abc import ABC, abstractmethod
 import fnmatch
+import os.path
 import re
 from typing import (
     Dict,
@@ -184,7 +185,8 @@ class RepoConverter(ABC):
     task : `ConvertRepoTask`
         Task instance that is using this helper object.
     root : `str`
-        Root of the Gen2 repo being converted.
+        Root of the Gen2 repo being converted.  Will be converted to an
+        absolute path, resolving symbolic links and ``~``, if necessary.
     collections : `list` of `str`
         Gen3 collections with which all converted datasets should be
         associated.
@@ -205,7 +207,7 @@ class RepoConverter(ABC):
     def __init__(self, *, task: ConvertRepoTask, root: str, run: Optional[str],
                  subset: Optional[ConversionSubset] = None):
         self.task = task
-        self.root = root
+        self.root = os.path.realpath(os.path.expanduser(root))
         self.subset = subset
         self._run = run
         self._repoWalker = None  # Created in prep
