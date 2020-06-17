@@ -68,7 +68,7 @@ def define_visits(*args, **kwargs):
 
 @click.command(short_help="Ingest raw frames.")
 @repo_argument(required=True)
-@config_option()
+@config_option(multiple=True, split_kv=True)
 @config_file_option()
 @run_option(required=False)
 @click.option("-d", "--dir", "directory",
