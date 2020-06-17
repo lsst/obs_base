@@ -145,6 +145,7 @@ class FitsExposureFormatter(Formatter):
         KeyError
             Raised if the requested component cannot be handled.
         """
+        # Metadata is handled explicitly elsewhere
         componentMap = {'wcs': ('readWcs', False),
                         'coaddInputs': ('readCoaddInputs', False),
                         'psf': ('readPsf', False),
@@ -154,7 +155,6 @@ class FitsExposureFormatter(Formatter):
                         'photoCalib': ('readPhotoCalib', False),
                         'bbox': ('readBBox', True),
                         'xy0': ('readXY0', True),
-                        'metadata': ('readMetadata', False),
                         'filter': ('readFilter', False),
                         'validPolygon': ('readValidPolygon', False),
                         'apCorrMap': ('readApCorrMap', False),
