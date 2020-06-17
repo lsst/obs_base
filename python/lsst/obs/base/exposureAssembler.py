@@ -32,7 +32,8 @@ class ExposureAssembler(CompositeAssembler):
 
     EXPOSURE_COMPONENTS = set(("image", "variance", "mask", "wcs", "psf"))
     EXPOSURE_INFO_COMPONENTS = set(("apCorrMap", "coaddInputs", "photoCalib", "metadata",
-                                    "filter", "transmissionCurve", "visitInfo"))
+                                    "filter", "transmissionCurve", "visitInfo",
+                                    "detector", "validPolygon"))
 
     def _groupRequestedComponents(self):
         """Group requested components into top level and ExposureInfo.

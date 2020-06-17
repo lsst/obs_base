@@ -156,7 +156,7 @@ class FitsExposureFormatter(Formatter):
                         'xy0': ('readXY0', True),
                         'metadata': ('readMetadata', False),
                         'filter': ('readFilter', False),
-                        'polygon': ('readValidPolygon', False),
+                        'validPolygon': ('readValidPolygon', False),
                         'apCorrMap': ('readApCorrMap', False),
                         'visitInfo': ('readVisitInfo', False),
                         'transmissionCurve': ('readTransmissionCurve', False),
