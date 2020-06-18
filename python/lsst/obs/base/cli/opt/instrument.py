@@ -39,12 +39,14 @@ class instrument_parameter:  # noqa: N801
     def __call__(self, f):
         if self.parameterType == ParameterType.OPTION:
             return click.option("-i", "--instrument",
+                                callback=self.callback,
                                 help=self.help,
                                 multiple=self.multiple,
                                 required=self.required)(f)
         if self.parameterType == ParameterType.ARGUMENT:
             f.__doc__ = addArgumentHelp(f.__doc__, self.help)
             return click.argument("instrument",
+                                  callback=self.callback,
                                   metavar="INSTRUMENT ..." if self.multiple else "INSTRUMENT",
                                   nargs=-1 if self.multiple else 1,
                                   required=self.required)(f)

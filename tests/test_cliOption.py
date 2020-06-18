@@ -22,89 +22,33 @@
 """Unit tests for the butler instrument CLI option.
 """
 
-import click
-import click.testing
 import unittest
 
-from lsst.daf.butler.cli.utils import ParameterType
-from lsst.daf.butler.tests import CliOptionTestBase
+from lsst.daf.butler.tests import (OptHelpTest,
+                                   OptMultipleTest,
+                                   OptRequiredTest)
 from lsst.obs.base.cli.opt import instrument_parameter
 
 
-class InstrumentTestCase(CliOptionTestBase):
-
+class InstrumentArgumentTestCase(OptHelpTest,
+                                 OptMultipleTest,
+                                 OptRequiredTest,
+                                 unittest.TestCase):
     optionClass = instrument_parameter
+    optionName = "instrument"
+    shortOptionName = "i"
+    isArgument = True
+    isParameter = True
 
-    def verify(self, result, verifyArgs):
-        self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
-        self.assertIn(verifyArgs, result.stdout)
 
-    def verifyMissing(self, result, verifyArgs):
-        self.assertNotEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
-        self.assertIn(verifyArgs, result.stdout)
-
-    def test_argument(self):
-        """test argument"""
-        @click.command()
-        @instrument_parameter(parameterType=ParameterType.ARGUMENT)
-        def cli(instrument):
-            if instrument is None:
-                instrument = "None"
-            print(instrument)
-
-        self.run_test(cli, ["foo*"], self.verify, "foo*")
-        self.run_test(cli, [], self.verify, "None")
-
-    def test_argument_required(self):
-        """test with argument required"""
-        @click.command()
-        @instrument_parameter(parameterType=ParameterType.ARGUMENT, required=True)
-        def cli(instrument):
-            print(instrument)
-
-        self.run_test(cli, ["foo*"], self.verify, "foo*")
-        self.run_test(cli, [], self.verifyMissing, 'Error: Missing argument "INSTRUMENT"')
-
-    def test_option(self):
-        """test option"""
-        @click.command()
-        @instrument_parameter()
-        def cli(instrument):
-            if instrument is None:
-                instrument = "None"
-            print(instrument)
-
-        self.run_test(cli, ["--instrument", "foo*"], self.verify, "foo*")
-        self.run_test(cli, [], self.verify, "None")
-
-    def test_option_required(self):
-        """test with argument required"""
-        @click.command()
-        @instrument_parameter(parameterType=ParameterType.ARGUMENT, required=True)
-        def cli(instrument):
-            print(instrument)
-
-        self.run_test(cli, ["foo"], self.verify, "foo")
-        self.run_test(cli, [], self.verifyMissing, 'Error: Missing argument "INSTRUMENT"')
-
-    def test_argument_multiple(self):
-        """test with multiple argument values"""
-        @click.command()
-        @instrument_parameter(parameterType=ParameterType.ARGUMENT, multiple=True)
-        def cli(instrument):
-            print(instrument)
-
-        self.run_test(cli, ["foo*", "bar", "b?z"], self.verify, "('foo*', 'bar', 'b?z')")
-
-    def test_option_multiple(self):
-        """test with multiple option values"""
-        @click.command()
-        @instrument_parameter(multiple=True)
-        def cli(instrument):
-            print(instrument)
-
-        self.run_test(cli, ["--instrument", "foo*", "--instrument", "bar", "--instrument", "b?z"],
-                      self.verify, "('foo*', 'bar', 'b?z')")
+class InstrumentOptionTestCase(OptHelpTest,
+                               OptMultipleTest,
+                               OptRequiredTest,
+                               unittest.TestCase):
+    optionClass = instrument_parameter
+    optionName = "instrument"
+    shortOptionName = "i"
+    isParameter = True
 
 
 if __name__ == "__main__":
