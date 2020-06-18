@@ -164,6 +164,7 @@ class FitsExposureFormatter(Formatter):
                         'variance': ('readVariance', True),
                         'photoCalib': ('readPhotoCalib', False),
                         'bbox': ('readBBox', True),
+                        'dimensions': ('readBBox', True),
                         'xy0': ('readXY0', True),
                         'filter': ('readFilter', False),
                         'validPolygon': ('readValidPolygon', False),
@@ -177,6 +178,8 @@ class FitsExposureFormatter(Formatter):
         method, hasParams = componentMap.get(component, (None, False))
 
         if method:
+            # This reader can read standalone Image/Mask files as well
+            # when dealing with components.
             reader = ExposureFitsReader(self.fileDescriptor.location.path)
             caller = getattr(reader, method, None)
 
@@ -188,9 +191,12 @@ class FitsExposureFormatter(Formatter):
                 self.fileDescriptor.storageClass.validateParameters(parameters)
 
                 if hasParams and parameters:
-                    return caller(**parameters)
+                    thisComponent = caller(**parameters)
                 else:
-                    return caller()
+                    thisComponent = caller()
+                if component == "dimensions" and thisComponent is not None:
+                    thisComponent = thisComponent.getDimensions()
+                return thisComponent
         else:
             raise KeyError(f"Unknown component requested: {component}")
 

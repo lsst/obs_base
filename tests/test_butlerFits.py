@@ -77,6 +77,7 @@ datastore:
 # Components present in the test file
 COMPONENTS = {"wcs", "image", "mask", "coaddInputs", "psf", "visitInfo", "variance", "metadata", "photoCalib",
               "filter"}
+READ_COMPONENTS = {"bbox", "xy0", "dimensions"}
 
 
 class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
@@ -186,6 +187,7 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         self.runFundamentalTypeTest("pkg", pkg)
 
     def testFitsCatalog(self) -> None:
+        """Test reading of a FITS catalog"""
         catalog = self.makeExampleCatalog()
         dataId = {"visit": 42, "instrument": "DummyCam", "physical_filter": "d-r"}
         ref = self.butler.put(catalog, "testCatalog", dataId)
@@ -193,12 +195,14 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         self.assertCatalogEqual(catalog, stored)
 
     def testExposureCompositePutGetConcrete(self) -> None:
+        """Test composite with no disassembly"""
         ref = self.runExposureCompositePutGetTest("calexp")
 
         uri = self.butler.getURI(ref)
         self.assertTrue(os.path.exists(uri.path), f"Checking URI {uri} existence")
 
     def testExposureCompositePutGetVirtual(self) -> None:
+        """Testing composite disassembly"""
         ref = self.runExposureCompositePutGetTest("unknown")
 
         primary, components = self.butler.getURIs(ref)
@@ -224,8 +228,12 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         # Helper for extracting components
         assembler = ExposureAssembler(ref.datasetType.storageClass)
 
+        # Check all possible components that can be read
+        allComponents = set()
+        allComponents.update(COMPONENTS, READ_COMPONENTS)
+
         # Get each component from butler independently
-        for compName in COMPONENTS:
+        for compName in allComponents:
             compTypeName = DatasetType.nameWithComponent(datasetTypeName, compName)
             component = self.butler.get(compTypeName, dataId)
 
@@ -262,6 +270,8 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
                 # which does not compare directly.
                 self.assertEqual(str(component), str(reference))
                 self.assertIn("spatially constant with mean: inf", str(component), "Checking photoCalib")
+            elif compName in ("bbox", "xy0", "dimensions"):
+                self.assertEqual(component, reference)
             else:
                 raise RuntimeError(f"Unexpected component '{compName}' encountered in test")
 
@@ -282,7 +292,8 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         uriC = self.butler.getURI(refC)
         stat = os.stat(uriC.path)
         size = stat.st_size
-        meta = self.butler.get(f"{datasetTypeName}.metadata", dataId)
+        metaDatasetTypeName = DatasetType.nameWithComponent(datasetTypeName, "metadata")
+        meta = self.butler.get(metaDatasetTypeName, dataId)
         return meta, size
 
     def testCompression(self):

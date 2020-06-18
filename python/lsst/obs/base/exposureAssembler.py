@@ -34,6 +34,10 @@ class ExposureAssembler(CompositeAssembler):
     EXPOSURE_INFO_COMPONENTS = set(("apCorrMap", "coaddInputs", "photoCalib", "metadata",
                                     "filter", "transmissionCurve", "visitInfo",
                                     "detector", "validPolygon"))
+    EXPOSURE_READ_COMPONENTS = {"bbox", "dimensions", "xy0"}
+
+    COMPONENT_MAP = {"bbox": "BBox", "xy0": "XY0"}
+    """Map component name to actual getter name."""
 
     def _groupRequestedComponents(self):
         """Group requested components into top level and ExposureInfo.
@@ -82,8 +86,9 @@ class ExposureAssembler(CompositeAssembler):
         AttributeError
             The component can not be found.
         """
-        if componentName in self.EXPOSURE_COMPONENTS:
-            return super().getComponent(composite, componentName)
+        if componentName in self.EXPOSURE_COMPONENTS or componentName in self.EXPOSURE_READ_COMPONENTS:
+            # Use getter translation if relevant or the name itself
+            return super().getComponent(composite, self.COMPONENT_MAP.get(componentName, componentName))
         elif componentName in self.EXPOSURE_INFO_COMPONENTS:
             if hasattr(composite, "getInfo"):
                 # it is possible for this method to be called with
@@ -256,3 +261,19 @@ class ExposureAssembler(CompositeAssembler):
             inMemoryDataset = inMemoryDataset.subset(**use)
 
         return inMemoryDataset
+
+    @classmethod
+    def selectResponsibleComponent(cls, readComponent: str, fromComponents) -> str:
+        imageComponents = ["mask", "image", "variance"]
+        forwarderMap = {
+            "bbox": imageComponents,
+            "dimensions": imageComponents,
+            "xy0": imageComponents,
+            "filter": ["metadata"],
+        }
+        forwarder = forwarderMap.get(readComponent)
+        if forwarder is not None:
+            for c in forwarder:
+                if c in fromComponents:
+                    return c
+        raise ValueError(f"Can not calculate read component {readComponent} from {fromComponents}")
