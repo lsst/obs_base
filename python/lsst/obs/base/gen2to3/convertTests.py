@@ -116,7 +116,7 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
     """Additional collections that should appear in the gen3 repo.
 
     This will automatically be populated by the base `setUp` to include
-    ``"raw/{instrumentName}"``, ``"refcats"`` (if the ``refcats``
+    ``"{instrumentName}/raw"``, ``"refcats"`` (if the ``refcats``
     class attribute is non-empty), and ``"skymaps"`` (if ``skymapName`` is
     not `None`).
     """
@@ -141,7 +141,7 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
         self.gen3root = tempfile.mkdtemp()
         self.gen2Butler = lsst.daf.persistence.Butler(root=self.gen2root, calibRoot=self.gen2calib)
         self.collections = set(type(self).collections)
-        self.collections.add(f"raw/{self.instrumentName}")
+        self.collections.add(self.instrumentClass.constructCollectionName("raw"))
         if len(self.refcats) > 0:
             self.collections.add("refcats")
         if self.skymapName is not None:
@@ -267,7 +267,8 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
         """Test that all data are converted correctly.
         """
         self._run_convert()
-        gen3Butler = lsst.daf.butler.Butler(self.gen3root, collections=f"raw/{self.instrumentName}")
+        gen3Butler = lsst.daf.butler.Butler(self.gen3root,
+                                            collections=self.instrumentClass.constructCollectionName("raw"))
         self.check_collections(gen3Butler)
 
         # check every raw detector that the gen2 butler knows about
