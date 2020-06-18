@@ -72,7 +72,7 @@ def define_visits(*args, **kwargs):
 @repo_argument(required=True)
 @config_option()
 @config_file_option()
-@run_option(required=True)
+@run_option(required=False)
 @click.option("-d", "--dir", "directory",
               help="The path to the directory containing the raws to ingest.")
 @click.option("-f", "--file", help="The name of a file containing raws to ingest.")

@@ -32,6 +32,7 @@ from astro_metadata_translator import ObservationInfo, fix_header, merge_headers
 from lsst.afw.fits import readMetadata
 from lsst.daf.butler import (
     Butler,
+    CollectionType,
     DataCoordinate,
     DatasetRef,
     DatasetType,
@@ -86,6 +87,9 @@ class RawFileData:
     """Formatter class that should be used to ingest this file (`type`; as
     subclass of `FitsRawFormatterBase`).
     """
+
+    instrumentClass: Type[Instrument]
+    """The `Instrument` class associated with this file."""
 
 
 @dataclass
@@ -235,7 +239,8 @@ class RawIngestTask(Task):
         FormatterClass = instrument.getRawFormatter(datasets[0].dataId)
 
         return RawFileData(datasets=datasets, filename=filename,
-                           FormatterClass=FormatterClass)
+                           FormatterClass=FormatterClass,
+                           instrumentClass=instrument)
 
     def _calculate_dataset_info(self, header, filename):
         """Calculate a RawFileDatasetInfo from the supplied information.
@@ -424,7 +429,7 @@ class RawIngestTask(Task):
             The number of processes to use.  Ignored if ``pool`` is not `None`.
         run : `str`, optional
             Name of a RUN-type collection to write to, overriding
-            ``self.butler.run``.
+            the default derived from the instrument name.
 
         Returns
         -------
@@ -451,8 +456,18 @@ class RawIngestTask(Task):
         # transactions.
         self.butler.registry.registerDatasetType(self.datasetType)
         refs = []
+        runs = set()
         for exposure in exposureData:
             self.butler.registry.syncDimensionData("exposure", exposure.record)
+            # Override default run if nothing specified explicitly
+            if run is None:
+                instrumentClass = exposure.files[0].instrumentClass
+                this_run = instrumentClass.constructCollectionName("raw")
+            else:
+                this_run = run
+            if this_run not in runs:
+                self.butler.registry.registerCollection(this_run, type=CollectionType.RUN)
+                runs.add(this_run)
             with self.butler.transaction():
-                refs.extend(self.ingestExposureDatasets(exposure, run=run))
+                refs.extend(self.ingestExposureDatasets(exposure, run=this_run))
         return refs

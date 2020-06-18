@@ -52,9 +52,10 @@ def ingestRaws(repo, output_run, config=None, config_file=None, directory=None, 
 
     Raises
     ------
-    `Exception` is raised if operations on configuration object fail.
+    Exception
+        Raised if operations on configuration object fail.
     """
-    butler = Butler(repo, run=output_run)
+    butler = Butler(repo, writeable=True)
     TaskClass = doImport(ingest_task)
     ingestConfig = TaskClass.ConfigClass()
     ingestConfig.transfer = transfer
@@ -71,4 +72,4 @@ def ingestRaws(repo, output_run, config=None, config_file=None, directory=None, 
         suffixes = (".fits", ".fits.gz", ".fits.fz")
         files.extend(
             [os.path.join(directory, f) for f in os.listdir(directory) if f.lower().endswith(suffixes)])
-    ingester.run(files)
+    ingester.run(files, run=output_run)
