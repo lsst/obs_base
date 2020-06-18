@@ -398,6 +398,24 @@ class Instrument(metaclass=ABCMeta):
         """
         raise NotImplementedError("Must be implemented by derived classes.")
 
+    @classmethod
+    def constructCollectionName(cls, label: str) -> str:
+        """Get the instrument-specific collection string to use as derived
+        from the supplied label.
+
+        Parameters
+        ----------
+        label : `str`
+            String to be combined with the instrument name to form a
+            collection name.
+
+        Returns
+        -------
+        name : `str`
+            Collection name to use that includes the instrument name.
+        """
+        return f"{cls.getName()}/{label}"
+
 
 def makeExposureRecordFromObsInfo(obsInfo, universe):
     """Construct an exposure DimensionRecord from
