@@ -266,7 +266,7 @@ class Instrument(metaclass=ABCMeta):
         # name and eventually the data package version. The camera geom
         # is currently special in that it is not in the _data package.
         if run is None:
-            run = self.constructCollectionName("calib")
+            run = self.makeCollectionName("calib")
         butler.registry.registerCollection(run, type=CollectionType.RUN)
         self.writeCameraGeom(butler, run=run)
         self.writeStandardTextCuratedCalibrations(butler, run=run)
@@ -443,28 +443,20 @@ class Instrument(metaclass=ABCMeta):
         raise NotImplementedError("Must be implemented by derived classes.")
 
     @classmethod
-    def constructDefaultCollectionName(cls, label: str) -> str:
-        """Get the default instrument-specific collection string from the
-        supplied label.
-
-        Parameters
-        ----------
-        label : `str`
-            Generic type of collection from which to derive the default
-            name.  For example for ``raw`` this would return a string of the
-            form ``instrument_name/raw/all``.
+    def makeDefaultRawIngestRunName(cls) -> str:
+        """Make the default instrument-specific run collection string for raw
+        data ingest.
 
         Returns
         -------
         coll : `str`
-            Collection name to be used as the default for this generic label.
+            Run collection name to be used as the default for ingestion of
+            raws.
         """
-        if label == "raw":
-            label = "raw/all"
-        return cls.constructCollectionName(label)
+        return cls.makeCollectionName("raw/all")
 
     @classmethod
-    def constructCollectionName(cls, label: str) -> str:
+    def makeCollectionName(cls, label: str) -> str:
         """Get the instrument-specific collection string to use as derived
         from the supplied label.
 

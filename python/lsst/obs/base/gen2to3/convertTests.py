@@ -141,13 +141,13 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
         self.gen3root = tempfile.mkdtemp()
         self.gen2Butler = lsst.daf.persistence.Butler(root=self.gen2root, calibRoot=self.gen2calib)
         self.collections = set(type(self).collections)
-        self.collections.add(self.instrumentClass.constructDefaultCollectionName("raw"))
+        self.collections.add(self.instrumentClass.makeDefaultRawIngestRunName())
         if len(self.refcats) > 0:
             self.collections.add("refcats")
         if self.skymapName is not None:
             self.collections.add("skymaps")
         if self.gen2calib:
-            self.collections.add(self.instrumentClass.constructCollectionName("calib"))
+            self.collections.add(self.instrumentClass.makeCollectionName("calib"))
 
     def tearDown(self):
         shutil.rmtree(self.gen3root, ignore_errors=True)
@@ -269,9 +269,8 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
         """Test that all data are converted correctly.
         """
         self._run_convert()
-        instrument = self.instrumentClass
         gen3Butler = lsst.daf.butler.Butler(self.gen3root,
-                                            collections=instrument.constructDefaultCollectionName("raw"))
+                                            collections=self.instrumentClass.makeDefaultRawIngestRunName())
         self.check_collections(gen3Butler)
 
         # check every raw detector that the gen2 butler knows about
