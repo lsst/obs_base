@@ -141,7 +141,7 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
         self.gen3root = tempfile.mkdtemp()
         self.gen2Butler = lsst.daf.persistence.Butler(root=self.gen2root, calibRoot=self.gen2calib)
         self.collections = set(type(self).collections)
-        self.collections.add(self.instrumentClass.constructCollectionName("raw"))
+        self.collections.add(self.instrumentClass.constructDefaultCollectionName("raw"))
         if len(self.refcats) > 0:
             self.collections.add("refcats")
         if self.skymapName is not None:
@@ -269,8 +269,9 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
         """Test that all data are converted correctly.
         """
         self._run_convert()
+        instrument = self.instrumentClass
         gen3Butler = lsst.daf.butler.Butler(self.gen3root,
-                                            collections=self.instrumentClass.constructCollectionName("raw"))
+                                            collections=instrument.constructDefaultCollectionName("raw"))
         self.check_collections(gen3Butler)
 
         # check every raw detector that the gen2 butler knows about

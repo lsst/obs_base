@@ -462,7 +462,7 @@ class RawIngestTask(Task):
             # Override default run if nothing specified explicitly
             if run is None:
                 instrumentClass = exposure.files[0].instrumentClass
-                this_run = instrumentClass.constructCollectionName("raw")
+                this_run = instrumentClass.constructDefaultCollectionName("raw")
             else:
                 this_run = run
             if this_run not in runs:

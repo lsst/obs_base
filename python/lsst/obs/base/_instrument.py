@@ -399,6 +399,27 @@ class Instrument(metaclass=ABCMeta):
         raise NotImplementedError("Must be implemented by derived classes.")
 
     @classmethod
+    def constructDefaultCollectionName(cls, label: str) -> str:
+        """Get the default instrument-specific collection string from the
+        supplied label.
+
+        Parameters
+        ----------
+        label : `str`
+            Generic type of collection from which to derive the default
+            name.  For example for ``raw`` this would return a string of the
+            form ``instrument_name/raw/all``.
+
+        Returns
+        -------
+        coll : `str`
+            Collection name to be used as the default for this generic label.
+        """
+        if label == "raw":
+            label = "raw/all"
+        return cls.constructCollectionName(label)
+
+    @classmethod
     def constructCollectionName(cls, label: str) -> str:
         """Get the instrument-specific collection string to use as derived
         from the supplied label.

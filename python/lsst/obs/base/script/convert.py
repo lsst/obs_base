@@ -92,7 +92,7 @@ def convert(repo, gen2root, instrument, skymap_name, skymap_config, calibs, reru
                            chainName=f"shared/{instr.getName()}", parents=[]) for rerun in reruns]
 
     # create a new butler instance for running the convert repo task
-    butler = lsst.daf.butler.Butler(butlerConfig, run=instr.constructCollectionName("raw"))
+    butler = lsst.daf.butler.Butler(butlerConfig, run=instr.constructDefaultCollectionName("raw"))
     convertRepoTask = ConvertRepoTask(config=convertRepoConfig, butler3=butler)
     convertRepoTask.run(
         root=gen2root,
