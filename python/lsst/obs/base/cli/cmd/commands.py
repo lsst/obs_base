@@ -97,7 +97,7 @@ def register_instrument(*args, **kwargs):
 @click.command(short_help="Add an instrument's curated calibrations.")
 @repo_argument(required=True)
 @instrument_parameter(required=True)
-@run_option(required=True)
+@run_option(required=False)
 def write_curated_calibrations(*args, **kwargs):
     """Add an instrument's curated calibrations to the data repository.
     """

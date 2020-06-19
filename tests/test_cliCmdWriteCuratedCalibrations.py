@@ -47,8 +47,6 @@ class WriteCuratedCalibrationsTest(CliCmdTestBase, unittest.TestCase):
         """test a missing argument"""
         self.run_missing(["write-curated-calibrations"], 'Missing argument "REPO"')
         self.run_missing(["write-curated-calibrations", "here"], 'Missing option "-i" / "--instrument"')
-        self.run_missing(["write-curated-calibrations", "here", "-i", "a.b.c"],
-                         'Missing option "--output-run"')
 
 
 if __name__ == "__main__":
