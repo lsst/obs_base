@@ -146,6 +146,8 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
             self.collections.add("refcats")
         if self.skymapName is not None:
             self.collections.add("skymaps")
+        if self.gen2calib:
+            self.collections.add(self.instrumentClass.constructCollectionName("calib"))
 
     def tearDown(self):
         shutil.rmtree(self.gen3root, ignore_errors=True)
