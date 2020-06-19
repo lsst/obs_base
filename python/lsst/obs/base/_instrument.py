@@ -270,6 +270,23 @@ class Instrument(metaclass=ABCMeta):
         butler.registry.registerCollection(run, type=CollectionType.RUN)
         self.writeCameraGeom(butler, run=run)
         self.writeStandardTextCuratedCalibrations(butler, run=run)
+        self.writeAdditionalCuratedCalibrations(butler, run=run)
+
+    def writeAdditionalCuratedCalibrations(self, butler, run=None):
+        """Write additional curated calibrations that might be instrument
+        specific and are not part of the standard set.
+
+        Default implementation does nothing.
+
+        Parameters
+        ----------
+        butler : `lsst.daf.butler.Butler`
+            Butler to use to store these calibrations.
+        run : `str`, optional
+            Name of the run to use to override the default run associated
+            with this Butler.
+        """
+        return
 
     def applyConfigOverrides(self, name, config):
         """Apply instrument-specific overrides for a task config.
