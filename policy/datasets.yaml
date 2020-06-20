@@ -1472,13 +1472,6 @@ photonTransferCurveDataset:
     storage: PickleStorage
     tables: 'raw'
     template: ''
-photonTransferCurveCovAstierDataset:
-    description: "Persisted output from the MeasurePhotonTransferCurveTask with covariances as in Astier+19"
-    persistable: ignored
-    python: lsst.cp.pipe.ptc.PhotonTransferCurveCovAstierDataset
-    storage: PickleStorage
-    tables: 'raw'
-    template: ''
 linearizePolynomial:
     description: "General polynomial coefficients for linearizer from MeasurePhotonTransferCurveTask"
     persistable: ignored
