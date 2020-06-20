@@ -35,18 +35,21 @@ def writeCuratedCalibrations(repo, instrument, output_run):
     repo : `str`
         URI to the location to create the repo.
     instrument : `str`
-        The name or the fully quallified class name of an instument.
+        The name or the fully qualified class name of an instrument.
     output_run : `str`
         The path to the location, the run, where datasets should be put.
+        Can be `None` in which case the collection name will be determined
+        automatically.
 
     Raises
     ------
     RuntimeError
-        If the instrument can not be imported, instantiated, or obtained from
-        the registry.
+        Raised if the instrument can not be imported, instantiated, or obtained
+        from the registry.
     TypeError
-        If the instrument is not a subclass of lsst.obs.base.Instrument.
+        Raised if the instrument is not a subclass of
+        `lsst.obs.base.Instrument`.
     """
-    butler = Butler(repo, writeable=True, run=output_run)
+    butler = Butler(repo, writeable=True)
     instr = getInstrument(instrument, butler.registry)
-    instr.writeCuratedCalibrations(butler)
+    instr.writeCuratedCalibrations(butler, run=output_run)

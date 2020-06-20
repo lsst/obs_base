@@ -29,7 +29,15 @@ from typing import Any, Tuple, TYPE_CHECKING
 import astropy.time
 
 from lsst.afw.cameraGeom import Camera
-from lsst.daf.butler import Butler, DataId, TIMESPAN_MIN, TIMESPAN_MAX, DatasetType, DataCoordinate
+from lsst.daf.butler import (
+    Butler,
+    CollectionType,
+    DataCoordinate,
+    DataId,
+    DatasetType,
+    TIMESPAN_MIN,
+    TIMESPAN_MAX,
+)
 from lsst.utils import getPackageDir, doImport
 
 if TYPE_CHECKING:
@@ -236,7 +244,7 @@ class Instrument(metaclass=ABCMeta):
         """
         raise NotImplementedError()
 
-    def writeCuratedCalibrations(self, butler):
+    def writeCuratedCalibrations(self, butler, run=None):
         """Write human-curated calibration Datasets to the given Butler with
         the appropriate validity ranges.
 
@@ -244,14 +252,41 @@ class Instrument(metaclass=ABCMeta):
         ----------
         butler : `lsst.daf.butler.Butler`
             Butler to use to store these calibrations.
+        run : `str`
+            Run to use for this collection of calibrations. If `None` the
+            collection name is worked out automatically from the instrument
+            name and other metadata.
 
         Notes
         -----
         Expected to be called from subclasses.  The base method calls
         ``writeCameraGeom`` and ``writeStandardTextCuratedCalibrations``.
         """
-        self.writeCameraGeom(butler)
-        self.writeStandardTextCuratedCalibrations(butler)
+        # Need to determine the run for ingestion based on the instrument
+        # name and eventually the data package version. The camera geom
+        # is currently special in that it is not in the _data package.
+        if run is None:
+            run = self.makeCollectionName("calib")
+        butler.registry.registerCollection(run, type=CollectionType.RUN)
+        self.writeCameraGeom(butler, run=run)
+        self.writeStandardTextCuratedCalibrations(butler, run=run)
+        self.writeAdditionalCuratedCalibrations(butler, run=run)
+
+    def writeAdditionalCuratedCalibrations(self, butler, run=None):
+        """Write additional curated calibrations that might be instrument
+        specific and are not part of the standard set.
+
+        Default implementation does nothing.
+
+        Parameters
+        ----------
+        butler : `lsst.daf.butler.Butler`
+            Butler to use to store these calibrations.
+        run : `str`, optional
+            Name of the run to use to override the default run associated
+            with this Butler.
+        """
+        return
 
     def applyConfigOverrides(self, name, config):
         """Apply instrument-specific overrides for a task config.
@@ -269,7 +304,7 @@ class Instrument(metaclass=ABCMeta):
             if os.path.exists(path):
                 config.load(path)
 
-    def writeCameraGeom(self, butler):
+    def writeCameraGeom(self, butler, run=None):
         """Write the default camera geometry to the butler repository
         with an infinite validity range.
 
@@ -277,6 +312,9 @@ class Instrument(metaclass=ABCMeta):
         ----------
         butler : `lsst.daf.butler.Butler`
             Butler to receive these calibration datasets.
+        run : `str`, optional
+            Name of the run to use to override the default run associated
+            with this Butler.
         """
 
         datasetType = DatasetType("camera", ("instrument", "calibration_label"), "Camera",
@@ -284,9 +322,9 @@ class Instrument(metaclass=ABCMeta):
         butler.registry.registerDatasetType(datasetType)
         unboundedDataId = addUnboundedCalibrationLabel(butler.registry, self.getName())
         camera = self.getCamera()
-        butler.put(camera, datasetType, unboundedDataId)
+        butler.put(camera, datasetType, unboundedDataId, run=run)
 
-    def writeStandardTextCuratedCalibrations(self, butler):
+    def writeStandardTextCuratedCalibrations(self, butler, run=None):
         """Write the set of standardized curated text calibrations to
         the repository.
 
@@ -294,6 +332,9 @@ class Instrument(metaclass=ABCMeta):
         ----------
         butler : `lsst.daf.butler.Butler`
             Butler to receive these calibration datasets.
+        run : `str`, optional
+            Name of the run to use to override the default run associated
+            with this Butler.
         """
 
         for datasetTypeName in self.standardCuratedDatasetTypes:
@@ -305,9 +346,9 @@ class Instrument(metaclass=ABCMeta):
             datasetType = DatasetType(datasetTypeName,
                                       universe=butler.registry.dimensions,
                                       **definition)
-            self._writeSpecificCuratedCalibrationDatasets(butler, datasetType)
+            self._writeSpecificCuratedCalibrationDatasets(butler, datasetType, run=run)
 
-    def _writeSpecificCuratedCalibrationDatasets(self, butler, datasetType):
+    def _writeSpecificCuratedCalibrationDatasets(self, butler, datasetType, run=None):
         """Write standardized curated calibration datasets for this specific
         dataset type from an obs data package.
 
@@ -317,6 +358,9 @@ class Instrument(metaclass=ABCMeta):
             Gen3 butler in which to put the calibrations.
         datasetType : `lsst.daf.butler.DatasetType`
             Dataset type to be put.
+        run : `str`, optional
+            Name of the run to use to override the default run associated
+            with this Butler.
 
         Notes
         -----
@@ -378,7 +422,7 @@ class Instrument(metaclass=ABCMeta):
             # TODO: vectorize these puts, once butler APIs for that become
             # available.
             for calib, dataId in datasetRecords:
-                butler.put(calib, datasetType, dataId)
+                butler.put(calib, datasetType, dataId, run=run)
 
     @abstractmethod
     def makeDataIdTranslatorFactory(self) -> TranslatorFactory:
@@ -397,6 +441,37 @@ class Instrument(metaclass=ABCMeta):
             Factory for `Translator` objects.
         """
         raise NotImplementedError("Must be implemented by derived classes.")
+
+    @classmethod
+    def makeDefaultRawIngestRunName(cls) -> str:
+        """Make the default instrument-specific run collection string for raw
+        data ingest.
+
+        Returns
+        -------
+        coll : `str`
+            Run collection name to be used as the default for ingestion of
+            raws.
+        """
+        return cls.makeCollectionName("raw/all")
+
+    @classmethod
+    def makeCollectionName(cls, label: str) -> str:
+        """Get the instrument-specific collection string to use as derived
+        from the supplied label.
+
+        Parameters
+        ----------
+        label : `str`
+            String to be combined with the instrument name to form a
+            collection name.
+
+        Returns
+        -------
+        name : `str`
+            Collection name to use that includes the instrument name.
+        """
+        return f"{cls.getName()}/{label}"
 
 
 def makeExposureRecordFromObsInfo(obsInfo, universe):

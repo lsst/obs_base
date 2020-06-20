@@ -72,7 +72,7 @@ def define_visits(*args, **kwargs):
 @repo_argument(required=True)
 @config_option()
 @config_file_option()
-@run_option(required=True)
+@run_option(required=False)
 @click.option("-d", "--dir", "directory",
               help="The path to the directory containing the raws to ingest.")
 @click.option("-f", "--file", help="The name of a file containing raws to ingest.")
@@ -97,7 +97,7 @@ def register_instrument(*args, **kwargs):
 @click.command(short_help="Add an instrument's curated calibrations.")
 @repo_argument(required=True)
 @instrument_parameter(required=True)
-@run_option(required=True)
+@run_option(required=False)
 def write_curated_calibrations(*args, **kwargs):
     """Add an instrument's curated calibrations to the data repository.
     """
