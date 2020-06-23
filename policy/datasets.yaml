@@ -1472,6 +1472,20 @@ photonTransferCurveDataset:
     storage: PickleStorage
     tables: 'raw'
     template: ''
+plotPhotonTransferCurve_config:
+    description: "Configuration for the photon transfer curve plotting task."
+    persistable: Config
+    python: lsst.cp.pipe.ptc.PlotPhotonTransferCurveTaskConfig
+    storage: ConfigStorage
+    tables:
+    - raw
+    template: config/plotPhotonTransferCurve.py
+plotPhotonTransferCurve_metadata:
+    description: "Metadata for the photon transfer curve plotting task."
+    persistable: PropertySet
+    storage: YamlStorage
+    python: lsst.daf.base.PropertySet
+    template: ''
 linearizePolynomial:
     description: "General polynomial coefficients for linearizer from MeasurePhotonTransferCurveTask"
     persistable: ignored
