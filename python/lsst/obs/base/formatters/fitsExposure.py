@@ -98,6 +98,8 @@ class FitsExposureFormatter(Formatter):
         metadata : `~lsst.daf.base.PropertyList`
             Header metadata.
         """
+        # Do not use ExposureFitsReader.readMetadata because that strips
+        # out lots of headers and there is no way to recover them
         from lsst.afw.image import readMetadata
         md = readMetadata(self.fileDescriptor.location.path)
         fix_header(md)
@@ -121,8 +123,16 @@ class FitsExposureFormatter(Formatter):
         # that doesn't yet exist in afw.image.ExposureInfo.
         from lsst.afw.image import bboxFromMetadata
         from lsst.afw.geom import makeSkyWcs
-        bboxFromMetadata(self.metadata)  # always strips
-        makeSkyWcs(self.metadata, strip=True)
+
+        # Protect against the metadata being missing
+        try:
+            bboxFromMetadata(self.metadata)  # always strips
+        except LookupError:
+            pass
+        try:
+            makeSkyWcs(self.metadata, strip=True)
+        except Exception:
+            pass
 
     def readComponent(self, component, parameters=None):
         """Read a component held by the Exposure.
