@@ -221,7 +221,7 @@ class FitsExposureFormatter(Formatter):
             output = reader.read(**parameters)
         return output
 
-    def read(self, component=None, parameters=None):
+    def read(self, component=None):
         """Read data from a file.
 
         Parameters
@@ -230,9 +230,6 @@ class FitsExposureFormatter(Formatter):
             Component to read from the file. Only used if the `StorageClass`
             for reading differed from the `StorageClass` used to write the
             file.
-        parameters : `dict`, optional
-            If specified, a dictionary of slicing parameters that
-            overrides those in ``fileDescriptor``.
 
         Returns
         -------
@@ -255,12 +252,12 @@ class FitsExposureFormatter(Formatter):
                 self.stripMetadata()
                 return self.metadata
             elif component is not None:
-                return self.readComponent(component, parameters)
+                return self.readComponent(component)
             else:
                 raise ValueError("Storage class inconsistency ({} vs {}) but no"
                                  " component requested".format(fileDescriptor.readStorageClass.name,
                                                                fileDescriptor.storageClass.name))
-        return self.readFull(parameters=parameters)
+        return self.readFull()
 
     def write(self, inMemoryDataset):
         """Write a Python object to a file.
