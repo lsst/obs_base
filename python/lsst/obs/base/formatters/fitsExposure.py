@@ -174,7 +174,7 @@ class FitsExposureFormatter(Formatter):
                         'extras': ('readExtraComponents', False),
                         'exposureInfo': ('readExposureInfo', False),
                         }
-        method, hasParams = componentMap.get(component, None)
+        method, hasParams = componentMap.get(component, (None, False))
 
         if method:
             reader = ExposureFitsReader(self.fileDescriptor.location.path)
