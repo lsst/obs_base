@@ -219,6 +219,7 @@ class ExposureAssembler(CompositeAssembler):
         info.setApCorrMap(components.pop("apCorrMap", None))
         info.setCoaddInputs(components.pop("coaddInputs", None))
         info.setMetadata(components.pop("metadata", None))
+        info.setFilter(components.pop("filter", None))
 
         # If we have some components left over that is a problem
         if components:

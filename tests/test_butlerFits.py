@@ -75,7 +75,8 @@ datastore:
 """
 
 # Components present in the test file
-COMPONENTS = {"wcs", "image", "mask", "coaddInputs", "psf", "visitInfo", "variance", "metadata", "photoCalib"}
+COMPONENTS = {"wcs", "image", "mask", "coaddInputs", "psf", "visitInfo", "variance", "metadata", "photoCalib",
+              "filter"}
 
 
 class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
@@ -245,6 +246,8 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
             elif compName == "psf":
                 # Equality for PSF does not work
                 pass
+            elif compName == "filter":
+                self.assertEqual(component.getCanonicalName(), reference.getCanonicalName())
             elif compName == "visitInfo":
                 self.assertEqual(component.getExposureId(), reference.getExposureId(),
                                  f"VisitInfo comparison")
