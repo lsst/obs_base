@@ -34,6 +34,7 @@ class InstrumentArgumentTestCase(OptHelpTest,
                                  OptMultipleTest,
                                  OptRequiredTest,
                                  unittest.TestCase):
+    metavar = "INSTRUMENT"
     optionClass = instrument_parameter
     optionName = "instrument"
     shortOptionName = "i"
@@ -45,6 +46,7 @@ class InstrumentOptionTestCase(OptHelpTest,
                                OptMultipleTest,
                                OptRequiredTest,
                                unittest.TestCase):
+    metavar = "instrument"
     optionClass = instrument_parameter
     optionName = "instrument"
     shortOptionName = "i"

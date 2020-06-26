@@ -22,31 +22,35 @@
 
 import click
 
-from lsst.daf.butler.cli.utils import addArgumentHelp, ParameterType, split_commas
+from lsst.daf.butler.cli.utils import addArgumentHelp, MWArgument, MWOption, ParameterType, split_commas
 
 
 class instrument_parameter:  # noqa: N801
 
     defaultHelp = "The name or fully-qualified class name of an instrument."
+    optionFlags = ("-i", "--instrument")
+    optionKey = "instrument"
 
-    def __init__(self, help=defaultHelp, multiple=False, parameterType=ParameterType.OPTION, required=False):
+    def __init__(self, help=defaultHelp, metavar=None, multiple=False, parameterType=ParameterType.OPTION,
+                 required=False):
         self.callback = split_commas if multiple else None
         self.help = help
+        self.metavar = metavar
         self.multiple = multiple
         self.parameterType = parameterType
         self.required = required
 
     def __call__(self, f):
         if self.parameterType == ParameterType.OPTION:
-            return click.option("-i", "--instrument",
+            return click.option(*self.optionFlags, cls=MWOption,
                                 callback=self.callback,
                                 help=self.help,
+                                metavar=self.metavar,
                                 multiple=self.multiple,
                                 required=self.required)(f)
         if self.parameterType == ParameterType.ARGUMENT:
             f.__doc__ = addArgumentHelp(f.__doc__, self.help)
-            return click.argument("instrument",
+            return click.argument("instrument", cls=MWArgument,
                                   callback=self.callback,
-                                  metavar="INSTRUMENT ..." if self.multiple else "INSTRUMENT",
                                   nargs=-1 if self.multiple else 1,
                                   required=self.required)(f)

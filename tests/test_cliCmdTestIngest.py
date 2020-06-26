@@ -57,12 +57,14 @@ class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
 
     def test_configFile(self):
         """Test config file override"""
+        configFile = "path/to/file.txt"
         self.run_test(["ingest-raws", "here",
                        "--output-run", "out",
-                       "--config-file", "path/to/file.txt"],
+                       "--config-file", configFile],
                       self.makeExpected(repo="here",
                                         output_run="out",
-                                        config_file="path/to/file.txt"))
+                                        config_file=configFile),
+                      withTempFile=configFile)
 
     def test_transfer(self):
         """Test the transfer argument"""
