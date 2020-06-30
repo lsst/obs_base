@@ -30,8 +30,7 @@ __all__ = ["CameraTests"]
 
 
 class CameraTests(metaclass=abc.ABCMeta):
-    """
-    Tests that the butler returns a useable Camera.
+    """Tests that the butler returns a useable Camera.
 
     In the subclasses's setUp():
         * Call setUp_camera() to fill in required parameters.
@@ -43,17 +42,16 @@ class CameraTests(metaclass=abc.ABCMeta):
                      first_detector_name=None,
                      plate_scale=None,
                      ):
-        """
-        Set up the necessary variables for camera tests.
+        """Set up the necessary variables for camera tests.
 
         Parameters
         ----------
 
-         camera_name : `str`
-             name of this camera
-         n_detectors : `int`
+        camera_name : `str`
+            name of this camera
+        n_detectors : `int`
             number of detectors in this camera
-         first_detector_name : `str`
+        first_detector_name : `str`
             name of the first detector in this camera
         plate_scale : `lsst.geom.Angle`
             plate scale at center of focal plane, as angle-on-sky/mm

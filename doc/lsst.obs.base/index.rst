@@ -38,6 +38,9 @@ Python API reference
 .. automodapi:: lsst.obs.base
    :no-main-docstr:
 
+.. automodapi:: lsst.obs.base.tests
+   :no-main-docstr:
+
 .. automodapi:: lsst.obs.base.formatters.fitsExposure
    :no-main-docstr:
 
