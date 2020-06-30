@@ -124,7 +124,7 @@ class RawExposureData:
         self.record = makeExposureRecordFromObsInfo(self.files[0].datasets[0].obsInfo, universe)
 
 
-def makeTransferChoiceField(doc="How to transfer files (None for no transfer).", default=None):
+def makeTransferChoiceField(doc="How to transfer files (None for no transfer).", default="auto"):
     """Create a Config field with options for how to transfer files between
     data repositories.
 
