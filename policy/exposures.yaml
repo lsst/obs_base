@@ -57,6 +57,14 @@ deepDiff_differenceExp:
     storage:       FitsStorage
     level:         Ccd
     tables:        'raw'
+deepDiff_warpedExp:
+    description: "The result of WCS warping a deepCoadd to the image to be differenced against."
+    template:      ''
+    python:        lsst.afw.image.ExposureF
+    persistable:   ExposureF
+    storage:       FitsStorage
+    level:         Ccd
+    tables:        'raw'
 deepDiff_matchedExp:
     description: "The result of PSF matching a deepCoadd to the image to be differenced against."
     template:      ''
@@ -197,6 +205,14 @@ dcrCoaddPsfMatched_nImage:
     level: Skytile
 dcrDiff_differenceExp:
     description: "The result of image differencing an image against a dcrCoadd."
+    template:      ''
+    python:        lsst.afw.image.ExposureF
+    persistable:   ExposureF
+    storage:       FitsStorage
+    level:         Ccd
+    tables:        'raw'
+dcrDiff_warpedExp:
+    description: "The result of WCS warping a deepCoadd to the image to be differenced against."
     template:      ''
     python:        lsst.afw.image.ExposureF
     persistable:   ExposureF
