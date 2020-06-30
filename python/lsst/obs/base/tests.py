@@ -40,8 +40,7 @@ __all__ = ["ObsTests"]
 
 class ObsTests(butler_tests.ButlerGetTests, mapper_tests.MapperTests,
                camera_tests.CameraTests):
-    """
-    Aggregator class for all of the obs_* test classes.
+    """Aggregator class for all of the obs_* test classes.
 
     Inherit from this class, then lsst.utils.tests.TestCase, in that order.
 
@@ -56,8 +55,7 @@ class ObsTests(butler_tests.ButlerGetTests, mapper_tests.MapperTests,
     """
 
     def setUp_tests(self, butler, mapper, dataIds):
-        """
-        Set up the necessary shared variables used by multiple tests.
+        """Set up the necessary shared variables used by multiple tests.
 
         Parameters
         ----------
@@ -73,11 +71,12 @@ class ObsTests(butler_tests.ButlerGetTests, mapper_tests.MapperTests,
             exposures you do not have/do not want to test. It must contain a
             valid 'raw' dataId, in addition to 'bias','flat','dark', which may
             be set to SkipTest. For example::
+
                   self.dataIds = {'raw': {'visit': 1, 'filter': 'g'},
                                   'bias': {'visit': 1},
                                   'flat': {'visit': 1},
                                   'dark': unittest.SkipTest
-                                  }
+                                 }
         """
         self.butler = butler
         self.mapper = mapper

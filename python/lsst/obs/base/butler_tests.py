@@ -28,8 +28,7 @@ __all__ = ["ButlerGetTests"]
 
 
 class ButlerGetTests(metaclass=abc.ABCMeta):
-    """
-    Tests of obs_* Butler get() functionality.
+    """Tests of obs_* Butler get() functionality.
 
     In the subclasses's setUp():
         * Call setUp_butler_get() to fill in required parameters.
@@ -79,7 +78,8 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
         sky_origin : `tuple` of `float`
             Longitude, Latitude of 'raw' exposure
         raw_subsets : `tuple` of (kwargs, `int`)
-            keyword args and expected number of subsets for butler.subset('raw', **kwargs)
+            keyword args and expected number of subsets for
+            ``butler.subset('raw', **kwargs)``
         good_detectorIds : `list` of `int`
             list of valid ccd numbers
         bad_detectorIds : `list` of `int`
@@ -89,8 +89,8 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
             (e.g. lsst.ip.isr.LinearizeLookupTable.LinearityType),
             or unittest.SkipTest to skip all linearizer tests.
         raw_header_wcs : `lsst.afw.geom.SkyWcs`
-            The SkyWcs object that should be returned by:
-                `butler.get("raw_header_wcs", dataId=self.dataIds["raw"])`
+            The SkyWcs object that should be returned by
+            ``butler.get("raw_header_wcs", dataId=self.dataIds["raw"])``
         """
 
         fields = ['ccdExposureId_bits',
