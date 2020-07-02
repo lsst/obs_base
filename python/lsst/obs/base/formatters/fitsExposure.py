@@ -98,6 +98,8 @@ class FitsExposureFormatter(Formatter):
         metadata : `~lsst.daf.base.PropertyList`
             Header metadata.
         """
+        # Do not use ExposureFitsReader.readMetadata because that strips
+        # out lots of headers and there is no way to recover them
         from lsst.afw.image import readMetadata
         md = readMetadata(self.fileDescriptor.location.path)
         fix_header(md)
@@ -121,8 +123,16 @@ class FitsExposureFormatter(Formatter):
         # that doesn't yet exist in afw.image.ExposureInfo.
         from lsst.afw.image import bboxFromMetadata
         from lsst.afw.geom import makeSkyWcs
-        bboxFromMetadata(self.metadata)  # always strips
-        makeSkyWcs(self.metadata, strip=True)
+
+        # Protect against the metadata being missing
+        try:
+            bboxFromMetadata(self.metadata)  # always strips
+        except LookupError:
+            pass
+        try:
+            makeSkyWcs(self.metadata, strip=True)
+        except Exception:
+            pass
 
     def readComponent(self, component, parameters=None):
         """Read a component held by the Exposure.
@@ -145,6 +155,7 @@ class FitsExposureFormatter(Formatter):
         KeyError
             Raised if the requested component cannot be handled.
         """
+        # Metadata is handled explicitly elsewhere
         componentMap = {'wcs': ('readWcs', False),
                         'coaddInputs': ('readCoaddInputs', False),
                         'psf': ('readPsf', False),
@@ -153,10 +164,10 @@ class FitsExposureFormatter(Formatter):
                         'variance': ('readVariance', True),
                         'photoCalib': ('readPhotoCalib', False),
                         'bbox': ('readBBox', True),
+                        'dimensions': ('readBBox', True),
                         'xy0': ('readXY0', True),
-                        'metadata': ('readMetadata', False),
                         'filter': ('readFilter', False),
-                        'polygon': ('readValidPolygon', False),
+                        'validPolygon': ('readValidPolygon', False),
                         'apCorrMap': ('readApCorrMap', False),
                         'visitInfo': ('readVisitInfo', False),
                         'transmissionCurve': ('readTransmissionCurve', False),
@@ -164,9 +175,11 @@ class FitsExposureFormatter(Formatter):
                         'extras': ('readExtraComponents', False),
                         'exposureInfo': ('readExposureInfo', False),
                         }
-        method, hasParams = componentMap.get(component, None)
+        method, hasParams = componentMap.get(component, (None, False))
 
         if method:
+            # This reader can read standalone Image/Mask files as well
+            # when dealing with components.
             reader = ExposureFitsReader(self.fileDescriptor.location.path)
             caller = getattr(reader, method, None)
 
@@ -178,9 +191,12 @@ class FitsExposureFormatter(Formatter):
                 self.fileDescriptor.storageClass.validateParameters(parameters)
 
                 if hasParams and parameters:
-                    return caller(**parameters)
+                    thisComponent = caller(**parameters)
                 else:
-                    return caller()
+                    thisComponent = caller()
+                if component == "dimensions" and thisComponent is not None:
+                    thisComponent = thisComponent.getDimensions()
+                return thisComponent
         else:
             raise KeyError(f"Unknown component requested: {component}")
 
@@ -211,7 +227,7 @@ class FitsExposureFormatter(Formatter):
             output = reader.read(**parameters)
         return output
 
-    def read(self, component=None, parameters=None):
+    def read(self, component=None):
         """Read data from a file.
 
         Parameters
@@ -220,9 +236,6 @@ class FitsExposureFormatter(Formatter):
             Component to read from the file. Only used if the `StorageClass`
             for reading differed from the `StorageClass` used to write the
             file.
-        parameters : `dict`, optional
-            If specified, a dictionary of slicing parameters that
-            overrides those in ``fileDescriptor``.
 
         Returns
         -------
@@ -245,12 +258,12 @@ class FitsExposureFormatter(Formatter):
                 self.stripMetadata()
                 return self.metadata
             elif component is not None:
-                return self.readComponent(component, parameters)
+                return self.readComponent(component)
             else:
                 raise ValueError("Storage class inconsistency ({} vs {}) but no"
                                  " component requested".format(fileDescriptor.readStorageClass.name,
                                                                fileDescriptor.storageClass.name))
-        return self.readFull(parameters=parameters)
+        return self.readFull()
 
     def write(self, inMemoryDataset):
         """Write a Python object to a file.
