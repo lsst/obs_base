@@ -940,8 +940,16 @@ fgcmBuildStars_config:
       star observations for FGCM global calibration.
     persistable: Config
     storage: ConfigStorage
-    python: lsst.fgcmcal.fgcmBuildStars.FgcmBuildStarsConfig
+    python: lsst.fgcmcal.FgcmBuildStarsConfig
     template: config/fgcmBuildStars.py
+fgcmBuildStarsTable_config:
+    description: >
+      Configuration of FgcmBuildStarsTableTask, used to concatenate and match
+      star observations for FGCM global calibration.
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.fgcmcal.FgcmBuildStarsTableConfig
+    template: config/fgcmBuildStarsTable.py
 fgcmMakeLut_config:
     description: >
       Configuration of FgcmMakeLutTask, used to build an atmospheric/instrument
@@ -974,6 +982,14 @@ fgcmCalibrateTract_config:
     storage: ConfigStorage
     python: lsst.fgcmcal.fgcmCalibrateTract.FgcmCalibrateTractConfig
     template: config/fgcmCalibrateTract.py
+fgcmCalibrateTractTable_config:
+    description: >
+      Configuration of FgcmCalibrateTractTableTask, used for running
+      fgcmcal on a single tract, with sourceTable_visit tables.
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.fgcmcal.fgcmCalibrateTractTable.FgcmCalibrateTractTableConfig
+    template: config/fgcmCalibrateTractTable.py
 fgcmVisitCatalog:
     description: >
       Catalog of visit information used for input to FGCM global photometric fit.
