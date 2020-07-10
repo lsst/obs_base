@@ -26,6 +26,7 @@ import traceback
 import weakref
 
 from astro_metadata_translator import fix_header
+from lsst.utils import doImport
 import lsst.daf.persistence as dafPersist
 from . import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping
 import lsst.daf.base as dafBase
@@ -184,6 +185,7 @@ class CameraMapper(dafPersist.Mapper):
     translatorClass = None
 
     # Gen3 instrument corresponding to this mapper
+    # Can be a class or a string with the full name of the class
     _gen3instrument = None
 
     def __init__(self, policy, repositoryDir,
@@ -715,6 +717,9 @@ class CameraMapper(dafPersist.Mapper):
         if cls._gen3instrument is None:
             raise NotImplementedError("Please provide a specific implementation for your instrument"
                                       " to enable conversion of this gen2 repository to gen3")
+        if isinstance(cls._gen3instrument, str):
+            # Given a string to convert to an instrument class
+            cls._gen3instrument = doImport(cls._gen3instrument)
         if not issubclass(cls._gen3instrument, Instrument):
             raise ValueError(f"Mapper {cls} has declared a gen3 instrument class of {cls._gen3instrument}"
                              " but that is not an lsst.obs.base.Instrument")
