@@ -40,6 +40,7 @@ from .exposureIdInfo import ExposureIdInfo
 from .makeRawVisitInfo import MakeRawVisitInfo
 from .utils import createInitialSkyWcs, InitialSkyWcsError
 from lsst.utils import getPackageDir
+from ._instrument import Instrument
 
 __all__ = ["CameraMapper", "exposureFromImage"]
 
@@ -181,6 +182,9 @@ class CameraMapper(dafPersist.Mapper):
 
     # Class to use for metadata translations
     translatorClass = None
+
+    # Gen3 instrument corresponding to this mapper
+    _gen3instrument = None
 
     def __init__(self, policy, repositoryDir,
                  root=None, registry=None, calibRoot=None, calibRegistry=None,
@@ -698,6 +702,23 @@ class CameraMapper(dafPersist.Mapper):
         if cls.packageName is None:
             raise ValueError('class variable packageName must not be None')
         return cls.packageName
+
+    @classmethod
+    def getGen3Instrument(cls):
+        """Return the gen3 Instrument class equivalent for this gen2 Mapper.
+
+        Returns
+        -------
+        instr : `type`
+            A `~lsst.obs.base.Instrument` class.
+        """
+        if cls._gen3instrument is None:
+            raise NotImplementedError("Please provide a specific implementation for your instrument"
+                                      " to enable conversion of this gen2 repository to gen3")
+        if not issubclass(cls._gen3instrument, Instrument):
+            raise ValueError(f"Mapper {cls} has declared a gen3 instrument class of {cls._gen3instrument}"
+                             " but that is not an lsst.obs.base.Instrument")
+        return cls._gen3instrument
 
     @classmethod
     def getPackageDir(cls):
