@@ -163,7 +163,6 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
 
         convert(repo=self.gen3root,
                 gen2root=self.gen2root,
-                instrument=self.instrumentClassName,
                 skymap_name=self.skymapName,
                 skymap_config=self.skymapConfig,
                 config_file=self.config,

@@ -23,15 +23,16 @@
 `lsst.obs.base.ConvertRepoConfig` for most of the config options.
 """
 
+from lsst.daf.persistence import Butler as Butler2
 import lsst.daf.butler
-import lsst.log
+from lsst.log import Log
 import lsst.utils
+from lsst.log.utils import temporaryLogLevel
 
 from ..gen2to3 import ConvertRepoTask, ConvertRepoSkyMapConfig, Rerun
-from ..utils import getInstrument
 
 
-def convert(repo, gen2root, instrument, skymap_name, skymap_config, calibs, reruns, config_file, transfer):
+def convert(repo, gen2root, skymap_name, skymap_config, calibs, reruns, config_file, transfer):
     """Implements the command line interface `butler convert` subcommand,
     should only be called by command line tools and unit test code that tests
     this function.
@@ -45,8 +46,6 @@ def convert(repo, gen2root, instrument, skymap_name, skymap_config, calibs, reru
         URI to the gen 3 repository.
     gen2root : `str`
         URI to the gen 2 repository.
-    instrument : `str`
-        The fully-qualified name of the Instrument subclass being converted.
     skymap_name : `str` or None
         Name of the skymap to be converted in the repo.
     skymap_config : `str` or None
@@ -72,11 +71,19 @@ def convert(repo, gen2root, instrument, skymap_name, skymap_config, calibs, reru
         butlerConfig = repo
 
     butler = lsst.daf.butler.Butler(butlerConfig)
-    instr = getInstrument(instrument, butler.registry)
+
+    # Derive the gen3 instrument from the gen2root
+    # This requires we instantiate a gen2 butler solely to get its mapper
+    # Hide all logging -- the later call will show them
+    with temporaryLogLevel("", Log.ERROR):
+        butler2 = Butler2(gen2root)
+        gen2mapperClass = butler2.getMapperClass(gen2root)
+        del butler2
+
+    instrument = gen2mapperClass.getGen3Instrument()()
 
     convertRepoConfig = ConvertRepoTask.ConfigClass()
-    instr.applyConfigOverrides(ConvertRepoTask._DefaultName, convertRepoConfig)
-    convertRepoConfig.instrument = instrument
+    instrument.applyConfigOverrides(ConvertRepoTask._DefaultName, convertRepoConfig)
     convertRepoConfig.raws.transfer = transfer
     if skymap_name is not None:
         convertRepoConfig.skyMaps[skymap_name] = ConvertRepoSkyMapConfig()
@@ -88,14 +95,14 @@ def convert(repo, gen2root, instrument, skymap_name, skymap_config, calibs, reru
     if reruns is None:
         rerunsArg = []
     else:
-        rerunsArg = [Rerun(rerun, runName=f"shared/{instr.getName()}/{rerun}",
-                           chainName=f"shared/{instr.getName()}", parents=[]) for rerun in reruns]
+        rerunsArg = [Rerun(rerun, runName=f"shared/{instrument.getName()}/{rerun}",
+                           chainName=f"shared/{instrument.getName()}", parents=[]) for rerun in reruns]
 
     # create a new butler instance for running the convert repo task
-    butler = lsst.daf.butler.Butler(butlerConfig, run=instr.makeDefaultRawIngestRunName())
-    convertRepoTask = ConvertRepoTask(config=convertRepoConfig, butler3=butler)
+    butler = lsst.daf.butler.Butler(butlerConfig, run=instrument.makeDefaultRawIngestRunName())
+    convertRepoTask = ConvertRepoTask(config=convertRepoConfig, butler3=butler, instrument=instrument)
     convertRepoTask.run(
         root=gen2root,
         reruns=rerunsArg,
-        calibs=None if calibs is None else {calibs: instr.makeCollectionName("calib")}
+        calibs=None if calibs is None else {calibs: instrument.makeCollectionName("calib")}
     )

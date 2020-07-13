@@ -27,7 +27,6 @@ import fnmatch
 from dataclasses import dataclass
 from typing import Iterable, Optional, List, Dict
 
-from lsst.utils import doImport
 from lsst.daf.butler import (
     Butler as Butler3,
     CollectionType,
@@ -43,6 +42,7 @@ from .repoConverter import ConversionSubset
 from .rootRepoConverter import RootRepoConverter
 from .calibRepoConverter import CalibRepoConverter
 from .standardRepoConverter import StandardRepoConverter
+from .._instrument import Instrument
 
 
 @dataclass
@@ -262,13 +262,6 @@ class ConvertRepoConfig(Config):
                  "transmission_atmosphere",
                  "bfKernel"]
     )
-    instrument = Field(
-        doc=("Fully-qualified Python name of the `Instrument` subclass for "
-             "all converted datasets."),
-        dtype=str,
-        optional=False,
-        default=None,
-    )
 
     @property
     def transfer(self):
@@ -319,7 +312,7 @@ class ConvertRepoTask(Task):
 
     _DefaultName = "convertRepo"
 
-    def __init__(self, config=None, *, butler3: Butler3, **kwargs):
+    def __init__(self, config=None, *, butler3: Butler3, instrument: Instrument, **kwargs):
         config.validate()  # Not a CmdlineTask nor PipelineTask, so have to validate the config here.
         super().__init__(config, **kwargs)
         self.butler3 = butler3
@@ -331,7 +324,7 @@ class ConvertRepoTask(Task):
         else:
             self.raws = None
             self.defineVisits = None
-        self.instrument = doImport(self.config.instrument)()
+        self.instrument = instrument
         self._configuredSkyMapsBySha1 = {}
         self._configuredSkyMapsByName = {}
         for name, config in self.config.skyMaps.items():

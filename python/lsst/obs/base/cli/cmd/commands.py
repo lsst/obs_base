@@ -33,8 +33,6 @@ from ... import script
 @repo_argument(required=True,
                help="REPO is the URI or path to the gen3 repository. Will be created if it does not already "
                "exist")
-@instrument_parameter(required=True,
-                      help="The fully-qualified name of the gen3 Instrument subclass for this camera.")
 @click.option("--gen2root", required=True,
               help="Root path of the gen 2 repo to be converted.")
 @click.option("--skymap-name",

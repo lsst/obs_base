@@ -42,17 +42,14 @@ class ConvertTestCase(CliCmdTestBase, unittest.TestCase):
     def test_repoInstrGen2root(self):
         """Test the most basic required arguments."""
         self.run_test(["convert", "here",
-                       "--gen2root", "from",
-                       "--instrument", "a.b.c"],
+                       "--gen2root", "from"],
                       self.makeExpected(repo="here",
-                                        gen2root="from",
-                                        instrument="a.b.c"))
+                                        gen2root="from"))
 
     def test_all(self):
         """Test all the arguments."""
         self.run_test(["convert", "here",
                        "--gen2root", "from",
-                       "--instrument", "a.b.c",
                        "--skymap-name", "sky",
                        "--skymap-config", "/path/to/config",
                        "--calibs", "path/to/calib/repo",
@@ -62,7 +59,6 @@ class ConvertTestCase(CliCmdTestBase, unittest.TestCase):
                        "--config-file", "/path/to/config"],
                       self.makeExpected(repo="here",
                                         gen2root="from",
-                                        instrument="a.b.c",
                                         skymap_name="sky",
                                         skymap_config="/path/to/config",
                                         calibs="path/to/calib/repo",
@@ -73,9 +69,7 @@ class ConvertTestCase(CliCmdTestBase, unittest.TestCase):
     def test_missing(self):
         """test a missing argument"""
         self.run_missing(["convert"], 'Missing argument "REPO"')
-        self.run_missing(["convert", "here", "--gen2root", "from"], 'Missing option "-i" / "--instrument"')
-        self.run_missing(["convert", "here", "--gen2root", "from"], 'Missing option "-i" / "--instrument"')
-        self.run_missing(["convert", "here", "--instrument", "instr"], 'Missing option "--gen2root"')
+        self.run_missing(["convert", "here"], 'Missing option "--gen2root"')
 
 
 if __name__ == "__main__":
