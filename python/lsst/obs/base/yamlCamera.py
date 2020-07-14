@@ -21,6 +21,7 @@
 
 import yaml
 
+from functools import lru_cache
 import numpy as np
 import lsst.afw.cameraGeom as cameraGeom
 import lsst.geom as geom
@@ -31,6 +32,7 @@ from lsst.afw.cameraGeom import Amplifier, Camera, ReadoutCorner
 __all__ = ["makeCamera"]
 
 
+@lru_cache()
 def makeCamera(cameraFile):
     """An imaging camera (e.g. the LSST 3Gpix camera)
 
