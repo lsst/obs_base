@@ -25,7 +25,6 @@
 __all__ = ("IngestTestBase",)
 
 import abc
-import click.testing
 import tempfile
 import unittest
 import os
@@ -33,6 +32,7 @@ import shutil
 
 from lsst.daf.butler import Butler
 from lsst.daf.butler.cli.butler import cli as butlerCli
+from lsst.daf.butler.cli.utils import LogCliRunner
 import lsst.obs.base
 from lsst.utils import doImport
 from .utils import getInstrument
@@ -164,7 +164,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     def _createRepo(self):
         """Use the Click `testing` module to call the butler command line api
         to create a repository."""
-        runner = click.testing.CliRunner()
+        runner = LogCliRunner()
         result = runner.invoke(butlerCli, ["create", self.root])
         self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
 
@@ -177,7 +177,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         transfer : `str`
             The external data transfer type.
         """
-        runner = click.testing.CliRunner()
+        runner = LogCliRunner()
         result = runner.invoke(butlerCli, ["ingest-raws", self.root,
                                            "--output-run", self.outputRun,
                                            "--file", self.file,
@@ -188,14 +188,14 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     def _registerInstrument(self):
         """Use the Click `testing` module to call the butler command line api
         to register the instrument."""
-        runner = click.testing.CliRunner()
+        runner = LogCliRunner()
         result = runner.invoke(butlerCli, ["register-instrument", self.root, self.instrumentClassName])
         self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
 
     def _writeCuratedCalibrations(self):
         """Use the Click `testing` module to call the butler command line api
         to write curated calibrations."""
-        runner = click.testing.CliRunner()
+        runner = LogCliRunner()
         result = runner.invoke(butlerCli, ["write-curated-calibrations", self.root,
                                            "--instrument", self.instrumentName,
                                            "--output-run", self.outputRun])
