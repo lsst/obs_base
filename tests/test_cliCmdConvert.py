@@ -33,7 +33,7 @@ class ConvertTestCase(CliCmdTestBase, unittest.TestCase):
     defaultExpected = dict(skymap_name=None,
                            skymap_config=None,
                            calibs=None,
-                           reruns=[],
+                           reruns=(),
                            transfer="auto",
                            config_file=None)
 
@@ -62,7 +62,7 @@ class ConvertTestCase(CliCmdTestBase, unittest.TestCase):
                                         skymap_name="sky",
                                         skymap_config="/path/to/config",
                                         calibs="path/to/calib/repo",
-                                        reruns=["one", "two", "three"],
+                                        reruns=("one", "two", "three"),
                                         transfer="symlink",
                                         config_file="/path/to/config"))
 

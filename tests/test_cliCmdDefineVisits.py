@@ -31,7 +31,7 @@ from lsst.obs.base.cli.cmd import define_visits
 class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
 
     defaultExpected = dict(config_file=None,
-                           collections=[])
+                           collections=())
 
     command = define_visits
 
@@ -56,7 +56,7 @@ class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
                                         # exactly the same order as it is
                                         # passed in the list of arguments to
                                         # run_test.
-                                        collections=["foo/bar", "baz", "boz"]))
+                                        collections=("foo/bar", "baz", "boz")))
 
     def test_missing(self):
         """test a missing argument"""

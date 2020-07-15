@@ -25,10 +25,9 @@
 __all__ = ("ButlerCmdTestBase",)
 
 import abc
-import click
-import click.testing
 
 from lsst.daf.butler.cli import butler
+from lsst.daf.butler.cli.utils import LogCliRunner
 from lsst.utils import doImport
 
 
@@ -77,7 +76,7 @@ class ButlerCmdTestBase(metaclass=abc.ABCMeta):
         return self.instrument.getName()
 
     def test_cli(self):
-        runner = click.testing.CliRunner()
+        runner = LogCliRunner()
         with runner.isolated_filesystem():
             result = runner.invoke(butler.cli, ["create", "here"])
             self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
