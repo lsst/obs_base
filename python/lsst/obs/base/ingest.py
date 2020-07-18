@@ -55,9 +55,6 @@ class RawFileDatasetInfo:
 
     dataId: DataCoordinate
     """Data ID for this file (`lsst.daf.butler.DataCoordinate`).
-
-    This may be a minimal `~lsst.daf.butler.DataCoordinate` base instance, or
-    a complete `~lsst.daf.butler.ExpandedDataCoordinate`.
     """
 
     obsInfo: ObservationInfo
@@ -100,9 +97,6 @@ class RawExposureData:
 
     dataId: DataCoordinate
     """Data ID for this exposure (`lsst.daf.butler.DataCoordinate`).
-
-    This may be a minimal `~lsst.daf.butler.DataCoordinate` base instance, or
-    a complete `~lsst.daf.butler.ExpandedDataCoordinate`.
     """
 
     files: List[RawFileData]
@@ -306,7 +300,8 @@ class RawIngestTask(Task):
         exposure : `RawExposureData`
             An updated version of the input structure, with
             `RawExposureData.dataId` and nested `RawFileData.dataId` attributes
-            containing `~lsst.daf.butler.ExpandedDataCoordinate` instances.
+            updated to data IDs for which `DataCoordinate.hasRecords` returns
+            `True`.
         """
         # We start by expanded the exposure-level data ID; we won't use that
         # directly in file ingest, but this lets us do some database lookups
