@@ -86,10 +86,10 @@ class ConversionSubset:
         tracts = set()
         self.tracts[name] = tracts
         for visit in self.visits:
-            for dataId in registry.queryDimensions(["tract"], expand=False,
-                                                   dataId={"skymap": name,
-                                                           "instrument": self.instrument,
-                                                           "visit": visit}):
+            for dataId in registry.queryDataIds(["tract"],
+                                                dataId={"skymap": name,
+                                                        "instrument": self.instrument,
+                                                        "visit": visit}):
                 tracts.add(dataId["tract"])
 
     def addSkyPix(self, registry: Registry, dimension: SkyPixDimension):

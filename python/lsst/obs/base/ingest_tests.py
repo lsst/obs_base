@@ -267,21 +267,20 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
         # Test that we got the visits we expected.
         butler = Butler(self.root, run=self.outputRun)
-        visits = set(butler.registry.queryDimensions(["visit"], expand=True))
+        visits = butler.registry.queryDataIds(["visit"]).expanded().toSet()
         self.assertCountEqual(visits, self.visits.keys())
         instr = getInstrument(self.instrumentName, butler.registry)
         camera = instr.getCamera()
         for foundVisit, (expectedVisit, expectedExposures) in zip(visits, self.visits.items()):
             # Test that this visit is associated with the expected exposures.
-            foundExposures = set(butler.registry.queryDimensions(["exposure"], dataId=expectedVisit,
-                                                                 expand=True))
+            foundExposures = butler.registry.queryDataIds(["exposure"], dataId=expectedVisit
+                                                          ).expanded().toSet()
             self.assertCountEqual(foundExposures, expectedExposures)
             # Test that we have a visit region, and that it contains all of the
             # detector+visit regions.
             self.assertIsNotNone(foundVisit.region)
-            detectorVisitDataIds = set(butler.registry.queryDimensions(["visit", "detector"],
-                                                                       dataId=expectedVisit,
-                                                                       expand=True))
+            detectorVisitDataIds = butler.registry.queryDataIds(["visit", "detector"], dataId=expectedVisit
+                                                                ).expanded().toSet()
             self.assertEqual(len(detectorVisitDataIds), len(camera))
             for dataId in detectorVisitDataIds:
                 self.assertTrue(foundVisit.region.contains(dataId.region))

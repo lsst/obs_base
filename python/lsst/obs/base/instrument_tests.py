@@ -81,21 +81,21 @@ class InstrumentTests(metaclass=abc.ABCMeta):
         """
         registry = Registry.fromConfig(ButlerConfig())
         # check that the registry starts out empty
-        self.assertEqual(list(registry.queryDimensions(["instrument"])), [])
-        self.assertEqual(list(registry.queryDimensions(["detector"])), [])
-        self.assertEqual(list(registry.queryDimensions(["physical_filter"])), [])
+        self.assertFalse(registry.queryDataIds(["instrument"]).toSequence())
+        self.assertFalse(registry.queryDataIds(["detector"]).toSequence())
+        self.assertFalse(registry.queryDataIds(["physical_filter"]).toSequence())
 
         # register the instrument and check that certain dimensions appear
         self.instrument.register(registry)
-        instrumentDataIds = list(registry.queryDimensions(["instrument"]))
+        instrumentDataIds = registry.queryDataIds(["instrument"]).toSequence()
         self.assertEqual(len(instrumentDataIds), 1)
         instrumentNames = {dataId["instrument"] for dataId in instrumentDataIds}
         self.assertEqual(instrumentNames, {self.data.name})
-        detectorDataIds = list(registry.queryDimensions(["detector"]))
+        detectorDataIds = registry.queryDataIds(["detector"]).expanded().toSequence()
         self.assertEqual(len(detectorDataIds), self.data.nDetectors)
         detectorNames = {dataId.records["detector"].full_name for dataId in detectorDataIds}
         self.assertIn(self.data.firstDetectorName, detectorNames)
-        physicalFilterDataIds = list(registry.queryDimensions(["physical_filter"]))
+        physicalFilterDataIds = registry.queryDataIds(["physical_filter"]).toSequence()
         filterNames = {dataId['physical_filter'] for dataId in physicalFilterDataIds}
         self.assertGreaterEqual(filterNames, self.data.physical_filters)
 
