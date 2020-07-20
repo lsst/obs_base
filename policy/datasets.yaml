@@ -1563,3 +1563,15 @@ brightStarStamps:
     level: Ccd
     tables: raw
     template:
+processBrightStars_config:
+    persistable: Config
+    python: lsst.pipe.tasks.processBrightStars.ProcessBrightStarsConfig
+    storage: ConfigStorage
+    template: config/processBrightStars.py
+processBrightStars_metadata:
+    persistable: PropertySet
+    storage: YamlStorage
+    python: lsst.daf.base.PropertySet
+    tables: raw
+    template: ''
+
