@@ -527,7 +527,7 @@ class _GroupExposuresByGroupMetadataTask(GroupExposuresTask, metaclass=ABCMeta):
     one-to-one algorithm for a particular camera in the same data repository.
     """
 
-    ConfigClass = _GroupExposuresOneToOneConfig
+    ConfigClass = _GroupExposuresByGroupMetadataConfig
 
     def group(self, exposures: List[DimensionRecord]) -> Iterable[VisitDefinitionData]:
         # Docstring inherited from GroupExposuresTask.
