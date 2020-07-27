@@ -1520,3 +1520,23 @@ matchedVisitMetrics_config:
     storage: ConfigStorage
     python: lsst.validate.drp.matchedVisitMetricsTask.MatchedVisitMetricsConfig
     template: config/matchedVisitMetrics.py
+measureCrosstalk_config:
+    description: "Configuration for MeasureCrosstalkTask."
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.cp.pipe.measureCrosstalk.MeasureCrosstalkConfig
+    template: config/measureCrosstalk.py
+measureCrosstalk_metadata:
+    description: "Metadata for MeasureCrosstalkTask."
+    persistable: PropertySet
+    storage: YamlStorage
+    python: lsst.daf.base.PropertySet
+    tables: raw
+    template: ''
+crosstalkCalib:
+    description: "Crosstalk calibration."
+    persistable: ignored
+    python: lsst.ip.isr.crosstalk.CrosstalkCalib
+    storage: YamlStorage
+    tables: raw
+    template: ''
