@@ -19,12 +19,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-__all__ = ("FitsExposureFormatter", )
+__all__ = ("FitsExposureFormatter", "FitsImageFormatter", "FitsMaskFormatter",
+           "FitsMaskedImageFormatter")
 
 from astro_metadata_translator import fix_header
-from lsst.daf.butler import Formatter
-from lsst.afw.image import ExposureFitsReader
 from lsst.daf.base import PropertySet
+from lsst.daf.butler import Formatter
+from lsst.afw.image import ExposureFitsReader, ImageFitsReader, MaskFitsReader, MaskedImageFitsReader
+# Needed for ApCorrMap to resolve properly
+from lsst.afw.math import BoundedField  # noqa: F401
 
 
 class FitsExposureFormatter(Formatter):
@@ -79,6 +82,10 @@ class FitsExposureFormatter(Formatter):
     extension = ".fits"
     _metadata = None
     supportedWriteParameters = frozenset({"recipe"})
+    _readerClass = ExposureFitsReader
+
+    unsupportedParameters = {}
+    """Support all parameters."""
 
     @property
     def metadata(self):
@@ -155,6 +162,7 @@ class FitsExposureFormatter(Formatter):
         KeyError
             Raised if the requested component cannot be handled.
         """
+
         # Metadata is handled explicitly elsewhere
         componentMap = {'wcs': ('readWcs', False),
                         'coaddInputs': ('readCoaddInputs', False),
@@ -180,7 +188,7 @@ class FitsExposureFormatter(Formatter):
         if method:
             # This reader can read standalone Image/Mask files as well
             # when dealing with components.
-            reader = ExposureFitsReader(self.fileDescriptor.location.path)
+            reader = self._readerClass(self.fileDescriptor.location.path)
             caller = getattr(reader, method, None)
 
             if caller:
@@ -220,12 +228,8 @@ class FitsExposureFormatter(Formatter):
         if parameters is None:
             parameters = {}
         fileDescriptor.storageClass.validateParameters(parameters)
-        try:
-            output = fileDescriptor.storageClass.pytype(fileDescriptor.location.path, **parameters)
-        except TypeError:
-            reader = ExposureFitsReader(fileDescriptor.location.path)
-            output = reader.read(**parameters)
-        return output
+        reader = self._readerClass(fileDescriptor.location.path)
+        return reader.read(**parameters)
 
     def read(self, component=None):
         """Read data from a file.
@@ -410,3 +414,24 @@ class FitsExposureFormatter(Formatter):
                         value = type(schema[key])(entry[key]) if key in entry else schema[key]
                         np[settings][key] = value
         return validated
+
+
+class FitsImageFormatter(FitsExposureFormatter):
+    """Specialisation for `~lsst.afw.image.Image` reading.
+    """
+
+    _readerClass = ImageFitsReader
+
+
+class FitsMaskFormatter(FitsExposureFormatter):
+    """Specialisation for `~lsst.afw.image.Mask` reading.
+    """
+
+    _readerClass = MaskFitsReader
+
+
+class FitsMaskedImageFormatter(FitsExposureFormatter):
+    """Specialisation for `~lsst.afw.image.MaskedImage` reading.
+    """
+
+    _readerClass = MaskedImageFitsReader
