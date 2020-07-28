@@ -272,7 +272,6 @@ class ExposureAssembler(CompositeAssembler):
             "bbox": imageComponents,
             "dimensions": imageComponents,
             "xy0": imageComponents,
-            "filter": ["metadata"],
         }
         forwarder = forwarderMap.get(readComponent)
         if forwarder is not None:
