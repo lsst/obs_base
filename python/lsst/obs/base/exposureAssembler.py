@@ -226,6 +226,9 @@ class ExposureAssembler(CompositeAssembler):
         info.setCoaddInputs(components.pop("coaddInputs", None))
         info.setMetadata(components.pop("metadata", None))
         info.setFilter(components.pop("filter", None))
+        info.setValidPolygon(components.pop("validPolygon", None))
+        info.setDetector(components.pop("detector", None))
+        info.setTransmissionCurve(components.pop("transmissionCurve", None))
 
         # If we have some components left over that is a problem
         if components:
