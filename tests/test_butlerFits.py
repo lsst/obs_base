@@ -96,7 +96,12 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
             "visit": [42, 43, 44],
         }
 
-        cls.creatorButler = makeTestRepo(cls.root, dataIds, config=Config.fromYaml(BUTLER_CONFIG))
+        # Ensure that we test in a directory that will include some
+        # metacharacters
+        subdir = "sub?#dir"
+        butlerRoot = os.path.join(cls.root, subdir)
+
+        cls.creatorButler = makeTestRepo(butlerRoot, dataIds, config=Config.fromYaml(BUTLER_CONFIG))
 
         # Create dataset types used by the tests
         for datasetTypeName, storageClassName in (("calexp", "ExposureF"),
