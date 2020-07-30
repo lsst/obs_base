@@ -1540,3 +1540,11 @@ crosstalkCalib:
     storage: YamlStorage
     tables: raw
     template: ''
+brightStarStamps:
+    description: A set of processed postage stamps, each containing a single bright star.
+    persistable: BrightStarStamps
+    python: lsst.meas.algorithms.brightStarStamps.BrightStarStamps
+    storage: FitsStorage
+    level: Ccd
+    tables: raw
+    template:
