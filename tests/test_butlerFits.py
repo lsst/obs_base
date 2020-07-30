@@ -258,7 +258,7 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
                 self.assertEqual(component.getCanonicalName(), reference.getCanonicalName())
             elif compName == "visitInfo":
                 self.assertEqual(component.getExposureId(), reference.getExposureId(),
-                                 f"VisitInfo comparison")
+                                 "VisitInfo comparison")
             elif compName == "metadata":
                 # The component metadata has extra fields in it so cannot
                 # compare directly.
