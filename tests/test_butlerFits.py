@@ -96,7 +96,12 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
             "visit": [42, 43, 44],
         }
 
-        cls.creatorButler = makeTestRepo(cls.root, dataIds, config=Config.fromYaml(BUTLER_CONFIG))
+        # Ensure that we test in a directory that will include some
+        # metacharacters
+        subdir = "sub?#dir"
+        butlerRoot = os.path.join(cls.root, subdir)
+
+        cls.creatorButler = makeTestRepo(butlerRoot, dataIds, config=Config.fromYaml(BUTLER_CONFIG))
 
         # Create dataset types used by the tests
         for datasetTypeName, storageClassName in (("calexp", "ExposureF"),
@@ -199,7 +204,7 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         ref = self.runExposureCompositePutGetTest("calexp")
 
         uri = self.butler.getURI(ref)
-        self.assertTrue(os.path.exists(uri.path), f"Checking URI {uri} existence")
+        self.assertTrue(uri.exists(), f"Checking URI {uri} existence")
 
     def testExposureCompositePutGetVirtual(self) -> None:
         """Testing composite disassembly"""
@@ -209,7 +214,7 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         self.assertIsNone(primary)
         self.assertEqual(set(components), COMPONENTS)
         for compName, uri in components.items():
-            self.assertTrue(os.path.exists(uri.path),
+            self.assertTrue(uri.exists(),
                             f"Checking URI {uri} existence for component {compName}")
 
     def runExposureCompositePutGetTest(self, datasetTypeName: str) -> DatasetRef:
@@ -258,7 +263,7 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
                 self.assertEqual(component.getCanonicalName(), reference.getCanonicalName())
             elif compName == "visitInfo":
                 self.assertEqual(component.getExposureId(), reference.getExposureId(),
-                                 f"VisitInfo comparison")
+                                 "VisitInfo comparison")
             elif compName == "metadata":
                 # The component metadata has extra fields in it so cannot
                 # compare directly.
@@ -290,7 +295,7 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         dataId = {"visit": visit, "instrument": "DummyCam", "physical_filter": "d-r"}
         refC = self.butler.put(exposure, datasetTypeName, dataId)
         uriC = self.butler.getURI(refC)
-        stat = os.stat(uriC.path)
+        stat = os.stat(uriC.ospath)
         size = stat.st_size
         metaDatasetTypeName = DatasetType.nameWithComponent(datasetTypeName, "metadata")
         meta = self.butler.get(metaDatasetTypeName, dataId)
