@@ -23,7 +23,7 @@
 
 # Need to enable PSFs to be instantiated
 import lsst.afw.detection  # noqa: F401
-from lsst.afw.image import makeExposure, makeMaskedImage
+from lsst.afw.image import makeExposure, makeMaskedImage, Filter, stripFilterKeywords
 
 from lsst.daf.butler import CompositeAssembler
 
@@ -166,6 +166,14 @@ class ExposureAssembler(CompositeAssembler):
                                                subset=expInfoItems, override=composite.getInfo())
         components.update(fromExposureInfo)
 
+        # We must reproduce some of the metadata manipulation that occurs
+        # in ExposureInfo::FitsWriteData.
+
+        # Force the FILTER header to be overwritten
+        if "filter" in components and "metadata" in components:
+            md = components["metadata"].component
+            md["FILTER"] = components["filter"].component.getName()
+
         return components
 
     def assemble(self, components):
@@ -225,10 +233,22 @@ class ExposureAssembler(CompositeAssembler):
         info.setApCorrMap(components.pop("apCorrMap", None))
         info.setCoaddInputs(components.pop("coaddInputs", None))
         info.setMetadata(components.pop("metadata", None))
-        info.setFilter(components.pop("filter", None))
         info.setValidPolygon(components.pop("validPolygon", None))
         info.setDetector(components.pop("detector", None))
         info.setTransmissionCurve(components.pop("transmissionCurve", None))
+
+        # Filter needs to be updated specially to match Exposure behavior
+        # from ExposureFitsReader::MetadataReader
+
+        # Override the serialized filter knowing that we are using FILTER
+        md = info.getMetadata()
+        if "filter" in components and "FILTER" in md:
+            filter = Filter(md, True)
+            stripFilterKeywords(md)
+            if filter.getName() != components["filter"].getName():
+                components["filter"] = filter
+
+        info.setFilter(components.pop("filter", None))
 
         # If we have some components left over that is a problem
         if components:
