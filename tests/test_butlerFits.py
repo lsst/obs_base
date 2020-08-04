@@ -76,7 +76,7 @@ datastore:
 
 # Components present in the test file
 COMPONENTS = {"wcs", "image", "mask", "coaddInputs", "psf", "visitInfo", "variance", "metadata", "photoCalib",
-              "filter"}
+              "filter", "validPolygon", "transmissionCurve", "detector", "apCorrMap"}
 READ_COMPONENTS = {"bbox", "xy0", "dimensions"}
 
 
@@ -218,7 +218,7 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
                             f"Checking URI {uri} existence for component {compName}")
 
     def runExposureCompositePutGetTest(self, datasetTypeName: str) -> DatasetRef:
-        example = os.path.join(TESTDIR, "data", "small.fits")
+        example = os.path.join(TESTDIR, "data", "calexp.fits")
         exposure = lsst.afw.image.ExposureF(example)
 
         dataId = {"visit": 42, "instrument": "DummyCam", "physical_filter": "d-r"}
@@ -243,6 +243,7 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
             component = self.butler.get(compTypeName, dataId)
 
             reference = assembler.getComponent(exposure, compName)
+
             self.assertIsInstance(component, type(reference), f"Checking type of component {compName}")
 
             if compName in ("image", "variance"):
@@ -274,14 +275,24 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
                 # "spatially constant with mean: inf error: nan" entry
                 # which does not compare directly.
                 self.assertEqual(str(component), str(reference))
-                self.assertIn("spatially constant with mean: inf", str(component), "Checking photoCalib")
-            elif compName in ("bbox", "xy0", "dimensions"):
+                self.assertIn("spatially constant with mean: 1.99409", str(component),
+                              "Checking photoCalib")
+            elif compName in ("bbox", "xy0", "dimensions", "validPolygon"):
                 self.assertEqual(component, reference)
+            elif compName == "apCorrMap":
+                self.assertEqual(set(component.keys()), set(reference.keys()))
+            elif compName == "transmissionCurve":
+                self.assertEqual(component.getThroughputAtBounds(),
+                                 reference.getThroughputAtBounds())
+            elif compName == "detector":
+                c_amps = {a.getName() for a in component.getAmplifiers()}
+                r_amps = {a.getName() for a in reference.getAmplifiers()}
+                self.assertEqual(c_amps, r_amps)
             else:
                 raise RuntimeError(f"Unexpected component '{compName}' encountered in test")
 
-        # With parameters
-        inBBox = Box2I(minimum=Point2I(0, 0), maximum=Point2I(3, 3))
+        # Full Exposure with parameters
+        inBBox = Box2I(minimum=Point2I(3, 3), maximum=Point2I(21, 16))
         parameters = dict(bbox=inBBox, origin=LOCAL)
         subset = self.butler.get(datasetTypeName, dataId, parameters=parameters)
         outBBox = subset.getBBox()
