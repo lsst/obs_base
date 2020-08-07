@@ -172,8 +172,10 @@ class Instrument(metaclass=ABCMeta):
         TypeError
             Raised if the class name retrieved is not a string.
         """
-        dimensions = list(registry.queryDimensions("instrument", dataId={"instrument": name}))
-        cls = dimensions[0].records["instrument"].class_name
+        records = list(registry.queryDimensionRecords("instrument", instrument=name))
+        if not records:
+            raise LookupError(f"No registered instrument with name '{name}'.")
+        cls = records[0].class_name
         if not isinstance(cls, str):
             raise TypeError(f"Unexpected class name retrieved from {name} instrument dimension (got {cls})")
         instrument = doImport(cls)
@@ -196,9 +198,9 @@ class Instrument(metaclass=ABCMeta):
         This might simply indicate that a particular obs package has
         not been setup.
         """
-        dimensions = list(registry.queryDimensions("instrument"))
-        for dim in dimensions:
-            cls = dim.records["instrument"].class_name
+        records = list(registry.queryDimensionRecords("instrument"))
+        for record in records:
+            cls = record.class_name
             try:
                 doImport(cls)
             except Exception:

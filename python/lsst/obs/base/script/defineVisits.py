@@ -51,4 +51,4 @@ def defineVisits(repo, config_file, collections, instrument):
     if config_file is not None:
         config.load(config_file)
     task = DefineVisitsTask(config=config, butler=butler)
-    task.run(butler.registry.queryDimensions(["exposure"]))
+    task.run(butler.registry.queryDataIds(["exposure"]))
