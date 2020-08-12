@@ -51,7 +51,12 @@ def defineVisits(repo, config_file, collections, instrument):
     config = DefineVisitsConfig()
     instr.applyConfigOverrides(DefineVisitsTask._DefaultName, config)
 
+    if collections is None:
+        # Default to the raw collection for this instrument
+        collections = instr.makeDefaultRawIngestRunName()
+
     if config_file is not None:
         config.load(config_file)
     task = DefineVisitsTask(config=config, butler=butler)
-    task.run(butler.registry.queryDataIds(["exposure"]))
+    task.run(butler.registry.queryDataIds(["exposure"], dataId={"instrument": instr.getName()}),
+             collections=collections)
