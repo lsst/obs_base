@@ -40,9 +40,12 @@ def defineVisits(repo, config_file, collections, instrument):
     collections : `list` [`str`]
         An expression specifying the collections to be searched (in order) when
         reading datasets, and optionally dataset type restrictions on them.
+        If empty it will be passed as `None` to Butler.
     insrument : `str`
         The name or fully-qualified class name of an instrument.
     """
+    if not collections:
+        collections = None
     butler = Butler(repo, collections=collections, writeable=True)
     instr = getInstrument(instrument, butler.registry)
     config = DefineVisitsConfig()
