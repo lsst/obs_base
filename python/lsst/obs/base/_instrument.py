@@ -495,6 +495,15 @@ def makeExposureRecordFromObsInfo(obsInfo, universe):
         a `Registry`.
     """
     dimension = universe["exposure"]
+
+    ra, dec, angle = (None, None, None)
+    if obsInfo.tracking_radec is not None:
+        icrs = obsInfo.tracking_radec.icrs
+        ra = icrs.ra.degree
+        dec = icrs.dec.degree
+        if obsInfo.boresight_rotation_coord == "sky":
+            angle = obsInfo.boresight_rotation_angle.degree
+
     return dimension.RecordClass.fromDict({
         "instrument": obsInfo.instrument,
         "id": obsInfo.exposure_id,
@@ -507,6 +516,11 @@ def makeExposureRecordFromObsInfo(obsInfo, universe):
         "dark_time": obsInfo.dark_time.to_value("s"),
         "observation_type": obsInfo.observation_type,
         "physical_filter": obsInfo.physical_filter,
+        "science_program": obsInfo.science_program,
+        "target_name": obsInfo.object,
+        "tracking_ra": ra,
+        "tracking_dec": dec,
+        "sky_angle": angle,
     })
 
 
