@@ -33,7 +33,7 @@ import lsst.log
 
 from .formatters.fitsExposure import FitsExposureFormatter
 from .makeRawVisitInfoViaObsInfo import MakeRawVisitInfoViaObsInfo
-from .utils import createInitialSkyWcs, InitialSkyWcsError
+from .utils import createInitialSkyWcsFromBoresight, InitialSkyWcsError
 
 
 class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
@@ -231,9 +231,30 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
                 raise InitialSkyWcsError("Failed to create both metadata and boresight-based SkyWcs."
                                          "See warnings in log messages for details.")
             return skyWcs
-        skyWcs = createInitialSkyWcs(visitInfo, detector)
 
-        return skyWcs
+        return self.makeRawSkyWcsFromBoresight(visitInfo.getBoresightRaDec(),
+                                               visitInfo.getBoresightRotAngle(),
+                                               detector)
+
+    @classmethod
+    def makeRawSkyWcsFromBoresight(cls, boresight, orientation, detector):
+        """Class method to make a raw sky WCS from boresight and detector.
+
+        Parameters
+        ----------
+        boresight : `lsst.geom.SpherePoint`
+            The ICRS boresight RA/Dec
+        orientation : `lsst.geom.Angle`
+            The rotation angle of the focal plane on the sky.
+        detector : `lsst.afw.cameraGeom.Detector`
+            Where to get the camera geomtry from.
+
+        Returns
+        -------
+        skyWcs : `~lsst.afw.geom.SkyWcs`
+            Reversible mapping from pixel coordinates to sky coordinates.
+        """
+        return createInitialSkyWcsFromBoresight(boresight, orientation, detector)
 
     def _createSkyWcsFromMetadata(self):
         """Create a SkyWcs from the FITS header metadata in an Exposure.
