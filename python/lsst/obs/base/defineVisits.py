@@ -656,7 +656,7 @@ class _ComputeVisitRegionsFromSingleRawWcsTask(ComputeVisitRegionsTask):
                 for detectorId, bounds in exposureDetectorBounds.items():
                     detectorBounds[detectorId].extend(bounds)
         else:
-            detectorBounds = self.computeExposureBounds(visit.exposures[0])
+            detectorBounds = self.computeExposureBounds(visit.exposures[0], collections=collections)
         visitBounds = []
         detectorRegions = {}
         for detectorId, bounds in detectorBounds.items():
