@@ -328,6 +328,10 @@ class DefineVisitsTask(Task):
         exposure_time = _reduceOrNone(sum, (e.exposure_time for e in definition.exposures))
         physical_filter = _reduceOrNone(lambda a, b: a if a == b else None,
                                         (e.physical_filter for e in definition.exposures))
+        target_name = _reduceOrNone(lambda a, b: a if a == b else None,
+                                    (e.target_name for e in definition.exposures))
+        science_program = _reduceOrNone(lambda a, b: a if a == b else None,
+                                        (e.science_program for e in definition.exposures))
         # Construct the actual DimensionRecords.
         return _VisitRecords(
             visit=self.universe["visit"].RecordClass.fromDict({
@@ -335,6 +339,8 @@ class DefineVisitsTask(Task):
                 "id": definition.id,
                 "name": definition.name,
                 "physical_filter": physical_filter,
+                "target_name": target_name,
+                "science_program": science_program,
                 "visit_system": self.groupExposures.getVisitSystem()[0],
                 "exposure_time": exposure_time,
                 TIMESPAN_FIELD_SPECS.begin.name: timespan.begin,
