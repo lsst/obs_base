@@ -362,6 +362,12 @@ class DefineVisitsTask(Task):
                                     (e.target_name for e in definition.exposures))
         science_program = _reduceOrNone(lambda a, b: a if a == b else None,
                                         (e.science_program for e in definition.exposures))
+
+        # Use the mean zenith angle as an approximation
+        zenith_angle = _reduceOrNone(sum, (e.zenith_angle for e in definition.exposures))
+        if zenith_angle is not None:
+            zenith_angle /= len(definition.exposures)
+
         # Construct the actual DimensionRecords.
         return _VisitRecords(
             visit=self.universe["visit"].RecordClass.fromDict({
@@ -371,6 +377,7 @@ class DefineVisitsTask(Task):
                 "physical_filter": physical_filter,
                 "target_name": target_name,
                 "science_program": science_program,
+                "zenith_angle": zenith_angle,
                 "visit_system": self.groupExposures.getVisitSystem()[0],
                 "exposure_time": exposure_time,
                 TIMESPAN_FIELD_SPECS.begin.name: timespan.begin,
