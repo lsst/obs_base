@@ -2,7 +2,7 @@
 #
 # Developed for the LSST Data Management System.
 # This product includes software developed by the LSST Project
-# (https://www.lsst.org).
+# (http://www.lsst.org).
 # See the COPYRIGHT file at the top-level directory of this distribution
 # for details of code ownership.
 #
@@ -19,5 +19,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from .arguments import *
-from .options import *
+from lsst.daf.butler.cli.utils import MWArgumentDecorator
+
+
+instrument_argument = MWArgumentDecorator("instrument",
+                                          help="The name or fully-qualified class name of an instrument.")

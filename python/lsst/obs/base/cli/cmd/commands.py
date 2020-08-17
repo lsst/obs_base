@@ -23,9 +23,8 @@ import click
 
 from lsst.daf.butler.cli.opt import (repo_argument, config_option, config_file_option, run_option,
                                      transfer_option)
-from lsst.daf.butler.cli.utils import (cli_handle_exception, ParameterType, split_commas,
-                                       typeStrAcceptsMultiple)
-from ..opt import instrument_parameter
+from lsst.daf.butler.cli.utils import (cli_handle_exception, split_commas, typeStrAcceptsMultiple)
+from ..opt import instrument_argument, instrument_option
 from ... import script
 
 
@@ -60,7 +59,7 @@ def convert(*args, **kwargs):
               multiple=True,
               callback=split_commas,
               metavar=typeStrAcceptsMultiple)
-@instrument_parameter(required=True)
+@instrument_option(required=True)
 def define_visits(*args, **kwargs):
     """Define visits from exposures in the butler registry."""
     cli_handle_exception(script.defineVisits, *args, **kwargs)
@@ -68,7 +67,7 @@ def define_visits(*args, **kwargs):
 
 @click.command(short_help="Ingest raw frames.")
 @repo_argument(required=True)
-@config_option(metavar="TEXT=TEXT", multiple=True, split_kv=True)
+@config_option(metavar="TEXT=TEXT", multiple=True)
 @config_file_option(type=click.Path(exists=True, writable=False, file_okay=True, dir_okay=False))
 @run_option(required=False)
 @click.option("-d", "--dir", "directory",
@@ -84,8 +83,7 @@ def ingest_raws(*args, **kwargs):
 
 @click.command(short_help="Add an instrument to the repository")
 @repo_argument(required=True)
-@instrument_parameter(parameterType=ParameterType.ARGUMENT, required=True, multiple=True,
-                      help="The fully-qualified name of an Instrument subclass.")
+@instrument_argument(required=True, nargs=-1, help="The fully-qualified name of an Instrument subclass.")
 def register_instrument(*args, **kwargs):
     """Add an instrument to the data repository.
     """
@@ -94,7 +92,7 @@ def register_instrument(*args, **kwargs):
 
 @click.command(short_help="Add an instrument's curated calibrations.")
 @repo_argument(required=True)
-@instrument_parameter(required=True)
+@instrument_option(required=True)
 @run_option(required=False)
 def write_curated_calibrations(*args, **kwargs):
     """Add an instrument's curated calibrations to the data repository.
