@@ -30,14 +30,18 @@ from lsst.obs.base.cli.cmd import ingest_raws
 
 class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
 
-    defaultExpected = dict(directory=None,
-                           file=None,
-                           transfer="auto",
-                           ingest_task="lsst.obs.base.RawIngestTask",
-                           config={},
-                           config_file=None)
+    @staticmethod
+    def defaultExpected():
+        return dict(directory=None,
+                    file=None,
+                    transfer="auto",
+                    ingest_task="lsst.obs.base.RawIngestTask",
+                    config={},
+                    config_file=None)
 
-    command = ingest_raws
+    @staticmethod
+    def command():
+        return ingest_raws
 
     def test_repoAndOutput(self):
         """Test the most basic required arguments, repo and output run"""
