@@ -35,8 +35,7 @@ from lsst.daf.butler import (
     DataCoordinate,
     DataId,
     DatasetType,
-    TIMESPAN_MIN,
-    TIMESPAN_MAX,
+    Timespan,
 )
 from lsst.utils import getPackageDir, doImport
 
@@ -393,14 +392,13 @@ class Instrument(metaclass=ABCMeta):
 
         camera = self.getCamera()
         calibsDict = read_all(calibPath, camera)[0]  # second return is calib type
-        endOfTime = TIMESPAN_MAX
         dimensionRecords = []
         datasetRecords = []
         for det in calibsDict:
             times = sorted([k for k in calibsDict[det]])
             calibs = [calibsDict[det][time] for time in times]
             times = [astropy.time.Time(t, format="datetime", scale="utc") for t in times]
-            times += [endOfTime]
+            times += [None]
             for calib, beginTime, endTime in zip(calibs, times[:-1], times[1:]):
                 md = calib.getMetadata()
                 calibrationLabel = f"{datasetType.name}/{md['CALIBDATE']}/{md['DETECTOR']}"
@@ -414,8 +412,7 @@ class Instrument(metaclass=ABCMeta):
                 dimensionRecords.append({
                     "instrument": self.getName(),
                     "name": calibrationLabel,
-                    "datetime_begin": beginTime,
-                    "datetime_end": endTime,
+                    "timespan": Timespan(beginTime, endTime),
                 })
 
         # Second loop actually does the inserts and filesystem writes.
@@ -506,25 +503,25 @@ def makeExposureRecordFromObsInfo(obsInfo, universe):
     if obsInfo.altaz_begin is not None:
         zenith_angle = obsInfo.altaz_begin.zen.degree
 
-    return dimension.RecordClass.fromDict({
-        "instrument": obsInfo.instrument,
-        "id": obsInfo.exposure_id,
-        "name": obsInfo.observation_id,
-        "group_name": obsInfo.exposure_group,
-        "group_id": obsInfo.visit_id,
-        "datetime_begin": obsInfo.datetime_begin,
-        "datetime_end": obsInfo.datetime_end,
-        "exposure_time": obsInfo.exposure_time.to_value("s"),
-        "dark_time": obsInfo.dark_time.to_value("s"),
-        "observation_type": obsInfo.observation_type,
-        "physical_filter": obsInfo.physical_filter,
-        "science_program": obsInfo.science_program,
-        "target_name": obsInfo.object,
-        "tracking_ra": ra,
-        "tracking_dec": dec,
-        "sky_angle": sky_angle,
-        "zenith_angle": zenith_angle,
-    })
+    return dimension.RecordClass(
+        instrument=obsInfo.instrument,
+        id=obsInfo.exposure_id,
+        name=obsInfo.observation_id,
+        group_name=obsInfo.exposure_group,
+        group_id=obsInfo.visit_id,
+        datetime_begin=obsInfo.datetime_begin,
+        datetime_end=obsInfo.datetime_end,
+        exposure_time=obsInfo.exposure_time.to_value("s"),
+        dark_time=obsInfo.dark_time.to_value("s"),
+        observation_type=obsInfo.observation_type,
+        physical_filter=obsInfo.physical_filter,
+        science_program=obsInfo.science_program,
+        target_name=obsInfo.object,
+        tracking_ra=ra,
+        tracking_dec=dec,
+        sky_angle=sky_angle,
+        zenith_angle=zenith_angle,
+    )
 
 
 def addUnboundedCalibrationLabel(registry, instrumentName):
@@ -552,8 +549,7 @@ def addUnboundedCalibrationLabel(registry, instrumentName):
     except LookupError:
         pass
     entry = d.copy()
-    entry["datetime_begin"] = TIMESPAN_MIN
-    entry["datetime_end"] = TIMESPAN_MAX
+    entry["timespan"] = Timespan(None, None)
     registry.insertDimensionData("calibration_label", entry)
     return registry.expandDataId(d)
 
