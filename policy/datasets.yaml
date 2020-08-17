@@ -1574,4 +1574,9 @@ processBrightStars_metadata:
     python: lsst.daf.base.PropertySet
     tables: raw
     template: ''
+measureExtendedPsf_config:
+    persistable: Config
+    python: lsst.pipe.tasks.measureExtendedPsf.MeasureExtendedPsfConfig
+    storage: ConfigStorage
+    template: config/measureExtendedPsf.py
 
