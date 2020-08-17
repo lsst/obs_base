@@ -40,15 +40,23 @@ def defineVisits(repo, config_file, collections, instrument):
     collections : `list` [`str`]
         An expression specifying the collections to be searched (in order) when
         reading datasets, and optionally dataset type restrictions on them.
+        If empty it will be passed as `None` to Butler.
     insrument : `str`
         The name or fully-qualified class name of an instrument.
     """
+    if not collections:
+        collections = None
     butler = Butler(repo, collections=collections, writeable=True)
     instr = getInstrument(instrument, butler.registry)
     config = DefineVisitsConfig()
     instr.applyConfigOverrides(DefineVisitsTask._DefaultName, config)
 
+    if collections is None:
+        # Default to the raw collection for this instrument
+        collections = instr.makeDefaultRawIngestRunName()
+
     if config_file is not None:
         config.load(config_file)
     task = DefineVisitsTask(config=config, butler=butler)
-    task.run(butler.registry.queryDataIds(["exposure"]))
+    task.run(butler.registry.queryDataIds(["exposure"], dataId={"instrument": instr.getName()}),
+             collections=collections)

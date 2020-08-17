@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ('InitialSkyWcsError', 'createInitialSkyWcs', 'bboxFromIraf')
+__all__ = ('InitialSkyWcsError', 'createInitialSkyWcs', 'createInitialSkyWcsFromBoresight', 'bboxFromIraf')
 
 import re
 import lsst.geom as geom
@@ -42,7 +42,7 @@ class InitialSkyWcsError(Exception):
 
 
 def createInitialSkyWcs(visitInfo, detector, flipX=False):
-    """Create a SkyWcs from the telescope boresight and detector geometry.
+    """Create a SkyWcs from the visit information and detector geometry.
 
     A typical usecase for this is to create the initial WCS for a newly-read
     raw exposure.
@@ -74,6 +74,37 @@ def createInitialSkyWcs(visitInfo, detector, flipX=False):
         raise InitialSkyWcsError(msg)
     orientation = visitInfo.getBoresightRotAngle()
     boresight = visitInfo.getBoresightRaDec()
+    return createInitialSkyWcsFromBoresight(boresight, orientation, detector, flipX)
+
+
+def createInitialSkyWcsFromBoresight(boresight, orientation, detector, flipX=False):
+    """Create a SkyWcs from the telescope boresight and detector geometry.
+
+    A typical usecase for this is to create the initial WCS for a newly-read
+    raw exposure.
+
+    Parameters
+    ----------
+    boresight : `lsst.geom.SpherePoint`
+        The ICRS boresight RA/Dec
+    orientation : `lsst.geom.Angle`
+        The rotation angle of the focal plane on the sky.
+    detector : `lsst.afw.cameraGeom.Detector`
+        Where to get the camera geomtry from.
+    flipX : `bool`, optional
+        If False, +X is along W, if True +X is along E.
+
+    Returns
+    -------
+    skyWcs : `lsst.afw.geom.SkyWcs`
+        The new composed WCS.
+
+    Raises
+    ------
+    InitialSkyWcsError
+        Raised if there is an error generating the SkyWcs, chained from the
+        lower-level exception if available.
+    """
     try:
         pixelsToFieldAngle = detector.getTransform(detector.makeCameraSys(PIXELS),
                                                    detector.makeCameraSys(FIELD_ANGLE))

@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
 
 __all__ = [
     "DefineVisitsConfig",
@@ -42,12 +43,14 @@ from lsst.daf.butler import (
     Timespan,
     TIMESPAN_FIELD_SPECS,
 )
+
+import lsst.geom
 from lsst.geom import Box2D
 from lsst.pex.config import Config, Field, makeRegistry, registerConfigurable
 from lsst.afw.cameraGeom import FOCAL_PLANE, PIXELS
 from lsst.pipe.base import Task
 from lsst.sphgeom import ConvexPolygon, Region, UnitVector3d
-from ._instrument import loadCamera
+from ._instrument import loadCamera, Instrument
 
 
 @dataclasses.dataclass
@@ -185,12 +188,15 @@ class ComputeVisitRegionsTask(Task, metaclass=ABCMeta):
     ----------
     config : `ComputeVisitRegionsConfig`
         Configuration information.
+    butler : `lsst.daf.butler.Butler`
+        The butler to use.
     **kwargs
         Additional keyword arguments forwarded to the `Task` constructor.
     """
     def __init__(self, config: ComputeVisitRegionsConfig, *, butler: Butler, **kwargs: Any):
         Task.__init__(self, config=config, **kwargs)
         self.butler = butler
+        self.instrumentMap = {}
 
     ConfigClass = ComputeVisitRegionsConfig
 
@@ -201,6 +207,30 @@ class ComputeVisitRegionsTask(Task, metaclass=ABCMeta):
              "and visit+detector combinations."),
         configBaseType=ComputeVisitRegionsConfig,
     )
+
+    def getInstrument(self, instrumentName) -> Instrument:
+        """Retrieve an `~lsst.obs.base.Instrument` associated with this
+        instrument name.
+
+        Parameters
+        ----------
+        instrumentName : `str`
+            The name of the instrument.
+
+        Returns
+        -------
+        instrument : `~lsst.obs.base.Instrument`
+            The associated instrument object.
+
+        Notes
+        -----
+        The result is cached.
+        """
+        instrument = self.instrumentMap.get(instrumentName)
+        if instrument is None:
+            instrument = Instrument.fromName(instrumentName, self.butler.registry)
+            self.instrumentMap[instrumentName] = instrument
+        return instrument
 
     @abstractmethod
     def compute(self, visit: VisitDefinitionData, *, collections: Any = None
@@ -328,6 +358,16 @@ class DefineVisitsTask(Task):
         exposure_time = _reduceOrNone(sum, (e.exposure_time for e in definition.exposures))
         physical_filter = _reduceOrNone(lambda a, b: a if a == b else None,
                                         (e.physical_filter for e in definition.exposures))
+        target_name = _reduceOrNone(lambda a, b: a if a == b else None,
+                                    (e.target_name for e in definition.exposures))
+        science_program = _reduceOrNone(lambda a, b: a if a == b else None,
+                                        (e.science_program for e in definition.exposures))
+
+        # Use the mean zenith angle as an approximation
+        zenith_angle = _reduceOrNone(sum, (e.zenith_angle for e in definition.exposures))
+        if zenith_angle is not None:
+            zenith_angle /= len(definition.exposures)
+
         # Construct the actual DimensionRecords.
         return _VisitRecords(
             visit=self.universe["visit"].RecordClass.fromDict({
@@ -335,6 +375,9 @@ class DefineVisitsTask(Task):
                 "id": definition.id,
                 "name": definition.name,
                 "physical_filter": physical_filter,
+                "target_name": target_name,
+                "science_program": science_program,
+                "zenith_angle": zenith_angle,
                 "visit_system": self.groupExposures.getVisitSystem()[0],
                 "exposure_time": exposure_time,
                 TIMESPAN_FIELD_SPECS.begin.name: timespan.begin,
@@ -618,18 +661,43 @@ class _ComputeVisitRegionsFromSingleRawWcsTask(ComputeVisitRegionsTask):
         camera, versioned = loadCamera(self.butler, exposure.dataId, collections=collections)
         if not versioned and self.config.requireVersionedCamera:
             raise LookupError(f"No versioned camera found for exposure {exposure.dataId}.")
-        if self.config.detectorId is None:
-            wcsRefs = list(self.butler.registry.queryDatasets("raw.wcs", dataId=exposure.dataId,
-                                                              collections=collections))
-            if not wcsRefs:
-                raise LookupError(f"No raw.wcs datasets found for data ID {exposure.dataId} "
-                                  f"in collections {collections}.")
-            wcsDetector = camera[wcsRefs[0].dataId["detector"]]
-            wcs = self.butler.getDirect(wcsRefs[0])
+
+        # Derive WCS from boresight information -- if available in registry
+        use_registry = True
+        try:
+            orientation = lsst.geom.Angle(exposure.sky_angle, lsst.geom.degrees)
+            radec = lsst.geom.SpherePoint(lsst.geom.Angle(exposure.tracking_ra, lsst.geom.degrees),
+                                          lsst.geom.Angle(exposure.tracking_dec, lsst.geom.degrees))
+        except AttributeError:
+            use_registry = False
+
+        if use_registry:
+            if self.config.detectorId is None:
+                detectorId = next(camera.getIdIter())
+            else:
+                detectorId = self.config.detectorId
+            wcsDetector = camera[detectorId]
+
+            # Ask the raw formatter to create the relevant WCS
+            # This allows flips to be taken into account
+            instrument = self.getInstrument(exposure.instrument)
+            rawFormatter = instrument.getRawFormatter({"detector": detectorId})
+            wcs = rawFormatter.makeRawSkyWcsFromBoresight(radec, orientation, wcsDetector)
+
         else:
-            wcsDetector = camera[self.config.detectorId]
-            wcs = self.butler.get("raw.wcs", dataId=exposure.dataId, detector=self.config.detectorId,
-                                  collections=collections)
+            if self.config.detectorId is None:
+                wcsRefsIter = self.butler.registry.queryDatasets("raw.wcs", dataId=exposure.dataId,
+                                                                 collections=collections)
+                if not wcsRefsIter:
+                    raise LookupError(f"No raw.wcs datasets found for data ID {exposure.dataId} "
+                                      f"in collections {collections}.")
+                wcsRef = next(iter(wcsRefsIter))
+                wcsDetector = camera[wcsRef.dataId["detector"]]
+                wcs = self.butler.getDirect(wcsRef)
+            else:
+                wcsDetector = camera[self.config.detectorId]
+                wcs = self.butler.get("raw.wcs", dataId=exposure.dataId, detector=self.config.detectorId,
+                                      collections=collections)
         fpToSky = wcsDetector.getTransform(FOCAL_PLANE, PIXELS).then(wcs.getTransform())
         bounds = {}
         for detector in camera:
@@ -650,7 +718,7 @@ class _ComputeVisitRegionsFromSingleRawWcsTask(ComputeVisitRegionsTask):
                 for detectorId, bounds in exposureDetectorBounds.items():
                     detectorBounds[detectorId].extend(bounds)
         else:
-            detectorBounds = self.computeExposureBounds(visit.exposures[0])
+            detectorBounds = self.computeExposureBounds(visit.exposures[0], collections=collections)
         visitBounds = []
         detectorRegions = {}
         for detectorId, bounds in detectorBounds.items():
