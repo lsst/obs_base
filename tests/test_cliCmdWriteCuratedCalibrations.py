@@ -30,9 +30,13 @@ from lsst.obs.base.cli.cmd import write_curated_calibrations
 
 class WriteCuratedCalibrationsTest(CliCmdTestBase, unittest.TestCase):
 
-    defaultExpected = dict()
+    @staticmethod
+    def defaultExpected():
+        return dict()
 
-    command = write_curated_calibrations
+    @staticmethod
+    def command():
+        return write_curated_calibrations
 
     def test_repoBasic(self):
         """Test the most basic required arguments."""

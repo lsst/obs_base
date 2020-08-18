@@ -30,10 +30,14 @@ from lsst.obs.base.cli.cmd import define_visits
 
 class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
 
-    defaultExpected = dict(config_file=None,
-                           collections=())
+    @staticmethod
+    def defaultExpected():
+        return dict(config_file=None,
+                    collections=())
 
-    command = define_visits
+    @staticmethod
+    def command():
+        return define_visits
 
     def test_repoBasic(self):
         """Test the most basic required arguments."""

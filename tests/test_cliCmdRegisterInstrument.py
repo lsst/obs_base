@@ -30,9 +30,13 @@ from lsst.obs.base.cli.cmd import register_instrument
 
 class RegisterInstrumentTest(CliCmdTestBase, unittest.TestCase):
 
-    defaultExpected = dict()
+    @staticmethod
+    def defaultExpected():
+        return dict()
 
-    command = register_instrument
+    @staticmethod
+    def command():
+        return register_instrument
 
     def test_repoBasic(self):
         """Test the most basic required arguments."""

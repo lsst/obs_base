@@ -30,14 +30,18 @@ from lsst.obs.base.cli.cmd import convert
 
 class ConvertTestCase(CliCmdTestBase, unittest.TestCase):
 
-    defaultExpected = dict(skymap_name=None,
-                           skymap_config=None,
-                           calibs=None,
-                           reruns=(),
-                           transfer="auto",
-                           config_file=None)
+    @staticmethod
+    def defaultExpected():
+        return dict(skymap_name=None,
+                    skymap_config=None,
+                    calibs=None,
+                    reruns=(),
+                    transfer="auto",
+                    config_file=None)
 
-    command = convert
+    @staticmethod
+    def command():
+        return convert
 
     def test_repoInstrGen2root(self):
         """Test the most basic required arguments."""
