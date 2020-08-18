@@ -41,6 +41,10 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
     FITS files.
     """
 
+    # This has to be explicit until we fix camera geometry in DM-20746
+    wcsFlipX = False
+    """Control whether the WCS is flipped in the X-direction (`bool`)"""
+
     def __init__(self, *args, **kwargs):
         self.filterDefinitions.reset()
         self.filterDefinitions.defineFilters()
@@ -254,7 +258,7 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
         skyWcs : `~lsst.afw.geom.SkyWcs`
             Reversible mapping from pixel coordinates to sky coordinates.
         """
-        return createInitialSkyWcsFromBoresight(boresight, orientation, detector)
+        return createInitialSkyWcsFromBoresight(boresight, orientation, detector, flipX=cls.wcsFlipX)
 
     def _createSkyWcsFromMetadata(self):
         """Create a SkyWcs from the FITS header metadata in an Exposure.
