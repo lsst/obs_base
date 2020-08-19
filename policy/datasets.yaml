@@ -1261,7 +1261,7 @@ processStar_metadata:
     persistable: PropertySet
     storage: YamlStorage
     python: lsst.daf.base.PropertySet
-    template: processStar_metadata/%(visit)d_metadata.yaml
+    template: processStar_metadata/%(expId)d_metadata.yaml
 spectractorOutputRoot:
     description: "A dataset to allow butlers to get paths for Spectractor output"
     persistable: ignored
