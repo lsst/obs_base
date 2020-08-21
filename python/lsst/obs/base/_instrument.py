@@ -80,12 +80,19 @@ class Instrument(metaclass=ABCMeta):
 
     standardCuratedDatasetTypes = tuple(StandardCuratedCalibrationDatasetTypes)
     """The dataset types expected to be obtained from the obsDataPackage.
+
     These dataset types are all required to have standard definitions and
     must be known to the base class.  Clearing this list will prevent
     any of these calibrations from being stored. If a dataset type is not
     known to a specific instrument it can still be included in this list
-    since the data package is the source of truth.
+    since the data package is the source of truth. (`tuple` of `str`)
     """
+
+    additionalCuratedDatasetTypes: Tuple[str, ...] = ()
+    """Curated dataset types specific to this particular instrument.
+
+    These are the dataset types written by
+    `writeAdditionalCuratedCalibrations`. (`tuple` of `str`)"""
 
     @property
     @abstractmethod
@@ -110,6 +117,29 @@ class Instrument(metaclass=ABCMeta):
         abbreviation of the full name.
         """
         raise NotImplementedError()
+
+    @classmethod
+    def getCuratedCalibrationNames(cls) -> Set[str]:
+        """Return the names of all the curated calibration dataset types.
+
+        Returns
+        -------
+        names : `tuple` of `str`
+            The dataset type names of all curated calibrations. This will
+            include the standard curated calibrations even if the particular
+            instrument does not support them.
+
+        Notes
+        -----
+        The returned list does not indicate whether a particular dataset
+        is present in the Butler repository, simply that these are the
+        dataset types that are handled by ``writeCuratedCalibrations``.
+        """
+
+        # Do not check the data packages for calibrations for now.
+        # Camera is a special dataset type that is also handled as a
+        # curated calibration.
+        return set(("camera",) + cls.standardCuratedDatasetTypes + cls.additionalCuratedDatasetTypes)
 
     @abstractmethod
     def getCamera(self):
