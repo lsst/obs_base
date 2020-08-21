@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING
 
 import lsst.utils.tests
 
+import lsst.pex.config
 import lsst.afw.image
 from lsst.afw.image import LOCAL
 from lsst.geom import Box2I, Point2I
@@ -80,6 +81,12 @@ COMPONENTS = {"wcs", "image", "mask", "coaddInputs", "psf", "visitInfo", "varian
 READ_COMPONENTS = {"bbox", "xy0", "dimensions"}
 
 
+class SimpleConfig(lsst.pex.config.Config):
+    """Config to use in tests for butler put/get"""
+    i = lsst.pex.config.Field("integer test", int)
+    c = lsst.pex.config.Field("string", str)
+
+
 class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
 
     @classmethod
@@ -117,7 +124,8 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         # And some dataset types that have no dimensions for easy testing
         for datasetTypeName, storageClassName in (("ps", "PropertySet"),
                                                   ("pl", "PropertyList"),
-                                                  ("pkg", "Packages")
+                                                  ("pkg", "Packages"),
+                                                  ("config", "Config"),
                                                   ):
             storageClass = cls.storageClassFactory.getStorageClass(storageClassName)
             addDatasetType(cls.creatorButler, datasetTypeName, {}, storageClass)
@@ -190,6 +198,15 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
 
         pkg = Packages.fromSystem()
         self.runFundamentalTypeTest("pkg", pkg)
+
+    def testPexConfig(self) -> None:
+        """Test that we can put and get pex_config Configs"""
+        c = SimpleConfig(i=10, c="hello")
+        self.assertEqual(c.i, 10)
+        ref = self.butler.put(c, "config")
+        butler_c = self.butler.get(ref)
+        self.assertEqual(c, butler_c)
+        self.assertIsInstance(butler_c, SimpleConfig)
 
     def testFitsCatalog(self) -> None:
         """Test reading of a FITS catalog"""
