@@ -25,7 +25,7 @@ __all__ = ("Instrument", "makeExposureRecordFromObsInfo", "addUnboundedCalibrati
 
 import os.path
 from abc import ABCMeta, abstractmethod
-from typing import Any, Tuple, TYPE_CHECKING
+from typing import Any, Optional, Set, Sequence, Tuple, TYPE_CHECKING
 import astropy.time
 
 from lsst.afw.cameraGeom import Camera
@@ -62,18 +62,18 @@ class Instrument(metaclass=ABCMeta):
     arguments.
     """
 
-    configPaths = ()
+    configPaths: Sequence[str] = ()
     """Paths to config files to read for specific Tasks.
 
     The paths in this list should contain files of the form `task.py`, for
     each of the Tasks that requires special configuration.
     """
 
-    policyName = None
+    policyName: Optional[str] = None
     """Instrument specific name to use when locating a policy or configuration
     file in the file system."""
 
-    obsDataPackage = None
+    obsDataPackage: Optional[str] = None
     """Name of the package containing the text curated calibration files.
     Usually a obs _data package.  If `None` no curated calibration files
     will be read. (`str`)"""
