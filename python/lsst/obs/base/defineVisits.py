@@ -41,7 +41,6 @@ from lsst.daf.butler import (
     DimensionGraph,
     DimensionRecord,
     Timespan,
-    TIMESPAN_FIELD_SPECS,
 )
 
 import lsst.geom
@@ -370,39 +369,38 @@ class DefineVisitsTask(Task):
 
         # Construct the actual DimensionRecords.
         return _VisitRecords(
-            visit=self.universe["visit"].RecordClass.fromDict({
-                "instrument": definition.instrument,
-                "id": definition.id,
-                "name": definition.name,
-                "physical_filter": physical_filter,
-                "target_name": target_name,
-                "science_program": science_program,
-                "zenith_angle": zenith_angle,
-                "visit_system": self.groupExposures.getVisitSystem()[0],
-                "exposure_time": exposure_time,
-                TIMESPAN_FIELD_SPECS.begin.name: timespan.begin,
-                TIMESPAN_FIELD_SPECS.end.name: timespan.end,
-                "region": visitRegion,
+            visit=self.universe["visit"].RecordClass(
+                instrument=definition.instrument,
+                id=definition.id,
+                name=definition.name,
+                physical_filter=physical_filter,
+                target_name=target_name,
+                science_program=science_program,
+                zenith_angle=zenith_angle,
+                visit_system=self.groupExposures.getVisitSystem()[0],
+                exposure_time=exposure_time,
+                timespan=timespan,
+                region=visitRegion,
                 # TODO: no seeing value in exposure dimension records, so we can't
                 # set that here.  But there are many other columns that both
                 # dimensions should probably have as well.
-            }),
+            ),
             visit_definition=[
-                self.universe["visit_definition"].RecordClass.fromDict({
-                    "instrument": definition.instrument,
-                    "visit": definition.id,
-                    "exposure": exposure.id,
-                    "visit_system": self.groupExposures.getVisitSystem()[0],
-                })
+                self.universe["visit_definition"].RecordClass(
+                    instrument=definition.instrument,
+                    visit=definition.id,
+                    exposure=exposure.id,
+                    visit_system=self.groupExposures.getVisitSystem()[0],
+                )
                 for exposure in definition.exposures
             ],
             visit_detector_region=[
-                self.universe["visit_detector_region"].RecordClass.fromDict({
-                    "instrument": definition.instrument,
-                    "visit": definition.id,
-                    "detector": detectorId,
-                    "region": detectorRegion,
-                })
+                self.universe["visit_detector_region"].RecordClass(
+                    instrument=definition.instrument,
+                    visit=definition.id,
+                    detector=detectorId,
+                    region=detectorRegion,
+                )
                 for detectorId, detectorRegion in visitDetectorRegions.items()
             ]
         )
