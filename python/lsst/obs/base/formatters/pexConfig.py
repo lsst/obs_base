@@ -31,7 +31,7 @@ from typing import (
     Type,
 )
 
-from lsst.utils import doImport
+from lsst.pex.config import Config
 from lsst.daf.butler.formatters.file import FileFormatter
 
 
@@ -47,7 +47,7 @@ class PexConfigFormatter(FileFormatter):
         ----------
         path : `str`
             Path to use to open the file.
-        pytype : `type`
+        pytype : `type`, optional
             Class to use to read the config file.
 
         Returns
@@ -56,31 +56,13 @@ class PexConfigFormatter(FileFormatter):
             Instance of class ``pytype`` read from config file. `None`
             if the file could not be opened.
         """
-        if pytype is None:
-            raise RuntimeError("A python type is always required for reading pex_config Config files")
-
         if not os.path.exists(path):
             return None
-        instance = pytype()
-        # Configs can only be loaded if you use the correct derived type,
-        # but we can't really store the correct derive type in the StorageClass
-        # because that'd be a huge proliferation of StorageClasses.
-        # Instead, we use a bit of a hack: try to load using the base-class
-        # Config, inspect the exception message to obtain the class we should
-        # have used, import that, and try it instead.
-        # TODO: clean this up, somehow.
-        try:
-            instance.load(path)
-            return instance
-        except AssertionError as err:
-            msg = str(err)
-            if not msg.startswith("config is of type"):
-                raise RuntimeError("Unexpected assertion; cannot infer Config class type.") from err
-            actualPyTypeStr = msg.split()[-1]
-        actualPyType = doImport(actualPyTypeStr)
-        instance = actualPyType()
-        instance.load(path)
-        return instance
+
+        # Automatically determine the Config class from the serialized form
+        with open(path, "r") as fd:
+            config_py = fd.read()
+        return Config._fromPython(config_py)
 
     def _writeFile(self, inMemoryDataset: Any) -> None:
         """Write the in memory dataset to file on disk.
