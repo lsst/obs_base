@@ -250,18 +250,6 @@ class ConvertRepoConfig(Config):
         dtype=bool,
         default=False,
     )
-    curatedCalibrations = ListField(
-        "Dataset types that are handled by `Instrument.writeCuratedCalibrations()` "
-        "and thus should not be converted using the standard calibration "
-        "conversion system.",
-        dtype=str,
-        default=["camera",
-                 "transmission_sensor",
-                 "transmission_filter",
-                 "transmission_optics",
-                 "transmission_atmosphere",
-                 "bfKernel"]
-    )
 
     @property
     def transfer(self):
@@ -482,12 +470,12 @@ class ConvertRepoTask(Task):
 
         # Make converters for all Gen2 repos.
         converters = []
-        rootConverter = RootRepoConverter(task=self, root=root, subset=subset)
+        rootConverter = RootRepoConverter(task=self, root=root, subset=subset, instrument=self.instrument)
         converters.append(rootConverter)
         for calibRoot, run in calibs.items():
             if not os.path.isabs(calibRoot):
                 calibRoot = os.path.join(rootConverter.root, calibRoot)
-            converter = CalibRepoConverter(task=self, root=calibRoot, run=run,
+            converter = CalibRepoConverter(task=self, root=calibRoot, run=run, instrument=self.instrument,
                                            mapper=rootConverter.mapper,
                                            subset=rootConverter.subset)
             converters.append(converter)
@@ -496,7 +484,7 @@ class ConvertRepoTask(Task):
             if not os.path.isabs(runRoot):
                 runRoot = os.path.join(rootConverter.root, runRoot)
             converter = StandardRepoConverter(task=self, root=runRoot, run=spec.runName,
-                                              subset=rootConverter.subset)
+                                              instrument=self.instrument, subset=rootConverter.subset)
             converters.append(converter)
 
         # Register the instrument if we're configured to do so.

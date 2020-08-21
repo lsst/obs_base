@@ -58,7 +58,7 @@ class CalibRepoConverter(RepoConverter):
 
     def isDatasetTypeSpecial(self, datasetTypeName: str) -> bool:
         # Docstring inherited from RepoConverter.
-        return datasetTypeName in self.task.config.curatedCalibrations
+        return datasetTypeName in self.instrument.getCuratedCalibrationNames()
 
     def iterMappings(self) -> Iterator[Tuple[str, CameraMapperMapping]]:
         # Docstring inherited from RepoConverter.
