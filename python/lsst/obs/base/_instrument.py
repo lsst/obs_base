@@ -78,21 +78,24 @@ class Instrument(metaclass=ABCMeta):
     Usually a obs _data package.  If `None` no curated calibration files
     will be read. (`str`)"""
 
-    standardCuratedDatasetTypes = tuple(StandardCuratedCalibrationDatasetTypes)
+    standardCuratedDatasetTypes: Set[str] = frozenset(StandardCuratedCalibrationDatasetTypes)
     """The dataset types expected to be obtained from the obsDataPackage.
 
     These dataset types are all required to have standard definitions and
     must be known to the base class.  Clearing this list will prevent
     any of these calibrations from being stored. If a dataset type is not
     known to a specific instrument it can still be included in this list
-    since the data package is the source of truth. (`tuple` of `str`)
+    since the data package is the source of truth. (`set` of `str`)
     """
 
-    additionalCuratedDatasetTypes: Tuple[str, ...] = ()
-    """Curated dataset types specific to this particular instrument.
+    additionalCuratedDatasetTypes: Set[str] = frozenset()
+    """Curated dataset types specific to this particular instrument that do
+    not follow the standard organization found in obs data packages.
 
-    These are the dataset types written by
-    `writeAdditionalCuratedCalibrations`. (`tuple` of `str`)"""
+    These are the instrument-specific dataset types written by
+    `writeAdditionalCuratedCalibrations` in addition to the calibrations
+    found in obs data packages that follow the standard scheme.
+    (`set` of `str`)"""
 
     @property
     @abstractmethod
@@ -124,7 +127,7 @@ class Instrument(metaclass=ABCMeta):
 
         Returns
         -------
-        names : `tuple` of `str`
+        names : `set` of `str`
             The dataset type names of all curated calibrations. This will
             include the standard curated calibrations even if the particular
             instrument does not support them.
@@ -139,7 +142,10 @@ class Instrument(metaclass=ABCMeta):
         # Do not check the data packages for calibrations for now.
         # Camera is a special dataset type that is also handled as a
         # curated calibration.
-        return set(("camera",) + cls.standardCuratedDatasetTypes + cls.additionalCuratedDatasetTypes)
+        curated = {"camera"}
+        curated.update(cls.standardCuratedDatasetTypes)
+        curated.update(cls.additionalCuratedDatasetTypes)
+        return curated
 
     @abstractmethod
     def getCamera(self):
