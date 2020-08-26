@@ -25,8 +25,9 @@ __all__ = ("Instrument", "makeExposureRecordFromObsInfo", "addUnboundedCalibrati
 
 import os.path
 from abc import ABCMeta, abstractmethod
-from typing import Any, Tuple, TYPE_CHECKING
+from typing import Any, Optional, Set, Sequence, Tuple, TYPE_CHECKING
 import astropy.time
+from functools import lru_cache
 
 from lsst.afw.cameraGeom import Camera
 from lsst.daf.butler import (
@@ -62,30 +63,40 @@ class Instrument(metaclass=ABCMeta):
     arguments.
     """
 
-    configPaths = ()
+    configPaths: Sequence[str] = ()
     """Paths to config files to read for specific Tasks.
 
     The paths in this list should contain files of the form `task.py`, for
     each of the Tasks that requires special configuration.
     """
 
-    policyName = None
+    policyName: Optional[str] = None
     """Instrument specific name to use when locating a policy or configuration
     file in the file system."""
 
-    obsDataPackage = None
+    obsDataPackage: Optional[str] = None
     """Name of the package containing the text curated calibration files.
     Usually a obs _data package.  If `None` no curated calibration files
     will be read. (`str`)"""
 
-    standardCuratedDatasetTypes = tuple(StandardCuratedCalibrationDatasetTypes)
+    standardCuratedDatasetTypes: Set[str] = frozenset(StandardCuratedCalibrationDatasetTypes)
     """The dataset types expected to be obtained from the obsDataPackage.
+
     These dataset types are all required to have standard definitions and
     must be known to the base class.  Clearing this list will prevent
     any of these calibrations from being stored. If a dataset type is not
     known to a specific instrument it can still be included in this list
-    since the data package is the source of truth.
+    since the data package is the source of truth. (`set` of `str`)
     """
+
+    additionalCuratedDatasetTypes: Set[str] = frozenset()
+    """Curated dataset types specific to this particular instrument that do
+    not follow the standard organization found in obs data packages.
+
+    These are the instrument-specific dataset types written by
+    `writeAdditionalCuratedCalibrations` in addition to the calibrations
+    found in obs data packages that follow the standard scheme.
+    (`set` of `str`)"""
 
     @property
     @abstractmethod
@@ -98,7 +109,6 @@ class Instrument(metaclass=ABCMeta):
     def __init__(self):
         self.filterDefinitions.reset()
         self.filterDefinitions.defineFilters()
-        self._obsDataPackageDir = None
 
     @classmethod
     @abstractmethod
@@ -110,6 +120,39 @@ class Instrument(metaclass=ABCMeta):
         abbreviation of the full name.
         """
         raise NotImplementedError()
+
+    @classmethod
+    @lru_cache()
+    def getCuratedCalibrationNames(cls) -> Set[str]:
+        """Return the names of all the curated calibration dataset types.
+
+        Returns
+        -------
+        names : `set` of `str`
+            The dataset type names of all curated calibrations. This will
+            include the standard curated calibrations even if the particular
+            instrument does not support them.
+
+        Notes
+        -----
+        The returned list does not indicate whether a particular dataset
+        is present in the Butler repository, simply that these are the
+        dataset types that are handled by ``writeCuratedCalibrations``.
+        """
+
+        # Camera is a special dataset type that is also handled as a
+        # curated calibration.
+        curated = {"camera"}
+
+        # Make a cursory attempt to filter out curated dataset types
+        # that are not present for this instrument
+        for datasetTypeName in cls.standardCuratedDatasetTypes:
+            calibPath = cls._getSpecificCuratedCalibrationPath(datasetTypeName)
+            if calibPath is not None:
+                curated.add(datasetTypeName)
+
+        curated.update(cls.additionalCuratedDatasetTypes)
+        return frozenset(curated)
 
     @abstractmethod
     def getCamera(self):
@@ -127,18 +170,20 @@ class Instrument(metaclass=ABCMeta):
         """
         raise NotImplementedError()
 
-    @property
-    def obsDataPackageDir(self):
-        """The root of the obs package that provides specializations for
-        this instrument (`str`).
+    @classmethod
+    @lru_cache()
+    def getObsDataPackageDir(cls):
+        """The root of the obs data package that provides specializations for
+        this instrument.
+
+        returns
+        -------
+        dir : `str`
+            The root of the relevat obs data package.
         """
-        if self.obsDataPackage is None:
+        if cls.obsDataPackage is None:
             return None
-        if self._obsDataPackageDir is None:
-            # Defer any problems with locating the package until
-            # we need to find it.
-            self._obsDataPackageDir = getPackageDir(self.obsDataPackage)
-        return self._obsDataPackageDir
+        return getPackageDir(cls.obsDataPackage)
 
     @staticmethod
     def fromName(name: str, registry: Registry) -> Instrument:
@@ -349,6 +394,34 @@ class Instrument(metaclass=ABCMeta):
                                       **definition)
             self._writeSpecificCuratedCalibrationDatasets(butler, datasetType, run=run)
 
+    @classmethod
+    def _getSpecificCuratedCalibrationPath(cls, datasetTypeName):
+        """Return the path of the curated calibration directory.
+
+        Parameters
+        ----------
+        datasetTypeName : `str`
+            The name of the standard dataset type to find.
+
+        Returns
+        -------
+        path : `str`
+            The path to the standard curated data directory.  `None` if the
+            dataset type is not found or the obs data package is not
+            available.
+        """
+        if cls.getObsDataPackageDir() is None:
+            # if there is no data package then there can't be datasets
+            return None
+
+        calibPath = os.path.join(cls.getObsDataPackageDir(), cls.policyName,
+                                 datasetTypeName)
+
+        if os.path.exists(calibPath):
+            return calibPath
+
+        return None
+
     def _writeSpecificCuratedCalibrationDatasets(self, butler, datasetType, run=None):
         """Write standardized curated calibration datasets for this specific
         dataset type from an obs data package.
@@ -373,14 +446,8 @@ class Instrument(metaclass=ABCMeta):
         `~lsst.pipe.tasks.read_curated_calibs.read_all` and provide standard
         metadata.
         """
-        if self.obsDataPackageDir is None:
-            # if there is no data package then there can't be datasets
-            return
-
-        calibPath = os.path.join(self.obsDataPackageDir, self.policyName,
-                                 datasetType.name)
-
-        if not os.path.exists(calibPath):
+        calibPath = self._getSpecificCuratedCalibrationPath(datasetType.name)
+        if calibPath is None:
             return
 
         # Register the dataset type

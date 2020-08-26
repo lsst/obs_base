@@ -88,7 +88,7 @@ class RootRepoConverter(StandardRepoConverter):
             super().isDatasetTypeSpecial(datasetTypeName)
             or datasetTypeName in ("raw", "ref_cat", "ref_cat_config")
             # in Gen2, some of these are in the root repo, not a calib repo
-            or datasetTypeName in self.task.config.curatedCalibrations
+            or datasetTypeName in self.instrument.getCuratedCalibrationNames()
         )
 
     def getSpecialDirectories(self) -> List[str]:

@@ -50,6 +50,7 @@ if TYPE_CHECKING:
     from .convertRepo import ConvertRepoTask
     from .scanner import PathElementHandler
     from lsst.daf.butler import StorageClass, Registry, SkyPixDimension, FormatterParameter
+    from .._instrument import Instrument
 
 
 @dataclass
@@ -187,6 +188,8 @@ class RepoConverter(ABC):
     root : `str`
         Root of the Gen2 repo being converted.  Will be converted to an
         absolute path, resolving symbolic links and ``~``, if necessary.
+    instrument : `Instrument`
+        Gen3 instrument class to use for this conversion.
     collections : `list` of `str`
         Gen3 collections with which all converted datasets should be
         associated.
@@ -204,10 +207,11 @@ class RepoConverter(ABC):
     implementation.
     """
 
-    def __init__(self, *, task: ConvertRepoTask, root: str, run: Optional[str],
+    def __init__(self, *, task: ConvertRepoTask, root: str, instrument: Instrument, run: Optional[str],
                  subset: Optional[ConversionSubset] = None):
         self.task = task
         self.root = os.path.realpath(os.path.expanduser(root))
+        self.instrument = instrument
         self.subset = subset
         self._run = run
         self._repoWalker = None  # Created in prep
