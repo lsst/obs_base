@@ -862,21 +862,6 @@ donut_schema:
     storage: FitsCatalogStorage
     python: lsst.afw.table.SourceCatalog
     template: schema/donut.fits
-qaTableCoadd:
-    persistable: None
-    python: builtins.str
-    storage: TextStorage
-    template: plots/%(filter)s/tract-%(tract)d/%(description)s.parq
-qaTableColor:
-    persistable: None
-    python: builtins.str
-    storage: TextStorage
-    template: plots/color/tract-%(tract)d/%(description)s.parq
-qaTableVisit:
-    persistable: None
-    python: builtins.str
-    storage: TextStorage
-    template: ''
 skyCorr_config:  # Configuration for sky correction
     persistable: Config
     storage: ConfigStorage
@@ -1339,7 +1324,7 @@ analysisVisitTable:
     persistable: ignored
     storage: ParquetStorage
     python: lsst.pipe.tasks.parquetTable.ParquetTable
-    template: plots/%(filter)s/tract-%(tract)d/visit-%(visit)d/%(tract)d_%(visit)d.parq
+    template: plots/%(filter)s/tract-%(tract)d/visit-%(visit)d%(subdir)s/%(tract)d_%(visit)d.parq
 analysisVisitTable_commonZp:
     description: >
         Per-visit source table (for specific tract) assembled by pipe_analysis scripts,
@@ -1347,28 +1332,28 @@ analysisVisitTable_commonZp:
     persistable: ignored
     storage: ParquetStorage
     python: lsst.pipe.tasks.parquetTable.ParquetTable
-    template: plots/%(filter)s/tract-%(tract)d/visit-%(visit)d/%(tract)d_%(visit)d_commonZp.parq
+    template: plots/%(filter)s/tract-%(tract)d/visit-%(visit)d%(subdir)s/%(tract)d_%(visit)d_commonZp.parq
 analysisCoaddTable_forced:
     description: >
         Per-tract object table assembled by pipe_analysis scripts (forced photometry).
     persistable: ignored
     storage: ParquetStorage
     python: lsst.pipe.tasks.parquetTable.ParquetTable
-    template: plots/%(filter)s/tract-%(tract)d/%(tract)d_forced.parq
+    template: plots/%(filter)s/tract-%(tract)d%(subdir)s/%(tract)d_forced.parq
 analysisCoaddTable_unforced:
     description: >
         Per-tract object table assembled by pipe_analysis scripts (unforced photometry).
     persistable: ignored
     storage: ParquetStorage
     python: lsst.pipe.tasks.parquetTable.ParquetTable
-    template: plots/%(filter)s/tract-%(tract)d/%(tract)d_unforced.parq
+    template: plots/%(filter)s/tract-%(tract)d%(subdir)s/%(tract)d_unforced.parq
 analysisColorTable:
     description: >
         Principal color table assembled by pipe_analysis scripts.
     persistable: ignored
     storage: ParquetStorage
     python: lsst.pipe.tasks.parquetTable.ParquetTable
-    template: plots/color/tract-%(tract)d/%(tract)d_color.parq
+    template: plots/color/tract-%(tract)d%(subdir)s/%(tract)d_color.parq
 visitMatchTable:
     description: >
         Tract-level table of visit-match IDs and distances for each visit.
