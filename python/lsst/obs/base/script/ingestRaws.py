@@ -19,14 +19,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
-
 from lsst.daf.butler import Butler
+from lsst.daf.butler.core.utils import findFileResources
 from lsst.pipe.base.configOverrides import ConfigOverrides
 from lsst.utils import doImport
 
 
-def ingestRaws(repo, output_run, config=None, config_file=None, directory=None, file=None, transfer="auto",
+def ingestRaws(repo, locations, regex, output_run, config=None, config_file=None, transfer="auto",
                ingest_task="lsst.obs.base.RawIngestTask"):
     """Ingests raw frames into the butler registry
 
@@ -34,16 +33,17 @@ def ingestRaws(repo, output_run, config=None, config_file=None, directory=None, 
     ----------
     repo : `str`
         URI to the repository.
+    locations : `list` [`str`]
+        Files to ingest and directories to search for files that match
+        ``regex`` to ingest.
+    regex : `str`
+        Regex string used to find files in directories listed in locations.
     output_run : `str`
         The path to the location, the run, where datasets should be put.
     config : `dict` [`str`, `str`] or `None`
         Key-vaule pairs to apply as overrides to the ingest config.
     config_file : `str` or `None`
         Path to a config file that contains overrides to the ingest config.
-    directory : `str` or `None`
-        Path to the directory containing the raws to ingest.
-    file : `str` or `None`
-        Path to a file containing raws to ingest.
     transfer : `str` or None
         The external data transfer type, by default "auto".
     ingest_task : `str`
@@ -67,9 +67,5 @@ def ingestRaws(repo, output_run, config=None, config_file=None, directory=None, 
             configOverrides.addValueOverride(name, value)
     configOverrides.applyTo(ingestConfig)
     ingester = TaskClass(config=ingestConfig, butler=butler)
-    files = [file] if file is not None else []
-    if directory is not None:
-        suffixes = (".fits", ".fits.gz", ".fits.fz")
-        files.extend(
-            [os.path.join(directory, f) for f in os.listdir(directory) if f.lower().endswith(suffixes)])
+    files = findFileResources(locations, regex)
     ingester.run(files, run=output_run)

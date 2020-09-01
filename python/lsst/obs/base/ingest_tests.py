@@ -178,9 +178,8 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             The external data transfer type.
         """
         runner = LogCliRunner()
-        result = runner.invoke(butlerCli, ["ingest-raws", self.root,
+        result = runner.invoke(butlerCli, ["ingest-raws", self.root, self.file,
                                            "--output-run", self.outputRun,
-                                           "--file", self.file,
                                            "--transfer", transfer,
                                            "--ingest-task", self.rawIngestTask])
         self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")

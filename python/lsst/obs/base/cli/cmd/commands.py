@@ -21,11 +21,15 @@
 
 import click
 
-from lsst.daf.butler.cli.opt import (repo_argument, config_option, config_file_option, run_option,
-                                     transfer_option)
+from lsst.daf.butler.cli.opt import (repo_argument, config_option, config_file_option, locations_argument,
+                                     regex_option, run_option, transfer_option)
 from lsst.daf.butler.cli.utils import (cli_handle_exception, split_commas, typeStrAcceptsMultiple)
 from ..opt import instrument_argument, instrument_option
 from ... import script
+
+
+# regular expression that can be used to find supported fits file extensions.
+fits_re = r"\.fit[s]?\b"
 
 
 @click.command(short_help="Convert a gen2 repo to gen3.")
@@ -67,12 +71,14 @@ def define_visits(*args, **kwargs):
 
 @click.command(short_help="Ingest raw frames.")
 @repo_argument(required=True)
+@locations_argument(help="LOCATIONS specifies files to ingest and/or locations to search for files.",
+                    required=True)
+@regex_option(default=fits_re,
+              help="Regex string used to find files in directories listed in LOCATIONS. "
+                   "Searches for fits files by default.")
 @config_option(metavar="TEXT=TEXT", multiple=True)
 @config_file_option(type=click.Path(exists=True, writable=False, file_okay=True, dir_okay=False))
 @run_option(required=False)
-@click.option("-d", "--dir", "directory",
-              help="The path to the directory containing the raws to ingest.")
-@click.option("-f", "--file", help="The name of a file containing raws to ingest.")
 @transfer_option()
 @click.option("--ingest-task", default="lsst.obs.base.RawIngestTask", help="The fully qualified class name "
               "of the ingest task to use.")

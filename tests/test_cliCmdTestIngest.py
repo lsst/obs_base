@@ -26,18 +26,20 @@ import unittest
 
 from lsst.daf.butler.tests import CliCmdTestBase
 from lsst.obs.base.cli.cmd import ingest_raws
+from lsst.obs.base.cli.cmd.commands import fits_re
 
 
 class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
 
     @staticmethod
     def defaultExpected():
-        return dict(directory=None,
-                    file=None,
-                    transfer="auto",
+        return dict(config={},
+                    config_file=None,
                     ingest_task="lsst.obs.base.RawIngestTask",
-                    config={},
-                    config_file=None)
+                    locations=(),
+                    output_run=None,
+                    regex=fits_re,
+                    transfer="auto")
 
     @staticmethod
     def command():
@@ -45,46 +47,61 @@ class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
 
     def test_repoAndOutput(self):
         """Test the most basic required arguments, repo and output run"""
-        self.run_test(["ingest-raws", "here",
+        self.run_test(["ingest-raws", "repo", "resources",
                        "--output-run", "out"],
-                      self.makeExpected(repo="here", output_run="out"))
+                      self.makeExpected(repo="repo",
+                                        locations=("resources",),
+                                        output_run="out"))
 
     def test_configMulti(self):
         """Test config overrides"""
-        self.run_test(["ingest-raws", "here",
+        self.run_test(["ingest-raws", "repo", "resources",
                        "--output-run", "out",
                        "-c", "foo=1",
                        "--config", "bar=2,baz=3"],
-                      self.makeExpected(repo="here",
+                      self.makeExpected(repo="repo",
+                                        locations=("resources",),
                                         output_run="out",
                                         config=dict(foo="1", bar="2", baz="3")))
 
     def test_configFile(self):
         """Test config file override"""
         configFile = "path/to/file.txt"
-        self.run_test(["ingest-raws", "here",
+        self.run_test(["ingest-raws", "repo", "resources",
                        "--output-run", "out",
                        "--config-file", configFile],
-                      self.makeExpected(repo="here",
+                      self.makeExpected(repo="repo",
+                                        locations=("resources",),
                                         output_run="out",
                                         config_file=configFile),
                       withTempFile=configFile)
 
     def test_transfer(self):
         """Test the transfer argument"""
-        self.run_test(["ingest-raws", "here",
+        self.run_test(["ingest-raws", "repo", "resources",
                        "--output-run", "out",
                        "--transfer", "symlink"],
-                      self.makeExpected(repo="here",
+                      self.makeExpected(repo="repo",
+                                        locations=("resources",),
                                         output_run="out",
                                         transfer="symlink"))
 
     def test_ingestTask(self):
         """Test the ingest task argument"""
-        self.run_test(["ingest-raws", "here",
+        self.run_test(["ingest-raws", "repo", "resources",
                        "--output-run", "out",
                        "--ingest-task", "foo.bar.baz"],
-                      self.makeExpected(repo="here", output_run="out", ingest_task="foo.bar.baz"))
+                      self.makeExpected(repo="repo",
+                                        locations=("resources",),
+                                        output_run="out",
+                                        ingest_task="foo.bar.baz"))
+
+    def test_locations(self):
+        """Test that the locations argument accepts multiple inputs and splits
+        commas."""
+        self.run_test(["ingest-raws", "repo", "in/directory/,in/another/dir/", "other/file.fits"],
+                      self.makeExpected(repo="repo",
+                                        locations=("in/directory/", "in/another/dir/", "other/file.fits")))
 
 
 if __name__ == "__main__":
