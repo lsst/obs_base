@@ -31,12 +31,14 @@ __all__ = [
 
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
+import itertools
 import dataclasses
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from multiprocessing import Pool
 
 from lsst.daf.butler import (
     Butler,
+    DataCoordinate,
     DataId,
     DimensionGraph,
     DimensionRecord,
@@ -421,6 +423,45 @@ class DefineVisitsTask(Task):
             ]
         )
 
+    def _expandExposureId(self, dataId: DataId) -> DataCoordinate:
+        """Return the expanded version of an exposure ID.
+
+        A private method to allow ID expansion in a pool without resorting
+        to local callables.
+
+        Parameters
+        ----------
+        dataId : `dict` or `DataCoordinate`
+            Exposure-level data ID.
+
+        Returns
+        -------
+        expanded : `DataCoordinate`
+            A data ID that includes full metadata for all exposure dimensions.
+        """
+        dimensions = DimensionGraph(self.universe, names=["exposure"])
+        return self.butler.registry.expandDataId(dataId, graph=dimensions)
+
+    def _buildVisitRecordsSingle(self, args) -> _VisitRecords:
+        """Build the DimensionRecords associated with a visit and collection.
+
+        A wrapper for `_buildVisitRecords` to allow it to be run as part of
+        a pool without resorting to local callables.
+
+        Parameters
+        ----------
+        args : `tuple` [`VisitDefinition`, any]
+            A tuple consisting of the ``definition`` and ``collections``
+            arguments to `_buildVisitRecords`, in that order.
+
+        Results
+        -------
+        records : `_VisitRecords`
+            Struct containing DimensionRecords for the visit, including
+            associated dimension elements.
+        """
+        return self._buildVisitRecords(args[0], collections=args[1])
+
     def run(self, dataIds: Iterable[DataId], *,
             pool: Optional[Pool] = None,
             processes: int = 1,
@@ -449,8 +490,7 @@ class DefineVisitsTask(Task):
         mapFunc = map if pool is None else pool.imap_unordered
         # Normalize, expand, and deduplicate data IDs.
         self.log.info("Preprocessing data IDs.")
-        dimensions = DimensionGraph(self.universe, names=["exposure"])
-        dataIds = set(mapFunc(lambda d: self.butler.registry.expandDataId(d, graph=dimensions), dataIds))
+        dataIds = set(mapFunc(self._expandExposureId, dataIds))
         if not dataIds:
             raise RuntimeError("No exposures given.")
         # Extract exposure DimensionRecords, check that there's only one
@@ -491,7 +531,8 @@ class DefineVisitsTask(Task):
         # This is the only parallel step, but it _should_ be the most expensive
         # one (unless DB operations are slow).
         self.log.info("Computing regions and other metadata for %d visit(s).", len(definitions))
-        allRecords = mapFunc(lambda d: self._buildVisitRecords(d, collections=collections), definitions)
+        allRecords = mapFunc(self._buildVisitRecordsSingle,
+                             zip(definitions, itertools.repeat(collections)))
         # Iterate over visits and insert dimension data, one transaction per
         # visit.
         for visitRecords in allRecords:
