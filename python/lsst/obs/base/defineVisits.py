@@ -321,6 +321,22 @@ class DefineVisitsTask(Task):
         self.makeSubtask("groupExposures")
         self.makeSubtask("computeVisitRegions", butler=self.butler)
 
+    @classmethod
+    # WARNING: this method hardcodes the parameters to pipe.base.Task.__init__.
+    # Nobody seems to know a way to delegate them to Task code.
+    def _makeTask(cls, config: DefineVisitsConfig, butler: Butler, name: str, parentTask: Task):
+        """Construct a DefineVisitsTask using only positional arguments.
+
+        Parameters
+        ----------
+        All parameters are as for `DefineVisitsTask`.
+        """
+        return cls(config=config, butler=butler, name=name, parentTask=parentTask)
+
+    # Overrides Task.__reduce__
+    def __reduce__(self):
+        return (self._makeTask, (self.config, self.butler, self._name, self._parentTask))
+
     ConfigClass = DefineVisitsConfig
 
     _DefaultName = "defineVisits"
