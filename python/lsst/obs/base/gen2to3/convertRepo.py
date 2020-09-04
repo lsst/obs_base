@@ -500,15 +500,28 @@ class ConvertRepoTask(Task):
         # 'raw' dataset type).
         rootConverter.runRawIngest()
 
-        # Write curated calibrations to all calibration repositories.
+        # Write curated calibrations to all calibration runs and
+        # also in the default collection.
         # Add new collections to the list of collections the butler was
         # initialized to pass to DefineVisitsTask, to deal with the (likely)
         # case the only 'camera' dataset in the repo will be one we're adding
         # here.
         if self.config.doWriteCuratedCalibrations:
+            butler3 = Butler3(butler=self.butler3)
+            calibCollections = set()
             for run in calibs.values():
-                butler3 = Butler3(butler=self.butler3, run=run)
-                self.instrument.writeCuratedCalibrations(butler3)
+                self.instrument.writeCuratedCalibrations(butler3, run=run)
+                calibCollections.add(run)
+            # Ensure that we have the curated calibrations even if there
+            # is no calibration conversion.  It's possible that the default
+            # calib collection will have been specified (in fact the
+            # butler convert script enforces that behavior for now) so
+            # we check for the default situation
+            # Assume we know the default rather than letting
+            # writeCuratedCalibrations default itself
+            defaultCalibCollection = self.instrument.makeCollectionName("calib")
+            if defaultCalibCollection not in calibCollections:
+                self.instrument.writeCuratedCalibrations(butler3, run=defaultCalibCollection)
 
         # Define visits (also does nothing if we weren't configurd to convert
         # the 'raw' dataset type).

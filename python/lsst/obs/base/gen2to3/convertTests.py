@@ -146,8 +146,10 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
             self.collections.add("refcats")
         if self.skymapName is not None:
             self.collections.add("skymaps")
-        if self.gen2calib:
-            self.collections.add(self.instrumentClass.makeCollectionName("calib"))
+
+        # We always write a default calibration collection
+        # containing at least the camera
+        self.collections.add(self.instrumentClass.makeCollectionName("calib"))
 
     def tearDown(self):
         shutil.rmtree(self.gen3root, ignore_errors=True)
