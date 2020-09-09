@@ -21,13 +21,15 @@
 
 from __future__ import annotations
 
-__all__ = ("Instrument", "makeExposureRecordFromObsInfo", "addUnboundedCalibrationLabel", "loadCamera")
+__all__ = ("Instrument", "makeExposureRecordFromObsInfo", "loadCamera")
 
 import os.path
 from abc import ABCMeta, abstractmethod
+from collections import defaultdict
 from typing import Any, Optional, Set, Sequence, Tuple, TYPE_CHECKING
-import astropy.time
 from functools import lru_cache
+
+import astropy.time
 
 from lsst.afw.cameraGeom import Camera
 from lsst.daf.butler import (
@@ -47,12 +49,9 @@ if TYPE_CHECKING:
 # To be a standard text curated calibration means that we use a
 # standard definition for the corresponding DatasetType.
 StandardCuratedCalibrationDatasetTypes = {
-    "defects": {"dimensions": ("instrument", "detector", "calibration_label"),
-                "storageClass": "Defects"},
-    "qe_curve": {"dimensions": ("instrument", "detector", "calibration_label"),
-                 "storageClass": "QECurve"},
-    "crosstalk": {"dimensions": ("instrument", "detector", "calibration_label"),
-                  "storageClass": "CrosstalkCalib"},
+    "defects": {"dimensions": ("instrument", "detector"), "storageClass": "Defects"},
+    "qe_curve": {"dimensions": ("instrument", "detector"), "storageClass": "QECurve"},
+    "crosstalk": {"dimensions": ("instrument", "detector"), "storageClass": "CrosstalkCalib"},
 }
 
 
@@ -290,50 +289,6 @@ class Instrument(metaclass=ABCMeta):
         """
         raise NotImplementedError()
 
-    def writeCuratedCalibrations(self, butler, run=None):
-        """Write human-curated calibration Datasets to the given Butler with
-        the appropriate validity ranges.
-
-        Parameters
-        ----------
-        butler : `lsst.daf.butler.Butler`
-            Butler to use to store these calibrations.
-        run : `str`
-            Run to use for this collection of calibrations. If `None` the
-            collection name is worked out automatically from the instrument
-            name and other metadata.
-
-        Notes
-        -----
-        Expected to be called from subclasses.  The base method calls
-        ``writeCameraGeom`` and ``writeStandardTextCuratedCalibrations``.
-        """
-        # Need to determine the run for ingestion based on the instrument
-        # name and eventually the data package version. The camera geom
-        # is currently special in that it is not in the _data package.
-        if run is None:
-            run = self.makeCollectionName("calib")
-        butler.registry.registerCollection(run, type=CollectionType.RUN)
-        self.writeCameraGeom(butler, run=run)
-        self.writeStandardTextCuratedCalibrations(butler, run=run)
-        self.writeAdditionalCuratedCalibrations(butler, run=run)
-
-    def writeAdditionalCuratedCalibrations(self, butler, run=None):
-        """Write additional curated calibrations that might be instrument
-        specific and are not part of the standard set.
-
-        Default implementation does nothing.
-
-        Parameters
-        ----------
-        butler : `lsst.daf.butler.Butler`
-            Butler to use to store these calibrations.
-        run : `str`, optional
-            Name of the run to use to override the default run associated
-            with this Butler.
-        """
-        return
-
     def applyConfigOverrides(self, name, config):
         """Apply instrument-specific overrides for a task config.
 
@@ -350,27 +305,125 @@ class Instrument(metaclass=ABCMeta):
             if os.path.exists(path):
                 config.load(path)
 
-    def writeCameraGeom(self, butler, run=None):
-        """Write the default camera geometry to the butler repository
-        with an infinite validity range.
+    def writeCuratedCalibrations(self, butler: Butler, collection: Optional[str] = None,
+                                 suffixes: Sequence[str] = ()) -> None:
+        """Write human-curated calibration Datasets to the given Butler with
+        the appropriate validity ranges.
 
         Parameters
         ----------
         butler : `lsst.daf.butler.Butler`
-            Butler to receive these calibration datasets.
-        run : `str`, optional
-            Name of the run to use to override the default run associated
-            with this Butler.
-        """
+            Butler to use to store these calibrations.
+        collection : `str`, optional
+            Name to use for the calibration collection that associates all
+            datasets with a validity range.  If this collection already exists,
+            it must be a `~CollectionType.CALIBRATION` collection, and it must
+            not have any datasets that would conflict with those inserted by
+            this method.  If `None`, a collection name is worked out
+            automatically from the instrument name and other metadata by
+            calling ``makeCuratedCalibrationCollectionName``, but this
+            default name may not work well for long-lived repositories unless
+            one or more ``suffixes`` are also provided (and changed every time
+            curated calibrations are ingested).
+        suffixes : `Sequence` [ `str` ], optional
+            Name suffixes to append to collection names, after concatenating
+            them with the standard collection name delimeter.  If provided,
+            these are appended to the names of the `~CollectionType.RUN`
+            collections that datasets are inserted directly into, as well the
+            `~CollectionType.CALIBRATION` collection if it is generated
+            automatically (i.e. if ``collection is None``).
 
-        datasetType = DatasetType("camera", ("instrument", "calibration_label"), "Camera",
+        Notes
+        -----
+        Expected to be called from subclasses.  The base method calls
+        ``writeCameraGeom``, ``writeStandardTextCuratedCalibrations``,
+        and ``writeAdditionalCuratdCalibrations``.
+        """
+        # Delegate registration of collections (and creating names for them)
+        # to other methods so they can be called independently with the same
+        # preconditions.  Collection registration is idempotent, so this is
+        # safe, and while it adds a bit of overhead, as long as it's one
+        # registration attempt per method (not per dataset or dataset type),
+        # that's negligible.
+        self.writeCameraGeom(butler, collection, *suffixes)
+        self.writeStandardTextCuratedCalibrations(butler, collection, suffixes=suffixes)
+        self.writeAdditionalCuratedCalibrations(butler, collection, suffixes=suffixes)
+
+    def writeAdditionalCuratedCalibrations(self, butler: Butler, collection: Optional[str] = None,
+                                           suffixes: Sequence[str] = ()) -> None:
+        """Write additional curated calibrations that might be instrument
+        specific and are not part of the standard set.
+
+        Default implementation does nothing.
+
+        Parameters
+        ----------
+        butler : `lsst.daf.butler.Butler`
+            Butler to use to store these calibrations.
+        collection : `str`, optional
+            Name to use for the calibration collection that associates all
+            datasets with a validity range.  If this collection already exists,
+            it must be a `~CollectionType.CALIBRATION` collection, and it must
+            not have any datasets that would conflict with those inserted by
+            this method.  If `None`, a collection name is worked out
+            automatically from the instrument name and other metadata by
+            calling ``makeCuratedCalibrationCollectionName``, but this
+            default name may not work well for long-lived repositories unless
+            one or more ``suffixes`` are also provided (and changed every time
+            curated calibrations are ingested).
+        suffixes : `Sequence` [ `str` ], optional
+            Name suffixes to append to collection names, after concatenating
+            them with the standard collection name delimeter.  If provided,
+            these are appended to the names of the `~CollectionType.RUN`
+            collections that datasets are inserted directly into, as well the
+            `~CollectionType.CALIBRATION` collection if it is generated
+            automatically (i.e. if ``collection is None``).
+        """
+        return
+
+    def writeCameraGeom(self, butler: Butler, collection: Optional[str] = None,
+                        suffixes: Sequence[str] = ()) -> None:
+        """Write the default camera geometry to the butler repository and
+        associate it with the appropriate validity range in a calibration
+        collection.
+
+        Parameters
+        ----------
+        butler : `lsst.daf.butler.Butler`
+            Butler to use to store these calibrations.
+        collection : `str`, optional
+            Name to use for the calibration collection that associates all
+            datasets with a validity range.  If this collection already exists,
+            it must be a `~CollectionType.CALIBRATION` collection, and it must
+            not have any datasets that would conflict with those inserted by
+            this method.  If `None`, a collection name is worked out
+            automatically from the instrument name and other metadata by
+            calling ``makeCuratedCalibrationCollectionName``, but this
+            default name may not work well for long-lived repositories unless
+            one or more ``suffixes`` are also provided (and changed every time
+            curated calibrations are ingested).
+        suffixes : `Sequence` [ `str` ], optional
+            Name suffixes to append to collection names, after concatenating
+            them with the standard collection name delimeter.  If provided,
+            these are appended to the names of the `~CollectionType.RUN`
+            collections that datasets are inserted directly into, as well the
+            `~CollectionType.CALIBRATION` collection if it is generated
+            automatically (i.e. if ``collection is None``).
+        """
+        if collection is None:
+            collection = self.makeCuratedCalibrationCollectionName(*suffixes)
+        butler.registry.registerCollection(collection, type=CollectionType.CALIBRATION)
+        run = self.makeUnboundedCalibrationRunName(*suffixes)
+        butler.registry.registerRun(run)
+        datasetType = DatasetType("camera", ("instrument",), "Camera", isCalibration=True,
                                   universe=butler.registry.dimensions)
         butler.registry.registerDatasetType(datasetType)
-        unboundedDataId = addUnboundedCalibrationLabel(butler.registry, self.getName())
         camera = self.getCamera()
-        butler.put(camera, datasetType, unboundedDataId, run=run)
+        ref = butler.put(camera, datasetType, {"instrument": self.getName()}, run=run)
+        butler.registry.certify(collection, [ref], Timespan(begin=None, end=None))
 
-    def writeStandardTextCuratedCalibrations(self, butler, run=None):
+    def writeStandardTextCuratedCalibrations(self, butler: Butler, collection: Optional[str] = None,
+                                             suffixes: Sequence[str] = ()) -> None:
         """Write the set of standardized curated text calibrations to
         the repository.
 
@@ -378,11 +431,29 @@ class Instrument(metaclass=ABCMeta):
         ----------
         butler : `lsst.daf.butler.Butler`
             Butler to receive these calibration datasets.
-        run : `str`, optional
-            Name of the run to use to override the default run associated
-            with this Butler.
+        collection : `str`, optional
+            Name to use for the calibration collection that associates all
+            datasets with a validity range.  If this collection already exists,
+            it must be a `~CollectionType.CALIBRATION` collection, and it must
+            not have any datasets that would conflict with those inserted by
+            this method.  If `None`, a collection name is worked out
+            automatically from the instrument name and other metadata by
+            calling ``makeCuratedCalibrationCollectionName``, but this
+            default name may not work well for long-lived repositories unless
+            one or more ``suffixes`` are also provided (and changed every time
+            curated calibrations are ingested).
+        suffixes : `Sequence` [ `str` ], optional
+            Name suffixes to append to collection names, after concatenating
+            them with the standard collection name delimeter.  If provided,
+            these are appended to the names of the `~CollectionType.RUN`
+            collections that datasets are inserted directly into, as well the
+            `~CollectionType.CALIBRATION` collection if it is generated
+            automatically (i.e. if ``collection is None``).
         """
-
+        if collection is None:
+            collection = self.makeCuratedCalibrationCollectionName(*suffixes)
+        butler.registry.registerCollection(collection, type=CollectionType.CALIBRATION)
+        runs = set()
         for datasetTypeName in self.standardCuratedDatasetTypes:
             # We need to define the dataset types.
             if datasetTypeName not in StandardCuratedCalibrationDatasetTypes:
@@ -391,8 +462,9 @@ class Instrument(metaclass=ABCMeta):
             definition = StandardCuratedCalibrationDatasetTypes[datasetTypeName]
             datasetType = DatasetType(datasetTypeName,
                                       universe=butler.registry.dimensions,
+                                      isCalibration=True,
                                       **definition)
-            self._writeSpecificCuratedCalibrationDatasets(butler, datasetType, run=run)
+            self._writeSpecificCuratedCalibrationDatasets(butler, datasetType, collection, runs)
 
     @classmethod
     def _getSpecificCuratedCalibrationPath(cls, datasetTypeName):
@@ -422,7 +494,8 @@ class Instrument(metaclass=ABCMeta):
 
         return None
 
-    def _writeSpecificCuratedCalibrationDatasets(self, butler, datasetType, run=None):
+    def _writeSpecificCuratedCalibrationDatasets(self, butler: Butler, datasetType: DatasetType,
+                                                 collection: str, runs: Set[str], suffixes: Sequence[str]):
         """Write standardized curated calibration datasets for this specific
         dataset type from an obs data package.
 
@@ -432,9 +505,17 @@ class Instrument(metaclass=ABCMeta):
             Gen3 butler in which to put the calibrations.
         datasetType : `lsst.daf.butler.DatasetType`
             Dataset type to be put.
-        run : `str`, optional
-            Name of the run to use to override the default run associated
-            with this Butler.
+        collection : `str`
+            Name of the `~CollectionType.CALIBRATION` collection that
+            associates all datasets with validity ranges.  Must have been
+            registered prior to this call.
+        runs : `set` [ `str` ]
+            Names of runs that have already been registered by previous calls
+            and need not be registered again.  Should be updated by this
+            method as new runs are registered.
+        suffixes : `Sequence` [ `str` ]
+            Suffixes to append to run names when creating them from
+            ``CALIBDATE`` metadata, via calls to `makeCuratedCalibrationName`.
 
         Notes
         -----
@@ -457,9 +538,11 @@ class Instrument(metaclass=ABCMeta):
         # can -- we therefore have to defer import
         from lsst.pipe.tasks.read_curated_calibs import read_all
 
+        # Read calibs, registering a new run for each CALIBDATE as needed.
+        # We try to avoid registering runs multiple times as an optimization
+        # by putting them in the ``runs`` set that was passed in.
         camera = self.getCamera()
         calibsDict = read_all(calibPath, camera)[0]  # second return is calib type
-        dimensionRecords = []
         datasetRecords = []
         for det in calibsDict:
             times = sorted([k for k in calibsDict[det]])
@@ -468,27 +551,27 @@ class Instrument(metaclass=ABCMeta):
             times += [None]
             for calib, beginTime, endTime in zip(calibs, times[:-1], times[1:]):
                 md = calib.getMetadata()
-                calibrationLabel = f"{datasetType.name}/{md['CALIBDATE']}/{md['DETECTOR']}"
+                run = self.makeCuratedCalibrationRunName(md['CALIBDATE'], *suffixes)
+                if run not in runs:
+                    butler.registry.registerRun(run)
+                    runs.add(run)
                 dataId = DataCoordinate.standardize(
                     universe=butler.registry.dimensions,
                     instrument=self.getName(),
-                    calibration_label=calibrationLabel,
                     detector=md["DETECTOR"],
                 )
-                datasetRecords.append((calib, dataId))
-                dimensionRecords.append({
-                    "instrument": self.getName(),
-                    "name": calibrationLabel,
-                    "timespan": Timespan(beginTime, endTime),
-                })
+                datasetRecords.append((calib, dataId, run, Timespan(beginTime, endTime)))
 
-        # Second loop actually does the inserts and filesystem writes.
+        # Second loop actually does the inserts and filesystem writes.  We
+        # first do a butler.put on each dataset, inserting it into the run for
+        # its calibDate.  We remember those refs and group them by timespan, so
+        # we can vectorize the certify calls as much as possible.
+        refsByTimespan = defaultdict(list)
         with butler.transaction():
-            butler.registry.insertDimensionData("calibration_label", *dimensionRecords)
-            # TODO: vectorize these puts, once butler APIs for that become
-            # available.
-            for calib, dataId in datasetRecords:
-                butler.put(calib, datasetType, dataId, run=run)
+            for calib, dataId, run, timespan in datasetRecords:
+                refsByTimespan[timespan].append(butler.put(calib, datasetType, dataId, run=run))
+            for timespan, refs in refsByTimespan.items():
+                butler.registry.certify(collection, refs, timespan)
 
     @abstractmethod
     def makeDataIdTranslatorFactory(self) -> TranslatorFactory:
@@ -519,17 +602,73 @@ class Instrument(metaclass=ABCMeta):
             Run collection name to be used as the default for ingestion of
             raws.
         """
-        return cls.makeCollectionName("raw/all")
+        return cls.makeCollectionName("raw", "all")
 
     @classmethod
-    def makeCollectionName(cls, label: str) -> str:
-        """Get the instrument-specific collection string to use as derived
-        from the supplied label.
+    def makeUnboundedCalibrationRunName(cls, *suffixes: str) -> str:
+        """Make a RUN collection name appropriate for inserting calibration
+        datasets whose validity ranges are unbounded.
 
         Parameters
         ----------
-        label : `str`
-            String to be combined with the instrument name to form a
+        *suffixes : `str`
+            Strings to be appended to the base name, using the default
+            delimiter for collection names.
+
+        Returns
+        -------
+        name : `str`
+            Run collection name.
+        """
+        return cls.makeCollectionName("calib", "unbounded", *suffixes)
+
+    @classmethod
+    def makeCuratedCalibrationRunName(cls, calibDate: str, *suffixes: str) -> str:
+        """Make a RUN collection name appropriate for inserting curated
+        calibration datasets with the given ``CALIBDATE`` metadata value.
+
+        Parameters
+        ----------
+        calibDate : `str`
+            The ``CALIBDATE`` metadata value.
+        *suffixes : `str`
+            Strings to be appended to the base name, using the default
+            delimiter for collection names.
+
+        Returns
+        -------
+        name : `str`
+            Run collection name.
+        """
+        return cls.makeCollectionName("calib", calibDate, *suffixes)
+
+    @classmethod
+    def makeCuratedCalibrationCollectionName(cls, *suffixes: str) -> str:
+        """Make a CALIBRATION collection name appropriate for associating
+        calibration datasets with validity ranges.
+
+        Parameters
+        ----------
+        *suffixes : `str`
+            Strings to be appended to the base name, using the default
+            delimiter for collection names.
+
+        Returns
+        -------
+        name : `str`
+            Calibration collection name.
+        """
+        return cls.makeCollectionName("calib", *suffixes)
+
+    @classmethod
+    def makeCollectionName(cls, *labels: str) -> str:
+        """Get the instrument-specific collection string to use as derived
+        from the supplied labels.
+
+        Parameters
+        ----------
+        *labels : `str`
+            Strings to be combined with the instrument name to form a
             collection name.
 
         Returns
@@ -537,7 +676,7 @@ class Instrument(metaclass=ABCMeta):
         name : `str`
             Collection name to use that includes the instrument name.
         """
-        return f"{cls.getName()}/{label}"
+        return "/".join((cls.getName(),) + labels)
 
 
 def makeExposureRecordFromObsInfo(obsInfo, universe):
@@ -589,36 +728,6 @@ def makeExposureRecordFromObsInfo(obsInfo, universe):
         sky_angle=sky_angle,
         zenith_angle=zenith_angle,
     )
-
-
-def addUnboundedCalibrationLabel(registry, instrumentName):
-    """Add a special 'unbounded' calibration_label dimension entry for the
-    given camera that is valid for any exposure.
-
-    If such an entry already exists, this function just returns a `DataId`
-    for the existing entry.
-
-    Parameters
-    ----------
-    registry : `Registry`
-        Registry object in which to insert the dimension entry.
-    instrumentName : `str`
-        Name of the instrument this calibration label is associated with.
-
-    Returns
-    -------
-    dataId : `DataId`
-        New or existing data ID for the unbounded calibration.
-    """
-    d = dict(instrument=instrumentName, calibration_label="unbounded")
-    try:
-        return registry.expandDataId(d)
-    except LookupError:
-        pass
-    entry = d.copy()
-    entry["timespan"] = Timespan(None, None)
-    registry.insertDimensionData("calibration_label", entry)
-    return registry.expandDataId(d)
 
 
 def loadCamera(butler: Butler, dataId: DataId, *, collections: Any = None) -> Tuple[Camera, bool]:

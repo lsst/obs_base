@@ -27,7 +27,7 @@ from ..utils import getInstrument
 log = logging.getLogger(__name__)
 
 
-def writeCuratedCalibrations(repo, instrument, output_run):
+def writeCuratedCalibrations(repo, instrument, collection, suffix):
     """Add an instrument's curated calibrations to the data repository.
 
     Parameters
@@ -36,10 +36,15 @@ def writeCuratedCalibrations(repo, instrument, output_run):
         URI to the location to create the repo.
     instrument : `str`
         The name or the fully qualified class name of an instrument.
-    output_run : `str`
-        The path to the location, the run, where datasets should be put.
+    collection : `str` or `None`
+        The path to the collection that assocaites datasets with validity
+        ranges.
         Can be `None` in which case the collection name will be determined
         automatically.
+    suffix : `str`
+        Suffix to add to the RUN collections that datasets are inserted
+        directly into, and if ``collection`` is `None`, the automatic
+        calibration collection name as well.
 
     Raises
     ------
@@ -52,4 +57,5 @@ def writeCuratedCalibrations(repo, instrument, output_run):
     """
     butler = Butler(repo, writeable=True)
     instr = getInstrument(instrument, butler.registry)
-    instr.writeCuratedCalibrations(butler, run=output_run)
+    instr.writeCuratedCalibrations(butler, collection=collection,
+                                   suffixes=(suffix,) if suffix is not None else ())
