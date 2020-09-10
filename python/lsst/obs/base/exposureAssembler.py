@@ -25,10 +25,10 @@
 import lsst.afw.detection  # noqa: F401
 from lsst.afw.image import makeExposure, makeMaskedImage, Filter, stripFilterKeywords
 
-from lsst.daf.butler import CompositeAssembler
+from lsst.daf.butler import StorageClassDelegate
 
 
-class ExposureAssembler(CompositeAssembler):
+class ExposureAssembler(StorageClassDelegate):
 
     EXPOSURE_COMPONENTS = set(("image", "variance", "mask", "wcs", "psf"))
     EXPOSURE_INFO_COMPONENTS = set(("apCorrMap", "coaddInputs", "photoCalib", "metadata",
