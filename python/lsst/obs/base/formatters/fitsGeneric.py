@@ -30,6 +30,7 @@ class FitsGenericFormatter(FileFormatter):
     """Interface for reading and writing objects that support the standard
     afw I/O readFits/writeFits methods.
     """
+    supportedExtensions = frozenset({".fits", ".fits.gz", ".fits.fz", ".fz", ".fit"})
     extension = ".fits"
 
     def _readFile(self, path, pytype):
