@@ -321,7 +321,7 @@ class Instrument(metaclass=ABCMeta):
             not have any datasets that would conflict with those inserted by
             this method.  If `None`, a collection name is worked out
             automatically from the instrument name and other metadata by
-            calling ``makeCuratedCalibrationCollectionName``, but this
+            calling ``makeCalibrationCollectionName``, but this
             default name may not work well for long-lived repositories unless
             one or more ``suffixes`` are also provided (and changed every time
             curated calibrations are ingested).
@@ -367,7 +367,7 @@ class Instrument(metaclass=ABCMeta):
             not have any datasets that would conflict with those inserted by
             this method.  If `None`, a collection name is worked out
             automatically from the instrument name and other metadata by
-            calling ``makeCuratedCalibrationCollectionName``, but this
+            calling ``makeCalibrationCollectionName``, but this
             default name may not work well for long-lived repositories unless
             one or more ``suffixes`` are also provided (and changed every time
             curated calibrations are ingested).
@@ -398,7 +398,7 @@ class Instrument(metaclass=ABCMeta):
             not have any datasets that would conflict with those inserted by
             this method.  If `None`, a collection name is worked out
             automatically from the instrument name and other metadata by
-            calling ``makeCuratedCalibrationCollectionName``, but this
+            calling ``makeCalibrationCollectionName``, but this
             default name may not work well for long-lived repositories unless
             one or more ``suffixes`` are also provided (and changed every time
             curated calibrations are ingested).
@@ -411,7 +411,7 @@ class Instrument(metaclass=ABCMeta):
             automatically (i.e. if ``collection is None``).
         """
         if collection is None:
-            collection = self.makeCuratedCalibrationCollectionName(*suffixes)
+            collection = self.makeCalibrationCollectionName(*suffixes)
         butler.registry.registerCollection(collection, type=CollectionType.CALIBRATION)
         run = self.makeUnboundedCalibrationRunName(*suffixes)
         butler.registry.registerRun(run)
@@ -438,7 +438,7 @@ class Instrument(metaclass=ABCMeta):
             not have any datasets that would conflict with those inserted by
             this method.  If `None`, a collection name is worked out
             automatically from the instrument name and other metadata by
-            calling ``makeCuratedCalibrationCollectionName``, but this
+            calling ``makeCalibrationCollectionName``, but this
             default name may not work well for long-lived repositories unless
             one or more ``suffixes`` are also provided (and changed every time
             curated calibrations are ingested).
@@ -451,7 +451,7 @@ class Instrument(metaclass=ABCMeta):
             automatically (i.e. if ``collection is None``).
         """
         if collection is None:
-            collection = self.makeCuratedCalibrationCollectionName(*suffixes)
+            collection = self.makeCalibrationCollectionName(*suffixes)
         butler.registry.registerCollection(collection, type=CollectionType.CALIBRATION)
         runs = set()
         for datasetTypeName in self.standardCuratedDatasetTypes:
@@ -464,7 +464,8 @@ class Instrument(metaclass=ABCMeta):
                                       universe=butler.registry.dimensions,
                                       isCalibration=True,
                                       **definition)
-            self._writeSpecificCuratedCalibrationDatasets(butler, datasetType, collection, runs)
+            self._writeSpecificCuratedCalibrationDatasets(butler, datasetType, collection, runs=runs,
+                                                          suffixes=suffixes)
 
     @classmethod
     def _getSpecificCuratedCalibrationPath(cls, datasetTypeName):
@@ -640,10 +641,10 @@ class Instrument(metaclass=ABCMeta):
         name : `str`
             Run collection name.
         """
-        return cls.makeCollectionName("calib", calibDate, *suffixes)
+        return cls.makeCollectionName("calib", "curated", calibDate, *suffixes)
 
     @classmethod
-    def makeCuratedCalibrationCollectionName(cls, *suffixes: str) -> str:
+    def makeCalibrationCollectionName(cls, *suffixes: str) -> str:
         """Make a CALIBRATION collection name appropriate for associating
         calibration datasets with validity ranges.
 

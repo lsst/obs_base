@@ -214,11 +214,25 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
         gen3Butler : `lsst.daf.butler.Butler`
             The Butler to use to get the data.
         """
-        for dataId in calibIds:
-            with self.subTest(dtype=calibName, dataId=dataId):
-                datasets = list(gen3Butler.registry.queryDatasets(calibName, collections=..., dataId=dataId))
-                gen3Exposure = gen3Butler.getDirect(datasets[0])
-                self.assertIsInstance(gen3Exposure, lsst.afw.image.ExposureF)
+        if not calibIds:
+            return
+        collection = self.instrumentClass.makeCalibrationCollectionName()
+        with self.subTest(dtype=calibName):
+            datasets = {}
+            for assoc in gen3Butler.registry.queryDatasetAssociations(calibName, collections=collection):
+                # There will in general be multiple refs for each data ID
+                # (for different validity ranges), but we'll just test one
+                # anyway to keep the test fast, so we don't care that this
+                # might overwrite.
+                datasets[assoc.ref.dataId] = assoc.ref
+            for dataId in calibIds:
+                standardizedDataId = lsst.daf.butler.DataCoordinate.standardize(
+                    dataId,
+                    universe=gen3Butler.registry.dimensions
+                )
+                with self.subTest(dataId=standardizedDataId):
+                    gen3Exposure = gen3Butler.getDirect(datasets[standardizedDataId])
+                    self.assertIsInstance(gen3Exposure, lsst.afw.image.ExposureF)
 
     def check_defects(self, gen3Butler, detectors):
         """Test that we can get converted defects from the gen3 repo.
@@ -230,16 +244,22 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
         detectors : `list` of `int`
             The detector identifiers to ``get`` from the gen3 butler.
         """
+        collection = self.instrumentClass.makeCalibrationCollectionName()
+        datasets = {}
+        for assoc in gen3Butler.registry.queryDatasetAssociations("defects", collections=collection):
+            # There will in general be multiple refs for each data ID
+            # (for different validity ranges), but we'll just test one
+            # anyway to keep the test fast, so we don't care that this
+            # might overwrite.
+            datasets[assoc.ref.dataId] = assoc.ref
         for detector in detectors:
-            dataId = dict(detector=detector, instrument=self.instrumentName)
-            # Fill out the missing parts of the dataId, as we don't a-priori
-            # know e.g. the "calibration_label". Use the first element of the
-            # result because we only need to check one.
-            with self.subTest(dtype="defects", dataId=dataId):
-                datasets = list(gen3Butler.registry.queryDatasets("defects", collections=..., dataId=dataId))
-                if datasets:
-                    gen3Defects = gen3Butler.getDirect(datasets[0])
-                    self.assertIsInstance(gen3Defects, lsst.meas.algorithms.Defects)
+            dataId = lsst.daf.butler.DataCoordinate.standardize(
+                detector=detector, instrument=self.instrumentName,
+                universe=gen3Butler.registry.dimensions
+            )
+            if dataId in datasets:
+                gen3Defects = gen3Butler.getDirect(datasets[dataId])
+                self.assertIsInstance(gen3Defects, lsst.meas.algorithms.Defects)
 
     def check_refcat(self, gen3Butler):
         """Test that each expected refcat is in the gen3 repo.
@@ -263,8 +283,12 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
         gen3Butler : `lsst.daf.butler.Butler`
             The Butler to be tested.
         """
-        self.assertEqual(set(gen3Butler.registry.queryCollections()), self.collections,
-                         f"Compare with expected collections ({self.collections})")
+        # We use assertGreaterEqual because the conversion code may create
+        # multiple RUNS and combine them into CHAINED collections as an
+        # implementation detail; we only care that the high-level collections
+        # exist one way or another.
+        self.assertGreaterEqual(set(gen3Butler.registry.queryCollections()), set(self.collections),
+                                f"Compare with expected collections ({self.collections})")
 
     def test_convert(self):
         """Test that all data are converted correctly.

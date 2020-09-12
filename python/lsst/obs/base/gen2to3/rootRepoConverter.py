@@ -184,7 +184,7 @@ class RootRepoConverter(StandardRepoConverter):
                                           refs=DatasetRef(datasetType, dataId))
         yield from super().iterDatasets()
 
-    def getRun(self, datasetTypeName: str) -> str:
+    def getRun(self, datasetTypeName: str, calibDate: Optional[str] = None) -> str:
         # Docstring inherited from RepoConverter.
         run = self.task.config.runs[datasetTypeName]
         self._chain.setdefault(run, set()).add(datasetTypeName)

@@ -22,17 +22,19 @@ from __future__ import annotations
 
 __all__ = ["CalibRepoConverter"]
 
+from collections import defaultdict
 import os
 import sqlite3
-import astropy.time
-from typing import TYPE_CHECKING, Dict, Iterator, Tuple, Optional
+from typing import TYPE_CHECKING, Dict, Iterator, List, Mapping, Tuple, Optional
 
+import astropy.time
+
+from lsst.daf.butler import DataCoordinate, FileDataset, Timespan
 from .repoConverter import RepoConverter
 from .repoWalker import RepoWalker
-from .translators import makeCalibrationLabel
 
 if TYPE_CHECKING:
-    from lsst.daf.butler import StorageClass, FormatterParameter
+    from lsst.daf.butler import DatasetType, StorageClass, FormatterParameter
     from .repoWalker.scanner import PathElementHandler
     from ..cameraMapper import CameraMapper
     from ..mapping import Mapping as CameraMapperMapping  # disambiguate from collections.abc.Mapping
@@ -51,9 +53,10 @@ class CalibRepoConverter(RepoConverter):
         `RepoConverter`.
     """
 
-    def __init__(self, *, mapper: CameraMapper, **kwds):
-        super().__init__(**kwds)
+    def __init__(self, *, mapper: CameraMapper, collection: str, **kwds):
+        super().__init__(run=None, **kwds)
         self.mapper = mapper
+        self.collection = collection
         self._datasetTypes = set()
 
     def isDatasetTypeSpecial(self, datasetTypeName: str) -> bool:
@@ -83,68 +86,117 @@ class CalibRepoConverter(RepoConverter):
         self._datasetTypes.add(target.datasetType)
         return target
 
-    def insertDimensionData(self):
-        # Docstring inherited from RepoConverter.
-        # This has only been tested on HSC, and it's not clear how general it
-        # is.  The catch is that it needs to generate calibration_label strings
-        # consistent with those produced by the Translator system.
+    def _queryGen2CalibRegistry(self, db: sqlite3.Connection, datasetType: DatasetType, calibDate: str
+                                ) -> Iterator[sqlite3.Row]:
+        # TODO: docs
+        fields = ["validStart", "validEnd"]
+        if "detector" in datasetType.dimensions.names:
+            fields.append(self.task.config.ccdKey)
+        else:
+            fields.append(f"NULL AS {self.task.config.ccdKey}")
+        if "physical_filter" in datasetType.dimensions.names:
+            fields.append("filter")
+        else:
+            assert "band" not in datasetType.dimensions.names
+            fields.append("NULL AS filter")
+        tables = self.mapper.mappings[datasetType.name].tables
+        if tables is None or len(tables) == 0:
+            self.task.log.warn("Could not extract calibration ranges for %s in %s; "
+                               "no tables in Gen2 mapper.",
+                               datasetType.name, self.root, tables[0])
+            return
+        query = f"SELECT DISTINCT {', '.join(fields)} FROM {tables[0]} WHERE calibDate = ?;"
+        try:
+            results = db.execute(query, (calibDate,))
+        except sqlite3.OperationalError as e:
+            self.task.log.warn("Could not extract calibration ranges for %s in %s from table %s: %r",
+                               datasetType.name, self.root, tables[0], e)
+            return
+        yield from results
 
+    def _finish(self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]]):
+        # Read Gen2 calibration repository and extract validity ranges for
+        # all datasetType + calibDate combinations we ingested.
         calibFile = os.path.join(self.root, "calibRegistry.sqlite3")
-
         # If the registry file does not exist this indicates a problem.
         # We check explicitly because sqlite will try to create the
         # missing file if it can.
         if not os.path.exists(calibFile):
             raise RuntimeError("Attempting to convert calibrations but no registry database"
                                f" found in {self.root}")
+        # We will gather results in a dict-of-lists keyed by Timespan, since
+        # Registry.certify operates on one Timespan and multiple refs at a
+        # time.
+        refsByTimespan = defaultdict(list)
         db = sqlite3.connect(calibFile)
         db.row_factory = sqlite3.Row
-        records = []
-        for datasetType in self._datasetTypes:
-            if "calibration_label" not in datasetType.dimensions:
+        day = astropy.time.TimeDelta(1, format="jd", scale="tai")
+        for datasetType, datasetsByCalibDate in datasets.items():
+            if not datasetType.isCalibration():
                 continue
-            fields = ["validStart", "validEnd", "calibDate"]
+            gen2keys = {}
             if "detector" in datasetType.dimensions.names:
-                fields.append(self.task.config.ccdKey)
-            else:
-                fields.append(f"NULL AS {self.task.config.ccdKey}")
-            if ("physical_filter" in datasetType.dimensions.names
-                    or "band" in datasetType.dimensions.names):
-                fields.append("filter")
-            else:
-                fields.append("NULL AS filter")
-            query = f"SELECT DISTINCT {', '.join(fields)} FROM {datasetType.name};"
-            try:
-                results = db.execute(query)
-            except sqlite3.OperationalError as e:
-                if (self.mapper.mappings[datasetType.name].tables is None
-                        or len(self.mapper.mappings[datasetType.name].tables) == 0):
-                    self.task.log.warn("Could not extract calibration ranges for %s in %s: %r",
-                                       datasetType.name, self.root, e)
-                    continue
-                # Try using one of the alternate table names in the mapper (e.g. cpBias->bias for DECam).
-                name = self.mapper.mappings[datasetType.name].tables[0]
-                query = f"SELECT DISTINCT {', '.join(fields)} FROM {name};"
-                try:
-                    results = db.execute(query)
-                except sqlite3.OperationalError as e:
-                    self.task.log.warn("Could not extract calibration ranges for %s in %s: %r",
-                                       datasetType.name, self.root, e)
-                    continue
-            for row in results:
-                label = makeCalibrationLabel(datasetType.name, row["calibDate"],
-                                             ccd=row[self.task.config.ccdKey], filter=row["filter"])
-                # For validity times we use TAI as some gen2 repos have validity
-                # dates very far in the past or future.
-                day = astropy.time.TimeDelta(1, format="jd", scale="tai")
-                records.append({
-                    "instrument": self.task.instrument.getName(),
-                    "name": label,
-                    "datetime_begin": astropy.time.Time(row["validStart"], format="iso", scale="tai"),
-                    "datetime_end": astropy.time.Time(row["validEnd"], format="iso", scale="tai") + day
-                })
-        if records:
-            self.task.registry.insertDimensionData("calibration_label", *records)
+                gen2keys[self.task.config.ccdKey] = int
+            if "physical_filter" in datasetType.dimensions.names:
+                gen2keys["filter"] = str
+            translator = self.instrument.makeDataIdTranslatorFactory().makeMatching(
+                datasetType.name,
+                gen2keys,
+                instrument=self.instrument.getName()
+            )
+            for calibDate, datasetsForCalibDate in datasetsByCalibDate.items():
+                assert calibDate is not None, ("datasetType.isCalibration() is set by "
+                                               "the presence of calibDate in the Gen2 template")
+                # Build a mapping that lets us find DatasetRefs by data ID,
+                # for this DatasetType and calibDate.  We know there is only
+                # one ref for each data ID (given DatasetType and calibDate as
+                # well).
+                refsByDataId = {}
+                for dataset in datasetsForCalibDate:
+                    refsByDataId.update((ref.dataId, ref) for ref in dataset.refs)
+                # Query the Gen2 calibration repo for the validity ranges for
+                # this DatasetType and calibDate, and look up the appropriate
+                # refs by data ID.
+                for row in self._queryGen2CalibRegistry(db, datasetType, calibDate):
+                    # For validity times we use TAI as some gen2 repos have validity
+                    # dates very far in the past or future.
+                    timespan = Timespan(
+                        astropy.time.Time(row["validStart"], format="iso", scale="tai"),
+                        astropy.time.Time(row["validEnd"], format="iso", scale="tai") + day,
+                    )
+                    # Make a Gen2 data ID from query results.
+                    gen2id = {}
+                    if "detector" in datasetType.dimensions.names:
+                        gen2id[self.task.config.ccdKey] = row[self.task.config.ccdKey]
+                    if "physical_filter" in datasetType.dimensions.names:
+                        gen2id["filter"] = row["filter"]
+                    # Translate that to Gen3.
+                    gen3id, _ = translator(gen2id)
+                    dataId = DataCoordinate.standardize(gen3id, graph=datasetType.dimensions)
+                    ref = refsByDataId.get(dataId)
+                    if ref is not None:
+                        refsByTimespan[timespan].append(ref)
+                    else:
+                        # The Gen2 calib registry mentions this dataset, but it
+                        # isn't included in what we've ingested.  This might
+                        # sometimes be a problem, but it should usually
+                        # represent someone just trying to convert a subset of
+                        # the Gen2 repo, so I don't think it's appropriate to
+                        # warn or even log at info, since in that case there
+                        # may be a _lot_ of these messages.
+                        self.task.log.debug(
+                            "Gen2 calibration registry entry has no dataset: %s for calibDate=%s, %s.",
+                            datasetType.name, calibDate, dataId
+                        )
+        # Done reading from Gen2, time to certify into Gen3.
+        for timespan, refs in refsByTimespan.items():
+            self.task.registry.certify(self.collection, refs, timespan)
+
+    def getRun(self, datasetTypeName: str, calibDate: Optional[str] = None) -> str:
+        if calibDate is None:
+            return super().getRun(datasetTypeName)
+        else:
+            return self.instrument.makeCollectionName("calib", "gen2", calibDate)
 
     # Class attributes that will be shadowed by public instance attributes;
     # defined here only for documentation purposes.

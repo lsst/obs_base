@@ -32,7 +32,7 @@ from typing import (
     Dict,
     Iterator,
     List,
-    MutableMapping,
+    Mapping,
     Optional,
     Set,
     Tuple,
@@ -200,11 +200,10 @@ class RepoConverter(ABC):
     Notes
     -----
     `RepoConverter` defines the only public API users of its subclasses should
-    use (`prep`, `insertDimensionRecords`, and `ingest`).  These delegate to
-    several abstract methods that subclasses must implement.  In some cases,
-    subclasses may reimplement the public methods as well, but are expected to
-    delegate to ``super()`` either at the beginning or end of their own
-    implementation.
+    use (`prep` `ingest`, and `finish`).  These delegate to several abstract
+    methods that subclasses must implement.  In some cases, subclasses may
+    reimplement the public methods as well, but are expected to delegate to
+    ``super()`` either at the beginning or end of their own implementation.
     """
 
     def __init__(self, *, task: ConvertRepoTask, root: str, instrument: Instrument, run: Optional[str],
@@ -215,7 +214,8 @@ class RepoConverter(ABC):
         self.subset = subset
         self._run = run
         self._repoWalker = None  # Created in prep
-        self._fileDatasets: MutableMapping[DatasetType, List[FileDataset]] = defaultdict(list)
+        self._fileDatasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]] \
+            = defaultdict(lambda: defaultdict(list))
 
     @abstractmethod
     def isDatasetTypeSpecial(self, datasetTypeName: str) -> bool:
@@ -325,7 +325,7 @@ class RepoConverter(ABC):
          - `makeRepoWalkerTarget`
 
         This should not perform any write operations to the Gen3 repository.
-        It is guaranteed to be called before `insertDimensionData`.
+        It is guaranteed to be called before `ingest`.
         """
         self.task.log.info(f"Preparing other dataset types from root {self.root}.")
         walkerInputs: List[Union[RepoWalker.Target, RepoWalker.Skip]] = []
@@ -425,30 +425,17 @@ class RepoConverter(ABC):
         self.task.log.info("Adding special datasets in repo %s.", self.root)
         for dataset in self.iterDatasets():
             assert len(dataset.refs) == 1
-            self._fileDatasets[dataset.refs[0].datasetType].append(dataset)
+            # None index below is for calibDate, which is only relevant for
+            # CalibRepoConverter.
+            self._fileDatasets[dataset.refs[0].datasetType][None].append(dataset)
         self.task.log.info("Finding datasets from files in repo %s.", self.root)
-        self._fileDatasets.update(
-            self._repoWalker.walk(
-                self.root,
-                predicate=(self.subset.isRelated if self.subset is not None else None)
-            )
+        datasetsByTypeAndCalibDate = self._repoWalker.walk(
+            self.root,
+            predicate=(self.subset.isRelated if self.subset is not None else None)
         )
-
-    def insertDimensionData(self):
-        """Insert any dimension records uniquely derived from this repository
-        into the registry.
-
-        Subclasses may override this method, but may not need to; the default
-        implementation does nothing.
-
-        SkyMap and SkyPix dimensions should instead be handled by calling
-        `ConvertRepoTask.useSkyMap` or `ConvertRepoTask.useSkyPix`, because
-        these dimensions are in general shared by multiple Gen2 repositories.
-
-        This method is guaranteed to be called between `prep` and
-        `expandDataIds`.
-        """
-        pass
+        for datasetType, datasetsByCalibDate in datasetsByTypeAndCalibDate.items():
+            for calibDate, datasets in datasetsByCalibDate.items():
+                self._fileDatasets[datasetType][calibDate].extend(datasets)
 
     def expandDataIds(self):
         """Expand the data IDs for all datasets to be inserted.
@@ -457,27 +444,27 @@ class RepoConverter(ABC):
         class implementation if they do.
 
         This involves queries to the registry, but not writes.  It is
-        guaranteed to be called between `insertDimensionData` and `ingest`.
+        guaranteed to be called between `findDatasets` and `ingest`.
         """
         import itertools
-        for datasetType, datasetsForType in self._fileDatasets.items():
-            self.task.log.info("Expanding data IDs for %s %s datasets.", len(datasetsForType),
-                               datasetType.name)
-            expanded = []
-            for dataset in datasetsForType:
-                for i, ref in enumerate(dataset.refs):
-                    try:
-                        dataId = self.task.registry.expandDataId(ref.dataId)
-                        dataset.refs[i] = ref.expanded(dataId)
-                    except LookupError as err:
-                        self.task.log.warn("Skipping ingestion for '%s': %s", dataset.path, err)
-                        # Remove skipped datasets from multi-extension FileDatasets
-                        dataset.refs[i] = None  # We will strip off the `None`s after the loop.
-                dataset.refs[:] = itertools.filterfalse(lambda x: x is None, dataset.refs)
-                if dataset.refs:
-                    expanded.append(dataset)
-
-            datasetsForType[:] = expanded
+        for datasetType, datasetsByCalibDate in self._fileDatasets.items():
+            for calibDate, datasetsForCalibDate in datasetsByCalibDate.items():
+                self.task.log.info("Expanding data IDs for %s %s datasets.", len(datasetsByCalibDate),
+                                   datasetType.name)
+                expanded = []
+                for dataset in datasetsForCalibDate:
+                    for i, ref in enumerate(dataset.refs):
+                        try:
+                            dataId = self.task.registry.expandDataId(ref.dataId)
+                            dataset.refs[i] = ref.expanded(dataId)
+                        except LookupError as err:
+                            self.task.log.warn("Skipping ingestion for '%s': %s", dataset.path, err)
+                            # Remove skipped datasets from multi-extension FileDatasets
+                            dataset.refs[i] = None  # We will strip off the `None`s after the loop.
+                    dataset.refs[:] = itertools.filterfalse(lambda x: x is None, dataset.refs)
+                    if dataset.refs:
+                        expanded.append(dataset)
+                datasetsForCalibDate[:] = expanded
 
     def ingest(self):
         """Insert converted datasets into the Gen3 repository.
@@ -487,22 +474,34 @@ class RepoConverter(ABC):
 
         This method is guaranteed to be called after `expandDataIds`.
         """
-        for datasetType, datasetsForType in self._fileDatasets.items():
+        for datasetType, datasetsByCalibDate in self._fileDatasets.items():
             self.task.registry.registerDatasetType(datasetType)
-            try:
-                run = self.getRun(datasetType.name)
-            except LookupError:
-                self.task.log.warn(f"No run configured for dataset type {datasetType.name}.")
-                continue
-            self.task.log.info("Ingesting %s %s datasets into run %s.", len(datasetsForType),
-                               datasetType.name, run)
-            try:
-                self.task.registry.registerRun(run)
-                self.task.butler3.ingest(*datasetsForType, transfer=self.task.config.transfer, run=run)
-            except LookupError as err:
-                raise LookupError(f"Error expanding data ID for dataset type {datasetType.name}.") from err
+            for calibDate, datasetsForCalibDate in datasetsByCalibDate.items():
+                try:
+                    run = self.getRun(datasetType.name, calibDate)
+                except LookupError:
+                    self.task.log.warn(f"No run configured for dataset type {datasetType.name}.")
+                    continue
+                self.task.log.info("Ingesting %s %s datasets into run %s.", len(datasetsForCalibDate),
+                                   datasetType.name, run)
+                try:
+                    self.task.registry.registerRun(run)
+                    self.task.butler3.ingest(*datasetsForCalibDate, transfer=self.task.config.transfer,
+                                             run=run)
+                except LookupError as err:
+                    raise LookupError(
+                        f"Error expanding data ID for dataset type {datasetType.name}."
+                    ) from err
 
-    def getRun(self, datasetTypeName: str) -> str:
+    def finish(self) -> None:
+        # TODO: docs
+        self._finish(self._fileDatasets)
+
+    def _finish(self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]]) -> None:
+        # TODO: docs
+        pass
+
+    def getRun(self, datasetTypeName: str, calibDate: Optional[str] = None) -> str:
         """Return the name of the run to insert instances of the given dataset
         type into in this collection.
 
@@ -510,6 +509,9 @@ class RepoConverter(ABC):
         ----------
         datasetTypeName : `str`
             Name of the dataset type.
+        calibDate : `str`, optional
+            If not `None`, the "CALIBDATE" associated with this (calibration)
+            dataset in the Gen2 data repository.
 
         Returns
         -------
@@ -517,6 +519,7 @@ class RepoConverter(ABC):
             Name of the `~lsst.daf.butler.CollectionType.RUN` collection.
         """
         assert self._run is not None, "Method must be overridden if self._run is allowed to be None"
+        assert calibDate is None, "Method must be overridden if calibDate is allowed to be not None"
         return self._run
 
     def _guessStorageClass(self, datasetTypeName: str, mapping: CameraMapperMapping

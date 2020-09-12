@@ -449,8 +449,8 @@ class ConvertRepoTask(Task):
             and/or reference catalogs.
         calibs : `dict`
             Dictionary mapping calibration repository path to the
-            `~lsst.daf.butler.CollectionType.RUN` collection that converted
-            datasets within it should be inserted into.
+            `~lsst.daf.butler.CollectionType.CALIBRATION` collection that
+            converted datasets within it should be certified into.
         reruns : `list` of `Rerun`
             Specifications for rerun (processing output) collections to
             convert.
@@ -472,10 +472,11 @@ class ConvertRepoTask(Task):
         converters = []
         rootConverter = RootRepoConverter(task=self, root=root, subset=subset, instrument=self.instrument)
         converters.append(rootConverter)
-        for calibRoot, run in calibs.items():
+        for calibRoot, collection in calibs.items():
             if not os.path.isabs(calibRoot):
                 calibRoot = os.path.join(rootConverter.root, calibRoot)
-            converter = CalibRepoConverter(task=self, root=calibRoot, run=run, instrument=self.instrument,
+            converter = CalibRepoConverter(task=self, root=calibRoot, collection=collection,
+                                           instrument=self.instrument,
                                            mapper=rootConverter.mapper,
                                            subset=rootConverter.subset)
             converters.append(converter)
@@ -508,10 +509,12 @@ class ConvertRepoTask(Task):
         # here.
         if self.config.doWriteCuratedCalibrations:
             butler3 = Butler3(butler=self.butler3)
+            # Write curated calibrations to any new calibration collections we
+            # created by converting a Gen2 calibration repo.
             calibCollections = set()
-            for run in calibs.values():
-                self.instrument.writeCuratedCalibrations(butler3, run=run)
-                calibCollections.add(run)
+            for collection in calibs.values():
+                self.instrument.writeCuratedCalibrations(butler3, collection=collection)
+                calibCollections.add(collection)
             # Ensure that we have the curated calibrations even if there
             # is no calibration conversion.  It's possible that the default
             # calib collection will have been specified (in fact the
@@ -521,7 +524,7 @@ class ConvertRepoTask(Task):
             # writeCuratedCalibrations default itself
             defaultCalibCollection = self.instrument.makeCollectionName("calib")
             if defaultCalibCollection not in calibCollections:
-                self.instrument.writeCuratedCalibrations(butler3, run=defaultCalibCollection)
+                self.instrument.writeCuratedCalibrations(butler3, collection=defaultCalibCollection)
 
         # Define visits (also does nothing if we weren't configurd to convert
         # the 'raw' dataset type).
@@ -530,19 +533,6 @@ class ConvertRepoTask(Task):
         # Walk Gen2 repos to find datasets convert.
         for converter in converters:
             converter.prep()
-
-        # Insert dimensions needed by any converters.  In practice this is just
-        # calibration_labels right now, because exposures and visits (and
-        # things related to them) are handled by RawIngestTask and
-        # DefineVisitsTask earlier and skymaps are handled later.
-        #
-        # Note that we do not try to filter dimensions down to just those
-        # related to the given visits, even if config.relatedOnly is True; we
-        # need them in the Gen3 repo in order to be able to know which datasets
-        # to convert, because Gen2 alone doesn't know enough about the
-        # relationships between data IDs.
-        for converter in converters:
-            converter.insertDimensionData()
 
         # Insert dimensions that are potentially shared by all Gen2
         # repositories (and are hence managed directly by the Task, rather
@@ -565,6 +555,10 @@ class ConvertRepoTask(Task):
         # Actually ingest datasets.
         for converter in converters:
             converter.ingest()
+
+        # Perform any post-ingest processing.
+        for converter in converters:
+            converter.finish()
 
         # Add chained collections for reruns.
         for spec in reruns:
