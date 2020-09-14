@@ -72,8 +72,8 @@ class ConvertTestCase(CliCmdTestBase, unittest.TestCase):
 
     def test_missing(self):
         """test a missing argument"""
-        self.run_missing(["convert"], 'Missing argument "REPO"')
-        self.run_missing(["convert", "here"], 'Missing option "--gen2root"')
+        self.run_missing(["convert"], "Missing argument ['\"]REPO['\"]")
+        self.run_missing(["convert", "here"], "Missing option ['\"]--gen2root['\"]")
 
 
 if __name__ == "__main__":
