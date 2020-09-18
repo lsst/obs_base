@@ -22,7 +22,7 @@
 import click
 
 from lsst.daf.butler.cli.opt import (repo_argument, config_option, config_file_option, locations_argument,
-                                     regex_option, run_option, transfer_option)
+                                     file_override_options, regex_option, run_option, transfer_option)
 from lsst.daf.butler.cli.utils import (cli_handle_exception, split_commas, typeStrAcceptsMultiple)
 from ..opt import instrument_argument, instrument_option
 from ... import script
@@ -49,6 +49,7 @@ fits_re = r"\.fit[s]?\b"
 @transfer_option(help="Mode to use to transfer files into the new repository.")
 @config_file_option(help="Path to a `ConvertRepoConfig` override to be included after the Instrument config "
                     "overrides are applied.")
+@file_override_options()
 def convert(*args, **kwargs):
     """Convert a Butler gen 2 repository into a gen 3 repository."""
     cli_handle_exception(script.convert, *args, **kwargs)
@@ -64,6 +65,7 @@ def convert(*args, **kwargs):
               callback=split_commas,
               metavar=typeStrAcceptsMultiple)
 @instrument_option(required=True)
+@file_override_options()
 def define_visits(*args, **kwargs):
     """Define visits from exposures in the butler registry."""
     cli_handle_exception(script.defineVisits, *args, **kwargs)
@@ -82,6 +84,7 @@ def define_visits(*args, **kwargs):
 @transfer_option()
 @click.option("--ingest-task", default="lsst.obs.base.RawIngestTask", help="The fully qualified class name "
               "of the ingest task to use.")
+@file_override_options()
 def ingest_raws(*args, **kwargs):
     """Ingest raw frames into from a directory into the butler registry"""
     cli_handle_exception(script.ingestRaws, *args, **kwargs)
@@ -100,6 +103,7 @@ def register_instrument(*args, **kwargs):
 @repo_argument(required=True)
 @instrument_option(required=True)
 @run_option(required=False)
+@file_override_options()
 def write_curated_calibrations(*args, **kwargs):
     """Add an instrument's curated calibrations to the data repository.
     """
