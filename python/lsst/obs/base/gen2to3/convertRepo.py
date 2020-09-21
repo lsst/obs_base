@@ -480,6 +480,7 @@ class ConvertRepoTask(Task):
                                            mapper=rootConverter.mapper,
                                            subset=rootConverter.subset)
             converters.append(converter)
+        rerunConverters = {}
         for spec in reruns:
             runRoot = spec.path
             if not os.path.isabs(runRoot):
@@ -487,6 +488,7 @@ class ConvertRepoTask(Task):
             converter = StandardRepoConverter(task=self, root=runRoot, run=spec.runName,
                                               instrument=self.instrument, subset=rootConverter.subset)
             converters.append(converter)
+            rerunConverters[spec.runName] = converter
 
         # Register the instrument if we're configured to do so.
         if self.config.doRegisterInstrument:
@@ -565,7 +567,12 @@ class ConvertRepoTask(Task):
             if spec.chainName is not None:
                 self.butler3.registry.registerCollection(spec.chainName, type=CollectionType.CHAINED)
                 chain = [spec.runName]
-                chain.extend(spec.parents)
+                chain.extend(rerunConverters[spec.runName].getCollectionChain())
+                for parent in spec.parents:
+                    chain.append(spec.parent)
+                    parentConverter = rerunConverters.get(parent)
+                    if parentConverter is not None:
+                        chain.extend(parentConverter.getCollectionChain())
                 chain.extend(rootConverter.getCollectionChain())
                 self.log.info("Defining %s from chain %s.", spec.chainName, chain)
                 self.butler3.registry.setCollectionChain(spec.chainName, chain)

@@ -25,7 +25,7 @@ __all__ = ["RootRepoConverter"]
 import os
 import re
 import itertools
-from typing import TYPE_CHECKING, Iterator, Optional, Tuple, List, Set
+from typing import TYPE_CHECKING, Iterator, Optional, Tuple, List
 
 from lsst.skymap import BaseSkyMap
 from lsst.daf.butler import DatasetType, DatasetRef, DimensionGraph, FileDataset
@@ -79,7 +79,6 @@ class RootRepoConverter(StandardRepoConverter):
             self._rootSkyMap = self.task.config.skyMaps[self.task.config.rootSkyMapName].skyMap.apply()
         else:
             self._rootSkyMap = None  # All access to _rootSkyMap is guarded
-        self._chain = {}
         self._rawRefs = []
 
     def isDatasetTypeSpecial(self, datasetTypeName: str) -> bool:
@@ -183,16 +182,3 @@ class RootRepoConverter(StandardRepoConverter):
                         yield FileDataset(path=os.path.join(self.root, "ref_cats", refCat, f"{htmId}.fits"),
                                           refs=DatasetRef(datasetType, dataId))
         yield from super().iterDatasets()
-
-    def getRun(self, datasetTypeName: str, calibDate: Optional[str] = None) -> str:
-        # Docstring inherited from RepoConverter.
-        run = self.task.config.runs[datasetTypeName]
-        self._chain.setdefault(run, set()).add(datasetTypeName)
-        return run
-
-    def getCollectionChain(self) -> List[Tuple[str, Set[str]]]:
-        """Return tuples of run name and associated dataset type names that
-        can be used to construct a chained collection that refers to the
-        converted root repository (`list` [ `tuple` ]).
-        """
-        return list(self._chain.items())
