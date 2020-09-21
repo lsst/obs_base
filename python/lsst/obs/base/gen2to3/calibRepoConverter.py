@@ -109,7 +109,7 @@ class CalibRepoConverter(RepoConverter):
             else:
                 fields.append(f"NULL AS {self.task.config.ccdKey}")
             if ("physical_filter" in datasetType.dimensions.names
-                    or "abstract_filter" in datasetType.dimensions.names):
+                    or "band" in datasetType.dimensions.names):
                 fields.append("filter")
             else:
                 fields.append("NULL AS filter")

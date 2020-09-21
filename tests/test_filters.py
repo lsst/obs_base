@@ -62,11 +62,11 @@ class TestFilterDefinitionCollection(lsst.utils.tests.TestCase):
 class TestFilterDefinition(lsst.utils.tests.TestCase):
     def setUp(self):
         lsst.afw.image.utils.resetFilters()
-        self.filter_g = FilterDefinition(abstract_filter="g",
+        self.filter_g = FilterDefinition(band="g",
                                          physical_filter="HSC-G",
                                          lambdaEff=1234,
                                          alias={'ABCDEFG'})
-        self.filter_g2 = FilterDefinition(abstract_filter="g",
+        self.filter_g2 = FilterDefinition(band="g",
                                           physical_filter="HSC-G2",
                                           afw_name='g2',
                                           lambdaEff=1235,
@@ -76,7 +76,7 @@ class TestFilterDefinition(lsst.utils.tests.TestCase):
         self.afw_name = FilterDefinition(physical_filter="afw_name",
                                          lambdaEff=5, afw_name="afw only")
         self.abstract = FilterDefinition(physical_filter="abstract", lambdaEff=42,
-                                         abstract_filter="abstract only")
+                                         band="abstract only")
 
     def testDefineFilters(self):
         """Test that a filter is properly defined in afw."""
@@ -124,7 +124,7 @@ class TestFilterDefinition(lsst.utils.tests.TestCase):
         self.assertEqual(['afw_name'], sorted(filter.getAliases()))
 
     def test_abstract_only(self):
-        """abstract_filter is the Filter name, physical_filter is an alias.
+        """band is the Filter name, physical_filter is an alias.
         """
         self.abstract.defineFilter()
         filter = lsst.afw.image.Filter('abstract only')

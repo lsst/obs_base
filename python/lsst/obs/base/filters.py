@@ -99,7 +99,7 @@ class FilterDefinition:
 
     This class is used to interface between the `~lsst.afw.image.Filter` class
     and the Gen2 `~lsst.daf.persistence.CameraMapper` and Gen3
-    `~lsst.obs.base.Instruments` and ``physical_filter``/``abstract_filter``
+    `~lsst.obs.base.Instruments` and ``physical_filter``/``band``
     `~lsst.daf.butler.Dimension`.
 
     This class is likely temporary, until we have a better versioned filter
@@ -113,7 +113,7 @@ class FilterDefinition:
 
     This name is used to define the ``physical_filter`` gen3 Butler Dimension.
 
-    If neither ``abstract_filter`` or ``afw_name`` is defined, this is used
+    If neither ``band`` or ``afw_name`` is defined, this is used
     as the `~lsst.afw.image.Filter` ``name``, otherwise it is added to the
     list of `~lsst.afw.image.Filter` aliases.
     """
@@ -121,7 +121,7 @@ class FilterDefinition:
     lambdaEff: float
     """The effective wavelength of this filter (nm)."""
 
-    abstract_filter: str = None
+    band: str = None
     """The generic name of a filter not associated with a particular instrument
     (e.g. `r` for the SDSS Gunn r-band, which could be on SDSS, LSST, or HSC).
 
@@ -136,7 +136,7 @@ class FilterDefinition:
     afw_name: str = None
     """If not None, the name of the `~lsst.afw.image.Filter` object.
 
-    This is distinct from physical_filter and abstract_filter to maintain
+    This is distinct from physical_filter and band to maintain
     backwards compatibility in some obs packages.
     For example, for HSC there are two distinct ``r`` and ``i`` filters, named
     ``r/r2`` and ``i/i2``.
@@ -159,8 +159,8 @@ class FilterDefinition:
 
     def __str__(self):
         txt = f"FilterDefinition(physical_filter='{self.physical_filter}', lambdaEff='{self.lambdaEff}'"
-        if self.abstract_filter is not None:
-            txt += f", abstract_filter='{self.abstract_filter}'"
+        if self.band is not None:
+            txt += f", band='{self.band}'"
         if self.afw_name is not None:
             txt += f", afw_name='{self.afw_name}'"
         if not np.isnan(self.lambdaMin):
@@ -176,16 +176,16 @@ class FilterDefinition:
         """
         aliases = set(self.alias)
         name = self.physical_filter
-        if self.abstract_filter is not None:
-            name = self.abstract_filter
+        if self.band is not None:
+            name = self.band
             aliases.add(self.physical_filter)
         if self.afw_name is not None:
             name = self.afw_name
             aliases.add(self.physical_filter)
-        # Only add `physical_filter/abstract_filter` as an alias if afw_name is defined.ee
+        # Only add `physical_filter/band` as an alias if afw_name is defined.ee
         if self.afw_name is not None:
-            if self.abstract_filter is not None:
-                aliases.add(self.abstract_filter)
+            if self.band is not None:
+                aliases.add(self.band)
         lsst.afw.image.utils.defineFilter(name,
                                           lambdaEff=self.lambdaEff,
                                           lambdaMin=self.lambdaMin,

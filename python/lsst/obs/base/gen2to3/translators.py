@@ -22,7 +22,7 @@
 from __future__ import annotations
 
 __all__ = ("Translator", "TranslatorFactory", "KeyHandler", "CopyKeyHandler", "ConstantKeyHandler",
-           "CalibKeyHandler", "AbstractToPhysicalFilterKeyHandler", "PhysicalToAbstractFilterKeyHandler",
+           "CalibKeyHandler", "BandToPhysicalFilterKeyHandler", "PhysicalFilterToBandKeyHandler",
            "makeCalibrationLabel")
 
 import itertools
@@ -71,7 +71,7 @@ class KeyHandler(metaclass=ABCMeta):
     ----------
     dimension : `str`
         Name of the Gen3 dimension (data ID key) populated by
-        this handler (e.g. "visit" or "abstract_filter").
+        this handler (e.g. "visit" or "band").
     """
     def __init__(self, dimension: str):
         self.dimension = dimension
@@ -136,7 +136,7 @@ class ConstantKeyHandler(KeyHandler):
     ----------
     dimension : `str`
         Name of the Gen3 dimension (data ID key) populated by
-        this handler (e.g. "visit" or "abstract_filter").
+        this handler (e.g. "visit" or "band").
     value : `object`
         Data ID value.
     """
@@ -236,9 +236,9 @@ class CalibKeyHandler(KeyHandler):
                                     ccd=gen2id.get(self.ccdKey), filter=gen2id.get("filter"))
 
 
-class PhysicalToAbstractFilterKeyHandler(KeyHandler):
+class PhysicalFilterToBandKeyHandler(KeyHandler):
     """KeyHandler for gen2 ``filter`` keys that match ``physical_filter``
-    keys in gen3 but should be mapped to ``abstract_filter``.
+    keys in gen3 but should be mapped to ``band``.
 
     Note that multiple physical filter can potentially map to one abstract
     filter, so be careful to only use this translator on obs packages where
@@ -248,8 +248,8 @@ class PhysicalToAbstractFilterKeyHandler(KeyHandler):
     __slots__ = ("_map",)
 
     def __init__(self, filterDefinitions):
-        super().__init__("abstract_filter")
-        self._map = {d.physical_filter: d.abstract_filter for d in filterDefinitions
+        super().__init__("band")
+        self._map = {d.physical_filter: d.band for d in filterDefinitions
                      if d.physical_filter is not None}
 
     def extract(self, gen2id, *args, **kwargs):
@@ -257,8 +257,8 @@ class PhysicalToAbstractFilterKeyHandler(KeyHandler):
         return self._map.get(physical, physical)
 
 
-class AbstractToPhysicalFilterKeyHandler(KeyHandler):
-    """KeyHandler for gen2 ``filter`` keys that match ``abstract_filter``
+class BandToPhysicalFilterKeyHandler(KeyHandler):
+    """KeyHandler for gen2 ``filter`` keys that match ``band``
     keys in gen3 but should be mapped to ``physical_filter``.
 
     Note that one abstract filter can potentially map to multiple physical
@@ -270,8 +270,8 @@ class AbstractToPhysicalFilterKeyHandler(KeyHandler):
 
     def __init__(self, filterDefinitions):
         super().__init__("physical_filter")
-        self._map = {d.abstract_filter: d.physical_filter for d in filterDefinitions
-                     if d.abstract_filter is not None}
+        self._map = {d.band: d.physical_filter for d in filterDefinitions
+                     if d.band is not None}
 
     def extract(self, gen2id, *args, **kwargs):
         abstract = gen2id["filter"]
@@ -378,14 +378,14 @@ class TranslatorFactory:
         self.addRule(PatchKeyHandler(), gen2keys=("patch",))
 
         # Translate any "filter" values that appear alongside "tract" to
-        # "abstract_filter".  This is _not_ the right choice for instruments
+        # "band".  This is _not_ the right choice for instruments
         # that use "physical_filter" values for coadds in Gen2 (like HSC);
         # those will need to add a rule that invokes
-        # PhysicalToAbstractFilterKey instead for just that instrument, but the
+        # PhysicalFilterToBandKey instead for just that instrument, but the
         # same criteria otherwise.  That will override this one, because
         # instrument-specific rules match first, and that rule will consume
         # the Gen2 "filter" key before this rule has a chance to fire.
-        self.addRule(CopyKeyHandler("abstract_filter", "filter"),
+        self.addRule(CopyKeyHandler("band", "filter"),
                      gen2keys=("filter", "tract"),
                      consume=("filter",))
 
@@ -421,7 +421,7 @@ class TranslatorFactory:
             The short (dimension) name of the instrument that conversion is
             going to be run on.
         calibFilterType : `str`, optional
-            One of ``physical_filter`` or ``abstract_filter``, indicating which
+            One of ``physical_filter`` or ``band``, indicating which
             of those the gen2 calibRegistry uses as the ``filter`` key.
         detectorKey : `str`, optional
             The gen2 key used to identify what in gen3 is `detector`.

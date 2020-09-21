@@ -129,7 +129,7 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
 
     calibFilterType = "physical_filter"
     """Gen3 dimension that corresponds to Gen2 ``filter``. Should be
-    physical_filter or abstract_filter."""
+    physical_filter or band."""
 
     skymapName = None
     """Name of the Gen3 skymap."""
