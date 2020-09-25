@@ -21,8 +21,16 @@
 
 import click
 
-from lsst.daf.butler.cli.opt import (repo_argument, config_option, config_file_option, locations_argument,
-                                     options_file_option, regex_option, run_option, transfer_option)
+from lsst.daf.butler.cli.opt import (repo_argument,
+                                     config_option,
+                                     config_file_option,
+                                     locations_argument,
+                                     options_file_option,
+                                     processes_option,
+                                     regex_option,
+                                     run_option,
+                                     transfer_option
+                                     )
 from lsst.daf.butler.cli.utils import (cli_handle_exception, split_commas, typeStrAcceptsMultiple)
 from ..opt import instrument_argument, instrument_option
 from ... import script
@@ -82,6 +90,7 @@ def define_visits(*args, **kwargs):
 @config_file_option(type=click.Path(exists=True, writable=False, file_okay=True, dir_okay=False))
 @run_option(required=False)
 @transfer_option()
+@processes_option()
 @click.option("--ingest-task", default="lsst.obs.base.RawIngestTask", help="The fully qualified class name "
               "of the ingest task to use.")
 @options_file_option()
