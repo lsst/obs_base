@@ -49,7 +49,7 @@ class DummyCam(Instrument):
         registry.insertDimensionData("instrument", dataId)
         for f in ("dummy_g", "dummy_u"):
             registry.insertDimensionData("physical_filter",
-                                         dict(dataId, physical_filter=f, abstract_filter=f[-1]))
+                                         dict(dataId, physical_filter=f, band=f[-1]))
         for d in (1, 2):
             registry.insertDimensionData("detector",
                                          dict(dataId, id=d, full_name=str(d)))

@@ -261,15 +261,15 @@ class Instrument(metaclass=ABCMeta):
         """
         for filter in self.filterDefinitions:
             # fix for undefined abstract filters causing trouble in the registry:
-            if filter.abstract_filter is None:
-                abstract_filter = filter.physical_filter
+            if filter.band is None:
+                band = filter.physical_filter
             else:
-                abstract_filter = filter.abstract_filter
+                band = filter.band
 
             registry.insertDimensionData("physical_filter",
                                          {"instrument": self.getName(),
                                           "name": filter.physical_filter,
-                                          "abstract_filter": abstract_filter
+                                          "band": band
                                           })
 
     @abstractmethod
