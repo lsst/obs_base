@@ -24,7 +24,7 @@ __all__ = ["StandardRepoConverter"]
 
 import os.path
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, Iterator, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Set, Tuple
 
 from lsst.log import Log
 from lsst.log.utils import temporaryLogLevel
@@ -91,6 +91,7 @@ class StandardRepoConverter(RepoConverter):
                 self.butler2 = Butler2(self.root)
                 self.mapper = self.butler2.getMapperClass(self.root)(root=self.root)
         self._foundSkyMapsByCoaddName = {}
+        self._chain = {}
 
     def isDatasetTypeSpecial(self, datasetTypeName: str) -> bool:
         # Docstring inherited from RepoConverter.
@@ -191,6 +192,25 @@ class StandardRepoConverter(RepoConverter):
             if self.task.isDatasetTypeIncluded(struct.ref.datasetType.name):
                 yield FileDataset(path=os.path.join(self.root, struct.filename), refs=struct.ref)
         yield from super().iterDatasets()
+
+    def getRun(self, datasetTypeName: str, calibDate: Optional[str] = None) -> str:
+        # Docstring inherited from RepoConverter.
+        run = self.task.config.runs.get(datasetTypeName)
+        if run is not None:
+            self._chain.setdefault(run, set()).add(datasetTypeName)
+        elif self._run is None:
+            raise ValueError(f"No default run for repo at {self.root}, and no "
+                             f"override for dataset {datasetTypeName}.")
+        else:
+            run = self._run
+        return run
+
+    def getCollectionChain(self) -> List[Tuple[str, Set[str]]]:
+        """Return tuples of run name and associated dataset type names that
+        can be used to construct a chained collection that refers to the
+        converted repository (`list` [ `tuple` ]).
+        """
+        return list(self._chain.items())
 
     # Class attributes that will be shadowed by public instance attributes;
     # defined here only for documentation purposes.

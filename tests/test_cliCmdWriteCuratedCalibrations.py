@@ -42,10 +42,11 @@ class WriteCuratedCalibrationsTest(CliCmdTestBase, unittest.TestCase):
         """Test the most basic required arguments."""
         self.run_test(["write-curated-calibrations", "here",
                        "--instrument", "a.b.c",
-                       "--output-run", "foo"],
+                       "--collection", "foo"],
                       self.makeExpected(repo="here",
                                         instrument="a.b.c",
-                                        output_run="foo"))
+                                        collection="foo",
+                                        suffix=None))
 
     def test_missing(self):
         """test a missing argument"""

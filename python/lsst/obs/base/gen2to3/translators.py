@@ -22,8 +22,7 @@
 from __future__ import annotations
 
 __all__ = ("Translator", "TranslatorFactory", "KeyHandler", "CopyKeyHandler", "ConstantKeyHandler",
-           "CalibKeyHandler", "BandToPhysicalFilterKeyHandler", "PhysicalFilterToBandKeyHandler",
-           "makeCalibrationLabel")
+           "BandToPhysicalFilterKeyHandler", "PhysicalFilterToBandKeyHandler")
 
 import itertools
 from typing import Optional, Any, Dict, Tuple, FrozenSet, Iterable, List
@@ -31,36 +30,6 @@ from abc import ABCMeta, abstractmethod
 
 from lsst.log import Log
 from lsst.skymap import BaseSkyMap
-
-
-def makeCalibrationLabel(datasetTypeName: str, calibDate: str, ccd: Optional[int] = None,
-                         filter: Optional[str] = None) -> str:
-    """Make a Gen3 calibration_label string corresponding to a Gen2 data ID.
-
-    Parameters
-    ----------
-    datasetTypeName : `str`
-        Name of the dataset type this calibration label identifies.
-    calibDate : `str`
-        Date string used in the Gen2 template.
-    ccd : `int`, optional
-        Detector ID used in the Gen2 template.
-    filter : `str`, optional
-        Filter used in the Gen2 template.
-
-    Returns
-    -------
-    label : `str`
-        Calibration label string.
-    """
-    # TODO: this function is probably HSC-specific, but I don't know how other
-    # obs calib registries behave so I don't know (yet) how to generalize it.
-    elements = [datasetTypeName, calibDate]
-    if ccd is not None:
-        elements.append(f"{ccd:03d}")
-    if filter is not None:
-        elements.append(filter)
-    return "gen2/{}".format("_".join(elements))
 
 
 class KeyHandler(metaclass=ABCMeta):
@@ -220,22 +189,6 @@ class SkyMapKeyHandler(KeyHandler):
         return skyMapName
 
 
-class CalibKeyHandler(KeyHandler):
-    """A KeyHandler for master calibration datasets.
-    """
-    __slots__ = ("ccdKey",)
-
-    def __init__(self, ccdKey="ccd"):
-        self.ccdKey = ccdKey
-        super().__init__("calibration_label")
-
-    def extract(self, gen2id: dict, skyMap: Optional[BaseSkyMap], skyMapName: Optional[str],
-                datasetTypeName: str) -> Any:
-        # Docstring inherited from KeyHandler.extract.
-        return makeCalibrationLabel(datasetTypeName, gen2id["calibDate"],
-                                    ccd=gen2id.get(self.ccdKey), filter=gen2id.get("filter"))
-
-
 class PhysicalFilterToBandKeyHandler(KeyHandler):
     """KeyHandler for gen2 ``filter`` keys that match ``physical_filter``
     keys in gen3 but should be mapped to ``band``.
@@ -392,12 +345,6 @@ class TranslatorFactory:
         # Copy Gen2 "tract" to Gen3 "tract".
         self.addRule(CopyKeyHandler("tract", dtype=int), gen2keys=("tract",))
 
-        # Add valid_first, valid_last to instrument-level transmission/ datasets;
-        # these are considered calibration products in Gen3.
-        for datasetTypeName in ("transmission_sensor", "transmission_optics", "transmission_filter"):
-            self.addRule(ConstantKeyHandler("calibration_label", "unbounded"),
-                         datasetTypeName=datasetTypeName)
-
         # Translate Gen2 pixel_id to Gen3 skypix.
         #
         # TODO: For now, we just assume that the refcat indexer uses htm7,
@@ -468,9 +415,6 @@ class TranslatorFactory:
         for calibType in ('flat', 'sky', 'fringe'):
             self.addRule(CopyKeyHandler(calibFilterType, "filter"),
                          instrument=instrumentName, datasetTypeName=calibType)
-
-        # Translate Gen2 calibDate and datasetType to Gen3 calibration_label.
-        self.addRule(CalibKeyHandler(detectorKey), gen2keys=("calibDate",))
 
     def makeMatching(self, datasetTypeName: str, gen2keys: Dict[str, type], instrument: Optional[str] = None,
                      skyMap: Optional[BaseSkyMap] = None, skyMapName: Optional[str] = None):
@@ -556,10 +500,11 @@ class Translator:
         hstr = ",".join(str(h) for h in self.handlers)
         return f"{type(self).__name__}(dtype={self.datasetTypeName}, handlers=[{hstr}])"
 
-    def __call__(self, gen2id: Dict[str, Any], *, partial: bool = False):
+    def __call__(self, gen2id: Dict[str, Any], *, partial: bool = False) -> Tuple[dict, Optional[str]]:
         """Return a Gen3 data ID that corresponds to the given Gen2 data ID.
         """
         gen3id = {}
+        calibDate = gen2id.get("calibDate", None)
         for handler in self.handlers:
             try:
                 handler.translate(gen2id, gen3id, skyMap=self.skyMap, skyMapName=self.skyMapName,
@@ -571,10 +516,10 @@ class Translator:
                     continue
                 else:
                     raise
-        return gen3id
+        return gen3id, calibDate
 
     @property
-    def dimensionNames(self):
+    def dimensionNames(self) -> FrozenSet[str]:
         """The names of the dimensions populated by this Translator
         (`frozenset`).
         """

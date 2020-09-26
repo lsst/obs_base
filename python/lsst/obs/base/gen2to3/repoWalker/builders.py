@@ -212,7 +212,8 @@ class BuilderTargetInput(BuilderInput):
         super().__init__(template=template, keys=keys)
         self._translator = translatorFactory.makeMatching(datasetTypeName, keys, **kwargs)
         self.datasetType = DatasetType(datasetTypeName, dimensions=self._translator.dimensionNames,
-                                       storageClass=storageClass, universe=universe)
+                                       storageClass=storageClass, universe=universe,
+                                       isCalibration=("calibDate" in keys))
         self._formatter = formatter
         if targetHandler is None:
             targetHandler = TargetFileHandler

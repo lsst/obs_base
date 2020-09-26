@@ -38,6 +38,7 @@ from typing import (
     List,
     Mapping,
     Optional,
+    Tuple,
 )
 
 from lsst.log import Log
@@ -72,7 +73,8 @@ class PathElementHandler(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def __call__(self, path: str, name: str, datasets: Mapping[DatasetType, List[FileDataset]], *,
+    def __call__(self, path: str, name: str,
+                 datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]], *,
                  predicate: Callable[[DataCoordinate], bool]) -> bool:
         """Apply the handler to a file path.
 
@@ -82,8 +84,10 @@ class PathElementHandler(ABC):
             Full path of the file or directory.
         name : `str`
             Local name of the file or directory within its parent directory.
-        datasets : `dict` [`DatasetType`, `list` [`FileDataset`] ]
-            Dictionary that found datasets should be added to.
+        datasets : `dict` [`DatasetType`, `dict` ]
+            Dictionary that found datasets should be added to.  Nested dicts
+            are keyed by either `None` (for most datasets) or a `str`
+            "CALIBDATE" for calibration datasets.
         predicate : `~collections.abc.Callable`
             A callable taking a single `DataCoordinate` argument and returning
             `bool`, indicating whether that (Gen3) data ID represents one
@@ -107,7 +111,8 @@ class PathElementHandler(ABC):
         """
         raise NotImplementedError()
 
-    def translate(self, dataId2: dict, *, partial: bool = False) -> Optional[DataCoordinate]:
+    def translate(self, dataId2: dict, *, partial: bool = False
+                  ) -> Tuple[Optional[DataCoordinate], Optional[str]]:
         """Translate the given data ID from Gen2 to Gen3.
 
         The default implementation returns `None`.  Subclasses that are able
@@ -126,8 +131,11 @@ class PathElementHandler(ABC):
         dataId3 : `lsst.daf.butler.DataCoordinate` or `None`
             A Gen3 data ID, or `None` if this handler cannot translate data
             IDs.
+        calibDate : `str` or `None`
+            A Gen2 calibration "CALIBDATE" value, or `None` if there was no
+            such value in the template.
         """
-        return None
+        return None, None
 
     def __lt__(self, other: PathElementHandler):
         """Handlers are sorted by rank to reduce the possibility that more
@@ -189,7 +197,7 @@ class DirectoryScanner:
         yield from self._files
         yield from self._subdirectories
 
-    def scan(self, path: str, datasets: Mapping[DatasetType, List[FileDataset]], *,
+    def scan(self, path: str, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]], *,
              predicate: Callable[[DataCoordinate], bool]):
         """Process a directory.
 
@@ -197,8 +205,10 @@ class DirectoryScanner:
         ----------
         path : `str`
             Full path to the directory to be processed.
-        datasets : `dict` [`DatasetType`, `list` [`FileDataset`] ]
-            Dictionary that found datasets should be added to.
+        datasets : `dict` [`DatasetType`, `list` ]
+            Dictionary that found datasets should be added to.  Nested lists
+            elements are tuples of `FileDataset` and an optional "CALIBDATE"
+            `str` value (for calibration datasets only).
         predicate : `~collections.abc.Callable`
             A callable taking a single `DataCoordinate` argument and returning
             `bool`, indicating whether that (Gen3) data ID represents one

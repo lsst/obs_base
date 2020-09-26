@@ -196,8 +196,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         to write curated calibrations."""
         runner = LogCliRunner()
         result = runner.invoke(butlerCli, ["write-curated-calibrations", self.root,
-                                           "--instrument", self.instrumentName,
-                                           "--output-run", self.outputRun])
+                                           "--instrument", self.instrumentName])
         self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
 
     def testLink(self):
@@ -245,13 +244,16 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
         self._writeCuratedCalibrations()
 
-        dataId = {"instrument": self.instrumentName}
-        butler = Butler(self.root, run=self.outputRun)
+        butler = Butler(self.root, writeable=False)
         for datasetTypeName in self.curatedCalibrationDatasetTypes:
-            with self.subTest(dtype=datasetTypeName, dataId=dataId):
-                datasets = list(butler.registry.queryDatasets(datasetTypeName, collections=...,
-                                                              dataId=dataId))
-                self.assertGreater(len(datasets), 0, f"Checking {datasetTypeName}")
+            with self.subTest(dtype=datasetTypeName):
+                found = list(
+                    butler.registry.queryDatasetAssociations(
+                        datasetTypeName,
+                        collections=self.instrumentClass.makeCalibrationCollectionName(),
+                    )
+                )
+                self.assertGreater(len(found), 0, f"Checking {datasetTypeName}")
 
     def testDefineVisits(self):
         if self.visits is None:

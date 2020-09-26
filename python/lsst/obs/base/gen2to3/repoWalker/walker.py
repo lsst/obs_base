@@ -105,7 +105,7 @@ class RepoWalker:
     """
 
     def walk(self, root: str, *, predicate: Optional[Callable[[DataCoordinate], bool]]
-             ) -> Mapping[DatasetType, List[FileDataset]]:
+             ) -> Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]]:
         """Walk a Gen2 repository root to extract Gen3 `FileDataset` instances
         from it.
 
@@ -122,13 +122,15 @@ class RepoWalker:
 
         Returns
         -------
-        datasets : `defaultdict` [`DatasetType`, `list`[`FileDataset`]]
-            Extracted datasets, grouped by Gen3 `DatasetType`.
+        datasets : `defaultdict` [`DatasetType`, `defaultdict` ]
+            Extracted datasets, grouped by Gen3 `DatasetType`.  Nested dict
+            keys are "CALIBDATE" strings (for calibration datasets) or `None`
+            (otherwise).  Nested dict values are lists of `FileDataset`.
         """
         if predicate is None:
             def predicate(dataId: DataCoordinate) -> bool:
                 return True
-        datasets = defaultdict(list)
+        datasets = defaultdict(lambda: defaultdict(list))
         if self._scanner is not None:
             self._scanner.scan(root, datasets, predicate=predicate)
         return datasets
