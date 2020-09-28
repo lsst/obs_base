@@ -38,6 +38,7 @@ class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
                     ingest_task="lsst.obs.base.RawIngestTask",
                     locations=(),
                     output_run=None,
+                    processes=1,
                     regex=fits_re,
                     transfer="auto")
 

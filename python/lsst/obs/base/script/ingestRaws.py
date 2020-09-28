@@ -26,7 +26,7 @@ from lsst.utils import doImport
 
 
 def ingestRaws(repo, locations, regex, output_run, config=None, config_file=None, transfer="auto",
-               ingest_task="lsst.obs.base.RawIngestTask"):
+               processes=1, ingest_task="lsst.obs.base.RawIngestTask"):
     """Ingests raw frames into the butler registry
 
     Parameters
@@ -46,6 +46,8 @@ def ingestRaws(repo, locations, regex, output_run, config=None, config_file=None
         Path to a config file that contains overrides to the ingest config.
     transfer : `str` or None
         The external data transfer type, by default "auto".
+    processess : `int`
+        Number of processes to use for ingest.
     ingest_task : `str`
         The fully qualified class name of the ingest task to use by default
         lsst.obs.base.RawIngestTask.
@@ -68,4 +70,4 @@ def ingestRaws(repo, locations, regex, output_run, config=None, config_file=None
     configOverrides.applyTo(ingestConfig)
     ingester = TaskClass(config=ingestConfig, butler=butler)
     files = findFileResources(locations, regex)
-    ingester.run(files, run=output_run)
+    ingester.run(files, run=output_run, processes=processes)
