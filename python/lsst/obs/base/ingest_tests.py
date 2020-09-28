@@ -30,6 +30,7 @@ import unittest
 import os
 import shutil
 
+import lsst.afw.cameraGeom
 from lsst.daf.butler import Butler
 from lsst.daf.butler.cli.butler import cli as butlerCli
 from lsst.daf.butler.cli.utils import LogCliRunner
@@ -238,22 +239,51 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             self._ingestRaws(transfer="symlink")
 
     def testWriteCuratedCalibrations(self):
-        """Test that we can ingest the curated calibrations"""
+        """Test that we can ingest the curated calibrations, and read them
+        with `loadCamera` both before and after.
+        """
         if self.curatedCalibrationDatasetTypes is None:
             raise unittest.SkipTest("Class requests disabling of writeCuratedCalibrations test")
 
+        butler = Butler(self.root, writeable=False)
+        collection = self.instrumentClass.makeCalibrationCollectionName()
+
+        # Trying to load a camera with a data ID not known to the registry
+        # is an error, because we can't get any temporal information.
+        with self.assertRaises(LookupError):
+            lsst.obs.base.loadCamera(butler, self.dataIds[0], collections=collection)
+
+        # Ingest raws in order to get some exposure records.
+        self._ingestRaws(transfer="auto")
+
+        # Load camera should returned an unversioned camera because there's
+        # nothing in the repo.
+        camera, isVersioned = lsst.obs.base.loadCamera(butler, self.dataIds[0], collections=collection)
+        self.assertFalse(isVersioned)
+        self.assertIsInstance(camera, lsst.afw.cameraGeom.Camera)
+
         self._writeCuratedCalibrations()
 
+        # Make a new butler instance to make sure we don't have any stale
+        # caches (e.g. of DatasetTypes).  Note that we didn't give
+        # _writeCuratedCalibrations the butler instance we had, because it's
+        # trying to test the CLI interface anyway.
         butler = Butler(self.root, writeable=False)
+
         for datasetTypeName in self.curatedCalibrationDatasetTypes:
             with self.subTest(dtype=datasetTypeName):
                 found = list(
                     butler.registry.queryDatasetAssociations(
                         datasetTypeName,
-                        collections=self.instrumentClass.makeCalibrationCollectionName(),
+                        collections=collection,
                     )
                 )
                 self.assertGreater(len(found), 0, f"Checking {datasetTypeName}")
+
+        # Load camera should returned the versioned camera from the repo.
+        camera, isVersioned = lsst.obs.base.loadCamera(butler, self.dataIds[0], collections=collection)
+        self.assertTrue(isVersioned)
+        self.assertIsInstance(camera, lsst.afw.cameraGeom.Camera)
 
     def testDefineVisits(self):
         if self.visits is None:
