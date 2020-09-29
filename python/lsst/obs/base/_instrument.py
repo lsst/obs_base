@@ -766,10 +766,10 @@ def loadCamera(butler: Butler, dataId: DataId, *, collections: Any = None) -> Tu
     # to ensure it only happens once.
     # This will also catch problems with the data ID not having keys we need.
     dataId = butler.registry.expandDataId(dataId, graph=butler.registry.dimensions["exposure"].graph)
-    cameraRefs = list(butler.registry.queryDatasets("camera", dataId=dataId, collections=collections,
-                                                    deduplicate=True))
-    if cameraRefs:
-        assert len(cameraRefs) == 1, "Should be guaranteed by deduplicate=True above."
-        return butler.getDirect(cameraRefs[0]), True
+    try:
+        cameraRef = butler.get("camera", dataId=dataId, collections=collections)
+        return cameraRef, True
+    except LookupError:
+        pass
     instrument = Instrument.fromName(dataId["instrument"], butler.registry)
     return instrument.getCamera(), False

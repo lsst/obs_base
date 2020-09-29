@@ -449,11 +449,19 @@ class RepoConverter(ABC):
         import itertools
         for datasetType, datasetsByCalibDate in self._fileDatasets.items():
             for calibDate, datasetsForCalibDate in datasetsByCalibDate.items():
-                self.task.log.info("Expanding data IDs for %s %s datasets.", len(datasetsByCalibDate),
-                                   datasetType.name)
+                if calibDate is not None:
+                    self.task.log.info("Expanding data IDs for %s %s datasets at calibDate %s.",
+                                       len(datasetsByCalibDate),
+                                       datasetType.name,
+                                       calibDate)
+                else:
+                    self.task.log.info("Expanding data IDs for %s %s non-calibration datasets.",
+                                       len(datasetsByCalibDate),
+                                       datasetType.name)
                 expanded = []
                 for dataset in datasetsForCalibDate:
                     for i, ref in enumerate(dataset.refs):
+                        self.task.log.debug("Expanding data ID %s.", ref.dataId)
                         try:
                             dataId = self.task.registry.expandDataId(ref.dataId)
                             dataset.refs[i] = ref.expanded(dataId)
