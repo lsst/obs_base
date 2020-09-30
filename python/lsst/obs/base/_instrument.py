@@ -721,6 +721,7 @@ def makeExposureRecordFromObsInfo(obsInfo, universe):
         exposure_time=obsInfo.exposure_time.to_value("s"),
         dark_time=obsInfo.dark_time.to_value("s"),
         observation_type=obsInfo.observation_type,
+        observation_reason=obsInfo.observation_reason,
         physical_filter=obsInfo.physical_filter,
         science_program=obsInfo.science_program,
         target_name=obsInfo.object,
