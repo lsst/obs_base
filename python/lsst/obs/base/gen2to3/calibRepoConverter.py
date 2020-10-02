@@ -28,6 +28,7 @@ import sqlite3
 from typing import TYPE_CHECKING, Dict, Iterator, List, Mapping, Tuple, Optional
 
 import astropy.time
+import astropy.units as u
 
 from lsst.daf.butler import DataCoordinate, FileDataset, Timespan
 from .repoConverter import RepoConverter
@@ -124,13 +125,15 @@ class CalibRepoConverter(RepoConverter):
         if not os.path.exists(calibFile):
             raise RuntimeError("Attempting to convert calibrations but no registry database"
                                f" found in {self.root}")
-        # We will gather results in a dict-of-lists keyed by Timespan, since
-        # Registry.certify operates on one Timespan and multiple refs at a
-        # time.
-        refsByTimespan = defaultdict(list)
+
+        # Initially we collate timespans for each dataId + dataset type
+        # combination. This allows us to check for small gaps or overlaps
+        # inherent in the ambiguous usage of validity ranges in gen2
+        timespansByDataId = defaultdict(list)
+
         db = sqlite3.connect(calibFile)
         db.row_factory = sqlite3.Row
-        day = astropy.time.TimeDelta(1, format="jd", scale="tai")
+
         for datasetType, datasetsByCalibDate in datasets.items():
             if not datasetType.isCalibration():
                 continue
@@ -162,7 +165,7 @@ class CalibRepoConverter(RepoConverter):
                     # dates very far in the past or future.
                     timespan = Timespan(
                         astropy.time.Time(row["validStart"], format="iso", scale="tai"),
-                        astropy.time.Time(row["validEnd"], format="iso", scale="tai") + day,
+                        astropy.time.Time(row["validEnd"], format="iso", scale="tai"),
                     )
                     # Make a Gen2 data ID from query results.
                     gen2id = {}
@@ -175,7 +178,11 @@ class CalibRepoConverter(RepoConverter):
                     dataId = DataCoordinate.standardize(gen3id, graph=datasetType.dimensions)
                     ref = refsByDataId.get(dataId)
                     if ref is not None:
-                        refsByTimespan[timespan].append(ref)
+                        # Validity ranges must not overlap for the same dataID
+                        # datasetType combination. Use that as a primary
+                        # key and store the timespan and ref in a tuple
+                        # as the value for later timespan validation.
+                        timespansByDataId[(ref.dataId, ref.datasetType.name)].append((timespan, ref))
                     else:
                         # The Gen2 calib registry mentions this dataset, but it
                         # isn't included in what we've ingested.  This might
@@ -188,6 +195,69 @@ class CalibRepoConverter(RepoConverter):
                             "Gen2 calibration registry entry has no dataset: %s for calibDate=%s, %s.",
                             datasetType.name, calibDate, dataId
                         )
+
+        # Analyze the timespans to check for overlap problems
+        # Gaps of a day should be closed since we assume differing
+        # conventions in gen2 repos.
+
+        # We need to correct any validity range issues and store the
+        # results in a dict-of-lists keyed by Timespan, since
+        # Registry.certify operates on one Timespan and multiple refs at a
+        # time.
+        refsByTimespan = defaultdict(list)
+
+        # A day with a bit of fuzz to indicate the largest gap we will close
+        max_gap = astropy.time.TimeDelta(1.001, format="jd", scale="tai")
+
+        # Since in many cases the validity ranges are relevant for multiple
+        # dataset types and dataIds we don't want to over-report and so
+        # cache the messages for later.
+        info_messages = set()
+        warn_messages = set()
+        for timespans in timespansByDataId.values():
+            # Sort all the timespans and check overlaps
+            sorted_timespans = sorted(timespans, key=lambda x: x[0])
+            timespan_prev, ref_prev = sorted_timespans.pop(0)
+            for timespan, ref in sorted_timespans:
+                # See if we have a suspicious gap
+                delta = timespan.begin - timespan_prev.end
+                abs_delta = abs(delta)
+                if abs_delta > 0 and abs_delta < max_gap:
+                    if delta > 0:
+                        # Gap between timespans
+                        msg = f"Calibration validity gap closed from {timespan_prev.end} to {timespan.begin}"
+                        info_messages.add(msg)
+                    else:
+                        # Overlap of timespans
+                        msg = f"Calibration validity overlap of {abs(delta).to(u.s)} removed for period " \
+                            f"{timespan.begin} to {timespan_prev.end}"
+                        warn_messages.add(msg)
+
+                    self.task.log.debug("Correcting validity range for %s with end %s",
+                                        ref_prev, timespan_prev.end)
+
+                    # Assume this gap is down to convention in gen2.
+                    # We have to adjust the previous timespan to fit
+                    # since we always trust validStart.
+                    timespan_prev = Timespan(begin=timespan_prev.begin,
+                                             end=timespan.begin)
+                # Store the previous timespan and ref since it has now
+                # been verified
+                refsByTimespan[timespan_prev].append(ref_prev)
+
+                # And update the previous values for the next iteration
+                timespan_prev = timespan
+                ref_prev = ref
+
+            # Store the final timespan/ref pair
+            refsByTimespan[timespan_prev].append(ref_prev)
+
+        # Issue any pending log messages we have recorded
+        for msg in sorted(info_messages):
+            self.task.log.info(msg)
+        for msg in sorted(warn_messages):
+            self.task.log.warn(msg)
+
         # Done reading from Gen2, time to certify into Gen3.
         for timespan, refs in refsByTimespan.items():
             self.task.registry.certify(self.collection, refs, timespan)

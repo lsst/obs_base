@@ -449,15 +449,19 @@ class RepoConverter(ABC):
         import itertools
         for datasetType, datasetsByCalibDate in self._fileDatasets.items():
             for calibDate, datasetsForCalibDate in datasetsByCalibDate.items():
+                nDatasets = len(datasetsForCalibDate)
+                suffix = "" if nDatasets == 1 else "s"
                 if calibDate is not None:
-                    self.task.log.info("Expanding data IDs for %s %s datasets at calibDate %s.",
-                                       len(datasetsByCalibDate),
+                    self.task.log.info("Expanding data IDs for %s %s dataset%s at calibDate %s.",
+                                       nDatasets,
                                        datasetType.name,
+                                       suffix,
                                        calibDate)
                 else:
-                    self.task.log.info("Expanding data IDs for %s %s non-calibration datasets.",
-                                       len(datasetsByCalibDate),
-                                       datasetType.name)
+                    self.task.log.info("Expanding data IDs for %s %s non-calibration dataset%s.",
+                                       nDatasets,
+                                       datasetType.name,
+                                       suffix)
                 expanded = []
                 for dataset in datasetsForCalibDate:
                     for i, ref in enumerate(dataset.refs):
@@ -490,8 +494,9 @@ class RepoConverter(ABC):
                 except LookupError:
                     self.task.log.warn(f"No run configured for dataset type {datasetType.name}.")
                     continue
-                self.task.log.info("Ingesting %s %s datasets into run %s.", len(datasetsForCalibDate),
-                                   datasetType.name, run)
+                nDatasets = len(datasetsForCalibDate)
+                self.task.log.info("Ingesting %s %s dataset%s into run %s.", nDatasets,
+                                   datasetType.name, "" if nDatasets == 1 else "s", run)
                 try:
                     self.task.registry.registerRun(run)
                     self.task.butler3.ingest(*datasetsForCalibDate, transfer=self.task.config.transfer,
