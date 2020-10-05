@@ -22,5 +22,5 @@
 from lsst.daf.butler.cli.utils import MWOptionDecorator
 
 
-instrument_option = MWOptionDecorator("-i", "--instrument",
+instrument_option = MWOptionDecorator("--instrument",
                                       help="The name or fully-qualified class name of an instrument.")
