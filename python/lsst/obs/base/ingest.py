@@ -39,6 +39,7 @@ from lsst.daf.butler import (
     DimensionRecord,
     DimensionUniverse,
     FileDataset,
+    Formatter,
 )
 from lsst.pex.config import Config, ChoiceField
 from lsst.pipe.base import Task
@@ -85,8 +86,9 @@ class RawFileData:
     subclass of `FitsRawFormatterBase`).
     """
 
-    instrumentClass: Type[Instrument]
-    """The `Instrument` class associated with this file."""
+    instrumentClass: Optional[Type[Instrument]]
+    """The `Instrument` class associated with this file. Can be `None`
+    if ``datasets`` is an empty list."""
 
 
 @dataclass
@@ -235,18 +237,31 @@ class RawIngestTask(Task):
         file.  Instruments using a single file to store multiple datasets
         must implement their own version of this method.
         """
-        # Manually merge the primary and "first data" headers here because we
-        # do not know in general if an input file has set INHERIT=T.
-        phdu = readMetadata(filename, 0)
-        header = merge_headers([phdu, readMetadata(filename)], mode="overwrite")
-        fix_header(header)
-        datasets = [self._calculate_dataset_info(header, filename)]
 
-        # The data model currently assumes that whilst multiple datasets
-        # can be associated with a single file, they must all share the
-        # same formatter.
-        instrument = Instrument.fromName(datasets[0].dataId["instrument"], self.butler.registry)
-        FormatterClass = instrument.getRawFormatter(datasets[0].dataId)
+        # We do not want to stop ingest if we are given a bad file.
+        # Instead return a RawFileData with no datasets and allow
+        # the caller to report the failure.
+
+        try:
+            # Manually merge the primary and "first data" headers here because
+            # we do not know in general if an input file has set INHERIT=T.
+            phdu = readMetadata(filename, 0)
+            header = merge_headers([phdu, readMetadata(filename)], mode="overwrite")
+            fix_header(header)
+            datasets = [self._calculate_dataset_info(header, filename)]
+        except Exception as e:
+            self.log.debug("Problem extracting metadata from %s: %s", filename, e)
+            # Indicate to the caller that we failed to read
+            datasets = []
+            FormatterClass = Formatter
+            instrument = None
+        else:
+            self.log.debug("Extracted metadata from file %s", filename)
+            # The data model currently assumes that whilst multiple datasets
+            # can be associated with a single file, they must all share the
+            # same formatter.
+            instrument = Instrument.fromName(datasets[0].dataId["instrument"], self.butler.registry)
+            FormatterClass = instrument.getRawFormatter(datasets[0].dataId)
 
         return RawFileData(datasets=datasets, filename=filename,
                            FormatterClass=FormatterClass,
@@ -363,13 +378,32 @@ class RawIngestTask(Task):
         exposure : `RawExposureData`
             Data structures containing dimension records, filenames, and data
             IDs to be ingested (one structure for each exposure).
+        bad_files : `list` of `str`
+            List of all the files that could not have metadata extracted.
         """
         if pool is None and processes > 1:
             pool = Pool(processes)
         mapFunc = map if pool is None else pool.imap_unordered
 
         # Extract metadata and build per-detector regions.
+        # This could run in a subprocess so collect all output
+        # before looking at failures.
         fileData: Iterator[RawFileData] = mapFunc(self.extractMetadata, files)
+
+        # Filter out all the failed reads and store them for later
+        # reporting
+        good_files = []
+        bad_files = []
+        for fileDatum in fileData:
+            if not fileDatum.datasets:
+                bad_files.append(fileDatum.filename)
+            else:
+                good_files.append(fileDatum)
+        fileData = good_files
+
+        self.log.info("Successfully extracted metadata from %d file%s with %d failure%s",
+                      len(fileData), "" if len(fileData) == 1 else "s",
+                      len(bad_files), "" if len(bad_files) == 1 else "s")
 
         # Use that metadata to group files (and extracted metadata) by
         # exposure.  Never parallelized because it's intrinsically a gather
@@ -391,7 +425,7 @@ class RawIngestTask(Task):
         # SELECTs), so if there's going to be a problem with connections vs.
         # multiple processes, or lock contention (in SQLite) slowing things
         # down, it'll happen here.
-        return mapFunc(self.expandDataIds, exposureData)
+        return mapFunc(self.expandDataIds, exposureData), bad_files
 
     def ingestExposureDatasets(self, exposure: RawExposureData, *, run: Optional[str] = None
                                ) -> List[DatasetRef]:
@@ -456,7 +490,7 @@ class RawIngestTask(Task):
         primary key does not already exist.  This allows different files within
         the same exposure to be incremented in different runs.
         """
-        exposureData = self.prep(files, pool=pool, processes=processes)
+        exposureData, bad_files = self.prep(files, pool=pool, processes=processes)
         # Up to this point, we haven't modified the data repository at all.
         # Now we finally do that, with one transaction per exposure.  This is
         # not parallelized at present because the performance of this step is
@@ -468,8 +502,23 @@ class RawIngestTask(Task):
         self.butler.registry.registerDatasetType(self.datasetType)
         refs = []
         runs = set()
+        n_exposures = 0
+        n_exposures_failed = 0
+        n_ingests_failed = 0
         for exposure in exposureData:
-            self.butler.registry.syncDimensionData("exposure", exposure.record)
+
+            self.log.debug("Attempting to ingest %d file%s from exposure %s:%s",
+                           len(exposure.files), "" if len(exposure.files) == 1 else "s",
+                           exposure.record.instrument, exposure.record.name)
+
+            try:
+                self.butler.registry.syncDimensionData("exposure", exposure.record)
+            except Exception as e:
+                n_exposures_failed += 1
+                self.log.warning("Exposure %s:%s could not be registered: %s",
+                                 exposure.record.instrument, exposure.record.name, e)
+                continue
+
             # Override default run if nothing specified explicitly
             if run is None:
                 instrumentClass = exposure.files[0].instrumentClass
@@ -479,6 +528,40 @@ class RawIngestTask(Task):
             if this_run not in runs:
                 self.butler.registry.registerCollection(this_run, type=CollectionType.RUN)
                 runs.add(this_run)
-            with self.butler.transaction():
-                refs.extend(self.ingestExposureDatasets(exposure, run=this_run))
+            try:
+                with self.butler.transaction():
+                    refs.extend(self.ingestExposureDatasets(exposure, run=this_run))
+            except Exception as e:
+                n_ingests_failed += 1
+                self.log.warning("Failed to ingest the following for reason: %s", e)
+                for f in exposure.files:
+                    self.log.warning("- %s", f.filename)
+                continue
+
+            # Success for this exposure
+            n_exposures += 1
+            self.log.info("Exposure %s:%s ingested successfully",
+                          exposure.record.instrument, exposure.record.name)
+
+        had_failure = False
+
+        if bad_files:
+            had_failure = True
+            self.log.warning("Could not extract observation metadata from the following:")
+            for f in bad_files:
+                self.log.warning("- %s", f)
+
+        self.log.info("Successfully processed data from %d exposure%s with %d failure%s from exposure"
+                      " registration and %d failure%s from file ingest.",
+                      n_exposures, "" if n_exposures == 1 else "s",
+                      n_exposures_failed, "" if n_exposures_failed == 1 else "s",
+                      n_ingests_failed, "" if n_ingests_failed == 1 else "s")
+        if n_exposures_failed > 0 or n_ingests_failed > 0:
+            had_failure = True
+        self.log.info("Ingested %d distinct Butler dataset%s",
+                      len(refs), "" if len(refs) == 1 else "s")
+
+        if had_failure:
+            raise RuntimeError("Some failures encountered during ingestion")
+
         return refs
