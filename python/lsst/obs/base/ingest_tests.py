@@ -196,8 +196,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         """Use the Click `testing` module to call the butler command line api
         to write curated calibrations."""
         runner = LogCliRunner()
-        result = runner.invoke(butlerCli, ["write-curated-calibrations", self.root,
-                                           "--instrument", self.instrumentName])
+        result = runner.invoke(butlerCli, ["write-curated-calibrations", self.root, self.instrumentName])
         self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
 
     def testLink(self):
