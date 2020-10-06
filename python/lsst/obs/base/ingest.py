@@ -260,8 +260,16 @@ class RawIngestTask(Task):
             # The data model currently assumes that whilst multiple datasets
             # can be associated with a single file, they must all share the
             # same formatter.
-            instrument = Instrument.fromName(datasets[0].dataId["instrument"], self.butler.registry)
-            FormatterClass = instrument.getRawFormatter(datasets[0].dataId)
+            try:
+                instrument = Instrument.fromName(datasets[0].dataId["instrument"], self.butler.registry)
+            except LookupError:
+                self.log.warning("Instrument %s for file %s not known to registry",
+                                 datasets[0].dataId["instrument"], filename)
+                datasets = []
+                FormatterClass = Formatter
+                instrument = None
+            else:
+                FormatterClass = instrument.getRawFormatter(datasets[0].dataId)
 
         return RawFileData(datasets=datasets, filename=filename,
                            FormatterClass=FormatterClass,
