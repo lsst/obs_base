@@ -32,7 +32,7 @@ from lsst.daf.butler.cli.opt import (repo_argument,
                                      transfer_option
                                      )
 from lsst.daf.butler.cli.utils import (cli_handle_exception, split_commas, typeStrAcceptsMultiple)
-from ..opt import instrument_argument, instrument_option
+from ..opt import instrument_argument
 from ... import script
 
 
@@ -65,6 +65,7 @@ def convert(*args, **kwargs):
 
 @click.command(short_help="Define visits from exposures.")
 @repo_argument(required=True)
+@instrument_argument(required=True)
 @config_file_option(help="Path to a pex_config override to be included after the Instrument config overrides "
                          "are applied.")
 @click.option("--collections",
@@ -72,7 +73,6 @@ def convert(*args, **kwargs):
               multiple=True,
               callback=split_commas,
               metavar=typeStrAcceptsMultiple)
-@instrument_option(required=True)
 @options_file_option()
 def define_visits(*args, **kwargs):
     """Define visits from exposures in the butler registry."""
@@ -110,7 +110,7 @@ def register_instrument(*args, **kwargs):
 
 @click.command(short_help="Add an instrument's curated calibrations.")
 @repo_argument(required=True)
-@instrument_option(required=True)
+@instrument_argument(required=True)
 @click.option("--collection", required=False,
               help="Name of the calibration collection that associates datasets with validity ranges.")
 @click.option("--suffix", required=False,

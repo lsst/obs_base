@@ -87,6 +87,6 @@ class ButlerCmdTestBase(metaclass=abc.ABCMeta):
             self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
             result = runner.invoke(butler.cli, ["write-curated-calibrations",
                                                 "here",
-                                                "--instrument", self.instrumentName,
+                                                self.instrumentName,
                                                 "--collection", "collection"])
             self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")

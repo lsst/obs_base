@@ -41,15 +41,13 @@ class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
 
     def test_repoBasic(self):
         """Test the most basic required arguments."""
-        self.run_test(["define-visits", "here",
-                       "--instrument", "a.b.c"],
+        self.run_test(["define-visits", "here", "a.b.c"],
                       self.makeExpected(repo="here",
                                         instrument="a.b.c"))
 
     def test_all(self):
         """Test all the arguments."""
-        self.run_test(["define-visits", "here",
-                       "--instrument", "a.b.c",
+        self.run_test(["define-visits", "here", "a.b.c",
                        "--collections", "foo/bar,baz",
                        "--config-file", "/path/to/config",
                        "--collections", "boz"],
@@ -65,7 +63,7 @@ class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
     def test_missing(self):
         """test a missing argument"""
         self.run_missing(["define-visits"], "Missing argument ['\"]REPO['\"]")
-        self.run_missing(["define-visits", "here"], "Missing option ['\"]-i['\"] / ['\"]--instrument['\"]")
+        self.run_missing(["define-visits", "here"], "Missing argument ['\"]INSTRUMENT['\"]")
 
 
 if __name__ == "__main__":

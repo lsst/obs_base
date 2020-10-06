@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Unit tests for daf_butler CLI define-visits command.
+"""Unit tests for daf_butler CLI write-curated-calibrations command.
 """
 
 import unittest
@@ -40,8 +40,7 @@ class WriteCuratedCalibrationsTest(CliCmdTestBase, unittest.TestCase):
 
     def test_repoBasic(self):
         """Test the most basic required arguments."""
-        self.run_test(["write-curated-calibrations", "here",
-                       "--instrument", "a.b.c",
+        self.run_test(["write-curated-calibrations", "here", "a.b.c",
                        "--collection", "foo"],
                       self.makeExpected(repo="here",
                                         instrument="a.b.c",
@@ -52,7 +51,7 @@ class WriteCuratedCalibrationsTest(CliCmdTestBase, unittest.TestCase):
         """test a missing argument"""
         self.run_missing(["write-curated-calibrations"], "Missing argument ['\"]REPO['\"]")
         self.run_missing(
-            ["write-curated-calibrations", "here"], "Missing option ['\"]-i['\"] / ['\"]--instrument['\"]"
+            ["write-curated-calibrations", "here"], "Missing argument ['\"]INSTRUMENT['\"]"
         )
 
 
