@@ -55,6 +55,7 @@ fits_re = r"\.fit[s]?\b"
 @click.option("--reruns", multiple=True, callback=split_commas, metavar=typeStrAcceptsMultiple,
               help="List of gen 2 reruns to convert.")
 @transfer_option(help="Mode to use to transfer files into the new repository.")
+@processes_option()
 @config_file_option(help="Path to a `ConvertRepoConfig` override to be included after the Instrument config "
                     "overrides are applied.")
 @options_file_option()
@@ -73,6 +74,7 @@ def convert(*args, **kwargs):
               multiple=True,
               callback=split_commas,
               metavar=typeStrAcceptsMultiple)
+@processes_option()
 @options_file_option()
 def define_visits(*args, **kwargs):
     """Define visits from exposures in the butler registry."""

@@ -37,6 +37,7 @@ class ConvertTestCase(CliCmdTestBase, unittest.TestCase):
                     calibs=None,
                     reruns=(),
                     transfer="auto",
+                    processes=1,
                     config_file=None)
 
     @staticmethod
@@ -60,6 +61,7 @@ class ConvertTestCase(CliCmdTestBase, unittest.TestCase):
                        "--reruns", "one,two",
                        "--reruns", "three",
                        "--transfer", "symlink",
+                       "--processes", 1,
                        "--config-file", "/path/to/config"],
                       self.makeExpected(repo="here",
                                         gen2root="from",
@@ -68,6 +70,7 @@ class ConvertTestCase(CliCmdTestBase, unittest.TestCase):
                                         calibs="path/to/calib/repo",
                                         reruns=("one", "two", "three"),
                                         transfer="symlink",
+                                        processes=1,
                                         config_file="/path/to/config"))
 
     def test_missing(self):

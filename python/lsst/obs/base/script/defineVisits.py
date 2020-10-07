@@ -24,7 +24,7 @@ from lsst.obs.base import DefineVisitsTask, DefineVisitsConfig
 from ..utils import getInstrument
 
 
-def defineVisits(repo, config_file, collections, instrument):
+def defineVisits(repo, config_file, collections, instrument, processes=1):
     """Implements the command line interface `butler define-visits` subcommand,
     should only be called by command line tools and unit test code that tests
     this function.
@@ -59,4 +59,4 @@ def defineVisits(repo, config_file, collections, instrument):
         config.load(config_file)
     task = DefineVisitsTask(config=config, butler=butler)
     task.run(butler.registry.queryDataIds(["exposure"], dataId={"instrument": instr.getName()}),
-             collections=collections)
+             collections=collections, processes=processes)

@@ -444,7 +444,8 @@ class ConvertRepoTask(Task):
     def run(self, root: str, *,
             calibs: Dict[str, str] = None,
             reruns: List[Rerun],
-            visits: Optional[Iterable[int]] = None):
+            visits: Optional[Iterable[int]] = None,
+            processes: int = 1):
         """Convert a group of related data repositories.
 
         Parameters
@@ -463,6 +464,8 @@ class ConvertRepoTask(Task):
         visits : iterable of `int`, optional
             The integer IDs of visits to convert.  If not provided, all visits
             in the Gen2 root repository will be converted.
+        processes : `int`, optional
+            The number of processes to use for conversion.
         """
         if calibs is None:
             calibs = {}
@@ -507,7 +510,7 @@ class ConvertRepoTask(Task):
 
         # Run raw ingest (does nothing if we weren't configured to convert the
         # 'raw' dataset type).
-        rootConverter.runRawIngest()
+        rootConverter.runRawIngest(processes=processes)
 
         # Write curated calibrations to all calibration runs and
         # also in the default collection.
@@ -536,7 +539,7 @@ class ConvertRepoTask(Task):
 
         # Define visits (also does nothing if we weren't configurd to convert
         # the 'raw' dataset type).
-        rootConverter.runDefineVisits()
+        rootConverter.runDefineVisits(processes=processes)
 
         # Walk Gen2 repos to find datasets convert.
         for converter in converters:
