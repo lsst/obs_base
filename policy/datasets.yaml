@@ -570,6 +570,16 @@ sourceTable_visit:
     python: lsst.pipe.tasks.parquetTable.ParquetTable
     tables: raw
     template: ''
+visitSummary:
+    description: >
+        Per-visit combination of visit metatadata, WCS, photoCalib, and
+        additional quantities.
+        Produced by ConsolidateVisitSummaryTask.
+    persistable: ExposureCatalog
+    storage: FitsCatalogStorage
+    python: lsst.afw.table.ExposureCatalog
+    tables: raw
+    template: ''
 fakes_src:
     description: "Full depth source catalog with fake objects procduced by processCcdWithFakes."
     persistable: SourceCatalog
