@@ -1484,7 +1484,7 @@ photonTransferCurveDataset:
     description: "Persisted output data from the MeasurePhotonTransferCurveTask"
     persistable: ignored
     python: lsst.cp.pipe.ptc.PhotonTransferCurveDataset
-    storage: PickleStorage
+    storage: FitsCatalogStorage
     tables: 'raw'
     template: ''
 plotPhotonTransferCurve_config:
