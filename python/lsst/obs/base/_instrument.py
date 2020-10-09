@@ -166,6 +166,23 @@ class Instrument(metaclass=ABCMeta):
     def register(self, registry):
         """Insert instrument, physical_filter, and detector entries into a
         `Registry`.
+
+        Implementations should guarantee that registration is atomic (the
+        registry should not be modified if any error occurs) and idempotent at
+        the level of individual dimension entries; new detectors and filters
+        should be added, but changes to any existing record should not be.
+        This can generally be achieved via a block like::
+
+            with registry.transaction():
+                registry.syncDimensionData("instrument", ...)
+                registry.syncDimensionData("detector", ...)
+                self.registerFilters(registry)
+
+        Raises
+        ------
+        lsst.daf.butler.registry.ConflictingDefinitionError
+            Raised if any existing record has the same key but a different
+            definition as one being registered.
         """
         raise NotImplementedError()
 
@@ -251,7 +268,8 @@ class Instrument(metaclass=ABCMeta):
 
     def _registerFilters(self, registry):
         """Register the physical and abstract filter Dimension relationships.
-        This should be called in the ``register`` implementation.
+        This should be called in the `register` implementation, within
+        a transaction context manager block.
 
         Parameters
         ----------
@@ -266,11 +284,11 @@ class Instrument(metaclass=ABCMeta):
             else:
                 band = filter.band
 
-            registry.insertDimensionData("physical_filter",
-                                         {"instrument": self.getName(),
-                                          "name": filter.physical_filter,
-                                          "band": band
-                                          })
+            registry.syncDimensionData("physical_filter",
+                                       {"instrument": self.getName(),
+                                        "name": filter.physical_filter,
+                                        "band": band
+                                        })
 
     @abstractmethod
     def getRawFormatter(self, dataId):
