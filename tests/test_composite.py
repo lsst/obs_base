@@ -89,10 +89,14 @@ class TestCompositeTestCase(unittest.TestCase):
             shutil.rmtree(self.testData)
 
     def testType3GetAndPut(self):
-        """1. Verify that a composite can be loaded and that its components are the same as when the type1
-        components are loaded individually (verifies correct lookup in this case).
-        2. Verify that when the individual components are put and when the composite is put (which
-        disassembles into individual components) that the objects that are written are the same.
+        """Verify get and put for composites.
+
+        1. Verify that a composite can be loaded and that its components are
+        the same as when the type1 components are loaded individually (verifies
+        correct lookup in this case).
+        2. Verify that when the individual components are put and when the
+        composite is put (which disassembles into individual components) that
+        the objects that are written are the same.
         """
         secondRepoPath = os.path.join(self.testData, 'repo2')
         repoArgs = dafPersist.RepositoryArgs(root=secondRepoPath, policy=self.policy)
@@ -103,14 +107,14 @@ class TestCompositeTestCase(unittest.TestCase):
         self.assertEqual(self.objA, objABPair.objA)
         self.assertEqual(self.objB, objABPair.objB)
 
-        # For now also test that the type 1 and type 3 components are not the same object.
-        # These objects are not yet in the butler cache because they have not been gotten yet (they have only
-        # only been put)
+        # For now also test that the type 1 and type 3 components are not the
+        # same object. These objects are not yet in the butler cache because
+        # they have not been gotten yet (they have only only been put)
         self.assertIsNot(self.objA, objABPair.objA)
         self.assertIsNot(self.objB, objABPair.objB)
 
-        # Now, get a type 1 copy of objA and objB, and they should be equivalent to the instance in the
-        # composite.
+        # Now, get a type 1 copy of objA and objB, and they should be
+        # equivalent to the instance in the composite.
         objA = butler.get('basicObject1', dataId={'id': 'foo'}, immediate=True)
         objB = butler.get('basicObject2', dataId={'name': 'bar'}, immediate=True)
         self.assertEqual(objA, objABPair.objA)
@@ -123,11 +127,12 @@ class TestCompositeTestCase(unittest.TestCase):
         self.assertEqual(verObjB, objABPair.objB)
 
     def testDottedDatasetType(self):
-        """Verify that components of a composite can be loaded by dotted name in the form
-        DatasetType.componentName
+        """Verify that components of a composite can be loaded by dotted name
+        in the form DatasetType.componentName
         """
         thirdRepoPath = os.path.join(self.testData, 'repo3')
-        # child repositories do not look up in-repo policies. We need to fix that.
+        # child repositories do not look up in-repo policies. We need to fix
+        # that.
         repoArgs = dafPersist.RepositoryArgs(root=thirdRepoPath, policy=self.policy)
         butler = dafPersist.Butler(inputs=self.firstRepoPath, outputs=repoArgs)
         verificationButler = dafPersist.Butler(inputs=thirdRepoPath)
@@ -143,13 +148,14 @@ class TestCompositeTestCase(unittest.TestCase):
         self.assertEqual(verObjB, componentObjB)
 
     def testDatasetExists(self):
-        """Verify that Butler.datasetExists returns true for a composite dataset whose components exist."""
+        """Verify that Butler.datasetExists returns true for a composite
+        dataset whose components exist."""
         butler = dafPersist.Butler(inputs=self.firstRepoPath)
         self.assertTrue(butler.datasetExists('basicPair', dataId={'id': 'foo', 'name': 'bar'}))
 
     def testDatasetDoesNotExist(self):
-        """Verify that Butler.datasetExists returns false for a composite dataset where some of the
-        components do not exist."""
+        """Verify that Butler.datasetExists returns false for a composite
+        dataset where some of the components do not exist."""
         repoPath = os.path.join(self.testData, 'repo')
         repoArgs = dafPersist.RepositoryArgs(root=repoPath, policy=self.policy,
                                              mapper='lsst.obs.base.test.CompositeMapper')
@@ -160,8 +166,8 @@ class TestCompositeTestCase(unittest.TestCase):
         self.assertFalse(butler.datasetExists('basicPair', dataId={'id': 'foo', 'name': 'bar'}))
 
     def testStd(self):
-        """Verify that composite dataset types with a std_ function are passed to the std_ function after
-        being instantiated."""
+        """Verify that composite dataset types with a std_ function are passed
+        to the std_ function after being instantiated."""
         secondRepoPath = os.path.join(self.testData, 'repo2')
         repoArgs = dafPersist.RepositoryArgs(root=secondRepoPath, policy=self.policy)
         butler = dafPersist.Butler(inputs=self.firstRepoPath, outputs=repoArgs)
@@ -170,8 +176,8 @@ class TestCompositeTestCase(unittest.TestCase):
         self.assertTrue(objABPair.standardized)
 
     def testBypass(self):
-        """Verify that composite dataset types with a bypass_ function are passed to the bypass function after
-        being instantiated."""
+        """Verify that composite dataset types with a bypass_ function are
+        passed to the bypass function after being instantiated."""
         secondRepoPath = os.path.join(self.testData, 'repo2')
         repoArgs = dafPersist.RepositoryArgs(root=secondRepoPath, policy=self.policy)
         butler = dafPersist.Butler(inputs=self.firstRepoPath, outputs=repoArgs)
@@ -207,15 +213,15 @@ class TestGenericAssembler(unittest.TestCase):
                          'a': {'datasetType': 'basicObject1'},
                          'b': {'datasetType': 'basicObject2'}
                      },
-                     # note, no assembler or disassembler specified here, will use
-                     # setter names inferred by component name.
+                     # note, no assembler or disassembler specified here, will
+                     # use setter names inferred by component name.
                  },
                  # "generic assembler default constructor pair"
                  'gaDefCtorPair': {  # dataset defition that uses the default ctor
                      'python': 'lsst.daf.persistence.test.TestObjectPair',
                      'composite': {
-                         # note that the component names are the same as the argument
-                         # names in the TestObjectPair.__init__ func.
+                         # note that the component names are the same as the
+                         # argument names in the TestObjectPair.__init__ func.
                          'objA': {'datasetType': 'basicObject1',
                                   'getter': 'get_a'},
                          'objB': {'datasetType': 'basicObject2',
@@ -227,9 +233,9 @@ class TestGenericAssembler(unittest.TestCase):
                  'gaPairWithSetter': {
                      'python': 'lsst.daf.persistence.test.TestObjectPair',
                      'composite': {
-                         # note that the component names do not match argument names
-                         # in the TestObjectPair.__init__ func or the set functions
-                         # in the python object.
+                         # note that the component names do not match argument
+                         # names in the TestObjectPair.__init__ func or the set
+                         # functions in the python object.
                          'z': {'datasetType': 'basicObject1',
                                'setter': 'set_a',
                                'getter': 'get_a'
@@ -240,15 +246,16 @@ class TestGenericAssembler(unittest.TestCase):
                                }
                      }
                  },
-                 # simple object where setter and getter is named with underscore
-                 # separator
+                 # simple object where setter and getter is named with
+                 # underscore separator
                  'underscoreSetter': {
                      'python': 'lsst.daf.persistence.test.TestObjectUnderscoreSetter',
                      'composite': {
                          'foo': {'datasetType': 'basicObject1'}
                      }
                  },
-                 # simple object where setter and getter is named with camelcase
+                 # simple object where setter and getter is named with
+                 # camelcase
                  'camelCaseSetter': {
                      'python': 'lsst.daf.persistence.test.TestObjectCamelCaseSetter',
                      'composite': {
@@ -270,8 +277,10 @@ class TestGenericAssembler(unittest.TestCase):
             shutil.rmtree(self.testData)
 
     def testConstructor(self):
-        """Test the case where the arguments to the default constructor match the component names and so the
-        default constructor can be used by the generic assembler to assemble the object
+        """Test the case where the arguments to the default constructor match
+        the component names and so the default constructor can be used by the
+        generic assembler to assemble the object.
+
         Uses getters named by the policy to disassemble the object.
         """
         repoArgs = dafPersist.RepositoryArgs(root=self.secondRepoPath, policy=self.policy)
@@ -283,10 +292,11 @@ class TestGenericAssembler(unittest.TestCase):
         self.assertEqual(self.objB, objABPair.objB)
 
         butler.put(objABPair, 'basicPair', dataId={'id': 'foo', 'name': 'bar'})
-        # comparing the output files directly works so long as the storage is posix:
+        # comparing the output files directly works so long as the storage is
+        # posix:
 
-        # put the composite object and verify it disassembled into the right locations by loading the
-        # components directly
+        # put the composite object and verify it disassembled into the right
+        # locations by loading the components directly
         objA = verificationButler.get('basicObject1', dataId={'id': 'foo'})
         self.assertEqual(objA, objABPair.objA)
         objB = verificationButler.get('basicObject2', dataId={'name': 'bar'})
@@ -301,8 +311,8 @@ class TestGenericAssembler(unittest.TestCase):
         self.assertFalse(objABPair.usedASetter)
         self.assertFalse(objABPair.usedBSetter)
 
-        # put the composite object and verify it disassembled into the right locations by loading the
-        # components directly
+        # put the composite object and verify it disassembled into the right
+        # locations by loading the components directly
         butler.put(objABPair, 'gaDefCtorPair', dataId={'id': 'baz', 'name': 'qux'})
         verObjA = verificationButler.get('basicObject1', dataId={'id': 'baz'})
         self.assertEqual(objABPair.objA, verObjA)
@@ -310,8 +320,9 @@ class TestGenericAssembler(unittest.TestCase):
         self.assertEqual(objABPair.objB, verObjB)
 
     def testGenericAssemblerPolicySpecifiedSetterGetter(self):
-        """Test the case where the component names do not have anything to do with the setter/getter names
-        or the init function parameter names, and instead the component policy entry specifies the setter and
+        """Test the case where the component names do not have anything to do
+        with the setter/getter names or the init function parameter names,
+        and instead the component policy entry specifies the setter and
         getter names.
         """
         repoArgs = dafPersist.RepositoryArgs(root=self.secondRepoPath, policy=self.policy)
@@ -324,7 +335,8 @@ class TestGenericAssembler(unittest.TestCase):
         self.assertTrue(objABPair.usedBSetter)
 
         butler.put(objABPair, 'gaPairWithSetter', dataId={'id': 'foo', 'name': 'bar'})
-        # comparing the output files directly works so long as the storage is posix:
+        # comparing the output files directly works so long as the storage is
+        # posix:
 
         verificationButler = dafPersist.Butler(inputs=self.secondRepoPath)
         verObjA = verificationButler.get('basicObject1', dataId={'id': 'foo'})
@@ -333,8 +345,8 @@ class TestGenericAssembler(unittest.TestCase):
         self.assertEqual(objABPair.objB, verObjB)
 
     def testInferredNameUnderscoreSeparator(self):
-        """Test the case where the name of the setter & getter is inferred by the policy name by prepending
-        'set_' and get_
+        """Test the case where the name of the setter & getter is inferred by
+        the policy name by prepending 'set_' and get_
         """
         repoArgs = dafPersist.RepositoryArgs(root=self.secondRepoPath, policy=self.policy)
         butler = dafPersist.Butler(inputs=self.firstRepoPath, outputs=repoArgs)
@@ -347,8 +359,9 @@ class TestGenericAssembler(unittest.TestCase):
         self.assertEqual(componentObj, obj.get_foo())
 
     def testInferredNameCamelcase(self):
-        """Test the case where the name of the setter & getter is inferred by the policy name by prepending
-        'set' or 'get', to the capitalized component name. E.g. for component name 'foo' the setter and getter
+        """Test the case where the name of the setter & getter is inferred by
+        the policy name by prepending 'set' or 'get', to the capitalized
+        component name. E.g. for component name 'foo' the setter and getter
         will be named setFoo and getFoo.
         """
         repoArgs = dafPersist.RepositoryArgs(root=self.secondRepoPath, policy=self.policy)
@@ -414,22 +427,24 @@ class TestSubset(unittest.TestCase):
             shutil.rmtree(self.testData)
 
     def test(self):
-        """Verify that the generic assembler and disassembler work for objects that conform to the generic
-        set/get API.
+        """Verify that the generic assembler and disassembler work for objects
+        that conform to the generic set/get API.
         """
         secondRepoPath = os.path.join(self.testData, 'repo2')
         repoArgs = dafPersist.RepositoryArgs(root=secondRepoPath, policy=self.policy)
         butler = dafPersist.Butler(inputs=self.firstRepoPath, outputs=repoArgs)
-        # the name 'bar' will find the obj that was put as obj b. It expects to find n objects of dataset
-        # type basicObject1. Since we don't specify any dataId that relates to basicObject1 (its only dataId
-        # key is 'id'), it will return everything it finds according to its policy. In this case that should
-        # be self.objA1 and self.objA2 that we put above. They will be in a list at objABPair.objA.
+        # the name 'bar' will find the obj that was put as obj b. It expects
+        # to find n objects of dataset type basicObject1. Since we don't
+        # specify any dataId that relates to basicObject1 (its only dataId
+        # key is 'id'), it will return everything it finds according to its
+        # policy. In this case that should be self.objA1 and self.objA2 that
+        # we put above. They will be in a list at objABPair.objA.
         objABPair = butler.get('basicPair', dataId={'name': 'bar'})
         objABPair.objA.sort()
         self.assertEqual(self.objA2, objABPair.objA[0])
         self.assertEqual(self.objA1, objABPair.objA[1])
-        # subset is a get-only operation. To put, the dataId must be specified, so there's no put to test
-        # here.
+        # subset is a get-only operation. To put, the dataId must be specified,
+        # so there's no put to test here.
 
 
 class TestInputOnly(unittest.TestCase):
@@ -482,8 +497,9 @@ class TestInputOnly(unittest.TestCase):
             shutil.rmtree(self.testData)
 
     def test(self):
-        """ Verify that when a type 3 dataset is put and one of its components is marked 'inputOnly' by the
-        policy that the inputOnly comonent is not written.
+        """ Verify that when a type 3 dataset is put and one of its components
+        is marked 'inputOnly' by the policy that the inputOnly comonent is not
+        written.
         """
         secondRepoPath = os.path.join(self.testData, 'repo2')
         repoArgs = dafPersist.RepositoryArgs(root=secondRepoPath, policy=self.policy)

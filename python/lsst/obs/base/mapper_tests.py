@@ -63,7 +63,8 @@ class MapperTests(metaclass=abc.ABCMeta):
         ----------
 
         output : `str`
-            full path to output repository (can be the same as data_dir input repository)
+            full path to output repository (can be the same as data_dir input
+            repository)
         path_to_raw : `str`
             full path to the raw file referenced by dataIds['raw']
         keys : `set`
@@ -75,9 +76,11 @@ class MapperTests(metaclass=abc.ABCMeta):
         metadata_output_path : `str`
             path to metadata output associated with dataIds['raw']
         map_python_type : `type`
-            full python type specification returned by the mapper for dataIds['raw']
+            full python type specification returned by the mapper for
+            dataIds['raw']
         map_python_std_type : `type`
-            full python type specification returned by the mapper for dataIds['raw'] after standardization
+            full python type specification returned by the mapper for
+            dataIds['raw'] after standardization
         map_cpp_type : `str`
             C++ type specification returned by the mapper for dataIds['raw']
         map_storage_name : `str`
@@ -87,10 +90,11 @@ class MapperTests(metaclass=abc.ABCMeta):
         default_level : `str`
             value returned from mapper.getDefaultLevel
         raw_levels : `tuple` of (`str`, `set` of `str`)
-            (level, expect) level and expected mapper return for mapper.getKeys('raw', level)
+            (level, expect) level and expected mapper return for
+            mapper.getKeys('raw', level)
         test_config_metadata : `bool`
-            Test persisted config and metadata?  These tests may not be appropriate for test stand data.
-            Defaults to True.
+            Test persisted config and metadata?  These tests may not be
+            appropriate for test stand data. Defaults to True.
         """
         fields = ['output',
                   'path_to_raw',
@@ -191,8 +195,8 @@ class MapperTests(metaclass=abc.ABCMeta):
 ButlerComposites duck type as ButlerLocations in some ways, they do not
 share enough methods to be usefully tested by the same function.  Note
 there are tests of the objects in the package in which they are implemented.""")
-        #  This should be the same as above.  Testing that both the generic and specific interface work for
-        #  mapping the raw.
+        #  This should be the same as above.  Testing that both the generic
+        # and specific interface work for mapping the raw.
         location = self.mapper.map("raw", dataId)
         if not isinstance(location, lsst.daf.persistence.butlerLocation.ButlerComposite):
             self._test_map(location, dataId)
@@ -203,7 +207,8 @@ there are tests of the objects in the package in which they are implemented.""")
         obs package's testdata repo.
         """
         for query, expect in self.mapper_data.queryMetadata:
-            # queryMetadata returns tuples of available items of the 2nd parameter.
+            # queryMetadata returns tuples of available items of the 2nd
+            # parameter.
             result = self.mapper.queryMetadata("raw", self.mapper_data.query_format, query)
             self.assertEqual(sorted(result), sorted(expect), msg="Failed for query={}".format(query))
 

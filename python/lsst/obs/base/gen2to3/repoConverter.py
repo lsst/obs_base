@@ -348,13 +348,14 @@ class RepoConverter(ABC):
             else:
                 storageClass = self._guessStorageClass(datasetTypeName, mapping)
                 if storageClass is None:
-                    # This may be a problem, but only if we actually encounter any
-                    # files corresponding to this dataset.  Of course, we need
-                    # to be able to parse those files in order to recognize that
-                    # situation.
+                    # This may be a problem, but only if we actually encounter
+                    # any files corresponding to this dataset.  Of course, we
+                    # need to be able to parse those files in order to
+                    # recognize that situation.
                     message = f"no storage class found for {datasetTypeName}"
                     skip = True
-            # Handle files that are compressed on disk, but the gen2 template is just `.fits`
+            # Handle files that are compressed on disk, but the gen2 template
+            # is just `.fits`
             if template.endswith(".fits"):
                 extensions.extend((".gz", ".fz"))
             for extension in extensions:
@@ -471,7 +472,8 @@ class RepoConverter(ABC):
                             dataset.refs[i] = ref.expanded(dataId)
                         except LookupError as err:
                             self.task.log.warn("Skipping ingestion for '%s': %s", dataset.path, err)
-                            # Remove skipped datasets from multi-extension FileDatasets
+                            # Remove skipped datasets from multi-extension
+                            # FileDatasets
                             dataset.refs[i] = None  # We will strip off the `None`s after the loop.
                     dataset.refs[:] = itertools.filterfalse(lambda x: x is None, dataset.refs)
                     if dataset.refs:

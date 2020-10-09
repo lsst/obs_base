@@ -62,7 +62,8 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
         ccdExposureId_bits : `int`
             expected value of ccdExposureId_bits
         exposureIds : `dict`
-            dict of exposure name : ccdExposureId (the number as returned by the butler)
+            dict of exposure name : ccdExposureId (the number as returned by
+            the butler)
         filters : `dict`
             dict of exposure name : filter name
         exptimes : `dict`
@@ -150,10 +151,11 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
 
     def test_raw(self):
         exp = self._test_exposure('raw')
-        # We only test the existence of WCS in the raw files, since it's only well-defined
-        # for raw, and other exposure types could have or not have a WCS depending
-        # on various implementation details.
-        # Even for raw, there are data that do not have a WCS, e.g. teststand data
+        # We only test the existence of WCS in the raw files, since it's only
+        # well-defined  for raw, and other exposure types could have or not
+        # have a WCS depending on various implementation details.
+        # Even for raw, there are data that do not have a WCS, e.g. teststand
+        # data
         if self.butler_get_data.sky_origin is not unittest.SkipTest:
             self.assertEqual(exp.hasWcs(), True)
             origin = exp.getWcs().getSkyOrigin()

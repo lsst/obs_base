@@ -259,7 +259,8 @@ class Instrument(metaclass=ABCMeta):
             The registry to add dimensions to.
         """
         for filter in self.filterDefinitions:
-            # fix for undefined abstract filters causing trouble in the registry:
+            # fix for undefined abstract filters causing trouble in the
+            # registry:
             if filter.band is None:
                 band = filter.physical_filter
             else:

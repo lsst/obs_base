@@ -69,7 +69,8 @@ class CameraTests(metaclass=abc.ABCMeta):
                                       )
 
     def test_iterable(self):
-        """Simplest camera test: can we get a Camera instance, and does iterating return Detectors?"""
+        """Simplest camera test: can we get a Camera instance, and does
+        iterating return Detectors?"""
         camera = self.butler.get('camera', immediate=True)
         self.assertIsInstance(camera, lsst.afw.cameraGeom.Camera)
         for detector in camera:

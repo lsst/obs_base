@@ -393,9 +393,9 @@ class DefineVisitsTask(Task):
                 exposure_time=exposure_time,
                 timespan=timespan,
                 region=visitRegion,
-                # TODO: no seeing value in exposure dimension records, so we can't
-                # set that here.  But there are many other columns that both
-                # dimensions should probably have as well.
+                # TODO: no seeing value in exposure dimension records, so we
+                # can't set that here.  But there are many other columns that
+                # both dimensions should probably have as well.
             ),
             visit_definition=[
                 self.universe["visit_definition"].RecordClass(

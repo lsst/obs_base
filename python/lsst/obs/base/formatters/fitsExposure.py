@@ -359,8 +359,8 @@ class FitsExposureFormatter(Formatter):
         RuntimeError
             Raised if validation fails.
         """
-        # Schemas define what should be there, and the default values (and by the default
-        # value, the expected type).
+        # Schemas define what should be there, and the default values (and by
+        # the default value, the expected type).
         compressionSchema = {
             "algorithm": "NONE",
             "rows": 1,

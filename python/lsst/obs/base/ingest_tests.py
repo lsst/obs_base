@@ -289,8 +289,9 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             self.skipTest("Expected visits were not defined.")
         self._ingestRaws(transfer="link")
 
-        # Calling defineVisits tests the implementation of the butler command line interface "define-visits"
-        # subcommand. Functions in the script folder are generally considered protected and should not be used
+        # Calling defineVisits tests the implementation of the butler command
+        # line interface "define-visits" subcommand. Functions in the script
+        # folder are generally considered protected and should not be used
         # as public api.
         script.defineVisits(self.root, config_file=None, collections=self.outputRun,
                             instrument=self.instrumentName)

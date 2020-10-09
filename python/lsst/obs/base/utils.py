@@ -116,8 +116,8 @@ def createInitialSkyWcsFromBoresight(boresight, orientation, detector, flipX=Fal
 def bboxFromIraf(irafBBoxStr):
     """Return a Box2I corresponding to an IRAF-style BBOX
 
-    [x0:x1,y0:y1] where x0 and x1 are the one-indexed start and end columns, and correspondingly
-    y0 and y1 are the start and end rows.
+    [x0:x1,y0:y1] where x0 and x1 are the one-indexed start and end columns,
+    and correspondingly y0 and y1 are the start and end rows.
     """
 
     mat = re.search(r"^\[([-\d]+):([-\d]+),([-\d]+):([-\d]+)\]$", irafBBoxStr)
