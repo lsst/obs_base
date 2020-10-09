@@ -508,12 +508,7 @@ class ConvertRepoTask(Task):
 
         # Register the instrument if we're configured to do so.
         if self.config.doRegisterInstrument:
-            # Allow registration to fail on the assumption that this means
-            # we are reusing a butler
-            try:
-                self.instrument.register(self.registry)
-            except Exception:
-                pass
+            self.instrument.register(self.registry)
 
         # Run raw ingest (does nothing if we weren't configured to convert the
         # 'raw' dataset type).
