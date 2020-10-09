@@ -314,6 +314,11 @@ class DefineVisitsTask(Task):
     defining a visit that includes the exposure; this depends entirely on the
     `ComputeVisitRegionTask` subclass used.  For the default configuration,
     a single raw for each exposure is sufficient.
+
+    Defining the same visit the same way multiple times (e.g. via multiple
+    invocations of this task on the same exposures, with the same
+    configuration) is safe, but it may be inefficient, as most of the work must
+    be done before new visits can be compared to existing visits.
     """
     def __init__(self, config: Optional[DefineVisitsConfig] = None, *, butler: Butler, **kwargs: Any):
         config.validate()  # Not a CmdlineTask nor PipelineTask, so have to validate the config here.
@@ -477,6 +482,12 @@ class DefineVisitsTask(Task):
             ``self.butler.collections``.
             Can be any of the types supported by the ``collections`` argument
             to butler construction.
+
+        Raises
+        ------
+        lsst.daf.butler.registry.ConflictingDefinitionError
+            Raised if a visit ID conflict is detected and the existing visit
+            differs from the new one.
         """
         # Set up multiprocessing, if desired.
         if pool is None and processes > 1:
@@ -528,14 +539,14 @@ class DefineVisitsTask(Task):
         allRecords = mapFunc(self._buildVisitRecordsSingle,
                              zip(definitions, itertools.repeat(collections)))
         # Iterate over visits and insert dimension data, one transaction per
-        # visit.
+        # visit.  If a visit already exists, we skip all other inserts.
         for visitRecords in allRecords:
             with self.butler.registry.transaction():
-                self.butler.registry.insertDimensionData("visit", visitRecords.visit)
-                self.butler.registry.insertDimensionData("visit_definition",
-                                                         *visitRecords.visit_definition)
-                self.butler.registry.insertDimensionData("visit_detector_region",
-                                                         *visitRecords.visit_detector_region)
+                if self.butler.registry.syncDimensionData("visit", visitRecords.visit):
+                    self.butler.registry.insertDimensionData("visit_definition",
+                                                             *visitRecords.visit_definition)
+                    self.butler.registry.insertDimensionData("visit_detector_region",
+                                                             *visitRecords.visit_detector_region)
 
 
 def _reduceOrNone(func, iterable):
