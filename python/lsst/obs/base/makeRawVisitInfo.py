@@ -45,7 +45,8 @@ BadDate = DateTime()
 
 
 class MakeRawVisitInfo(object):
-    """Base class functor to make a VisitInfo from the FITS header of a raw image.
+    """Base class functor to make a VisitInfo from the FITS header of a raw
+    image.
 
     A subclass will be wanted for each camera. Subclasses should override:
 
@@ -53,13 +54,14 @@ class MakeRawVisitInfo(object):
         which simply sets exposure time and date of observation
     - `getDateAvg`
 
-    The design philosophy is to make a best effort and log warnings of problems,
-    rather than raising exceptions, in order to extract as much VisitInfo information as possible
-    from a messy FITS header without the user needing to add a lot of error handling.
+    The design philosophy is to make a best effort and log warnings of
+    problems, rather than raising exceptions, in order to extract as much
+    VisitInfo information as possible from a messy FITS header without the
+    user needing to add a lot of error handling.
 
     However, the methods that transform units are less forgiving; they assume
-    the user provides proper data types, since type errors in arguments to those
-    are almost certainly due to coding mistakes.
+    the user provides proper data types, since type errors in arguments to
+    those are almost certainly due to coding mistakes.
 
     Parameters
     ----------
@@ -90,8 +92,8 @@ class MakeRawVisitInfo(object):
 
         Notes
         -----
-        The basic implementation sets `date` and `exposureTime` using typical values
-        found in FITS files and logs a warning if neither can be set.
+        The basic implementation sets `date` and `exposureTime` using typical
+        values found in FITS files and logs a warning if neither can be set.
         """
         argDict = dict(exposureId=exposureId)
         self.setArgDict(md, argDict)
@@ -102,7 +104,8 @@ class MakeRawVisitInfo(object):
         return VisitInfo(**argDict)
 
     def setArgDict(self, md, argDict):
-        """Fill an argument dict with arguments for VisitInfo and pop associated metadata
+        """Fill an argument dict with arguments for VisitInfo and pop
+        associated metadata
 
         Subclasses are expected to override this method, though the override
         may wish to call this default implementation, which:
@@ -217,8 +220,8 @@ class MakeRawVisitInfo(object):
         Returns
         -------
         `object`
-            The value of the specified key, using whatever type md.getScalar(key)
-            returns.
+            The value of the specified key, using whatever type
+            md.getScalar(key) returns.
         """
         try:
             if not md.exists(key):
@@ -229,7 +232,8 @@ class MakeRawVisitInfo(object):
                 md.remove(key)
             return val
         except Exception as e:
-            # this should never happen, but is a last ditch attempt to avoid exceptions
+            # this should never happen, but is a last ditch attempt to avoid
+            # exceptions
             self.log.warn('Could not read key="{}" in metadata: {}'.format(key, e))
         return default
 
@@ -257,9 +261,11 @@ class MakeRawVisitInfo(object):
         return NaN
 
     def popAngle(self, md, key, units=astropy.units.deg):
-        """Pop an lsst.afw.geom.Angle, whose metadata is in the specified units, with a default of Nan
+        """Pop an lsst.afw.geom.Angle, whose metadata is in the specified
+        units, with a default of Nan
 
-        The angle may be specified as a float or sexagesimal string with 1-3 fields.
+        The angle may be specified as a float or sexagesimal string with 1-3
+        fields.
 
         Parameters
         ----------
@@ -309,9 +315,11 @@ class MakeRawVisitInfo(object):
                 if isoDateStr.endswith("Z"):  # illegal in FITS
                     isoDateStr = isoDateStr[0:-1]
                 astropyTime = astropy.time.Time(isoDateStr, scale=timesys.lower(), format="fits")
-                # DateTime uses nanosecond resolution, regardless of the resolution of the original date
+                # DateTime uses nanosecond resolution, regardless of the
+                # resolution of the original date
                 astropyTime.precision = 9
-                # isot is ISO8601 format with "T" separating date and time and no time zone
+                # isot is ISO8601 format with "T" separating date and time and
+                # no time zone
                 return DateTime(astropyTime.tai.isot, DateTime.TAI)
             except Exception as e:
                 self.log.warn("Could not parse {} = {} as an ISO date: {}".format(key, isoDateStr, e))
@@ -341,9 +349,11 @@ class MakeRawVisitInfo(object):
             if timesys is None:
                 timesys = md.getScalar("TIMESYS") if md.exists("TIMESYS") else "UTC"
             astropyTime = astropy.time.Time(mjdDate, format="mjd", scale=timesys.lower())
-            # DateTime uses nanosecond resolution, regardless of the resolution of the original date
+            # DateTime uses nanosecond resolution, regardless of the resolution
+            # of the original date
             astropyTime.precision = 9
-            # isot is ISO8601 format with "T" separating date and time and no time zone
+            # isot is ISO8601 format with "T" separating date and time and no
+            # time zone
             return DateTime(astropyTime.tai.isot, DateTime.TAI)
         except Exception as e:
             self.log.warn("Could not parse {} = {} as an MJD date: {}".format(key, mjdDate, e))
@@ -383,8 +393,9 @@ class MakeRawVisitInfo(object):
 
         Notes
         -----
-        Could use the following, but astropy.units.cds is not fully compatible with Python 2
-        as of astropy 1.2.1 (see https://github.com/astropy/astropy/issues/5350#issuecomment-248612824):
+        Could use the following, but astropy.units.cds is not fully compatible
+        with Python 2 as of astropy 1.2.1 (see
+        https://github.com/astropy/astropy/issues/5350#issuecomment-248612824):
         astropy.units.cds.mmHg.to(astropy.units.pascal, mmHg)
         """
         return mmHg*PascalPerMmHg

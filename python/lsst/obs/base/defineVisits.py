@@ -323,21 +323,9 @@ class DefineVisitsTask(Task):
         self.makeSubtask("groupExposures")
         self.makeSubtask("computeVisitRegions", butler=self.butler)
 
-    @classmethod
-    # WARNING: this method hardcodes the parameters to pipe.base.Task.__init__.
-    # Nobody seems to know a way to delegate them to Task code.
-    def _makeTask(cls, config: DefineVisitsConfig, butler: Butler, name: str, parentTask: Task):
-        """Construct a DefineVisitsTask using only positional arguments.
-
-        Parameters
-        ----------
-        All parameters are as for `DefineVisitsTask`.
-        """
-        return cls(config=config, butler=butler, name=name, parentTask=parentTask)
-
-    # Overrides Task.__reduce__
-    def __reduce__(self):
-        return (self._makeTask, (self.config, self.butler, self._name, self._parentTask))
+    def _reduce_kwargs(self):
+        # Add extra parameters to pickle
+        return dict(**super()._reduce_kwargs(), butler=self.butler)
 
     ConfigClass = DefineVisitsConfig
 
@@ -405,9 +393,9 @@ class DefineVisitsTask(Task):
                 exposure_time=exposure_time,
                 timespan=timespan,
                 region=visitRegion,
-                # TODO: no seeing value in exposure dimension records, so we can't
-                # set that here.  But there are many other columns that both
-                # dimensions should probably have as well.
+                # TODO: no seeing value in exposure dimension records, so we
+                # can't set that here.  But there are many other columns that
+                # both dimensions should probably have as well.
             ),
             visit_definition=[
                 self.universe["visit_definition"].RecordClass(

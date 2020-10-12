@@ -199,21 +199,9 @@ class RawIngestTask(Task):
         # have all the relevant metadata translators loaded.
         Instrument.importAll(self.butler.registry)
 
-    @classmethod
-    # WARNING: this method hardcodes the parameters to pipe.base.Task.__init__.
-    # Nobody seems to know a way to delegate them to Task code.
-    def _makeTask(cls, config: RawIngestConfig, butler: Butler, name: str, parentTask: Task):
-        """Construct a RawIngestTask using only positional arguments.
-
-        Parameters
-        ----------
-        All parameters are as for `RawIngestTask`.
-        """
-        return cls(config=config, butler=butler, name=name, parentTask=parentTask)
-
-    # Overrides Task.__reduce__
-    def __reduce__(self):
-        return (self._makeTask, (self.config, self.butler, self._name, self._parentTask))
+    def _reduce_kwargs(self):
+        # Add extra parameters to pickle
+        return dict(**super()._reduce_kwargs(), butler=self.butler)
 
     def extractMetadata(self, filename: str) -> RawFileData:
         """Extract and process metadata from a single raw file.

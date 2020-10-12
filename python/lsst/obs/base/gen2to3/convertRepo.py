@@ -282,6 +282,8 @@ class ConvertRepoTask(Task):
         ``butler3.collections`` should include a calibration collection from
         which the ``camera`` dataset can be loaded, unless a calibration repo
         is converted and ``doWriteCuratedCalibrations`` is `True`.
+    instrument : `lsst.obs.base.Instrument`
+        The Gen3 instrument that should be used for this conversion.
     **kwargs
         Other keyword arguments are forwarded to the `Task` constructor.
 
@@ -321,6 +323,10 @@ class ConvertRepoTask(Task):
         self._usedSkyPix = set()
         self.translatorFactory = self.instrument.makeDataIdTranslatorFactory()
         self.translatorFactory.log = self.log.getChild("translators")
+
+    def _reduce_kwargs(self):
+        # Add extra parameters to pickle
+        return dict(**super()._reduce_kwargs(), butler3=self.butler3, instrument=self.instrument)
 
     def _populateSkyMapDicts(self, name, instance):
         struct = ConfiguredSkyMap(name=name, sha1=instance.getSha1(), instance=instance)

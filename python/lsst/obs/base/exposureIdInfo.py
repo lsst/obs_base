@@ -35,20 +35,24 @@ class ExposureIdInfo(object):
         maximum number of bits available for values that combine exposure ID
         with other information, such as source ID
     unusedBits
-        maximum number of bits available for non-exposure info (maxBits - expBits)
+        maximum number of bits available for non-exposure info
+        (maxBits - expBits)
 
     One common use is creating an ID factory for making a source table.
-    For example, given a data butler `butler` and a data ID `dataId`::
+    For example, given a data butler `butler` and a data ID `dataId`:
+
+    .. code-block:: python
 
         from lsst.afw.table import IdFactory, SourceTable
         exposureIdInfo = butler.get("expIdInfo", dataId)
-        sourceIdFactory = IdFactory.makeSource(exposureIdInfo.expId, exposureIdInfo.unusedBits)
+        sourceIdFactory = IdFactory.makeSource(exposureIdInfo.expId,
+                                               exposureIdInfo.unusedBits)
         schema = SourceTable.makeMinimalSchema()
         #...add fields to schema as desired, then...
         sourceTable = SourceTable.make(self.schema, sourceIdFactory)
 
-    At least one bit must be reserved, even if there is no exposure ID, for reasons
-    that are not entirely clear (this is DM-6664).
+    At least one bit must be reserved, even if there is no exposure ID, for
+    reasons that are not entirely clear (this is DM-6664).
     """
 
     def __init__(self, expId=0, expBits=1, maxBits=64):

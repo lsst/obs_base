@@ -31,8 +31,8 @@ ROOT = os.path.abspath(os.path.dirname(__file__))
 
 
 class TestFindParentMapperV1Butler(unittest.TestCase):
-    """Test that in an 'old' Butler repository the mapper can be found in a parent repo via the _parent
-    symlink.
+    """Test that in an 'old' Butler repository the mapper can be found in a
+    parent repo via the _parent symlink.
     """
 
     def setUp(self):
@@ -40,7 +40,8 @@ class TestFindParentMapperV1Butler(unittest.TestCase):
         self.parentRepoDir = os.path.join(self.testDir, 'parentRepo')
         os.makedirs(self.parentRepoDir)
 
-        # note: do not put a _mapper file in the parent here, it will be added later when needed.
+        # note: do not put a _mapper file in the parent here, it will be added
+        # later when needed.
 
         self.childRepoDir = os.path.join(self.testDir, 'childRepo')
         os.makedirs(self.childRepoDir)
@@ -51,17 +52,19 @@ class TestFindParentMapperV1Butler(unittest.TestCase):
             shutil.rmtree(self.testDir)
 
     def test(self):
-        # put the mapper file in the parent repo, and see if the child repo can find it via the _parent
-        # symlink.
+        # put the mapper file in the parent repo, and see if the child repo can
+        # find it via the _parent symlink.
         with open(os.path.join(self.parentRepoDir, '_mapper'), 'w') as f:
             f.write('lsst.obs.base.test.CompositeMapper')
 
-        # this should not raise an error, no error indicates that the mapper can not be found.
+        # this should not raise an error, no error indicates that the mapper
+        # can not be found.
         dafPersist.Butler(root=self.childRepoDir)
 
     def testNoMapper(self):
-        # Since in this case the _mapper file does not exist in the parent repo, this should raise an error
-        # indicating that the mapper can not be found.
+        # Since in this case the _mapper file does not exist in the parent
+        # repo, this should raise an error indicating that the mapper can not
+        # be found.
         with self.assertRaises(RuntimeError):
             dafPersist.Butler(self.childRepoDir, policyDir=self.testDir)
 

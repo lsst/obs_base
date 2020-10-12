@@ -400,8 +400,8 @@ class TranslatorFactory:
                      instrument=instrumentName,
                      gen2keys=(detectorKey,))
 
-        # Add instrument for transmission curve datasets (transmission_sensor is
-        # already handled by the above rules).
+        # Add instrument for transmission curve datasets (transmission_sensor
+        # is already handled by the above rules).
         self.addRule(ConstantKeyHandler("instrument", instrumentName),
                      instrument=instrumentName, datasetTypeName="transmission_optics")
         self.addRule(ConstantKeyHandler("instrument", instrumentName),

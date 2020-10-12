@@ -34,7 +34,8 @@ class CompositeMapper(CameraMapper):
         super(CompositeMapper, self).__init__(policy, repositoryDir=root, root=root, **kwargs)
 
     def _makeCamera(self, policy, repositoryDir):
-        """Normally this makes a camera. For composite testing, we don't need a camera.
+        """Normally this makes a camera. For composite testing, we don't need a
+        camera.
         """
         return None
 

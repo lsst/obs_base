@@ -78,8 +78,9 @@ class OutputRootTestCase(unittest.TestCase):
         return tempDir
 
     def testCreateOutputRoot(self):
-        """Create an input repository and a related output repo, and verify there is a parent relationship
-        from the output repo to the input repo."""
+        """Create an input repository and a related output repo, and verify
+        there is a parent relationship from the output repo to the input repo.
+        """
         testOutput = self.mkdtemp("testOutput")
         butler = dafPersist.Butler(inputs={'root': ROOT, 'mapper': MinMapper1},
                                    outputs=testOutput)
@@ -97,9 +98,10 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(cfg.parents[0], expectedCfg)
 
     def testParentNormal(self):
-        """Test that an object can be found at root location and put into an output location.
-        Then test that when the output locaiton is used as an input location, and with a new output location,
-        that the object is found in the first output location.
+        """Test that an object can be found at root location and put into an
+        output location. Then test that when the output locaiton is used as an
+        input location, and with a new output location, that the object is
+        found in the first output location.
         """
         testOutput = self.mkdtemp("testOutput")
         butler = dafPersist.Butler(inputs={'root': ROOT, 'mapper': MinMapper1}, outputs=testOutput)
@@ -127,11 +129,15 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
 
     def testParentTrailingSlash2527(self):
-        """Just like testParentNormal, but put a trailing slash on the root paths.
-        Test that an object can be found at root location and put into an output location.
-        Then test that when the output locaiton is used as an input location, and with a new output location,
-        that the object is found in the first output location."""
-        # todo these shouldn't be commented out, I think the test wants the trailing slash.
+        """Just like testParentNormal, but put a trailing slash on the root
+        paths.
+
+        Test that an object can be found at root location and put into an
+        output location. Then test that when the output locaiton is used as
+        an input location, and with a new output location, that the object is
+        found in the first output location."""
+        # todo these shouldn't be commented out, I think the test wants the
+        # trailing slash.
         testOutput = self.mkdtemp("testOutput") + '/'
         butler = dafPersist.Butler(inputs={'root': ROOT + '/', 'mapper': MinMapper1},
                                    outputs=testOutput)
@@ -163,9 +169,12 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
 
     def testReuseOutputRoot(self):
-        """Set up an output repositoriy and verify its parent relationship to the input repository.
-        Then set up an output repository with the first output as an input, and verify the parent
-        relationships."""
+        """Set up an output repositoriy and verify its parent relationship to
+        the input repository.
+
+        Then set up an output repository with the first output as an input,
+        and verify the parent relationships.
+        """
         testOutput = self.mkdtemp("testOutput")
         butler = dafPersist.Butler(inputs={'root': ROOT, 'mapper': MinMapper1},
                                    outputs=testOutput)
@@ -190,8 +199,10 @@ class OutputRootTestCase(unittest.TestCase):
         del butler
 
     def testDiffInput(self):
-        """Verify that if an output repository is loaded/created twice, and the second time it has a different
-        parent than the first time, then the second instantiation should raise an exception."""
+        """Verify that if an output repository is loaded/created twice, and the
+        second time it has a different parent than the first time, then the
+        second instantiation should raise an exception.
+        """
         testInput1 = self.mkdtemp("testInput1")
         butler = dafPersist.Butler(outputs={'root': testInput1, 'mapper': MinMapper1})
         del butler
@@ -224,8 +235,9 @@ class OutputRootTestCase(unittest.TestCase):
         testOutput2 = self.mkdtemp("testOutput2")
         mapper2 = MinMapper1(root=testOutput, outputRoot=testOutput2)
         butler2 = dafPersist.Butler(
-            # MinMapper is a little unconventional in that it takes its root and output root as separate
-            # arguments, meaning that in effect it's a mapper for 2 different repositories
+            # MinMapper is a little unconventional in that it takes its root
+            # and output root as separate arguments, meaning that in effect
+            # it's a mapper for 2 different repositories
             outputs=dafPersist.RepositoryArgs(
                 mode='rw',
                 root=testOutput2,

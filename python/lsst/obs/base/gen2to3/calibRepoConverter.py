@@ -161,8 +161,8 @@ class CalibRepoConverter(RepoConverter):
                 # this DatasetType and calibDate, and look up the appropriate
                 # refs by data ID.
                 for row in self._queryGen2CalibRegistry(db, datasetType, calibDate):
-                    # For validity times we use TAI as some gen2 repos have validity
-                    # dates very far in the past or future.
+                    # For validity times we use TAI as some gen2 repos have
+                    # validity dates very far in the past or future.
                     timespan = Timespan(
                         astropy.time.Time(row["validStart"], format="iso", scale="tai"),
                         astropy.time.Time(row["validEnd"], format="iso", scale="tai"),

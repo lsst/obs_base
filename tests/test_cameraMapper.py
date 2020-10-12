@@ -396,15 +396,17 @@ class Mapper2TestCase(unittest.TestCase):
                                               os.path.join('testParentSearch', '_parent', 'baz.fits[1]'))])
 
     def testSkymapLookups(self):
-        """Test that metadata lookups don't try to get skymap data ID values from the registry.
+        """Test that metadata lookups don't try to get skymap data ID values
+        from the registry.
         """
         mapper = MinMapper2(root=ROOT)
         butler = dafPersist.Butler(mapper=mapper)
         with self.assertRaises(RuntimeError) as manager:
             butler.dataRef("forced_src", visit=787650, ccd=13)
             self.assertIn("Cannot lookup skymap key 'tract'", str(manager.exception))
-        # We're mostly concerned that the statements below will raise an exception;
-        # if they don't, it's not likely the following tests will fail.
+        # We're mostly concerned that the statements below will raise an
+        # exception; if they don't, it's not likely the following tests will
+        # fail.
         subset = butler.subset("forced_src", visit=787650, ccd=13, tract=0)
         self.assertEqual(len(subset), 1)
         dataRef = butler.dataRef("forced_src", visit=787650, ccd=13, tract=0)
@@ -451,22 +453,27 @@ class ParentRegistryTestCase(unittest.TestCase):
         del butler
 
     def tearDown(self):
-        # the butler sql registry closes its database connection in __del__. To trigger __del__ we explicitly
-        # collect the garbage here. If we find having or closing the open database connection is a problem in
-        # production code, we may need to add api to butler to explicity release database connections (and
-        # maybe other things like in-memory cached objects).
+        # the butler sql registry closes its database connection in __del__.
+        # To trigger __del__ we explicitly collect the garbage here. If we
+        # find having or closing the open database connection is a problem in
+        # production code, we may need to add api to butler to explicity
+        # release database connections (and maybe other things like in-memory
+        # cached objects).
         gc.collect()
         if os.path.exists(self.ROOT):
             shutil.rmtree(self.ROOT)
 
     def test(self):
-        """Verify that when the child repo does not have a registry it is assigned the registry from the
-        parent."""
+        """Verify that when the child repo does not have a registry it is
+        assigned the registry from the parent.
+        """
         repoBRoot = os.path.join(self.ROOT, 'b')
         butler = dafPersist.Butler(inputs=self.repoARoot, outputs=repoBRoot)
-        # This way of getting the registry from the mapping is obviously going way into private members and
-        # the python lambda implementation code. It is very brittle and should not be duplicated in user code
-        # or any location that is not trivial to fix along with changes to the CameraMapper or Mapping.
+        # This way of getting the registry from the mapping is obviously going
+        # way into private members and the python lambda implementation code.
+        # It is very brittle and should not be duplicated in user code
+        # or any location that is not trivial to fix along with changes to the
+        # CameraMapper or Mapping.
         registryA = butler._repos.inputs()[0].repo._mapper.registry
         registryB = butler._repos.outputs()[0].repo._mapper.registry
         self.assertEqual(id(registryA), id(registryB))
@@ -483,12 +490,12 @@ class MissingPolicyKeyTestCase(unittest.TestCase):
 
     def testGetRaises(self):
         butler = dafPersist.Butler(inputs={'root': ROOT, 'mapper': MinMapper1})
-        # MinMapper1 does not specify a template for the raw dataset type so trying to use it for get should
-        # raise
+        # MinMapper1 does not specify a template for the raw dataset type so
+        # trying to use it for get should raise
         with self.assertRaises(RuntimeError) as contextManager:
             butler.get('raw')
-        # This test demonstrates and verifies that simple use of the incomplete dataset type returns a helpful
-        # (I hope) error message.
+        # This test demonstrates and verifies that simple use of the incomplete
+        # dataset type returns a helpful (I hope) error message.
         self.assertEqual(
             str(contextManager.exception),
             'Template is not defined for the raw dataset type, '
@@ -498,12 +505,12 @@ class MissingPolicyKeyTestCase(unittest.TestCase):
 
     def testQueryMetadataRaises(self):
         butler = dafPersist.Butler(inputs={'root': ROOT, 'mapper': MinMapper1})
-        # MinMapper1 does not specify a template for the raw dataset type so trying to use it for
-        # queryMetadata should raise
+        # MinMapper1 does not specify a template for the raw dataset type so
+        # trying to use it for queryMetadata should raise
         with self.assertRaises(RuntimeError) as contextManager:
             butler.queryMetadata('raw', 'unused', {})
-        # This test demonstrates and verifies that simple use of the incomplete dataset type returns a helpful
-        # (I hope) error message.
+        # This test demonstrates and verifies that simple use of the incomplete
+        # dataset type returns a helpful (I hope) error message.
         self.assertEqual(
             str(contextManager.exception),
             'Template is not defined for the raw dataset type, '
@@ -511,12 +518,12 @@ class MissingPolicyKeyTestCase(unittest.TestCase):
 
     def testFilenameRaises(self):
         butler = dafPersist.Butler(inputs={'root': ROOT, 'mapper': MinMapper1})
-        # MinMapper1 does not specify a template for the raw dataset type so trying to use it for
-        # <datasetType>_filename should raise
+        # MinMapper1 does not specify a template for the raw dataset type so
+        # trying to use it for <datasetType>_filename should raise
         with self.assertRaises(RuntimeError) as contextManager:
             butler.get('raw_filename')
-        # This test demonstrates and verifies that simple use of the incomplete dataset type returns a helpful
-        # (I hope) error message.
+        # This test demonstrates and verifies that simple use of the
+        # incomplete dataset type returns a helpful (I hope) error message.
         self.assertEqual(
             str(contextManager.exception),
             'Template is not defined for the raw dataset type, '
@@ -524,12 +531,12 @@ class MissingPolicyKeyTestCase(unittest.TestCase):
 
     def testWcsRaises(self):
         butler = dafPersist.Butler(inputs={'root': ROOT, 'mapper': MinMapper1})
-        # MinMapper1 does not specify a template for the raw dataset type so trying to use it for
-        # <datasetType>_wcs should raise
+        # MinMapper1 does not specify a template for the raw dataset type so
+        # trying to use it for <datasetType>_wcs should raise
         with self.assertRaises(RuntimeError) as contextManager:
             butler.get('raw_wcs')
-        # This test demonstrates and verifies that simple use of the incomplete dataset type returns a helpful
-        # (I hope) error message.
+        # This test demonstrates and verifies that simple use of the
+        # incomplete dataset type returns a helpful (I hope) error message.
         self.assertEqual(
             str(contextManager.exception),
             'Template is not defined for the raw dataset type, '

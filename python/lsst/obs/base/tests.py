@@ -44,9 +44,11 @@ class ObsTests(butler_tests.ButlerGetTests, mapper_tests.MapperTests,
 
     Inherit from this class, then lsst.utils.tests.TestCase, in that order.
 
-    Example subclass::
+    Example subclass:
 
-        class TestObsExample(lsst.obs.base.tests.ObsTests, lsst.utils.tests.TestCase):
+    .. code-block:: python
+
+        class TestObs(lsst.obs.base.tests.ObsTests, lsst.utils.tests.TestCase):
             def setUp(self):
                 self.setUp_tests(...)
                 self.setUp_butler_get(...)

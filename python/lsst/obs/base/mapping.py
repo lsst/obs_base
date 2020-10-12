@@ -91,11 +91,13 @@ class Mapping(object):
         self.rootStorage = rootStorage
 
         self._template = policy['template']  # Template path
-        # in most cases, the template can not be used if it is empty, and is accessed via a property that will
-        # raise if it is used while `not self._template`. In this case we *do* allow it to be empty, for the
-        # purpose of fetching the key dict so that the mapping can be constructed, so that it can raise if
-        # it's invalid. I know it's a little odd, but it allows this template check to be introduced without a
-        # major refactor.
+        # in most cases, the template can not be used if it is empty, and is
+        # accessed via a property that will raise if it is used while
+        # `not self._template`. In this case we *do* allow it to be empty, for
+        # the purpose of fetching the key dict so that the mapping can be
+        # constructed, so that it can raise if it's invalid. I know it's a
+        # little odd, but it allows this template check to be introduced
+        # without a major refactor.
         if self._template:
             self.keyDict = dict([
                 (k, _formatMap(v, k, datasetType))
@@ -131,7 +133,8 @@ class Mapping(object):
                                "it must be set before it can be used.")
 
     def keys(self):
-        """Return the dict of keys and value types required for this mapping."""
+        """Return the dict of keys and value types required for this mapping.
+        """
         return self.keyDict
 
     def map(self, mapper, dataId, write=False):
@@ -155,11 +158,13 @@ class Mapping(object):
         if os.path.isabs(path):
             raise RuntimeError("Mapped path should not be absolute.")
         if not write:
-            # This allows mapped files to be compressed, ending in .gz or .fz, without any indication from the
-            # policy that the file should be compressed, easily allowing repositories to contain a combination
+            # This allows mapped files to be compressed, ending in .gz or .fz,
+            # without any indication from the policy that the file should be
+            # compressed, easily allowing repositories to contain a combination
             # of comporessed and not-compressed files.
-            # If needed we can add a policy flag to allow compressed files or not, and perhaps a list of
-            # allowed extensions that may exist at the end of the template.
+            # If needed we can add a policy flag to allow compressed files or
+            # not, and perhaps a list of  allowed extensions that may exist
+            # at the end of the template.
             for ext in (None, '.gz', '.fz'):
                 if ext and path.endswith(ext):
                     continue  # if the path already ends with the extension
@@ -255,7 +260,8 @@ class Mapping(object):
                     values.append(v)
             lookupDataId = {k[0]: v for k, v in zip(where, values)}
             if self.range:
-                # format of self.range is ('?', isBetween-lowKey, isBetween-highKey)
+                # format of self.range is
+                # ('?', isBetween-lowKey, isBetween-highKey)
                 # here we transform that to {(lowKey, highKey): value}
                 lookupDataId[(self.range[1], self.range[2])] = dataId[self.obsTimeName]
             result = self.registry.lookup(properties, self.tables, lookupDataId, template=self.template)
@@ -390,9 +396,9 @@ class CalibrationMapping(Mapping):
 
     reference (string, optional)
         a list of tables for finding missing dataset
-        identifier components (including the observation time, if a validity range
-        is required) in the exposure registry; note that the "tables" entry refers
-        to the calibration registry
+        identifier components (including the observation time, if a validity
+        range is required) in the exposure registry; note that the "tables"
+        entry refers to the calibration registry
 
     refCols (string, optional)
         a list of dataset properties required from the
@@ -496,7 +502,8 @@ class CalibrationMapping(Mapping):
                 columns = set(properties)
 
             if not columns:
-                # Nothing to lookup in reference registry; continue with calib registry
+                # Nothing to lookup in reference registry; continue with calib
+                # registry
                 return Mapping.lookup(self, properties, newId)
 
             lookupDataId = dict(zip(where, values))
@@ -515,8 +522,8 @@ class CalibrationMapping(Mapping):
         """Default standardization function for calibration datasets.
 
         If the item is of a type that should be standardized, the base class
-        ``standardizeExposure`` method is called, otherwise the item is returned
-        unmodified.
+        ``standardizeExposure`` method is called, otherwise the item is
+        returned unmodified.
 
         Parameters
         ----------

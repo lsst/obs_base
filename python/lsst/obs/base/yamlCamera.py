@@ -88,7 +88,8 @@ def makeDetectorConfigList(ccdParams):
         detectorConfig.detectorType = ccd['detectorType']
         if 'physicalType' in ccd:
             detectorConfig.physicalType = ccd['physicalType']
-        # This is the orientation we need to put the serial direction along the x-axis
+        # This is the orientation we need to put the serial direction along
+        # the x-axis
         detectorConfig.bbox_x0, detectorConfig.bbox_y0 = ccd['bbox'][0]
         detectorConfig.bbox_x1, detectorConfig.bbox_y1 = ccd['bbox'][1]
         detectorConfig.pixelSize_x, detectorConfig.pixelSize_y = ccd['pixelSize']
@@ -170,7 +171,8 @@ def makeAmplifierList(ccd):
         amplifier.setSaturation(amp['saturation'])
         amplifier.setSuspectLevel(amp.get('suspect', np.nan))
 
-        # flip data when assembling if needs be (e.g. data from the serial at the top of a CCD)
+        # flip data when assembling if needs be (e.g. data from the serial at
+        # the top of a CCD)
         flipX, flipY = amp.get("flipXY")
 
         amplifier.setRawFlipX(flipX)
@@ -200,25 +202,29 @@ def makeBBoxFromList(ylist):
 
 
 def makeTransformDict(nativeSys, transformDict, plateScale):
-    """Make a dictionary of TransformPoint2ToPoint2s from yaml, mapping from nativeSys
+    """Make a dictionary of TransformPoint2ToPoint2s from yaml, mapping from
+    nativeSys
 
     Parameters
     ----------
     nativeSys : `lsst.afw.cameraGeom.CameraSys`
     transformDict : `dict`
-        A dict specifying parameters of transforms; keys are camera system names.
+        A dict specifying parameters of transforms; keys are camera system
+        names.
     plateScale : `lsst.geom.Angle`
         The size of a pixel in angular units/mm (e.g. 20 arcsec/mm for LSST)
 
     Returns
     -------
     transforms : `dict`
-        A dict of `lsst.afw.cameraGeom.CameraSys` : `lsst.afw.geom.TransformPoint2ToPoint2`
+        A dict of `lsst.afw.cameraGeom.CameraSys` :
+        `lsst.afw.geom.TransformPoint2ToPoint2`
 
     The resulting dict's keys are `~lsst.afw.cameraGeom.CameraSys`,
     and the values are Transforms *from* NativeSys *to* CameraSys
     """
-    # As other comments note this is required, and this is one function where it's assumed
+    # As other comments note this is required, and this is one function where
+    # it's assumed
     assert nativeSys == cameraGeom.FOCAL_PLANE, "Cameras with nativeSys != FOCAL_PLANE are not supported."
 
     resMap = dict()
@@ -236,9 +242,11 @@ def makeTransformDict(nativeSys, transformDict, plateScale):
 
             transform = afwGeom.makeTransform(affine)
         elif transformType == "radial":
-            # radial coefficients of the form [0, 1 (no units), C2 (rad), usually 0, C3 (rad^2), ...]
-            # Radial distortion is modeled as a radial polynomial that converts from focal plane radius
-            # (in mm) to field angle (in radians). The provided coefficients are divided by the plate
+            # radial coefficients of the form [0, 1 (no units), C2 (rad),
+            # usually 0, C3 (rad^2), ...]
+            # Radial distortion is modeled as a radial polynomial that converts
+            # from focal plane radius (in mm) to field angle (in radians).
+            # The provided coefficients are divided by the plate
             # scale (in radians/mm) meaning that C1 is always 1.
             radialCoeffs = np.array(transform["coeffs"])
 
@@ -265,9 +273,11 @@ def makeCameraFromCatalogs(cameraName, detectorConfigList, nativeSys, transformD
     detectorConfigList : `list`
         A list of `lsst.afw.cameraGeom.cameraConfig.DetectorConfig`
     nativeSys : `lsst.afw.cameraGeom.CameraSys`
-        The native transformation type; must be `lsst.afw.cameraGeom.FOCAL_PLANE`
+        The native transformation type; must be
+        `lsst.afw.cameraGeom.FOCAL_PLANE`
     transformDict : `dict`
-        A dict of lsst.afw.cameraGeom.CameraSys : `lsst.afw.geom.TransformPoint2ToPoint2`
+        A dict of lsst.afw.cameraGeom.CameraSys :
+        `lsst.afw.geom.TransformPoint2ToPoint2`
     amplifierDict : `dict`
         A dictionary of detector name :
                            `lsst.afw.cameraGeom.Amplifier.Builder`
@@ -282,8 +292,8 @@ def makeCameraFromCatalogs(cameraName, detectorConfigList, nativeSys, transformD
 
     Notes
     ------
-    Copied from `lsst.afw.cameraGeom.cameraFactory` with permission and encouragement
-    from Jim Bosch
+    Copied from `lsst.afw.cameraGeom.cameraFactory` with permission and
+    encouragement from Jim Bosch.
     """
 
     # nativeSys=FOCAL_PLANE seems to be assumed in various places in this file

@@ -95,8 +95,9 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
         # reset the filters before we test anything
         FilterDefinitionCollection.reset()
 
-        # The FITS WCS and VisitInfo coordinates in this header are intentionally
-        # different, to make comparisons between them more obvious.
+        # The FITS WCS and VisitInfo coordinates in this header are
+        # intentionally different, to make comparisons between them more
+        # obvious.
         self.boresight = lsst.geom.SpherePoint(10., 20., lsst.geom.degrees)
         self.header = {
             "TELESCOP": "TEST",

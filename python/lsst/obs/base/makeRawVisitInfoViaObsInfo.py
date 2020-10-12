@@ -140,9 +140,9 @@ class MakeRawVisitInfoViaObsInfo(object):
             # time zone
             argDict["date"] = DateTime(middle.tai.isot, DateTime.TAI)
 
-            # Derive earth rotation angle from UT1 (being out by a second is not
-            # a big deal given the uncertainty over exactly what part of the
-            # observation we are needing it for).
+            # Derive earth rotation angle from UT1 (being out by a second is
+            # not a big deal given the uncertainty over exactly what part of
+            # the observation we are needing it for).
             # ERFA needs a UT1 time split into two floats
             # We ignore any problems with DUT1 not being defined for now.
             try:

@@ -41,7 +41,8 @@ class TestPolicyInRepo(unittest.TestCase):
             shutil.rmtree(self.testData)
 
     def test(self):
-        """Verify that when specifying a repo policy that the policy gets written & loaded correctly.
+        """Verify that when specifying a repo policy that the policy gets
+        written & loaded correctly.
         """
 
         objA = dpTest.TestObject("abc")
@@ -73,7 +74,8 @@ class TestPolicyInRepo(unittest.TestCase):
         del butler
         del repoArgs
 
-        # Test that a newly-initialized butler can find the policy in the repositoryCfg.
+        # Test that a newly-initialized butler can find the policy in the
+        # repositoryCfg.
         repoArgs = dafPersist.RepositoryArgs(root=firstRepoPath)
         butler = dafPersist.Butler(inputs=repoArgs)
         reloadedObjA = butler.get('basicObject1', {'id': 1})

@@ -207,7 +207,8 @@ class BuilderTargetInput(BuilderInput):
                  formatter: FormatterParameter, translatorFactory: TranslatorFactory,
                  targetHandler: Optional[PathElementHandler] = None,
                  **kwargs: Any):
-        # strip off [%HDU] identifiers from e.g. DECAM Community Pipeline products
+        # strip off [%HDU] identifiers from e.g. DECAM Community Pipeline
+        # products
         template = template.split('[%(')[0]
         super().__init__(template=template, keys=keys)
         self._translator = translatorFactory.makeMatching(datasetTypeName, keys, **kwargs)

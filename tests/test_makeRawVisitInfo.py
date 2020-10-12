@@ -117,7 +117,8 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
         self.assertEqual(visitInfo.getExposureTime(), exposureTime)
         self.assertEqual(visitInfo.getDate(), DateTime())
 
-        # omit EXPTIME; date should be start date, not avg date, and exposureTime should be nan
+        # omit EXPTIME; date should be start date, not avg date, and
+        # exposureTime should be nan
         md = getMetadata({
             "DATE-OBS": startDate.toString(DateTime.UTC),
         })
@@ -230,8 +231,8 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
                     TAI=DateTime.TAI,
                 ).get(timesys, DateTime.UTC)
 
-                # lsstDateStr = dateStr with trailing Z if UTC, else no trailing Z,
-                # because lsst.daf.base.DateTime is very picky
+                # lsstDateStr = dateStr with trailing Z if UTC, else no
+                # trailing Z, because lsst.daf.base.DateTime is very picky
                 lsstDateStr = dateStr
                 if lsstSys == DateTime.UTC:
                     if not lsstDateStr.endswith("Z"):

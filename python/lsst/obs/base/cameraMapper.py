@@ -370,7 +370,8 @@ class CameraMapper(dafPersist.Mapper):
                                                     inputOnly=component.get('inputOnly', False))
                             return butlerComposite
                         setattr(self, "map_" + datasetType, compositeClosure)
-                        # for now at least, don't set up any other handling for this dataset type.
+                        # for now at least, don't set up any other handling for
+                        # this dataset type.
                         continue
 
                     if name == "calibrations":
@@ -437,7 +438,8 @@ class CameraMapper(dafPersist.Mapper):
                             setMethods("wcs", bypassImpl=getSkyWcs)
 
                             def getRawHeaderWcs(datasetType, pythonType, location, dataId):
-                                """Create a SkyWcs from the un-modified raw FITS WCS header keys."""
+                                """Create a SkyWcs from the un-modified raw
+                                FITS WCS header keys."""
                                 if datasetType[:3] != "raw":
                                     raise dafPersist.NoResults("Can only get header WCS for raw exposures.",
                                                                datasetType, dataId)
@@ -664,7 +666,8 @@ class CameraMapper(dafPersist.Mapper):
             value types.
         """
 
-        # not sure if this is how we want to do this. what if None was intended?
+        # not sure if this is how we want to do this. what if None was
+        # intended?
         if level == '':
             level = self.getDefaultLevel()
 
@@ -848,8 +851,9 @@ class CameraMapper(dafPersist.Mapper):
                 self.log.warn("Unable to locate registry at policy path: %s", path)
                 path = None
 
-        # Old Butler API was to indicate the registry WITH the repo folder, New Butler expects the registry to
-        # be in the repo folder. To support Old API, check to see if path starts with root, and if so, strip
+        # Old Butler API was to indicate the registry WITH the repo folder,
+        # New Butler expects the registry to be in the repo folder. To support
+        # Old API, check to see if path starts with root, and if so, strip
         # root from path. Currently only works with PosixStorage
         try:
             root = storage.root
@@ -858,7 +862,8 @@ class CameraMapper(dafPersist.Mapper):
         except AttributeError:
             pass
 
-        # determine if there is an sqlite registry and if not, try the posix registry.
+        # determine if there is an sqlite registry and if not, try the posix
+        # registry.
         registry = None
 
         def search(filename, description):
@@ -1115,10 +1120,12 @@ class CameraMapper(dafPersist.Mapper):
             wcs = afwGeom.makeSkyWcs(metadata, strip=True)
             exposure.setWcs(wcs)
         except pexExcept.TypeError as e:
-            # See DM-14372 for why this is debug and not warn (e.g. calib files without wcs metadata).
+            # See DM-14372 for why this is debug and not warn (e.g. calib
+            # files without wcs metadata).
             self.log.debug("wcs set to None; missing information found in metadata to create a valid wcs:"
                            " %s", e.args[0])
-        # ensure any WCS values stripped from the metadata are removed in the exposure
+        # ensure any WCS values stripped from the metadata are removed in the
+        # exposure
         exposure.setMetadata(metadata)
 
     def _createInitialSkyWcs(self, exposure):
@@ -1384,8 +1391,8 @@ def validateRecipeFitsStorage(recipes):
     `RuntimeError`
         If validation fails.
     """
-    # Schemas define what should be there, and the default values (and by the default
-    # value, the expected type).
+    # Schemas define what should be there, and the default values (and by the
+    # default value, the expected type).
     compressionSchema = {
         "algorithm": "NONE",
         "rows": 1,
