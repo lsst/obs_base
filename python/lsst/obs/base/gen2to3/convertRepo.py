@@ -25,6 +25,7 @@ __all__ = ["ConvertRepoConfig", "ConvertRepoTask", "ConvertRepoSkyMapConfig", "R
 import os
 import fnmatch
 from dataclasses import dataclass
+from multiprocessing import Pool
 from typing import Iterable, Optional, List, Dict
 
 from lsst.daf.butler import (
@@ -444,7 +445,9 @@ class ConvertRepoTask(Task):
     def run(self, root: str, *,
             calibs: Dict[str, str] = None,
             reruns: List[Rerun],
-            visits: Optional[Iterable[int]] = None):
+            visits: Optional[Iterable[int]] = None,
+            pool: Optional[Pool] = None,
+            processes: int = 1):
         """Convert a group of related data repositories.
 
         Parameters
@@ -463,7 +466,14 @@ class ConvertRepoTask(Task):
         visits : iterable of `int`, optional
             The integer IDs of visits to convert.  If not provided, all visits
             in the Gen2 root repository will be converted.
+        pool : `multiprocessing.Pool`, optional
+            If not `None`, a process pool with which to parallelize some
+            operations.
+        processes : `int`, optional
+            The number of processes to use for conversion.
         """
+        if pool is None and processes > 1:
+            pool = Pool(processes)
         if calibs is None:
             calibs = {}
         if visits is not None:
@@ -507,7 +517,7 @@ class ConvertRepoTask(Task):
 
         # Run raw ingest (does nothing if we weren't configured to convert the
         # 'raw' dataset type).
-        rootConverter.runRawIngest()
+        rootConverter.runRawIngest(pool=pool)
 
         # Write curated calibrations to all calibration runs and
         # also in the default collection.
@@ -536,7 +546,7 @@ class ConvertRepoTask(Task):
 
         # Define visits (also does nothing if we weren't configurd to convert
         # the 'raw' dataset type).
-        rootConverter.runDefineVisits()
+        rootConverter.runDefineVisits(pool=pool)
 
         # Walk Gen2 repos to find datasets convert.
         for converter in converters:

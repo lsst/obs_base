@@ -32,7 +32,7 @@ from lsst.log.utils import temporaryLogLevel
 from ..gen2to3 import ConvertRepoTask, ConvertRepoSkyMapConfig, Rerun
 
 
-def convert(repo, gen2root, skymap_name, skymap_config, calibs, reruns, config_file, transfer):
+def convert(repo, gen2root, skymap_name, skymap_config, calibs, reruns, config_file, transfer, processes=1):
     """Implements the command line interface `butler convert` subcommand,
     should only be called by command line tools and unit test code that tests
     this function.
@@ -62,6 +62,8 @@ def convert(repo, gen2root, skymap_name, skymap_config, calibs, reruns, config_f
         after all default/instrument configurations.
     transfer : `str` or None
         Mode to use when transferring data into the gen3 repository.
+    processess : `int`
+        Number of processes to use for conversion.
     """
     # Allow a gen3 butler to be reused
     try:
@@ -104,5 +106,6 @@ def convert(repo, gen2root, skymap_name, skymap_config, calibs, reruns, config_f
     convertRepoTask.run(
         root=gen2root,
         reruns=rerunsArg,
-        calibs=None if calibs is None else {calibs: instrument.makeCollectionName("calib")}
+        calibs=None if calibs is None else {calibs: instrument.makeCollectionName("calib")},
+        processes=processes,
     )

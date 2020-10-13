@@ -106,7 +106,7 @@ class RootRepoConverter(StandardRepoConverter):
             name = self.task.config.rootSkyMapName
         return skyMap, name
 
-    def runRawIngest(self):
+    def runRawIngest(self, pool=None):
         if self.task.raws is None:
             return
         self.task.log.info(f"Finding raws in root {self.root}.")
@@ -119,16 +119,16 @@ class RootRepoConverter(StandardRepoConverter):
             dataRefs = self.butler2.subset(self.task.config.rawDatasetType)
         dataPaths = getDataPaths(dataRefs)
         self.task.log.info("Ingesting raws from root %s into run %s.", self.root, self.task.raws.butler.run)
-        self._rawRefs.extend(self.task.raws.run(dataPaths))
+        self._rawRefs.extend(self.task.raws.run(dataPaths, pool=pool))
         self._chain = {self.task.raws.butler.run: {self.task.raws.datasetType.name}}
 
-    def runDefineVisits(self):
+    def runDefineVisits(self, pool=None):
         if self.task.defineVisits is None:
             return
         dimensions = DimensionGraph(self.task.universe, names=["exposure"])
         exposureDataIds = set(ref.dataId.subset(dimensions) for ref in self._rawRefs)
         self.task.log.info("Defining visits from exposures.")
-        self.task.defineVisits.run(exposureDataIds)
+        self.task.defineVisits.run(exposureDataIds, pool=pool)
 
     def prep(self):
         # Docstring inherited from RepoConverter.
