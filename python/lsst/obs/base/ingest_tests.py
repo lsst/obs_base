@@ -165,7 +165,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             rawImage = butler.get("raw.image", dataId)
             self.assertEqual(rawImage.getBBox(), exposure.getBBox())
 
-            self.checkRepo(files=files)
+        self.checkRepo(files=files)
 
     def checkRepo(self, files=None):
         """Check the state of the repository after ingest.
