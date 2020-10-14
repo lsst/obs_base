@@ -121,7 +121,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         if os.path.exists(self.root):
             shutil.rmtree(self.root, ignore_errors=True)
 
-    def verifyIngest(self, files=None, cli=False):
+    def verifyIngest(self, files=None, cli=False, fullCheck=False):
         """
         Test that RawIngestTask ingested the expected files.
 
@@ -129,13 +129,31 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         ----------
         files : `list` [`str`], or None
             List of files to be ingested, or None to use ``self.file``
+        fullCheck : `bool`, optional
+            If `True`, read the full raw dataset and check component
+            consistency. If `False` check that a component can be read
+            but do not read the entire raw exposure.
+
+        Notes
+        -----
+        Reading all the ingested test data can be expensive. The code paths
+        for reading the second raw are the same as reading the first so
+        we do not gain anything by doing full checks of everything.
+        Only read full pixel data for first dataset from file.
+        Don't even do that if we are requested not to by the caller.
+        This only really affects files that contain multiple datasets.
         """
         butler = Butler(self.root, run=self.outputRun)
         datasets = butler.registry.queryDatasets("raw", collections=...)
         self.assertEqual(len(list(datasets)), len(self.dataIds))
+
         for dataId in self.dataIds:
-            exposure = butler.get("raw", dataId)
+            # Check that we can read metadata from a raw
             metadata = butler.get("raw.metadata", dataId)
+            if not fullCheck:
+                continue
+            fullCheck = False
+            exposure = butler.get("raw", dataId)
             self.assertEqual(metadata.toDict(), exposure.getMetadata().toDict())
 
             # Since components follow a different code path we check that
@@ -209,7 +227,10 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
     def testCopy(self):
         self._ingestRaws(transfer="copy")
-        self.verifyIngest()
+        # Only test full read of raws for the copy test. No need to do it
+        # in the other tests since the formatter will be the same in all
+        # cases.
+        self.verifyIngest(fullCheck=True)
 
     def testHardLink(self):
         try:
