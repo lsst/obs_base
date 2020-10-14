@@ -131,10 +131,10 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             List of files to be ingested, or None to use ``self.file``
         """
         butler = Butler(self.root, run=self.outputRun)
-        datasets = butler.registry.queryDatasets(self.outputRun, collections=...)
+        datasets = butler.registry.queryDatasets("raw", collections=...)
         self.assertEqual(len(list(datasets)), len(self.dataIds))
         for dataId in self.dataIds:
-            exposure = butler.get(self.outputRun, dataId)
+            exposure = butler.get("raw", dataId)
             metadata = butler.get("raw.metadata", dataId)
             self.assertEqual(metadata.toDict(), exposure.getMetadata().toDict())
 
