@@ -187,7 +187,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         result = runner.invoke(butlerCli, ["create", self.root])
         self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
 
-    def _ingestRaws(self, transfer):
+    def _ingestRaws(self, transfer, file=None):
         """Use the Click `testing` module to call the butler command line api
         to ingest raws.
 
@@ -195,9 +195,14 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         ----------
         transfer : `str`
             The external data transfer type.
+        file : `str`
+            Path to a file to ingest instead of the default associated with
+            the object.
         """
+        if file is None:
+            file = self.file
         runner = LogCliRunner()
-        result = runner.invoke(butlerCli, ["ingest-raws", self.root, self.file,
+        result = runner.invoke(butlerCli, ["ingest-raws", self.root, file,
                                            "--output-run", self.outputRun,
                                            "--transfer", transfer,
                                            "--ingest-task", self.rawIngestTask])
@@ -246,10 +251,19 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         """
         # symlink into repo root manually
         butler = Butler(self.root, run=self.outputRun)
-        newPath = butler.datastore.root.join(os.path.basename(self.file))
+        pathInStore = "prefix-" + os.path.basename(self.file)
+        newPath = butler.datastore.root.join(pathInStore)
         os.symlink(os.path.abspath(self.file), newPath.ospath)
-        self._ingestRaws(transfer=None)
+        self._ingestRaws(transfer="auto", file=newPath.ospath)
         self.verifyIngest()
+
+        # Recreate a butler post-ingest (the earlier one won't see the
+        # ingested files)
+        butler = Butler(self.root, run=self.outputRun)
+
+        # Check that the URI associated with this path is the right one
+        uri = butler.getURI("raw", self.dataIds[0])
+        self.assertEqual(uri.relative_to(butler.datastore.root), pathInStore)
 
     def testFailOnConflict(self):
         """Re-ingesting the same data into the repository should fail.
