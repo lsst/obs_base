@@ -77,10 +77,6 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     observations).
     """
 
-    outputRun = "raw"
-    """The name of the output run to use in tests.
-    """
-
     @property
     @abc.abstractmethod
     def instrumentClassName(self):
@@ -109,17 +105,23 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         """
         return self.instrumentClass.getName()
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         # Use a temporary working directory
-        self.root = tempfile.mkdtemp(dir=self.ingestDir)
-        self._createRepo()
+        cls.root = tempfile.mkdtemp(dir=cls.ingestDir)
+        cls._createRepo()
 
         # Register the instrument and its static metadata
-        self._registerInstrument()
+        cls._registerInstrument()
 
-    def tearDown(self):
-        if os.path.exists(self.root):
-            shutil.rmtree(self.root, ignore_errors=True)
+    def setUp(self):
+        # Want a unique run name per test
+        self.outputRun = "raw_ingest_" + self.id()
+
+    @classmethod
+    def tearDownClass(cls):
+        if os.path.exists(cls.root):
+            shutil.rmtree(cls.root, ignore_errors=True)
 
     def verifyIngest(self, files=None, cli=False, fullCheck=False):
         """
@@ -144,7 +146,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         This only really affects files that contain multiple datasets.
         """
         butler = Butler(self.root, run=self.outputRun)
-        datasets = butler.registry.queryDatasets("raw", collections=...)
+        datasets = butler.registry.queryDatasets("raw", collections=self.outputRun)
         self.assertEqual(len(list(datasets)), len(self.dataIds))
 
         for dataId in self.dataIds:
@@ -180,12 +182,14 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         """
         pass
 
-    def _createRepo(self):
+    @classmethod
+    def _createRepo(cls):
         """Use the Click `testing` module to call the butler command line api
         to create a repository."""
         runner = LogCliRunner()
-        result = runner.invoke(butlerCli, ["create", self.root])
-        self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
+        result = runner.invoke(butlerCli, ["create", cls.root])
+        # Classmethod so assertEqual does not work
+        assert result.exit_code == 0, f"output: {result.output} exception: {result.exception}"
 
     def _ingestRaws(self, transfer, file=None):
         """Use the Click `testing` module to call the butler command line api
@@ -208,12 +212,14 @@ class IngestTestBase(metaclass=abc.ABCMeta):
                                            "--ingest-task", self.rawIngestTask])
         self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
 
-    def _registerInstrument(self):
+    @classmethod
+    def _registerInstrument(cls):
         """Use the Click `testing` module to call the butler command line api
         to register the instrument."""
         runner = LogCliRunner()
-        result = runner.invoke(butlerCli, ["register-instrument", self.root, self.instrumentClassName])
-        self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
+        result = runner.invoke(butlerCli, ["register-instrument", cls.root, cls.instrumentClassName])
+        # Classmethod so assertEqual does not work
+        assert result.exit_code == 0, f"output: {result.output} exception: {result.exception}"
 
     def _writeCuratedCalibrations(self):
         """Use the Click `testing` module to call the butler command line api
@@ -285,7 +291,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         # Trying to load a camera with a data ID not known to the registry
         # is an error, because we can't get any temporal information.
         with self.assertRaises(LookupError):
-            lsst.obs.base.loadCamera(butler, self.dataIds[0], collections=collection)
+            lsst.obs.base.loadCamera(butler, {"exposure": 0}, collections=collection)
 
         # Ingest raws in order to get some exposure records.
         self._ingestRaws(transfer="auto")
