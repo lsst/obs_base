@@ -46,13 +46,14 @@ class DummyCam(Instrument):
         `Registry`.
         """
         dataId = {"instrument": self.getName(), "class_name": getFullTypeName(DummyCam)}
-        registry.insertDimensionData("instrument", dataId)
-        for f in ("dummy_g", "dummy_u"):
-            registry.insertDimensionData("physical_filter",
-                                         dict(dataId, physical_filter=f, band=f[-1]))
-        for d in (1, 2):
-            registry.insertDimensionData("detector",
-                                         dict(dataId, id=d, full_name=str(d)))
+        with registry.transaction():
+            registry.syncDimensionData("instrument", dataId)
+            for f in ("dummy_g", "dummy_u"):
+                registry.syncDimensionData("physical_filter",
+                                           dict(dataId, physical_filter=f, band=f[-1]))
+            for d in (1, 2):
+                registry.syncDimensionData("detector",
+                                           dict(dataId, id=d, full_name=str(d)))
 
     def getRawFormatter(self, dataId):
         # Docstring inherited fromt Instrument.getRawFormatter.

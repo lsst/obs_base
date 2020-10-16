@@ -103,6 +103,9 @@ class InstrumentTests(metaclass=abc.ABCMeta):
         registeredInstrument = Instrument.fromName(self.instrument.getName(), registry)
         self.assertEqual(type(registeredInstrument), type(self.instrument))
 
+        # Check that re-registration is not an error.
+        self.instrument.register(registry)
+
     def testMakeTranslatorFactory(self):
         factory = self.instrument.makeDataIdTranslatorFactory()
         self.assertIsInstance(factory, TranslatorFactory)
