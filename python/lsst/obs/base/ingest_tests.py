@@ -77,10 +77,6 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     observations).
     """
 
-    outputRun = "raw"
-    """The name of the output run to use in tests.
-    """
-
     @property
     @abc.abstractmethod
     def instrumentClassName(self):
@@ -109,19 +105,25 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         """
         return self.instrumentClass.getName()
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         # Use a temporary working directory
-        self.root = tempfile.mkdtemp(dir=self.ingestDir)
-        self._createRepo()
+        cls.root = tempfile.mkdtemp(dir=cls.ingestDir)
+        cls._createRepo()
 
         # Register the instrument and its static metadata
-        self._registerInstrument()
+        cls._registerInstrument()
 
-    def tearDown(self):
-        if os.path.exists(self.root):
-            shutil.rmtree(self.root, ignore_errors=True)
+    def setUp(self):
+        # Want a unique run name per test
+        self.outputRun = "raw_ingest_" + self.id()
 
-    def verifyIngest(self, files=None, cli=False):
+    @classmethod
+    def tearDownClass(cls):
+        if os.path.exists(cls.root):
+            shutil.rmtree(cls.root, ignore_errors=True)
+
+    def verifyIngest(self, files=None, cli=False, fullCheck=False):
         """
         Test that RawIngestTask ingested the expected files.
 
@@ -129,13 +131,31 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         ----------
         files : `list` [`str`], or None
             List of files to be ingested, or None to use ``self.file``
+        fullCheck : `bool`, optional
+            If `True`, read the full raw dataset and check component
+            consistency. If `False` check that a component can be read
+            but do not read the entire raw exposure.
+
+        Notes
+        -----
+        Reading all the ingested test data can be expensive. The code paths
+        for reading the second raw are the same as reading the first so
+        we do not gain anything by doing full checks of everything.
+        Only read full pixel data for first dataset from file.
+        Don't even do that if we are requested not to by the caller.
+        This only really affects files that contain multiple datasets.
         """
         butler = Butler(self.root, run=self.outputRun)
-        datasets = butler.registry.queryDatasets(self.outputRun, collections=...)
+        datasets = butler.registry.queryDatasets("raw", collections=self.outputRun)
         self.assertEqual(len(list(datasets)), len(self.dataIds))
+
         for dataId in self.dataIds:
-            exposure = butler.get(self.outputRun, dataId)
+            # Check that we can read metadata from a raw
             metadata = butler.get("raw.metadata", dataId)
+            if not fullCheck:
+                continue
+            fullCheck = False
+            exposure = butler.get("raw", dataId)
             self.assertEqual(metadata.toDict(), exposure.getMetadata().toDict())
 
             # Since components follow a different code path we check that
@@ -147,7 +167,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             rawImage = butler.get("raw.image", dataId)
             self.assertEqual(rawImage.getBBox(), exposure.getBBox())
 
-            self.checkRepo(files=files)
+        self.checkRepo(files=files)
 
     def checkRepo(self, files=None):
         """Check the state of the repository after ingest.
@@ -162,14 +182,16 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         """
         pass
 
-    def _createRepo(self):
+    @classmethod
+    def _createRepo(cls):
         """Use the Click `testing` module to call the butler command line api
         to create a repository."""
         runner = LogCliRunner()
-        result = runner.invoke(butlerCli, ["create", self.root])
-        self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
+        result = runner.invoke(butlerCli, ["create", cls.root])
+        # Classmethod so assertEqual does not work
+        assert result.exit_code == 0, f"output: {result.output} exception: {result.exception}"
 
-    def _ingestRaws(self, transfer):
+    def _ingestRaws(self, transfer, file=None):
         """Use the Click `testing` module to call the butler command line api
         to ingest raws.
 
@@ -177,20 +199,27 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         ----------
         transfer : `str`
             The external data transfer type.
+        file : `str`
+            Path to a file to ingest instead of the default associated with
+            the object.
         """
+        if file is None:
+            file = self.file
         runner = LogCliRunner()
-        result = runner.invoke(butlerCli, ["ingest-raws", self.root, self.file,
+        result = runner.invoke(butlerCli, ["ingest-raws", self.root, file,
                                            "--output-run", self.outputRun,
                                            "--transfer", transfer,
                                            "--ingest-task", self.rawIngestTask])
         self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
 
-    def _registerInstrument(self):
+    @classmethod
+    def _registerInstrument(cls):
         """Use the Click `testing` module to call the butler command line api
         to register the instrument."""
         runner = LogCliRunner()
-        result = runner.invoke(butlerCli, ["register-instrument", self.root, self.instrumentClassName])
-        self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
+        result = runner.invoke(butlerCli, ["register-instrument", cls.root, cls.instrumentClassName])
+        # Classmethod so assertEqual does not work
+        assert result.exit_code == 0, f"output: {result.output} exception: {result.exception}"
 
     def _writeCuratedCalibrations(self):
         """Use the Click `testing` module to call the butler command line api
@@ -209,7 +238,10 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
     def testCopy(self):
         self._ingestRaws(transfer="copy")
-        self.verifyIngest()
+        # Only test full read of raws for the copy test. No need to do it
+        # in the other tests since the formatter will be the same in all
+        # cases.
+        self.verifyIngest(fullCheck=True)
 
     def testHardLink(self):
         try:
@@ -225,10 +257,19 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         """
         # symlink into repo root manually
         butler = Butler(self.root, run=self.outputRun)
-        newPath = butler.datastore.root.join(os.path.basename(self.file))
+        pathInStore = "prefix-" + os.path.basename(self.file)
+        newPath = butler.datastore.root.join(pathInStore)
         os.symlink(os.path.abspath(self.file), newPath.ospath)
-        self._ingestRaws(transfer=None)
+        self._ingestRaws(transfer="auto", file=newPath.ospath)
         self.verifyIngest()
+
+        # Recreate a butler post-ingest (the earlier one won't see the
+        # ingested files)
+        butler = Butler(self.root, run=self.outputRun)
+
+        # Check that the URI associated with this path is the right one
+        uri = butler.getURI("raw", self.dataIds[0])
+        self.assertEqual(uri.relative_to(butler.datastore.root), pathInStore)
 
     def testFailOnConflict(self):
         """Re-ingesting the same data into the repository should fail.
@@ -250,7 +291,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         # Trying to load a camera with a data ID not known to the registry
         # is an error, because we can't get any temporal information.
         with self.assertRaises(LookupError):
-            lsst.obs.base.loadCamera(butler, self.dataIds[0], collections=collection)
+            lsst.obs.base.loadCamera(butler, {"exposure": 0}, collections=collection)
 
         # Ingest raws in order to get some exposure records.
         self._ingestRaws(transfer="auto")
