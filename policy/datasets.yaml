@@ -1506,8 +1506,6 @@ measureLinearity_config:
     persistable: Config
     python: lsst.cp.pipe.linearity.MeasureLinearityConfig
     storage: ConfigStorage
-    tables:
-    - 'raw'
     template: config/measureLinearity.py
 measureLinearity_metadata:
     description: "Metadata for the linearity fitting task."
