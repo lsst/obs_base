@@ -31,7 +31,7 @@ import dataclasses
 from lsst.obs.base import Instrument
 from lsst.obs.base.gen2to3 import TranslatorFactory
 from lsst.daf.butler import Registry
-from lsst.daf.butler import ButlerConfig
+from lsst.daf.butler import RegistryConfig
 
 
 @dataclasses.dataclass
@@ -79,7 +79,9 @@ class InstrumentTests(metaclass=abc.ABCMeta):
     def test_register(self):
         """Test that register() sets appropriate Dimensions.
         """
-        registry = Registry.fromConfig(ButlerConfig())
+        registryConfig = RegistryConfig()
+        registryConfig["db"] = "sqlite://"
+        registry = Registry.createFromConfig(registryConfig)
         # check that the registry starts out empty
         self.assertFalse(registry.queryDataIds(["instrument"]).toSequence())
         self.assertFalse(registry.queryDataIds(["detector"]).toSequence())
