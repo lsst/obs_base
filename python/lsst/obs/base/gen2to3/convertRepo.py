@@ -580,7 +580,7 @@ class ConvertRepoTask(Task):
                 chain = [spec.runName]
                 chain.extend(rerunConverters[spec.runName].getCollectionChain())
                 for parent in spec.parents:
-                    chain.append(spec.parent)
+                    chain.append(parent)
                     parentConverter = rerunConverters.get(parent)
                     if parentConverter is not None:
                         chain.extend(parentConverter.getCollectionChain())
