@@ -505,14 +505,14 @@ class RawIngestTask(Task):
 
             self.log.debug("Attempting to ingest %d file%s from exposure %s:%s",
                            len(exposure.files), "" if len(exposure.files) == 1 else "s",
-                           exposure.record.instrument, exposure.record.name)
+                           exposure.record.instrument, exposure.record.obs_id)
 
             try:
                 self.butler.registry.syncDimensionData("exposure", exposure.record)
             except Exception as e:
                 n_exposures_failed += 1
                 self.log.warning("Exposure %s:%s could not be registered: %s",
-                                 exposure.record.instrument, exposure.record.name, e)
+                                 exposure.record.instrument, exposure.record.obs_id, e)
                 continue
 
             # Override default run if nothing specified explicitly
@@ -537,7 +537,7 @@ class RawIngestTask(Task):
             # Success for this exposure
             n_exposures += 1
             self.log.info("Exposure %s:%s ingested successfully",
-                          exposure.record.instrument, exposure.record.name)
+                          exposure.record.instrument, exposure.record.obs_id)
 
         had_failure = False
 
