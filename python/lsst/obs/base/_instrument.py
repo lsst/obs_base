@@ -732,7 +732,7 @@ def makeExposureRecordFromObsInfo(obsInfo, universe):
     return dimension.RecordClass(
         instrument=obsInfo.instrument,
         id=obsInfo.exposure_id,
-        name=obsInfo.observation_id,
+        obs_id=obsInfo.observation_id,
         group_name=obsInfo.exposure_group,
         group_id=obsInfo.visit_id,
         datetime_begin=obsInfo.datetime_begin,

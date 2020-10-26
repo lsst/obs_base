@@ -594,7 +594,7 @@ class _GroupExposuresOneToOneTask(GroupExposuresTask, metaclass=ABCMeta):
             yield VisitDefinitionData(
                 instrument=exposure.instrument,
                 id=exposure.id,
-                name=exposure.name,
+                name=exposure.obs_id,
                 exposures=[exposure],
             )
 
