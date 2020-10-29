@@ -138,17 +138,4 @@ class FilterFormatter(FileFormatter):
         filter["name"] = inMemoryDataset.getName()
         filter["aliases"] = inMemoryDataset.getAliases()
 
-        # This can fail if the filter is no longer available in the
-        # Singleton
-        try:
-            filterProperty = inMemoryDataset.getFilterProperty()
-        except LookupError:
-            pass
-        else:
-            properties = {}
-            properties["lambdaEff"] = filterProperty.getLambdaEff()
-            properties["lambdaMax"] = filterProperty.getLambdaMax()
-            properties["lambdaMin"] = filterProperty.getLambdaMin()
-            filter["properties"] = properties
-
         return yaml.dump(filter).encode()
