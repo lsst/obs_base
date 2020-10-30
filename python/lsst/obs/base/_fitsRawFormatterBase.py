@@ -392,5 +392,8 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
         read-only).
         """
         if self._observationInfo is None:
-            self._observationInfo = ObservationInfo(self.metadata, translator_class=self.translatorClass)
+            location = self.fileDescriptor.location
+            path = location.path if location is not None else None
+            self._observationInfo = ObservationInfo(self.metadata, translator_class=self.translatorClass,
+                                                    filename=path)
         return self._observationInfo
