@@ -306,7 +306,7 @@ class RawIngestTask(Task):
             "visit_id": False,
         }
 
-        obsInfo = ObservationInfo(header, pedantic=False,
+        obsInfo = ObservationInfo(header, pedantic=False, filename=filename,
                                   required={k for k in ingest_subset if ingest_subset[k]},
                                   subset=set(ingest_subset))
 
