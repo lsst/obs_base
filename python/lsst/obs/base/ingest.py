@@ -279,7 +279,38 @@ class RawIngestTask(Task):
             The dataId, and observation information associated with this
             dataset.
         """
-        obsInfo = ObservationInfo(header)
+        # To ensure we aren't slowed down for no reason, explicitly
+        # list here the properties we need for the schema
+        # Use a dict with values a boolean where True indicates
+        # that it is required that we calculate this property.
+        ingest_subset = {
+            "altaz_begin": False,
+            "boresight_rotation_coord": False,
+            "boresight_rotation_angle": False,
+            "dark_time": False,
+            "datetime_begin": True,
+            "datetime_end": True,
+            "detector_num": True,
+            "exposure_group": False,
+            "exposure_id": True,
+            "exposure_time": True,
+            "instrument": True,
+            "tracking_radec": False,
+            "object": False,
+            "observation_counter": False,
+            "observation_id": True,
+            "observation_reason": False,
+            "observation_type": True,
+            "observing_day": False,
+            "physical_filter": True,
+            "science_program": False,
+            "visit_id": False,
+        }
+
+        obsInfo = ObservationInfo(header, pedantic=False,
+                                  required={k for k in ingest_subset if ingest_subset[k]},
+                                  subset=set(ingest_subset))
+
         dataId = DataCoordinate.standardize(instrument=obsInfo.instrument,
                                             exposure=obsInfo.exposure_id,
                                             detector=obsInfo.detector_num,
