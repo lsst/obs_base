@@ -16,6 +16,7 @@ This demonstrates that the butler can read data ingested from your instrument.
 
 
 The instructions here assume that you are writing for the ``ExampleCam`` camera, with the new package called ``obs_example``.
+Here we put the code in a ``lsst.obs`` module hierarchy but this is not required by the Data Butler and you can use any hierarchy that suits your needs.
 
 .. _translator:
 
@@ -37,7 +38,7 @@ See the `metadata translator <https://astro-metadata-translator.lsst.io>`_ packa
 Filters
 =======
 
-Every instrument has a particular set of photometric filters, each with their own effective wavelength (e.g., ``477 microns``), transmission function, internal name (e.g., ``HSC-G``), and "abstract" filter name (e.g., ``g``).
+Every instrument has a particular set of photometric filters, each with their own effective wavelength (e.g., ``477 microns``), transmission function, internal name (e.g., ``HSC-G``), and filter band (e.g., ``g``).
 You define these filters using a `FilterDefinitionCollection` containing multiple :py:class:`FilterDefinitions <FilterDefinition>`.
 
 Create a file, ``python/lsst/obs/example/exampleFilters.py``, formatted like the following:
@@ -48,14 +49,14 @@ Create a file, ``python/lsst/obs/example/exampleFilters.py``, formatted like the
 
     EXAMPLE_FILTER_DEFINITIONS = FilterDefinitionCollection(
         FilterDefinition(physical_filter="example g filter",
-                         abstract_filter="g",
+                         band="g",
                          lambdaEff=432),
         FilterDefinition(physical_filter="example z filter",
-                         abstract_filter="z",
+                         band="z",
                          lambdaEff=1234),
     )
 
-See the `FilterDefinition` docs for the various components that go into defining a filter. 
+See the `FilterDefinition` docs for the various components that go into defining a filter.
 Note that the ``physical_filter`` name should match the exact filter name used in that observatory's metadata.
 
 .. _formatter:
@@ -64,7 +65,7 @@ Formatter
 =========
 
 A `~lsst.daf.butler.Formatter` defines how the Data Butler reads raw data from the original files and converts it to the LSST conventions.
-At present, most astronomical data is distributed as FITS files, so you will very likely be creating a subclass of `FitsRawFormatterBase`.
+At present, most astronomical data is distributed as FITS files, so you will very likely be creating a subclass of `FitsRawFormatterBase`, but this is not required.
 
 Create a file, ``python/lsst/obs/example/rawFormatter.py``, containing an ``ExampleRawFormatter`` derived from the `FitsRawFormatterBase` base class.
 At minimum, you must define a ``translatorClass`` pointing to the ``ExampleTranslator`` you made in :ref:`translator` and a ``filterDefinitions`` pointing to the filter list you created in :ref:`filters`.
@@ -75,8 +76,8 @@ This formatter can also contain specializations for your specific camera, for ex
     __all__ = ["ExampleCameraRawFormatter"]
 
     from astro_metadata_translator import ExampleTranslator
-    from lsst.obs.base.fitsRawFormatterBase import FitsRawFormatterBase
-    from . import EXAMPLE_FILTER_DEFINITIONS
+    from lsst.obs.base import FitsRawFormatterBase
+    from .exampleFilters import EXAMPLE_FILTER_DEFINITIONS
 
 
     class ExampleCameraRawFormatter(FitsRawFormatterBase):
@@ -131,7 +132,8 @@ Run this test via
 
 the tests should fail, as there is no Example `Instrument` yet.
 
-Next, add a file in ``python/lsst/obs/example/instrument.py`` containing a subclass of `Instrument`, named `ExampleCam`, which at minimum overrides these abstract methods: `Instrument.getName`, `Instrument.getCamera`, `Instrument.register`, `Instrument.filterDefinitions`, and define ``self.configPaths`` in ``__init__``.
+Next, add a file in ``python/lsst/obs/example/_instrument.py`` containing a subclass of `Instrument`, named ```ExampleCam``, which at minimum overrides these abstract methods: `Instrument.getName`, `Instrument.getCamera`, `Instrument.register`, `Instrument.filterDefinitions`, `Instrument.getRawFormatter` and define ``self.configPaths`` in ``__init__``.
+The underscore is used in the name to indicate that the class will be exported by default and referred to as ``lsst.obs.example.ExampleCam``.
 
 Run your test again: the tests should now pass.
 If they do not, you can use the test output to determine what parts of the Instrument need to be fixed.
@@ -143,7 +145,7 @@ Ingest tests
 
 In order to test how your new gen3 obs package works with the :py:mod:`Data Butler <lsst.daf.butler>`, you need to write a test that ingests raw data.
 `~lsst.obs.base.ingest_tests.IngestTestBase` provides a base class for those tests, requiring only that you specify the input data that will be tested, and the :ref:`dataIds <lsst.daf.butler-dimensions_data_ids>` to use to check that the data was correctly ingested.
-This is how our system tests that your ``Formatter`` works correctly.
+This is how our system tests that your ``Formatter`` works correctly and that the ingest process can extract the required metadata from the files.
 
 .. code-block:: python
 
@@ -182,3 +184,7 @@ This is how our system tests that your ``Formatter`` works correctly.
     if __name__ == "__main__":
         lsst.utils.tests.init()
         unittest.main()
+
+
+The ingest tests do not check pixel values, so it is acceptable to run the ingest on stripped data files where the pixel values have been set to a single value and the data compressed with ``fpack``.
+This can result in a very small file that can be included directly in your obs package.
