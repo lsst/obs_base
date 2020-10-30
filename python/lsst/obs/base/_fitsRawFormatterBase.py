@@ -368,7 +368,7 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
     def readRawHeaderWcs(self, parameters=None):
         """Read the SkyWcs stored in the un-modified raw FITS WCS header keys.
         """
-        return lsst.afw.geom.makeSkyWcs(lsst.afw.fits.readMetadata(self.fileDescriptor))
+        return lsst.afw.geom.makeSkyWcs(lsst.afw.fits.readMetadata(self.fileDescriptor.location.path))
 
     def write(self, inMemoryDataset):
         """Write a Python object to a file.
