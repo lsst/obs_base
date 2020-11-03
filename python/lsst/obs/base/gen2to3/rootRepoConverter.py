@@ -120,7 +120,7 @@ class RootRepoConverter(StandardRepoConverter):
         dataPaths = getDataPaths(dataRefs)
         self.task.log.info("Ingesting raws from root %s into run %s.", self.root, self.task.raws.butler.run)
         self._rawRefs.extend(self.task.raws.run(dataPaths, pool=pool))
-        self._chain = {self.task.raws.butler.run: {self.task.raws.datasetType.name}}
+        self._chain = [self.task.raws.butler.run]
 
     def runDefineVisits(self, pool=None):
         if self.task.defineVisits is None:
