@@ -158,6 +158,15 @@ class ConvertRepoConfig(Config):
         itemtype=str,
         default={
             "deepCoadd_skyMap": "skymaps",
+        }
+    )
+    runsForced = DictField(
+        "Like ``runs``, but is used even when the dataset is present in a "
+        "non-root repository (i.e. rerun), overriding the non-root "
+        "repository's main collection.",
+        keytype=str,
+        itemtype=str,
+        default={
             "brightObjectMask": "masks",
         }
     )

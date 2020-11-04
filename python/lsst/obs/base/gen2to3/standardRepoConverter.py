@@ -195,10 +195,12 @@ class StandardRepoConverter(RepoConverter):
 
     def getRun(self, datasetTypeName: str, calibDate: Optional[str] = None) -> str:
         # Docstring inherited from RepoConverter.
-        if self._run is not None:
-            run = self._run
-        else:
-            run = self.task.config.runs.get(datasetTypeName)
+        run = self.task.config.runsForced.get(datasetTypeName)
+        if run is None:
+            if self._run is not None:
+                run = self._run
+            else:
+                run = self.task.config.runs.get(datasetTypeName)
         if run is None:
             raise ValueError(f"No default run for repo at {self.root}, and no "
                              f"override for dataset {datasetTypeName}.")
