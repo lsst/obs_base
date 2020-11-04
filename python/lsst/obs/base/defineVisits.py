@@ -372,6 +372,10 @@ class DefineVisitsTask(Task):
                                     (e.target_name for e in definition.exposures))
         science_program = _reduceOrNone(lambda a, b: a if a == b else None,
                                         (e.science_program for e in definition.exposures))
+
+        # observing day for a visit is defined by the earliest observation
+        # of the visit
+        observing_day = _reduceOrNone(min, (e.day_obs for e in definition.exposures))
         observation_reason = _reduceOrNone(lambda a, b: a if a == b else None,
                                            (e.observation_reason for e in definition.exposures))
         if observation_reason is None:
@@ -393,6 +397,7 @@ class DefineVisitsTask(Task):
                 target_name=target_name,
                 science_program=science_program,
                 observation_reason=observation_reason,
+                day_obs=observing_day,
                 zenith_angle=zenith_angle,
                 visit_system=self.groupExposures.getVisitSystem()[0],
                 exposure_time=exposure_time,
@@ -594,7 +599,7 @@ class _GroupExposuresOneToOneTask(GroupExposuresTask, metaclass=ABCMeta):
             yield VisitDefinitionData(
                 instrument=exposure.instrument,
                 id=exposure.id,
-                name=exposure.name,
+                name=exposure.obs_id,
                 exposures=[exposure],
             )
 
