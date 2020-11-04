@@ -28,7 +28,7 @@ from typing import List, Iterator, Iterable, Type, Optional, Any
 from collections import defaultdict
 from multiprocessing import Pool
 
-from astro_metadata_translator import ObservationInfo, fix_header, merge_headers
+from astro_metadata_translator import ObservationInfo, merge_headers
 from lsst.afw.fits import readMetadata
 from lsst.daf.butler import (
     Butler,
@@ -235,7 +235,6 @@ class RawIngestTask(Task):
             # we do not know in general if an input file has set INHERIT=T.
             phdu = readMetadata(filename, 0)
             header = merge_headers([phdu, readMetadata(filename)], mode="overwrite")
-            fix_header(header)
             datasets = [self._calculate_dataset_info(header, filename)]
         except Exception as e:
             self.log.debug("Problem extracting metadata from %s: %s", filename, e)
@@ -307,7 +306,7 @@ class RawIngestTask(Task):
             "visit_id": False,
         }
 
-        obsInfo = ObservationInfo(header, pedantic=False,
+        obsInfo = ObservationInfo(header, pedantic=False, filename=filename,
                                   required={k for k in ingest_subset if ingest_subset[k]},
                                   subset=set(ingest_subset))
 
