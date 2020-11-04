@@ -202,7 +202,8 @@ class StandardRepoConverter(RepoConverter):
         if run is None:
             raise ValueError(f"No default run for repo at {self.root}, and no "
                              f"override for dataset {datasetTypeName}.")
-        self._chain.append(run)
+        if run not in self._chain:
+            self._chain.append(run)
         return run
 
     def getCollectionChain(self) -> List[str]:
