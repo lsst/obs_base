@@ -25,6 +25,9 @@ __all__ = ("FitsExposureFormatter", "FitsImageFormatter", "FitsMaskFormatter",
 from astro_metadata_translator import fix_header
 from lsst.daf.base import PropertySet
 from lsst.daf.butler import Formatter
+# Do not use ExposureFitsReader.readMetadata because that strips
+# out lots of headers and there is no way to recover them
+from lsst.afw.fits import readMetadata
 from lsst.afw.image import ExposureFitsReader, ImageFitsReader, MaskFitsReader, MaskedImageFitsReader
 # Needed for ApCorrMap to resolve properly
 from lsst.afw.math import BoundedField  # noqa: F401
@@ -105,9 +108,6 @@ class FitsExposureFormatter(Formatter):
         metadata : `~lsst.daf.base.PropertyList`
             Header metadata.
         """
-        # Do not use ExposureFitsReader.readMetadata because that strips
-        # out lots of headers and there is no way to recover them
-        from lsst.afw.image import readMetadata
         md = readMetadata(self.fileDescriptor.location.path)
         fix_header(md)
         return md
