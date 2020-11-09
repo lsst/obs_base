@@ -33,7 +33,7 @@ import lsst.afw.image
 import lsst.afw.table
 import lsst.daf.persistence
 import lsst.daf.butler
-import lsst.meas.algorithms
+import lsst.ip.isr
 from lsst.obs.base.script import convert
 import lsst.utils.tests
 from lsst.utils import doImport
@@ -259,7 +259,7 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
             )
             if dataId in datasets:
                 gen3Defects = gen3Butler.getDirect(datasets[dataId])
-                self.assertIsInstance(gen3Defects, lsst.meas.algorithms.Defects)
+                self.assertIsInstance(gen3Defects, lsst.ip.isr.Defects)
 
     def check_refcat(self, gen3Butler):
         """Test that each expected refcat is in the gen3 repo.
