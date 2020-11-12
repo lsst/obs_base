@@ -120,8 +120,8 @@ def register_instrument(*args, **kwargs):
 @instrument_argument(required=True)
 @click.option("--collection", required=False,
               help="Name of the calibration collection that associates datasets with validity ranges.")
-@click.option("--suffix", required=False,
-              help=("Name suffix to append (with an automatic delimiter) to all RUN collection names "
+@click.option("--label", "labels", multiple=True,
+              help=("Extra strings to include (with automatic delimiters) in all RUN collection names, "
                     "as well as the calibration collection name if it is not provided via --collection."))
 @options_file_option()
 def write_curated_calibrations(*args, **kwargs):

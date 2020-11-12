@@ -325,7 +325,7 @@ class Instrument(metaclass=ABCMeta):
                 config.load(path)
 
     def writeCuratedCalibrations(self, butler: Butler, collection: Optional[str] = None,
-                                 suffixes: Sequence[str] = ()) -> None:
+                                 labels: Sequence[str] = ()) -> None:
         """Write human-curated calibration Datasets to the given Butler with
         the appropriate validity ranges.
 
@@ -342,15 +342,17 @@ class Instrument(metaclass=ABCMeta):
             automatically from the instrument name and other metadata by
             calling ``makeCalibrationCollectionName``, but this
             default name may not work well for long-lived repositories unless
-            one or more ``suffixes`` are also provided (and changed every time
-            curated calibrations are ingested).
-        suffixes : `Sequence` [ `str` ], optional
-            Name suffixes to append to collection names, after concatenating
+            ``labels`` is also provided (and changed every time curated
+            calibrations are ingested).
+        labels : `Sequence` [ `str` ], optional
+            Extra strings to include in collection names, after concatenating
             them with the standard collection name delimeter.  If provided,
-            these are appended to the names of the `~CollectionType.RUN`
+            these are inserted into the names of the `~CollectionType.RUN`
             collections that datasets are inserted directly into, as well the
             `~CollectionType.CALIBRATION` collection if it is generated
-            automatically (i.e. if ``collection is None``).
+            automatically (i.e. if ``collection is None``).  Usually this is
+            just the name of the ticket on which the calibration collection is
+            being created.
 
         Notes
         -----
@@ -364,12 +366,12 @@ class Instrument(metaclass=ABCMeta):
         # safe, and while it adds a bit of overhead, as long as it's one
         # registration attempt per method (not per dataset or dataset type),
         # that's negligible.
-        self.writeCameraGeom(butler, collection, *suffixes)
-        self.writeStandardTextCuratedCalibrations(butler, collection, suffixes=suffixes)
-        self.writeAdditionalCuratedCalibrations(butler, collection, suffixes=suffixes)
+        self.writeCameraGeom(butler, collection, *labels)
+        self.writeStandardTextCuratedCalibrations(butler, collection, labels=labels)
+        self.writeAdditionalCuratedCalibrations(butler, collection, labels=labels)
 
     def writeAdditionalCuratedCalibrations(self, butler: Butler, collection: Optional[str] = None,
-                                           suffixes: Sequence[str] = ()) -> None:
+                                           labels: Sequence[str] = ()) -> None:
         """Write additional curated calibrations that might be instrument
         specific and are not part of the standard set.
 
@@ -388,20 +390,22 @@ class Instrument(metaclass=ABCMeta):
             automatically from the instrument name and other metadata by
             calling ``makeCalibrationCollectionName``, but this
             default name may not work well for long-lived repositories unless
-            one or more ``suffixes`` are also provided (and changed every time
-            curated calibrations are ingested).
-        suffixes : `Sequence` [ `str` ], optional
-            Name suffixes to append to collection names, after concatenating
+            ``labels`` is also provided (and changed every time curated
+            calibrations are ingested).
+        labels : `Sequence` [ `str` ], optional
+            Extra strings to include in collection names, after concatenating
             them with the standard collection name delimeter.  If provided,
-            these are appended to the names of the `~CollectionType.RUN`
+            these are inserted into the names of the `~CollectionType.RUN`
             collections that datasets are inserted directly into, as well the
             `~CollectionType.CALIBRATION` collection if it is generated
-            automatically (i.e. if ``collection is None``).
+            automatically (i.e. if ``collection is None``).  Usually this is
+            just the name of the ticket on which the calibration collection is
+            being created.
         """
         return
 
     def writeCameraGeom(self, butler: Butler, collection: Optional[str] = None,
-                        suffixes: Sequence[str] = ()) -> None:
+                        labels: Sequence[str] = ()) -> None:
         """Write the default camera geometry to the butler repository and
         associate it with the appropriate validity range in a calibration
         collection.
@@ -419,20 +423,22 @@ class Instrument(metaclass=ABCMeta):
             automatically from the instrument name and other metadata by
             calling ``makeCalibrationCollectionName``, but this
             default name may not work well for long-lived repositories unless
-            one or more ``suffixes`` are also provided (and changed every time
-            curated calibrations are ingested).
-        suffixes : `Sequence` [ `str` ], optional
-            Name suffixes to append to collection names, after concatenating
+            ``labels`` is also provided (and changed every time curated
+            calibrations are ingested).
+        labels : `Sequence` [ `str` ], optional
+            Extra strings to include in collection names, after concatenating
             them with the standard collection name delimeter.  If provided,
-            these are appended to the names of the `~CollectionType.RUN`
+            these are inserted into the names of the `~CollectionType.RUN`
             collections that datasets are inserted directly into, as well the
             `~CollectionType.CALIBRATION` collection if it is generated
-            automatically (i.e. if ``collection is None``).
+            automatically (i.e. if ``collection is None``).  Usually this is
+            just the name of the ticket on which the calibration collection is
+            being created.
         """
         if collection is None:
-            collection = self.makeCalibrationCollectionName(*suffixes)
+            collection = self.makeCalibrationCollectionName(*labels)
         butler.registry.registerCollection(collection, type=CollectionType.CALIBRATION)
-        run = self.makeUnboundedCalibrationRunName(*suffixes)
+        run = self.makeUnboundedCalibrationRunName(*labels)
         butler.registry.registerRun(run)
         datasetType = DatasetType("camera", ("instrument",), "Camera", isCalibration=True,
                                   universe=butler.registry.dimensions)
@@ -442,7 +448,7 @@ class Instrument(metaclass=ABCMeta):
         butler.registry.certify(collection, [ref], Timespan(begin=None, end=None))
 
     def writeStandardTextCuratedCalibrations(self, butler: Butler, collection: Optional[str] = None,
-                                             suffixes: Sequence[str] = ()) -> None:
+                                             labels: Sequence[str] = ()) -> None:
         """Write the set of standardized curated text calibrations to
         the repository.
 
@@ -459,18 +465,20 @@ class Instrument(metaclass=ABCMeta):
             automatically from the instrument name and other metadata by
             calling ``makeCalibrationCollectionName``, but this
             default name may not work well for long-lived repositories unless
-            one or more ``suffixes`` are also provided (and changed every time
-            curated calibrations are ingested).
-        suffixes : `Sequence` [ `str` ], optional
-            Name suffixes to append to collection names, after concatenating
+            ``labels`` is also provided (and changed every time curated
+            calibrations are ingested).
+        labels : `Sequence` [ `str` ], optional
+            Extra strings to include in collection names, after concatenating
             them with the standard collection name delimeter.  If provided,
-            these are appended to the names of the `~CollectionType.RUN`
+            these are inserted into the names of the `~CollectionType.RUN`
             collections that datasets are inserted directly into, as well the
             `~CollectionType.CALIBRATION` collection if it is generated
-            automatically (i.e. if ``collection is None``).
+            automatically (i.e. if ``collection is None``).  Usually this is
+            just the name of the ticket on which the calibration collection is
+            being created.
         """
         if collection is None:
-            collection = self.makeCalibrationCollectionName(*suffixes)
+            collection = self.makeCalibrationCollectionName(*labels)
         butler.registry.registerCollection(collection, type=CollectionType.CALIBRATION)
         runs = set()
         for datasetTypeName in self.standardCuratedDatasetTypes:
@@ -484,7 +492,7 @@ class Instrument(metaclass=ABCMeta):
                                       isCalibration=True,
                                       **definition)
             self._writeSpecificCuratedCalibrationDatasets(butler, datasetType, collection, runs=runs,
-                                                          suffixes=suffixes)
+                                                          labels=labels)
 
     @classmethod
     def _getSpecificCuratedCalibrationPath(cls, datasetTypeName):
@@ -515,7 +523,7 @@ class Instrument(metaclass=ABCMeta):
         return None
 
     def _writeSpecificCuratedCalibrationDatasets(self, butler: Butler, datasetType: DatasetType,
-                                                 collection: str, runs: Set[str], suffixes: Sequence[str]):
+                                                 collection: str, runs: Set[str], labels: Sequence[str]):
         """Write standardized curated calibration datasets for this specific
         dataset type from an obs data package.
 
@@ -533,9 +541,11 @@ class Instrument(metaclass=ABCMeta):
             Names of runs that have already been registered by previous calls
             and need not be registered again.  Should be updated by this
             method as new runs are registered.
-        suffixes : `Sequence` [ `str` ]
-            Suffixes to append to run names when creating them from
+        labels : `Sequence` [ `str` ]
+            Extra strings to include in run names when creating them from
             ``CALIBDATE`` metadata, via calls to `makeCuratedCalibrationName`.
+            Usually this is the name of the ticket on which the calibration
+            collection is being created.
 
         Notes
         -----
@@ -571,7 +581,7 @@ class Instrument(metaclass=ABCMeta):
             times += [None]
             for calib, beginTime, endTime in zip(calibs, times[:-1], times[1:]):
                 md = calib.getMetadata()
-                run = self.makeCuratedCalibrationRunName(md['CALIBDATE'], *suffixes)
+                run = self.makeCuratedCalibrationRunName(md['CALIBDATE'], *labels)
                 if run not in runs:
                     butler.registry.registerRun(run)
                     runs.add(run)
@@ -625,25 +635,27 @@ class Instrument(metaclass=ABCMeta):
         return cls.makeCollectionName("raw", "all")
 
     @classmethod
-    def makeUnboundedCalibrationRunName(cls, *suffixes: str) -> str:
+    def makeUnboundedCalibrationRunName(cls, *labels: str) -> str:
         """Make a RUN collection name appropriate for inserting calibration
         datasets whose validity ranges are unbounded.
 
         Parameters
         ----------
-        *suffixes : `str`
-            Strings to be appended to the base name, using the default
-            delimiter for collection names.
+        *labels : `str`
+            Extra strings to be included in the base name, using the default
+            delimiter for collection names.  Usually this is the name of the
+            ticket on which the calibration collection is being created.
 
         Returns
         -------
         name : `str`
             Run collection name.
         """
-        return cls.makeCollectionName("calib", "unbounded", *suffixes)
+        tail = labels + ("unbounded",)
+        return cls.makeCollectionName("calib", *tail)
 
     @classmethod
-    def makeCuratedCalibrationRunName(cls, calibDate: str, *suffixes: str) -> str:
+    def makeCuratedCalibrationRunName(cls, calibDate: str, *labels: str) -> str:
         """Make a RUN collection name appropriate for inserting curated
         calibration datasets with the given ``CALIBDATE`` metadata value.
 
@@ -651,34 +663,38 @@ class Instrument(metaclass=ABCMeta):
         ----------
         calibDate : `str`
             The ``CALIBDATE`` metadata value.
-        *suffixes : `str`
-            Strings to be appended to the base name, using the default
-            delimiter for collection names.
+        *labels : `str`
+            Strings to be included in the collection name (before
+            ``calibDate``, but after all other terms), using the default
+            delimiter for collection names.  Usually this is the name of the
+            ticket on which the calibration collection is being created.
 
         Returns
         -------
         name : `str`
             Run collection name.
         """
-        return cls.makeCollectionName("calib", "curated", calibDate, *suffixes)
+        tail = labels + (calibDate,)
+        return cls.makeCollectionName("calib", "curated", *tail)
 
     @classmethod
-    def makeCalibrationCollectionName(cls, *suffixes: str) -> str:
+    def makeCalibrationCollectionName(cls, *labels: str) -> str:
         """Make a CALIBRATION collection name appropriate for associating
         calibration datasets with validity ranges.
 
         Parameters
         ----------
-        *suffixes : `str`
+        *labels : `str`
             Strings to be appended to the base name, using the default
-            delimiter for collection names.
+            delimiter for collection names.  Usually this is the name of the
+            ticket on which the calibration collection is being created.
 
         Returns
         -------
         name : `str`
             Calibration collection name.
         """
-        return cls.makeCollectionName("calib", *suffixes)
+        return cls.makeCollectionName("calib", *labels)
 
     @classmethod
     def makeCollectionName(cls, *labels: str) -> str:
