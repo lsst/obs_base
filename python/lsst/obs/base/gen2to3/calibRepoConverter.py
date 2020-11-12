@@ -49,6 +49,9 @@ class CalibRepoConverter(RepoConverter):
     mapper : `CameraMapper`
         Gen2 mapper for the data repository.  The root associated with the
         mapper is ignored and need not match the root of the repository.
+    collection : `str`
+        Name of the `~lsst.daf.butler.CollectionType.CALIBRATION` collection
+        that all datasets will be certified into.
     kwds
         Additional keyword arguments are forwarded to (and required by)
         `RepoConverter`.
@@ -89,7 +92,29 @@ class CalibRepoConverter(RepoConverter):
 
     def _queryGen2CalibRegistry(self, db: sqlite3.Connection, datasetType: DatasetType, calibDate: str
                                 ) -> Iterator[sqlite3.Row]:
-        # TODO: docs
+        """Query the Gen2 calibration registry for the validity ranges and
+        optionally detectors and filters associated with the given dataset type
+        and ``calibDate``.
+
+        Parameters
+        ----------
+        db : `sqlite3.Connection`
+            DBAPI connection to the Gen2 ``calibRegistry.sqlite3`` file.
+        datasetType : `DatasetType`
+            Gen3 dataset type being queried.
+        calibDate : `str`
+            String extracted from the ``calibDate`` template entry in Gen2
+            filenames.
+
+        Yields
+        ------
+        row : `sqlite3.Row`
+            SQLite result object; will have ``validStart`` and ``validEnd``
+            columns, may have a detector column (named
+            ``self.task.config.ccdKey``) and/or a ``filter`` column, depending
+            on whether ``datasetType.dimensions`` includes ``detector`` and
+            ``physical_filter``, respectively.
+        """
         fields = ["validStart", "validEnd"]
         if "detector" in datasetType.dimensions.names:
             fields.append(self.task.config.ccdKey)
@@ -116,6 +141,7 @@ class CalibRepoConverter(RepoConverter):
         yield from results
 
     def _finish(self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]]):
+        # Docstring inherited from RepoConverter.
         # Read Gen2 calibration repository and extract validity ranges for
         # all datasetType + calibDate combinations we ingested.
         calibFile = os.path.join(self.root, "calibRegistry.sqlite3")
@@ -263,6 +289,7 @@ class CalibRepoConverter(RepoConverter):
             self.task.registry.certify(self.collection, refs, timespan)
 
     def getRun(self, datasetTypeName: str, calibDate: Optional[str] = None) -> str:
+        # Docstring inherited from RepoConverter.
         if calibDate is None:
             return super().getRun(datasetTypeName)
         else:
