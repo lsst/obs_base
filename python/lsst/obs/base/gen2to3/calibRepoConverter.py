@@ -25,7 +25,7 @@ __all__ = ["CalibRepoConverter"]
 from collections import defaultdict
 import os
 import sqlite3
-from typing import TYPE_CHECKING, Dict, Iterator, List, Mapping, Tuple, Optional
+from typing import TYPE_CHECKING, Dict, Iterator, List, Mapping, Sequence, Tuple, Optional
 
 import astropy.time
 import astropy.units as u
@@ -49,18 +49,21 @@ class CalibRepoConverter(RepoConverter):
     mapper : `CameraMapper`
         Gen2 mapper for the data repository.  The root associated with the
         mapper is ignored and need not match the root of the repository.
-    collection : `str`
-        Name of the `~lsst.daf.butler.CollectionType.CALIBRATION` collection
-        that all datasets will be certified into.
-    kwds
+    labels : `Sequence` [ `str` ]
+        Strings injected into the names of the collections that calibration
+        datasets are written and certified into (forwarded as the ``extra``
+        argument to `Instrument` methods that generate collection names and
+        write curated calibrations).
+    **kwargs
         Additional keyword arguments are forwarded to (and required by)
         `RepoConverter`.
     """
 
-    def __init__(self, *, mapper: CameraMapper, collection: str, **kwds):
-        super().__init__(run=None, **kwds)
+    def __init__(self, *, mapper: CameraMapper, labels: Sequence[str] = (), **kwargs):
+        super().__init__(run=None, **kwargs)
         self.mapper = mapper
-        self.collection = collection
+        self.collection = self.task.instrument.makeCalibrationCollectionName(*labels)
+        self._labels = tuple(labels)
         self._datasetTypes = set()
 
     def isDatasetTypeSpecial(self, datasetTypeName: str) -> bool:
@@ -293,7 +296,8 @@ class CalibRepoConverter(RepoConverter):
         if calibDate is None:
             return super().getRun(datasetTypeName)
         else:
-            return self.instrument.makeCollectionName("calib", "gen2", calibDate)
+            return self.instrument.makeCalibrationCollectionName(*self._labels, "gen2",
+                                                                 calibDate)
 
     # Class attributes that will be shadowed by public instance attributes;
     # defined here only for documentation purposes.

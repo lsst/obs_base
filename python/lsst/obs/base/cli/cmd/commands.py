@@ -65,7 +65,13 @@ fits_re = r"\.fit[s]?\b"
                     "overrides are applied.")
 @options_file_option()
 def convert(*args, **kwargs):
-    """Convert a Butler gen 2 repository into a gen 3 repository."""
+    """Convert one or more Butler gen 2 repositories into a gen 3 repository.
+
+    This is a highly simplified interface that should only be used to convert
+    suites of gen 2 repositories that contain at most one calibration repo and
+    has no chained reruns.  Custom scripts that call ConvertRepoTask should be
+    used on more complex suites of repositories.
+    """
     cli_handle_exception(script.convert, *args, **kwargs)
 
 

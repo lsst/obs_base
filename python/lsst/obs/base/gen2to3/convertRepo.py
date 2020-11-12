@@ -20,13 +20,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
-__all__ = ["ConvertRepoConfig", "ConvertRepoTask", "ConvertRepoSkyMapConfig", "Rerun"]
+__all__ = ["CalibRepo", "ConvertRepoConfig", "ConvertRepoTask", "ConvertRepoSkyMapConfig", "Rerun"]
 
 import os
 import fnmatch
 from dataclasses import dataclass
 from multiprocessing import Pool
-from typing import Iterable, Optional, List, Dict
+from typing import Iterable, Optional, List, Tuple
 
 from lsst.daf.butler import (
     Butler as Butler3,
@@ -98,6 +98,56 @@ class Rerun:
     Ignored if `chainName` is `None`.  Runs used in the root repo are
     automatically included.
     """
+
+
+@dataclass
+class CalibRepo:
+    """Specification for a Gen2 calibration repository to convert.
+    """
+
+    path: Optional[str]
+    """Absolute or relative (to the root repository) path to the Gen2
+    repository (`str` or `None`).
+
+    If `None`, no calibration datasets will be converted from Gen2, but
+    curated calibrations may still be written.
+    """
+
+    curated: bool = True
+    """If `True`, write curated calibrations into the associated
+    ``CALIBRATION`` collection (`bool`).
+    """
+
+    labels: Tuple[str, ...] = ()
+    """Extra strings to insert into collection names, including both the
+    ``RUN`` collections that datasets are ingested directly into and the
+    ``CALIBRATION`` collection that associates them with validity ranges.
+
+    An empty tuple will directly populate the default calibration collection
+    for this instrument with the converted datasets, and is incompatible with
+    ``default=False``.  This is a good choice for test data repositories where
+    only one ``CALIBRATION`` collection will ever exist.  In other cases, this
+    should be a non-empty tuple, so the default calibration collection can
+    actually be a ``CHAINED`` collection pointer that points to the current
+    recommended ``CALIBRATION`` collection.
+    """
+
+    default: bool = True
+    """If `True`, the created ``CALIBRATION`` collection should be the default
+    for this instrument.
+
+    This field may only be `True` for one converted calibration collection if
+    more than one is passed to `ConvertRepoTask.run`.  It defaults to `True`
+    because the vast majority of the time only one calibration collection is
+    being converted.  If ``labels`` is not empty, ``default=True`` will cause
+    a ``CHAINED`` collection that points to the converted ``CALIBRATION``
+    collection to be defined.  If ``labels`` is empty, ``default`` *must* be
+    `True` and no ``CHAINED`` collection pointer is necessary.
+    """
+
+    def __post_init__(self) -> None:
+        if not self.labels and not self.default:
+            raise ValueError("labels=() requires default=True")
 
 
 class ConvertRepoSkyMapConfig(Config):
@@ -211,13 +261,6 @@ class ConvertRepoConfig(Config):
         dtype=bool,
         default=True,
     )
-    doWriteCuratedCalibrations = Field(
-        "If True (default), ingest human-curated calibrations directly via "
-        "the Instrument interface.  Note that these calibrations are never "
-        "converted from Gen2 repositories.",
-        dtype=bool,
-        default=True,
-    )
     refCats = ListField(
         "The names of reference catalogs (subdirectories under ref_cats) to "
         "be converted",
@@ -315,7 +358,11 @@ class ConvertRepoTask(Task):
     def __init__(self, config=None, *, butler3: Butler3, instrument: Instrument, **kwargs):
         config.validate()  # Not a CmdlineTask nor PipelineTask, so have to validate the config here.
         super().__init__(config, **kwargs)
-        self.butler3 = butler3
+        # Make self.butler3 one that doesn't have any collections associated
+        # with it - those are needed by RawIngestTask and DefineVisitsTask, but
+        # we don't want them messing with converted datasets, because those
+        # have their own logic for figuring out which collections to write to.
+        self.butler3 = Butler3(butler=butler3)
         self.registry = self.butler3.registry
         self.universe = self.registry.dimensions
         if self.isDatasetTypeIncluded("raw"):
@@ -452,8 +499,8 @@ class ConvertRepoTask(Task):
                 subset.addSkyPix(self.registry, dimension)
 
     def run(self, root: str, *,
-            calibs: Dict[str, str] = None,
-            reruns: List[Rerun],
+            calibs: Optional[List[CalibRepo]] = None,
+            reruns: Optional[List[Rerun]] = None,
             visits: Optional[Iterable[int]] = None,
             pool: Optional[Pool] = None,
             processes: int = 1):
@@ -465,13 +512,14 @@ class ConvertRepoTask(Task):
             Complete path to the root Gen2 data repository.  This should be
             a data repository that includes a Gen2 registry and any raw files
             and/or reference catalogs.
-        calibs : `dict`
-            Dictionary mapping calibration repository path to the
-            `~lsst.daf.butler.CollectionType.CALIBRATION` collection that
-            converted datasets within it should be certified into.
+        calibs : `list` of `CalibRepo`
+            Specifications for Gen2 calibration repos to convert.  If `None`
+            (default), curated calibrations only will be written to the default
+            calibration collection for this instrument; set to ``()`` explictly
+            to disable this.
         reruns : `list` of `Rerun`
-            Specifications for rerun (processing output) collections to
-            convert.
+            Specifications for rerun (processing output) repos to convert.  If
+            `None` (default), no reruns are converted.
         visits : iterable of `int`, optional
             The integer IDs of visits to convert.  If not provided, all visits
             in the Gen2 root repository will be converted.
@@ -484,7 +532,7 @@ class ConvertRepoTask(Task):
         if pool is None and processes > 1:
             pool = Pool(processes)
         if calibs is None:
-            calibs = {}
+            calibs = [CalibRepo(path=None)]
         if visits is not None:
             subset = ConversionSubset(instrument=self.instrument.getName(), visits=frozenset(visits))
         else:
@@ -493,18 +541,35 @@ class ConvertRepoTask(Task):
                               "no filtering will be done.")
             subset = None
 
+        # Check that at most one CalibRepo is marked as default, to fail before
+        # we actually write anything.
+        defaultCalibRepos = [c.path for c in calibs if c.default]
+        if len(defaultCalibRepos) > 1:
+            raise ValueError(f"Multiple calib repos marked as default: {defaultCalibRepos}.")
+
         # Make converters for all Gen2 repos.
         converters = []
+        # Start with the root repo, which must always be given even if we are
+        # not configured to convert anything from it.
         rootConverter = RootRepoConverter(task=self, root=root, subset=subset, instrument=self.instrument)
         converters.append(rootConverter)
-        for calibRoot, collection in calibs.items():
-            if not os.path.isabs(calibRoot):
-                calibRoot = os.path.join(rootConverter.root, calibRoot)
-            converter = CalibRepoConverter(task=self, root=calibRoot, collection=collection,
-                                           instrument=self.instrument,
-                                           mapper=rootConverter.mapper,
-                                           subset=rootConverter.subset)
-            converters.append(converter)
+        # Calibration repos are next.
+        for spec in calibs:
+            calibRoot = spec.path
+            if calibRoot is not None:
+                if not os.path.isabs(calibRoot):
+                    calibRoot = os.path.join(rootConverter.root, calibRoot)
+                converter = CalibRepoConverter(task=self, root=calibRoot,
+                                               labels=spec.labels,
+                                               instrument=self.instrument,
+                                               mapper=rootConverter.mapper,
+                                               subset=rootConverter.subset)
+                converters.append(converter)
+            # CalibRepo entries that don't have a path are just there for
+            # curated calibs and maybe to set up a collection pointer; that's
+            # handled further down (after we've done everything we can that
+            # doesn't involve actually writing to the output Gen3 repo).
+        # And now reruns.
         rerunConverters = {}
         for spec in reruns:
             runRoot = spec.path
@@ -523,30 +588,21 @@ class ConvertRepoTask(Task):
         # 'raw' dataset type).
         rootConverter.runRawIngest(pool=pool)
 
-        # Write curated calibrations to all calibration runs and
-        # also in the default collection.
-        # Add new collections to the list of collections the butler was
-        # initialized to pass to DefineVisitsTask, to deal with the (likely)
-        # case the only 'camera' dataset in the repo will be one we're adding
-        # here.
-        if self.config.doWriteCuratedCalibrations:
-            butler3 = Butler3(butler=self.butler3)
-            # Write curated calibrations to any new calibration collections we
-            # created by converting a Gen2 calibration repo.
-            calibCollections = set()
-            for collection in calibs.values():
-                self.instrument.writeCuratedCalibrations(butler3, collection=collection)
-                calibCollections.add(collection)
-            # Ensure that we have the curated calibrations even if there
-            # is no calibration conversion.  It's possible that the default
-            # calib collection will have been specified (in fact the
-            # butler convert script enforces that behavior for now) so
-            # we check for the default situation
-            # Assume we know the default rather than letting
-            # writeCuratedCalibrations default itself
-            defaultCalibCollection = self.instrument.makeCollectionName("calib")
-            if defaultCalibCollection not in calibCollections:
-                self.instrument.writeCuratedCalibrations(butler3, collection=defaultCalibCollection)
+        # Write curated calibrations to all calibration collections where they
+        # were requested (which may be implicit, by passing calibs=None).  Also
+        # set up a CHAINED collection that points to the default CALIBRATION
+        # collection if one is needed.
+        for spec in calibs:
+            if spec.curated:
+                self.instrument.writeCuratedCalibrations(self.butler3, labels=spec.labels)
+            if spec.default and spec.labels:
+                # This is guaranteed to be True at most once in the loop by
+                # logic at the top of this method.
+                defaultCalibName = self.instrument.makeCalibrationCollectionName()
+                self.butler3.registry.registerCollection(defaultCalibName, CollectionType.CHAINED)
+                recommendedCalibName = self.instrument.makeCalibrationCollectionName(*spec.labels)
+                self.butler3.registry.registerCollection(recommendedCalibName, CollectionType.CALIBRATION)
+                self.butler3.registry.setCollectionChain(defaultCalibName, [recommendedCalibName])
 
         # Define visits (also does nothing if we weren't configurd to convert
         # the 'raw' dataset type).

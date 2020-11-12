@@ -29,7 +29,7 @@ from lsst.log import Log
 import lsst.utils
 from lsst.log.utils import temporaryLogLevel
 
-from ..gen2to3 import ConvertRepoTask, ConvertRepoSkyMapConfig, Rerun
+from ..gen2to3 import CalibRepo, ConvertRepoTask, ConvertRepoSkyMapConfig, Rerun
 
 
 def convert(repo, gen2root, skymap_name, skymap_config, calibs, reruns, config_file, transfer, processes=1):
@@ -106,6 +106,6 @@ def convert(repo, gen2root, skymap_name, skymap_config, calibs, reruns, config_f
     convertRepoTask.run(
         root=gen2root,
         reruns=rerunsArg,
-        calibs=None if calibs is None else {calibs: instrument.makeCollectionName("calib")},
+        calibs=None if calibs is None else [CalibRepo(path=calibs)],
         processes=processes,
     )
