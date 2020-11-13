@@ -25,10 +25,10 @@ __all__ = ["RootRepoConverter"]
 import os
 import re
 import itertools
-from typing import TYPE_CHECKING, Iterator, Optional, Tuple, List
+from typing import TYPE_CHECKING, Dict, Iterator, Mapping, Optional, Tuple, List
 
 from lsst.skymap import BaseSkyMap
-from lsst.daf.butler import DatasetType, DatasetRef, DimensionGraph, FileDataset
+from lsst.daf.butler import CollectionType, DatasetType, DatasetRef, DimensionGraph, FileDataset
 from .standardRepoConverter import StandardRepoConverter
 
 SKYMAP_DATASET_TYPES = {
@@ -74,7 +74,7 @@ class RootRepoConverter(StandardRepoConverter):
 
     def __init__(self, **kwds):
         super().__init__(run=None, **kwds)
-        self._refCats: List[Tuple[str, SkyPixDimension]] = []
+        self._refCats: Dict[str, SkyPixDimension] = {}
         if self.task.config.rootSkyMapName is not None:
             self._rootSkyMap = self.task.config.skyMaps[self.task.config.rootSkyMapName].skyMap.apply()
         else:
@@ -155,7 +155,7 @@ class RootRepoConverter(StandardRepoConverter):
                     raise ValueError(f"Reference catalog {refCat} uses HTM level {level}, but no htm{level} "
                                      f"skypix dimension is configured for this registry.") from err
                 self.task.useSkyPix(dimension)
-                self._refCats.append((refCat, dimension))
+                self._refCats[refCat] = dimension
         if self.task.isDatasetTypeIncluded("brightObjectMask") and self.task.config.rootSkyMapName:
             self.task.useSkyMap(self._rootSkyMap, self.task.config.rootSkyMapName)
         super().prep()
@@ -163,7 +163,7 @@ class RootRepoConverter(StandardRepoConverter):
     def iterDatasets(self) -> Iterator[FileDataset]:
         # Docstring inherited from RepoConverter.
         # Iterate over reference catalog files.
-        for refCat, dimension in self._refCats:
+        for refCat, dimension in self._refCats.items():
             datasetType = DatasetType(refCat, dimensions=[dimension], universe=self.task.universe,
                                       storageClass="SimpleCatalog")
             if self.subset is None:
@@ -182,3 +182,31 @@ class RootRepoConverter(StandardRepoConverter):
                         yield FileDataset(path=os.path.join(self.root, "ref_cats", refCat, f"{htmId}.fits"),
                                           refs=DatasetRef(datasetType, dataId))
         yield from super().iterDatasets()
+
+    def getRun(self, datasetTypeName: str, calibDate: Optional[str] = None) -> str:
+        # Docstring inherited from RepoConverter.
+        if datasetTypeName in self._refCats:
+            return self.instrument.makeRefCatCollectionName("gen2")
+        return super().getRun(datasetTypeName, calibDate)
+
+    def _finish(self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]]):
+        # Docstring inherited from RepoConverter.
+        if self._refCats:
+            # Set up a CHAINED collection named something like "refcats" to
+            # also point to "refcats/gen2".  It's conceivable (but unlikely)
+            # that "refcats/gen2" might not exist, if the scanner saw reference
+            # catalog datasets on disk but none overlapped the area of
+            # interest, so we register that here, too (multiple registrations
+            # of collections are fine).
+            chained = self.instrument.makeRefCatCollectionName()
+            child = self.instrument.makeRefCatCollectionName("gen2")
+            self.task.registry.registerCollection(chained, CollectionType.CHAINED)
+            self.task.registry.registerCollection(child, CollectionType.RUN)
+            children = list(self.task.registry.getCollectionChain(chained))
+            children.append(child)
+            self.task.registry.setCollectionChain(chained, children)
+            # Also add "refcats" to the list of collections that contains
+            # everything found in the root repo.  Normally this is done in
+            # getRun, but here we want to add the (possibly new) CHAINED
+            # collection instead of the RUN collection.
+            self._chain.append(chained)
