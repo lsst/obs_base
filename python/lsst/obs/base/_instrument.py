@@ -696,6 +696,48 @@ class Instrument(metaclass=ABCMeta):
         """
         return cls.makeCollectionName("calib", *labels)
 
+    @staticmethod
+    def makeRefCatCollectionName(*labels: str) -> str:
+        """Return a global (not instrument-specific) name for a collection that
+        holds reference catalogs.
+
+        With no arguments, this returns the name of the collection that holds
+        all reference catalogs (usually a ``CHAINED`` collection, at least in
+        long-lived repos that may contain more than one reference catalog).
+
+        Parameters
+        ----------
+        *labels : `str`
+            Strings to be added to the global collection name, in order to
+            define a collection name for one or more reference catalogs being
+            ingested at the same time.
+
+        Returns
+        -------
+        name : `str`
+            Collection name.
+
+        Notes
+        -----
+        This is a ``staticmethod``, not a ``classmethod``, because it should
+        be the same for all instruments.
+        """
+        return "/".join(("refcats",) + labels)
+
+    @classmethod
+    def makeUmbrellaCollectionName(cls) -> str:
+        """Return the name of the umbrella ``CHAINED`` collection for this
+        instrument that combines all standard recommended input collections.
+
+        This method should almost never be overridden by derived classes.
+
+        Returns
+        -------
+        name : `str`
+            Name for the umbrella collection.
+        """
+        return cls.makeCollectionName("defaults")
+
     @classmethod
     def makeCollectionName(cls, *labels: str) -> str:
         """Get the instrument-specific collection string to use as derived
