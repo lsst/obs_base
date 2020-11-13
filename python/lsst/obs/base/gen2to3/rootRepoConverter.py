@@ -191,6 +191,7 @@ class RootRepoConverter(StandardRepoConverter):
 
     def _finish(self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]]):
         # Docstring inherited from RepoConverter.
+        super()._finish(datasets)
         if self._refCats:
             # Set up a CHAINED collection named something like "refcats" to
             # also point to "refcats/gen2".  It's conceivable (but unlikely)

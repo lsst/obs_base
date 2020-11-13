@@ -206,9 +206,7 @@ class ConvertRepoConfig(Config):
         "runs.",
         keytype=str,
         itemtype=str,
-        default={
-            "deepCoadd_skyMap": "skymaps",
-        }
+        default={},
     )
     runsForced = DictField(
         "Like ``runs``, but is used even when the dataset is present in a "
@@ -461,7 +459,7 @@ class ConvertRepoTask(Task):
         """
         for struct in self._configuredSkyMapsBySha1.values():
             if struct.used:
-                struct.instance.register(struct.name, self.registry)
+                struct.instance.register(struct.name, self.butler3)
                 if subset is not None and self.config.relatedOnly:
                     subset.addSkyMap(self.registry, struct.name)
 

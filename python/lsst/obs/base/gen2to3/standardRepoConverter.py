@@ -22,14 +22,14 @@ from __future__ import annotations
 
 __all__ = ["StandardRepoConverter"]
 
-import os.path
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Iterator, List, Mapping, Optional, Tuple
 
 from lsst.log import Log
 from lsst.log.utils import temporaryLogLevel
 from lsst.daf.persistence import Butler as Butler2
 from lsst.daf.butler import DatasetType, DatasetRef, DataCoordinate, FileDataset
+from lsst.skymap import BaseSkyMap
 from .repoConverter import RepoConverter
 from .repoWalker import RepoWalker
 
@@ -38,7 +38,6 @@ SKYMAP_DATASET_TYPES = {
 }
 
 if TYPE_CHECKING:
-    from lsst.skymap import BaseSkyMap
     from lsst.daf.butler import StorageClass, FormatterParameter
     from .cameraMapper import CameraMapper
     from .repoWalker.scanner import PathElementHandler
@@ -188,9 +187,6 @@ class StandardRepoConverter(RepoConverter):
 
     def iterDatasets(self) -> Iterator[FileDataset]:
         # Docstring inherited from RepoConverter.
-        for struct in self._foundSkyMapsByCoaddName.values():
-            if self.task.isDatasetTypeIncluded(struct.ref.datasetType.name):
-                yield FileDataset(path=os.path.join(self.root, struct.filename), refs=struct.ref)
         yield from super().iterDatasets()
 
     def getRun(self, datasetTypeName: str, calibDate: Optional[str] = None) -> str:
@@ -213,6 +209,12 @@ class StandardRepoConverter(RepoConverter):
         that refers to the converted repository (`list` [ `str` ]).
         """
         return self._chain
+
+    def _finish(self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]]):
+        # Docstring inherited from RepoConverter.
+        super()._finish(datasets)
+        if self._foundSkyMapsByCoaddName:
+            self._chain.append(BaseSkyMap.SKYMAP_RUN_COLLECTION_NAME)
 
     # Class attributes that will be shadowed by public instance attributes;
     # defined here only for documentation purposes.
