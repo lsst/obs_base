@@ -315,9 +315,6 @@ class ConvertRepoConfig(Config):
     def setDefaults(self):
         self.transfer = None
 
-    # TODO: check that there are no collection overrides for curated
-    # calibrations, since we don't have a good way to utilize them.
-
 
 class ConvertRepoTask(Task):
     """A task that converts one or more related Gen2 data repositories to a
