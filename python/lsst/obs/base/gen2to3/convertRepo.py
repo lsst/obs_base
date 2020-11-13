@@ -301,6 +301,19 @@ class ConvertRepoConfig(Config):
         dtype=bool,
         default=False,
     )
+    doMakeUmbrellaCollection = Field(
+        "If True (default), define an '<instrument>/defaults' CHAINED "
+        "collection that includes everything found in the root repo as well "
+        "as the default calibration collection.",
+        dtype=bool,
+        default=True,
+    )
+    extraUmbrellaChildren = ListField(
+        "Additional child collections to include in the umbrella collection. "
+        "Ignored if doMakeUmbrellaCollection=False.",
+        dtype=str,
+        default=[]
+    )
 
     @property
     def transfer(self):
@@ -633,6 +646,22 @@ class ConvertRepoTask(Task):
         for converter in converters:
             converter.finish()
 
+        # Make the umbrella collection, if desired.
+        if self.config.doMakeUmbrellaCollection:
+            umbrella = self.instrument.makeUmbrellaCollectionName()
+            self.registry.registerCollection(umbrella, CollectionType.CHAINED)
+            children = list(self.registry.getCollectionChain(umbrella))
+            children.extend(rootConverter.getCollectionChain())
+            children.append(self.instrument.makeCalibrationCollectionName())
+            if BaseSkyMap.SKYMAP_RUN_COLLECTION_NAME not in children:
+                # Ensure the umbrella collection includes the global skymap
+                # collection, even if it's currently empty.
+                self.registry.registerRun(BaseSkyMap.SKYMAP_RUN_COLLECTION_NAME)
+                children.append(BaseSkyMap.SKYMAP_RUN_COLLECTION_NAME)
+            children.extend(self.config.extraUmbrellaChildren)
+            self.log.info("Defining %s from chain %s.", umbrella, children)
+            self.registry.setCollectionChain(umbrella, children)
+
         # Add chained collections for reruns.
         for spec in reruns:
             if spec.chainName is not None:
@@ -645,5 +674,9 @@ class ConvertRepoTask(Task):
                     if parentConverter is not None:
                         chain.extend(parentConverter.getCollectionChain())
                 chain.extend(rootConverter.getCollectionChain())
+                if len(calibs) == 1:
+                    # Exactly one calibration repo being converted, so it's
+                    # safe-ish to assume that's the one the rerun used.
+                    chain.append(self.instrument.makeCalibrationCollectionName(*calibs[0].labels))
                 self.log.info("Defining %s from chain %s.", spec.chainName, chain)
                 self.butler3.registry.setCollectionChain(spec.chainName, chain)
