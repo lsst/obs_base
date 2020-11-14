@@ -261,10 +261,14 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     def testHardLink(self):
         try:
             self._ingestRaws(transfer="hardlink")
-            self.verifyIngest()
-        except PermissionError as err:
+            # Running ingest through the Click testing infrastructure causes
+            # the original exception indicating that we can't hard-link
+            # on this filesystem to be turned into a nonzero exit code, which
+            # then trips the test assertion.
+        except (AssertionError, PermissionError) as err:
             raise unittest.SkipTest("Skipping hard-link test because input data"
                                     " is on a different filesystem.") from err
+        self.verifyIngest()
 
     def testInPlace(self):
         """Test that files already in the directory can be added to the
