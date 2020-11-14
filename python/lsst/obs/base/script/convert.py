@@ -55,8 +55,10 @@ def convert(repo, gen2root, skymap_name, skymap_config, calibs, reruns, config_f
         Path to the gen2 calibration repository to be converted.
         If a relative path, it is assumed to be relative to `gen2root`.
     reruns : `list` [`str`] or None
-        List of reruns to convert. They will be placed in the
-        ``shared/INSTRUMENT/RERUN`` collection.
+        List of rerun paths to convert.  Output collection names will be
+        guessed, which can fail if the Gen2 repository paths do not follow a
+        recognized convention.  In this case, the command-line interface cannot
+        be used.
     config_file : `str` or None
         Path to `lsst.obs.base.ConvertRepoConfig` configuration to load
         after all default/instrument configurations.
@@ -97,8 +99,7 @@ def convert(repo, gen2root, skymap_name, skymap_config, calibs, reruns, config_f
     if reruns is None:
         rerunsArg = []
     else:
-        rerunsArg = [Rerun(rerun, runName=f"shared/{instrument.getName()}/{rerun}",
-                           chainName=f"shared/{instrument.getName()}", parents=[]) for rerun in reruns]
+        rerunsArg = [Rerun(rerun, runName=None, chainName=None, parents=[]) for rerun in reruns]
 
     # create a new butler instance for running the convert repo task
     butler = lsst.daf.butler.Butler(butlerConfig, run=instrument.makeDefaultRawIngestRunName())

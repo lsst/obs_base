@@ -58,7 +58,10 @@ fits_re = r"\.fit[s]?\b"
 @click.option("--calibs",
               help="Path to the gen 2 calibration repo. It can be absolute or relative to gen2root.")
 @click.option("--reruns", multiple=True, callback=split_commas, metavar=typeStrAcceptsMultiple,
-              help="List of gen 2 reruns to convert.")
+              help=("List of rerun paths to convert.  Output collection names will be "
+                    "guessed, which can fail if the Gen2 repository paths do not follow a "
+                    "recognized convention.  In this case, the command-line interface cannot "
+                    "be used."))
 @transfer_option(help="Mode to use to transfer files into the new repository.")
 @processes_option()
 @config_file_option(help="Path to a `ConvertRepoConfig` override to be included after the Instrument config "

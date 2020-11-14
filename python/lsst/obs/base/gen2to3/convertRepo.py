@@ -70,6 +70,15 @@ class ConfiguredSkyMap:
     """
 
 
+def _dropPrefix(s: str, prefix: str) -> Tuple[str, bool]:
+    """If ``s`` starts with ``prefix``, return the rest of ``s`` and `True`.
+    Otherwise return ``s`` and `False`.
+    """
+    if s.startswith(prefix):
+        return s[len(prefix):], True
+    return s, False
+
+
 @dataclass
 class Rerun:
     """Specification for a Gen2 processing-output repository to convert.
@@ -80,15 +89,19 @@ class Rerun:
     repository (`str`).
     """
 
-    runName: str
+    runName: Optional[str]
     """Name of the `~lsst.daf.butler.CollectionType.RUN` collection datasets
-    will be inserted into (`str`).
+    will be inserted into (`str` or `None`).
+
+    If `None`, a name will be guessed by calling `guessCollectionNames`.
     """
 
     chainName: Optional[str]
     """Name of a `~lsst.daf.butler.CollectionType.CHAINED` collection that will
     combine this repository's datasets with those of its parent repositories
-    (`str`, optional).
+    (`str` or `None`).
+
+    If `None`, a name will be guessed by calling `guessCollectionNames`.
     """
 
     parents: List[str]
@@ -98,6 +111,52 @@ class Rerun:
     Ignored if `chainName` is `None`.  Runs used in the root repo are
     automatically included.
     """
+
+    def guessCollectionNames(self, instrument: Instrument, root: str) -> None:
+        """Update `runName` and `chainName` with guesses that match Gen3 naming
+        conventions.
+
+        If `chainName` is not `None`, and `runName` is, `runName` will be set
+        from it.  If `runName` is already set, nothing will be changed, and
+        if `chainName` is `None`, no chained collection will be created.
+
+        Parameters
+        ----------
+        instrument : `Instrument`
+            Instrument object for the repository being converted.
+        root : `str`
+            Path to the root repository.  If this is present at the start of
+            ``self.path``, it will be stripped as part of generating the run
+            name.
+
+        Raises
+        ------
+        ValueError
+            Raised if the appropriate collection names cannot be inferred.
+        """
+        if self.runName is not None:
+            return
+        if self.chainName is None:
+            if os.path.isabs(self.path):
+                if not os.path.isabs(root):
+                    root = os.path.abspath(root)
+                chainName = os.path.relpath(self.path, root)
+                if chainName.startswith(".."):
+                    raise ValueError(
+                        f"Cannot guess run name collection for rerun at '{self.path}': "
+                        f"no clear relationship to root '{root}'."
+                    )
+            else:
+                chainName = self.path
+            chainName, _ = _dropPrefix(chainName, "rerun/")
+            chainName, isPersonal = _dropPrefix(chainName, "private/")
+            if isPersonal:
+                chainName = f"u/{chainName}"
+            else:
+                chainName, _ = _dropPrefix(chainName, "shared/")
+                chainName = instrument.makeCollectionName("runs", chainName)
+            self.chainName = chainName
+        self.runName = f"{self.chainName}/direct"
 
 
 @dataclass
@@ -583,6 +642,7 @@ class ConvertRepoTask(Task):
             runRoot = spec.path
             if not os.path.isabs(runRoot):
                 runRoot = os.path.join(rootConverter.root, runRoot)
+            spec.guessCollectionNames(self.instrument, rootConverter.root)
             converter = StandardRepoConverter(task=self, root=runRoot, run=spec.runName,
                                               instrument=self.instrument, subset=rootConverter.subset)
             converters.append(converter)
