@@ -366,7 +366,7 @@ class Instrument(metaclass=ABCMeta):
         # safe, and while it adds a bit of overhead, as long as it's one
         # registration attempt per method (not per dataset or dataset type),
         # that's negligible.
-        self.writeCameraGeom(butler, collection, *labels)
+        self.writeCameraGeom(butler, collection, labels=labels)
         self.writeStandardTextCuratedCalibrations(butler, collection, labels=labels)
         self.writeAdditionalCuratedCalibrations(butler, collection, labels=labels)
 
