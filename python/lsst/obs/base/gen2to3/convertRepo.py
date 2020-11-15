@@ -662,7 +662,7 @@ class ConvertRepoTask(Task):
         # collection if one is needed.
         for spec in calibs:
             if spec.curated:
-                self.instrument.writeCuratedCalibrations(self.butler3, labels=spec.labels)
+                self.instrument.writeCuratedCalibrations(self.butler3, labels=("gen2",) + spec.labels)
             if spec.default and spec.labels:
                 # This is guaranteed to be True at most once in the loop by
                 # logic at the top of this method.
