@@ -651,8 +651,7 @@ class Instrument(metaclass=ABCMeta):
         name : `str`
             Run collection name.
         """
-        tail = labels + ("unbounded",)
-        return cls.makeCollectionName("calib", *tail)
+        return cls.makeCollectionName("calib", *labels, "unbounded")
 
     @classmethod
     def makeCuratedCalibrationRunName(cls, calibDate: str, *labels: str) -> str:
@@ -674,8 +673,7 @@ class Instrument(metaclass=ABCMeta):
         name : `str`
             Run collection name.
         """
-        tail = labels + (calibDate,)
-        return cls.makeCollectionName("calib", "curated", *tail)
+        return cls.makeCollectionName("calib", *labels, "curated", calibDate)
 
     @classmethod
     def makeCalibrationCollectionName(cls, *labels: str) -> str:
