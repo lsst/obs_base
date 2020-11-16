@@ -296,7 +296,10 @@ class CalibRepoConverter(RepoConverter):
         if calibDate is None:
             return super().getRun(datasetTypeName)
         else:
-            return self.instrument.makeCalibrationCollectionName(*self._labels, calibDate)
+            return self.instrument.makeCalibrationCollectionName(
+                *self._labels,
+                self.instrument.formatCollectionTimestamp(calibDate),
+            )
 
     # Class attributes that will be shadowed by public instance attributes;
     # defined here only for documentation purposes.

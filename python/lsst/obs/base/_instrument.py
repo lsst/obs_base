@@ -26,7 +26,8 @@ __all__ = ("Instrument", "makeExposureRecordFromObsInfo", "loadCamera")
 import os.path
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
-from typing import Any, Optional, Set, Sequence, Tuple, TYPE_CHECKING
+import datetime
+from typing import Any, Optional, Set, Sequence, Tuple, TYPE_CHECKING, Union
 from functools import lru_cache
 
 import astropy.time
@@ -621,6 +622,53 @@ class Instrument(metaclass=ABCMeta):
         """
         raise NotImplementedError("Must be implemented by derived classes.")
 
+    @staticmethod
+    def formatCollectionTimestamp(timestamp: Union[str, datetime.datetime]) -> str:
+        """Format a timestamp for use in a collection name.
+
+        Parameters
+        ----------
+        timestamp : `str` or `datetime.datetime`
+            Timestamp to format.  May be a date or datetime string in extended
+            ISO format (assumed UTC), with or without a timezone specifier, a
+            datetime string in basic ISO format with a timezone specifier, a
+            naive `datetime.datetime` instance (assumed UTC) or a
+            timezone-aware `datetime.datetime` instance (converted to UTC).
+            This is intended to cover all forms that string ``CALIBDATE``
+            metadata values have taken in the past, as well as the format this
+            method itself writes out (to enable round-tripping).
+
+        Returns
+        -------
+        formatted : `str`
+            Standardized string form for the timestamp.
+        """
+        if isinstance(timestamp, str):
+            if "-" in timestamp:
+                # extended ISO format, with - and : delimiters
+                timestamp = datetime.datetime.fromisoformat(timestamp)
+            else:
+                # basic ISO format, with no delimiters (what this method
+                # returns)
+                timestamp = datetime.datetime.strptime(timestamp, "%Y%m%dT%H%M%S%z")
+        if not isinstance(timestamp, datetime.datetime):
+            raise TypeError(f"Unexpected date/time object: {timestamp!r}.")
+        if timestamp.tzinfo is not None:
+            timestamp = timestamp.astimezone(datetime.timezone.utc)
+        return f"{timestamp:%Y%m%dT%H%M%S}Z"
+
+    @staticmethod
+    def makeCollectionTimestamp() -> str:
+        """Create a timestamp string for use in a collection name from the
+        current time.
+
+        Returns
+        -------
+        formatted : `str`
+            Standardized string form of the current time.
+        """
+        return Instrument.formatCollectionTimestamp(datetime.datetime.now(tz=datetime.timezone.utc))
+
     @classmethod
     def makeDefaultRawIngestRunName(cls) -> str:
         """Make the default instrument-specific run collection string for raw
@@ -673,7 +721,7 @@ class Instrument(metaclass=ABCMeta):
         name : `str`
             Run collection name.
         """
-        return cls.makeCollectionName("calib", *labels, "curated", calibDate)
+        return cls.makeCollectionName("calib", *labels, "curated", cls.formatCollectionTimestamp(calibDate))
 
     @classmethod
     def makeCalibrationCollectionName(cls, *labels: str) -> str:

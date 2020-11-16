@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import datetime
 import unittest
 
 from lsst.obs.base import Instrument, FilterDefinitionCollection
@@ -83,6 +84,28 @@ class InstrumentTestCase(InstrumentTests, unittest.TestCase):
     def test_getCamera(self):
         """No camera defined in DummyCam"""
         return
+
+    def test_collectionTimestamps(self):
+        self.assertEqual(
+            Instrument.formatCollectionTimestamp("2018-05-03"),
+            "20180503T000000Z",
+        )
+        self.assertEqual(
+            Instrument.formatCollectionTimestamp("2018-05-03T14:32:16"),
+            "20180503T143216Z",
+        )
+        self.assertEqual(
+            Instrument.formatCollectionTimestamp("20180503T143216Z"),
+            "20180503T143216Z",
+        )
+        self.assertEqual(
+            Instrument.formatCollectionTimestamp(datetime.datetime(2018, 5, 3, 14, 32, 16)),
+            "20180503T143216Z",
+        )
+        formattedNow = Instrument.makeCollectionTimestamp()
+        self.assertIsInstance(formattedNow, str)
+        datetimeThen1 = datetime.datetime.strptime(formattedNow, "%Y%m%dT%H%M%S%z")
+        self.assertEqual(datetimeThen1.tzinfo, datetime.timezone.utc)
 
 
 if __name__ == "__main__":
