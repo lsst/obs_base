@@ -276,11 +276,6 @@ class FitsExposureFormatter(Formatter):
         ----------
         inMemoryDataset : `object`
             The Python object to store.
-
-        Returns
-        -------
-        path : `str`
-            The `URI` where the primary file is stored.
         """
         # Update the location with the formatter-preferred file extension
         self.fileDescriptor.location.updateExtension(self.extension)
@@ -297,7 +292,6 @@ class FitsExposureFormatter(Formatter):
             inMemoryDataset.writeFitsWithOptions(outputPath, options=ps)
         else:
             inMemoryDataset.writeFits(outputPath)
-        return self.fileDescriptor.location.pathInStore
 
     def getImageCompressionSettings(self, recipeName):
         """Retrieve the relevant compression settings for this recipe.
