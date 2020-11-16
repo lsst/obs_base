@@ -31,7 +31,7 @@ import os
 import shutil
 
 import lsst.afw.cameraGeom
-from lsst.daf.butler import Butler
+from lsst.daf.butler import Butler, ButlerURI
 from lsst.daf.butler.cli.butler import cli as butlerCli
 from lsst.daf.butler.cli.utils import LogCliRunner
 import lsst.obs.base
@@ -146,8 +146,13 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         This only really affects files that contain multiple datasets.
         """
         butler = Butler(self.root, run=self.outputRun)
-        datasets = butler.registry.queryDatasets("raw", collections=self.outputRun)
-        self.assertEqual(len(list(datasets)), len(self.dataIds))
+        datasets = list(butler.registry.queryDatasets("raw", collections=self.outputRun))
+        self.assertEqual(len(datasets), len(self.dataIds))
+
+        # Get the URI to the first dataset and check it is inside the
+        # datastore
+        datasetUri = butler.getURI(datasets[0])
+        self.assertIsNotNone(datasetUri.relative_to(butler.datastore.root))
 
         for dataId in self.dataIds:
             # Check that we can read metadata from a raw
@@ -235,6 +240,16 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     def testSymLink(self):
         self._ingestRaws(transfer="symlink")
         self.verifyIngest()
+
+    def testDirect(self):
+        self._ingestRaws(transfer="direct")
+
+        # Check that it really did have a URI outside of datastore
+        srcUri = ButlerURI(self.file)
+        butler = Butler(self.root, run=self.outputRun)
+        datasets = list(butler.registry.queryDatasets("raw", collections=self.outputRun))
+        datastoreUri = butler.getURI(datasets[0])
+        self.assertEqual(datastoreUri, srcUri)
 
     def testCopy(self):
         self._ingestRaws(transfer="copy")
