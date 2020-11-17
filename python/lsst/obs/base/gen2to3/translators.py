@@ -375,15 +375,17 @@ class TranslatorFactory:
         exposureKey : `str`, optional
             The gen2 key used to identify what in gen3 is `exposure`.
         """
-        # Add instrument to Gen3 data ID if Gen2 contains exposureKey or
-        # detectorKey.  (Both rules will match, so we'll actually set
-        # instrument in the same dict twice).
+        # Add instrument to Gen3 data ID if Gen2 contains exposureKey,
+        # detectorKey, "visit", or "calibDate".  (Multiple rules may match, so
+        # we'll actually set instrument in the same dict more than once).
         self.addRule(ConstantKeyHandler("instrument", instrumentName),
                      instrument=instrumentName, gen2keys=(exposureKey,), consume=False)
         self.addRule(ConstantKeyHandler("instrument", instrumentName),
                      instrument=instrumentName, gen2keys=(detectorKey,), consume=False)
         self.addRule(ConstantKeyHandler("instrument", instrumentName),
                      instrument=instrumentName, gen2keys=("calibDate",), consume=False)
+        self.addRule(ConstantKeyHandler("instrument", instrumentName),
+                     instrument=instrumentName, gen2keys=("visit",), consume=False)
 
         # Copy Gen2 exposureKey to Gen3 'exposure' for raw only.  Also consume
         # filter, since that's implied by 'exposure' in Gen3.
