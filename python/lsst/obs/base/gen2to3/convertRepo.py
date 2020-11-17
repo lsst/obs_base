@@ -30,6 +30,7 @@ from typing import Iterable, Optional, List, Tuple
 
 from lsst.daf.butler import (
     Butler as Butler3,
+    ButlerURI,
     CollectionType,
     SkyPixDimension
 )
@@ -138,10 +139,10 @@ class Rerun:
             return
         if self.chainName is None:
             if os.path.isabs(self.path):
-                if not os.path.isabs(root):
-                    root = os.path.abspath(root)
-                chainName = os.path.relpath(self.path, root)
-                if chainName.startswith(".."):
+                rerunURI = ButlerURI(self.path)
+                rootURI = ButlerURI(root)
+                chainName = rerunURI.relative_to(rootURI)
+                if chainName is None:
                     raise ValueError(
                         f"Cannot guess run name collection for rerun at '{self.path}': "
                         f"no clear relationship to root '{root}'."
