@@ -31,7 +31,12 @@ from lsst.daf.butler.cli.opt import (repo_argument,
                                      run_option,
                                      transfer_option
                                      )
-from lsst.daf.butler.cli.utils import (cli_handle_exception, split_commas, typeStrAcceptsMultiple)
+from lsst.daf.butler.cli.utils import (
+    ButlerCommand,
+    cli_handle_exception,
+    split_commas,
+    typeStrAcceptsMultiple
+)
 from ..opt import instrument_argument
 from ... import script
 
@@ -40,7 +45,7 @@ from ... import script
 fits_re = r"\.fit[s]?\b"
 
 
-@click.command(short_help="Convert a gen2 repo to gen3.")
+@click.command(short_help="Convert a gen2 repo to gen3.", cls=ButlerCommand)
 @repo_argument(required=True,
                help="REPO is the URI or path to the gen3 repository. Will be created if it does not already "
                "exist")
@@ -64,7 +69,7 @@ def convert(*args, **kwargs):
     cli_handle_exception(script.convert, *args, **kwargs)
 
 
-@click.command(short_help="Define visits from exposures.")
+@click.command(short_help="Define visits from exposures.", cls=ButlerCommand)
 @repo_argument(required=True)
 @instrument_argument(required=True)
 @config_file_option(help="Path to a pex_config override to be included after the Instrument config overrides "
@@ -81,7 +86,7 @@ def define_visits(*args, **kwargs):
     cli_handle_exception(script.defineVisits, *args, **kwargs)
 
 
-@click.command(short_help="Ingest raw frames.")
+@click.command(short_help="Ingest raw frames.", cls=ButlerCommand)
 @repo_argument(required=True)
 @locations_argument(help="LOCATIONS specifies files to ingest and/or locations to search for files.",
                     required=True)
@@ -101,7 +106,7 @@ def ingest_raws(*args, **kwargs):
     cli_handle_exception(script.ingestRaws, *args, **kwargs)
 
 
-@click.command(short_help="Add an instrument to the repository")
+@click.command(short_help="Add an instrument to the repository", cls=ButlerCommand)
 @repo_argument(required=True)
 @instrument_argument(required=True, nargs=-1, help="The fully-qualified name of an Instrument subclass.")
 def register_instrument(*args, **kwargs):
@@ -110,7 +115,7 @@ def register_instrument(*args, **kwargs):
     cli_handle_exception(script.registerInstrument, *args, **kwargs)
 
 
-@click.command(short_help="Add an instrument's curated calibrations.")
+@click.command(short_help="Add an instrument's curated calibrations.", cls=ButlerCommand)
 @repo_argument(required=True)
 @instrument_argument(required=True)
 @click.option("--collection", required=False,
