@@ -1501,6 +1501,18 @@ plotPhotonTransferCurve_metadata:
     storage: YamlStorage
     python: lsst.daf.base.PropertySet
     template: ''
+measureLinearity_config:
+    description: "Configuration for the linearity fitting task."
+    persistable: Config
+    python: lsst.cp.pipe.linearity.MeasureLinearityConfig
+    storage: ConfigStorage
+    template: config/measureLinearity.py
+measureLinearity_metadata:
+    description: "Metadata for the linearity fitting task."
+    persistable: PropertySet
+    storage: YamlStorage
+    python: lsst.daf.base.PropertySet
+    template: ''
 linearizePolynomial:
     description: "General polynomial coefficients for linearizer from MeasurePhotonTransferCurveTask"
     persistable: ignored
@@ -1579,4 +1591,14 @@ measureExtendedPsf_config:
     python: lsst.pipe.tasks.measureExtendedPsf.MeasureExtendedPsfConfig
     storage: ConfigStorage
     template: config/measureExtendedPsf.py
-
+subtractBrightStars_config:
+    persistable: Config
+    python: lsst.pipe.tasks.subtractBrightStars.SubtractBrightStarsConfig
+    storage: ConfigStorage
+    template: config/subtractBrightStars.py
+subtractBrightStars_metadata:
+    persistable: PropertySet
+    storage: YamlStorage
+    python: lsst.daf.base.PropertySet
+    tables: raw
+    template: ''

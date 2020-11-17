@@ -195,14 +195,14 @@ class StandardRepoConverter(RepoConverter):
 
     def getRun(self, datasetTypeName: str, calibDate: Optional[str] = None) -> str:
         # Docstring inherited from RepoConverter.
-        run = self.task.config.runs.get(datasetTypeName)
-        if run is not None:
-            self._chain.setdefault(run, set()).add(datasetTypeName)
-        elif self._run is None:
+        if self._run is not None:
+            run = self._run
+        else:
+            run = self.task.config.runs.get(datasetTypeName)
+        if run is None:
             raise ValueError(f"No default run for repo at {self.root}, and no "
                              f"override for dataset {datasetTypeName}.")
-        else:
-            run = self._run
+        self._chain.setdefault(run, set()).add(datasetTypeName)
         return run
 
     def getCollectionChain(self) -> List[Tuple[str, Set[str]]]:
