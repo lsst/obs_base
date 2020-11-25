@@ -24,11 +24,13 @@ import astropy.units
 import astropy.utils.exceptions
 from astropy.utils import iers
 
-# This is an unofficial ERFA interface provided by Astropy.
-# We need to use this to calculate the Earth rotation angle.
-# If Astropy change their ERFA support we will need to either bring the
-# calculation into this package or use another python ERFA binding.
-import astropy._erfa as erfa
+# Prefer the standard pyerfa over the Astropy version
+try:
+    import erfa
+    ErfaWarning = erfa.ErfaWarning
+except ImportError:
+    import astropy._erfa as erfa
+    ErfaWarning = None
 
 from astro_metadata_translator import ObservationInfo
 
@@ -150,7 +152,11 @@ class MakeRawVisitInfoViaObsInfo(object):
                 # since there is nothing we can do about that for simulated
                 # data and it tells us nothing for data from the past.
                 with warnings.catch_warnings():
+                    # If we are using the real erfa it is not an AstropyWarning
+                    # During transition period filter both
                     warnings.simplefilter("ignore", category=astropy.utils.exceptions.AstropyWarning)
+                    if ErfaWarning is not None:
+                        warnings.simplefilter("ignore", category=ErfaWarning)
                     ut1time = middle.ut1
             except iers.IERSRangeError:
                 ut1time = middle
