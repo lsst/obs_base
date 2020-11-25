@@ -95,7 +95,7 @@ class ExposureAssembler(StorageClassDelegate):
                 # an ExposureInfo composite so trap for that and only get
                 # the ExposureInfo if the method is supported
                 composite = composite.getInfo()
-            return super().getComponent(composite, componentName)
+            return super().getComponent(composite, self.COMPONENT_MAP.get(componentName, componentName))
         else:
             raise AttributeError("Do not know how to retrieve component {} from {}".format(componentName,
                                                                                            type(composite)))
