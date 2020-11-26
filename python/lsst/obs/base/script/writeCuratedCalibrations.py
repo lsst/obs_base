@@ -27,7 +27,7 @@ from ..utils import getInstrument
 log = logging.getLogger(__name__)
 
 
-def writeCuratedCalibrations(repo, instrument, collection, suffix):
+def writeCuratedCalibrations(repo, instrument, collection, labels):
     """Add an instrument's curated calibrations to the data repository.
 
     Parameters
@@ -41,9 +41,9 @@ def writeCuratedCalibrations(repo, instrument, collection, suffix):
         ranges.
         Can be `None` in which case the collection name will be determined
         automatically.
-    suffix : `str`
-        Suffix to add to the RUN collections that datasets are inserted
-        directly into, and if ``collection`` is `None`, the automatic
+    labels : `Sequence` [ `str` ]
+        Extra strings to include in the names of collections that datasets are
+        inserted directly into, and if ``collection`` is `None`, the automatic
         calibration collection name as well.
 
     Raises
@@ -57,5 +57,4 @@ def writeCuratedCalibrations(repo, instrument, collection, suffix):
     """
     butler = Butler(repo, writeable=True)
     instr = getInstrument(instrument, butler.registry)
-    instr.writeCuratedCalibrations(butler, collection=collection,
-                                   suffixes=(suffix,) if suffix is not None else ())
+    instr.writeCuratedCalibrations(butler, collection=collection, labels=labels)

@@ -509,11 +509,27 @@ class RepoConverter(ABC):
                     ) from err
 
     def finish(self) -> None:
-        # TODO: docs
+        """Finish conversion of a repository.
+
+        This is run after ``ingest``, and delegates to `_finish`, which should
+        be overridden by derived classes instead of this method.
+        """
         self._finish(self._fileDatasets)
 
     def _finish(self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]]) -> None:
-        # TODO: docs
+        """Subclass implementation hook for `_finish`.
+
+        The default implementation does nothing.  This is generally the best
+        place to define and populate non-``RUN`` collections that may contain
+        some of the datasets that have just been ingested.
+
+        Parameters
+        ----------
+        datasets : `Mapping`
+            Nested mapping containing all converted datasets.  The outer
+            mapping keys are `DatasetType` instances.  Values are mappings from
+            ``calibDate`` or `None` to a `list` of `FileDataset` instances.
+        """
         pass
 
     def getRun(self, datasetTypeName: str, calibDate: Optional[str] = None) -> str:

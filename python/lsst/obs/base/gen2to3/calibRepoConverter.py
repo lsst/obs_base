@@ -25,7 +25,7 @@ __all__ = ["CalibRepoConverter"]
 from collections import defaultdict
 import os
 import sqlite3
-from typing import TYPE_CHECKING, Dict, Iterator, List, Mapping, Tuple, Optional
+from typing import TYPE_CHECKING, Dict, Iterator, List, Mapping, Sequence, Tuple, Optional
 
 import astropy.time
 import astropy.units as u
@@ -49,15 +49,21 @@ class CalibRepoConverter(RepoConverter):
     mapper : `CameraMapper`
         Gen2 mapper for the data repository.  The root associated with the
         mapper is ignored and need not match the root of the repository.
-    kwds
+    labels : `Sequence` [ `str` ]
+        Strings injected into the names of the collections that calibration
+        datasets are written and certified into (forwarded as the ``extra``
+        argument to `Instrument` methods that generate collection names and
+        write curated calibrations).
+    **kwargs
         Additional keyword arguments are forwarded to (and required by)
         `RepoConverter`.
     """
 
-    def __init__(self, *, mapper: CameraMapper, collection: str, **kwds):
-        super().__init__(run=None, **kwds)
+    def __init__(self, *, mapper: CameraMapper, labels: Sequence[str] = (), **kwargs):
+        super().__init__(run=None, **kwargs)
         self.mapper = mapper
-        self.collection = collection
+        self.collection = self.task.instrument.makeCalibrationCollectionName(*labels)
+        self._labels = tuple(labels)
         self._datasetTypes = set()
 
     def isDatasetTypeSpecial(self, datasetTypeName: str) -> bool:
@@ -89,7 +95,29 @@ class CalibRepoConverter(RepoConverter):
 
     def _queryGen2CalibRegistry(self, db: sqlite3.Connection, datasetType: DatasetType, calibDate: str
                                 ) -> Iterator[sqlite3.Row]:
-        # TODO: docs
+        """Query the Gen2 calibration registry for the validity ranges and
+        optionally detectors and filters associated with the given dataset type
+        and ``calibDate``.
+
+        Parameters
+        ----------
+        db : `sqlite3.Connection`
+            DBAPI connection to the Gen2 ``calibRegistry.sqlite3`` file.
+        datasetType : `DatasetType`
+            Gen3 dataset type being queried.
+        calibDate : `str`
+            String extracted from the ``calibDate`` template entry in Gen2
+            filenames.
+
+        Yields
+        ------
+        row : `sqlite3.Row`
+            SQLite result object; will have ``validStart`` and ``validEnd``
+            columns, may have a detector column (named
+            ``self.task.config.ccdKey``) and/or a ``filter`` column, depending
+            on whether ``datasetType.dimensions`` includes ``detector`` and
+            ``physical_filter``, respectively.
+        """
         fields = ["validStart", "validEnd"]
         if "detector" in datasetType.dimensions.names:
             fields.append(self.task.config.ccdKey)
@@ -116,6 +144,7 @@ class CalibRepoConverter(RepoConverter):
         yield from results
 
     def _finish(self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]]):
+        # Docstring inherited from RepoConverter.
         # Read Gen2 calibration repository and extract validity ranges for
         # all datasetType + calibDate combinations we ingested.
         calibFile = os.path.join(self.root, "calibRegistry.sqlite3")
@@ -263,10 +292,14 @@ class CalibRepoConverter(RepoConverter):
             self.task.registry.certify(self.collection, refs, timespan)
 
     def getRun(self, datasetTypeName: str, calibDate: Optional[str] = None) -> str:
+        # Docstring inherited from RepoConverter.
         if calibDate is None:
             return super().getRun(datasetTypeName)
         else:
-            return self.instrument.makeCollectionName("calib", "gen2", calibDate)
+            return self.instrument.makeCalibrationCollectionName(
+                *self._labels,
+                self.instrument.formatCollectionTimestamp(calibDate),
+            )
 
     # Class attributes that will be shadowed by public instance attributes;
     # defined here only for documentation purposes.

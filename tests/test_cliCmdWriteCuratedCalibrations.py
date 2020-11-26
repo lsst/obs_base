@@ -45,7 +45,7 @@ class WriteCuratedCalibrationsTest(CliCmdTestBase, unittest.TestCase):
                       self.makeExpected(repo="here",
                                         instrument="a.b.c",
                                         collection="foo",
-                                        suffix=None))
+                                        labels=()))
 
     def test_missing(self):
         """test a missing argument"""

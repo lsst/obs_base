@@ -58,14 +58,23 @@ fits_re = r"\.fit[s]?\b"
 @click.option("--calibs",
               help="Path to the gen 2 calibration repo. It can be absolute or relative to gen2root.")
 @click.option("--reruns", multiple=True, callback=split_commas, metavar=typeStrAcceptsMultiple,
-              help="List of gen 2 reruns to convert.")
+              help=("List of rerun paths to convert.  Output collection names will be "
+                    "guessed, which can fail if the Gen2 repository paths do not follow a "
+                    "recognized convention.  In this case, the command-line interface cannot "
+                    "be used."))
 @transfer_option(help="Mode to use to transfer files into the new repository.")
 @processes_option()
 @config_file_option(help="Path to a `ConvertRepoConfig` override to be included after the Instrument config "
                     "overrides are applied.")
 @options_file_option()
 def convert(*args, **kwargs):
-    """Convert a Butler gen 2 repository into a gen 3 repository."""
+    """Convert one or more Butler gen 2 repositories into a gen 3 repository.
+
+    This is a highly simplified interface that should only be used to convert
+    suites of gen 2 repositories that contain at most one calibration repo and
+    has no chained reruns.  Custom scripts that call ConvertRepoTask should be
+    used on more complex suites of repositories.
+    """
     cli_handle_exception(script.convert, *args, **kwargs)
 
 
@@ -120,8 +129,8 @@ def register_instrument(*args, **kwargs):
 @instrument_argument(required=True)
 @click.option("--collection", required=False,
               help="Name of the calibration collection that associates datasets with validity ranges.")
-@click.option("--suffix", required=False,
-              help=("Name suffix to append (with an automatic delimiter) to all RUN collection names "
+@click.option("--label", "labels", multiple=True,
+              help=("Extra strings to include (with automatic delimiters) in all RUN collection names, "
                     "as well as the calibration collection name if it is not provided via --collection."))
 @options_file_option()
 def write_curated_calibrations(*args, **kwargs):
