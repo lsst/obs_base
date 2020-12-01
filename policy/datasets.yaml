@@ -1602,3 +1602,14 @@ subtractBrightStars_metadata:
     python: lsst.daf.base.PropertySet
     tables: raw
     template: ''
+reprocessBrightStars_config:
+    persistable: Config
+    python: lsst.pipe.tasks.brightStars2ndPass.ReprocessBrightStarsConfig
+    storage: ConfigStorage
+    template: config/reprocessBrightStars.py
+reprocessBrightStars_metadata:
+    persistable: PropertySet
+    storage: YamlStorage
+    python: lsst.daf.base.PropertySet
+    tables: raw
+    template: ''
