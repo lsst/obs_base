@@ -459,11 +459,19 @@ class CameraMapper(dafPersist.Mapper):
 
                             setMethods("visitInfo", bypassImpl=getVisitInfo)
 
+                            # TODO: deprecate in DM-27170, remove in DM-27177
                             def getFilter(datasetType, pythonType, location, dataId):
                                 fitsReader = afwImage.ExposureFitsReader(location.getLocationsWithRoot()[0])
                                 return fitsReader.readFilter()
 
                             setMethods("filter", bypassImpl=getFilter)
+
+                            # TODO: deprecate in DM-27177, remove in DM-27811
+                            def getFilterLabel(datasetType, pythonType, location, dataId):
+                                fitsReader = afwImage.ExposureFitsReader(location.getLocationsWithRoot()[0])
+                                return fitsReader.readFilterLabel()
+
+                            setMethods("filterLabel", bypassImpl=getFilterLabel)
 
                             setMethods("detector",
                                        mapImpl=lambda dataId, write=False:
