@@ -44,9 +44,9 @@ class ExposureAssembler(StorageClassDelegate):
 
         Returns
         -------
-        expComps : `dict`
+        expComps : `set` [`str`]
             Components associated with the top level Exposure.
-        expInfoComps : `dict`
+        expInfoComps : `set` [`str`]
             Components associated with the ExposureInfo
 
         Raises
