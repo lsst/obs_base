@@ -174,7 +174,10 @@ class FitsExposureFormatter(Formatter):
                         'bbox': ('readBBox', True),
                         'dimensions': ('readBBox', True),
                         'xy0': ('readXY0', True),
+                        # TODO: deprecate in DM-27170, remove in DM-27177
                         'filter': ('readFilter', False),
+                        # TODO: deprecate in DM-27177, remove in DM-27811
+                        'filterLabel': ('readFilterLabel', False),
                         'validPolygon': ('readValidPolygon', False),
                         'apCorrMap': ('readApCorrMap', False),
                         'visitInfo': ('readVisitInfo', False),
