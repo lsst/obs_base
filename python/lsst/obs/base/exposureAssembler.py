@@ -166,14 +166,6 @@ class ExposureAssembler(StorageClassDelegate):
                                                subset=expInfoItems, override=composite.getInfo())
         components.update(fromExposureInfo)
 
-        # We must reproduce some of the metadata manipulation that occurs
-        # in ExposureInfo::FitsWriteData.
-
-        # Force the FILTER header to be overwritten
-        if "filter" in components and "metadata" in components:
-            md = components["metadata"].component
-            md["FILTER"] = components["filter"].component.getName()
-
         return components
 
     def assemble(self, components):
@@ -237,12 +229,13 @@ class ExposureAssembler(StorageClassDelegate):
         info.setDetector(components.pop("detector", None))
         info.setTransmissionCurve(components.pop("transmissionCurve", None))
 
-        # Filter needs to be updated specially to match Exposure behavior
+        # Filter needs to be updated specially to match Exposure v1 behavior
         # from ExposureFitsReader::MetadataReader
 
         # Override the serialized filter knowing that we are using FILTER
         md = info.getMetadata()
-        if "filter" in components and "FILTER" in md:
+        if "filter" in components and "FILTER" in md \
+                and ("EXPINFO_V" not in md or md["EXPINFO_V"] < 2):
             filter = Filter(md, True)
             stripFilterKeywords(md)
             if filter.getName() != components["filter"].getName():
