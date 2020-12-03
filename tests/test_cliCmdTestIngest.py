@@ -24,9 +24,14 @@
 
 import unittest
 
+from lsst.daf.butler import Butler
+from lsst.daf.butler.cli.butler import cli as butlerCli
+from lsst.daf.butler.cli.utils import clickResultMsg, LogCliRunner
 from lsst.daf.butler.tests import CliCmdTestBase
 from lsst.obs.base.cli.cmd import ingest_raws
 from lsst.obs.base.cli.cmd.commands import fits_re
+from lsst.obs.base.ingest import RawIngestConfig
+import lsst.obs.base
 
 
 class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
@@ -103,6 +108,45 @@ class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
         self.run_test(["ingest-raws", "repo", "in/directory/,in/another/dir/", "other/file.fits"],
                       self.makeExpected(repo="repo",
                                         locations=("in/directory/", "in/another/dir/", "other/file.fits")))
+
+
+class PatchRawIngestTask(lsst.obs.base.RawIngestTask):
+
+    init_args = []
+
+    def __init__(self, *args, **kwargs):
+        self.init_args.append((args, kwargs))
+        super().__init__(*args, **kwargs)
+
+    def run(self, *args, **kwargs):
+        pass
+
+
+class RawIngestMockTest(unittest.TestCase):
+
+    def setUp(self):
+        self.runner = LogCliRunner()
+
+    def test(self):
+        """Verify config gets applied properly."""
+        with self.runner.isolated_filesystem():
+            result = self.runner.invoke(butlerCli, ["create", "repo"])
+            self.assertEqual(result.exit_code, 0, clickResultMsg(result))
+            with unittest.mock.patch("lsst.obs.base.RawIngestTask", new=PatchRawIngestTask) as mock:
+                # call and override the name parameter of the config
+                result = self.runner.invoke(butlerCli, ["ingest-raws", "repo", "resources",
+                                                        "--config", "transfer=hardlink"])
+                self.assertEqual(result.exit_code, 0, clickResultMsg(result))
+                # Verify the mock class was initialized exactly once:
+                self.assertEqual(len(mock.init_args), 1)
+                # Verify that the task was initialized with a 'butler' kwarg
+                # that received a butler instance:
+                self.assertIsInstance(mock.init_args[0][1]["butler"], Butler)
+                # Verify that the task was initialized with a 'config' kwarg
+                # that received an expected config:
+                expectedConfig = RawIngestConfig()
+                expectedConfig.update(transfer="hardlink")
+                self.assertEqual(mock.init_args[0][1]["config"], expectedConfig)
 
 
 if __name__ == "__main__":
