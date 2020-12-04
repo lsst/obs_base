@@ -33,7 +33,6 @@ from lsst.daf.butler.cli.opt import (repo_argument,
                                      )
 from lsst.daf.butler.cli.utils import (
     ButlerCommand,
-    cli_handle_exception,
     split_commas,
     typeStrAcceptsMultiple
 )
@@ -75,7 +74,7 @@ def convert(*args, **kwargs):
     has no chained reruns.  Custom scripts that call ConvertRepoTask should be
     used on more complex suites of repositories.
     """
-    cli_handle_exception(script.convert, *args, **kwargs)
+    script.convert(*args, **kwargs)
 
 
 @click.command(short_help="Define visits from exposures.", cls=ButlerCommand)
@@ -92,7 +91,7 @@ def convert(*args, **kwargs):
 @options_file_option()
 def define_visits(*args, **kwargs):
     """Define visits from exposures in the butler registry."""
-    cli_handle_exception(script.defineVisits, *args, **kwargs)
+    script.defineVisits(*args, **kwargs)
 
 
 @click.command(short_help="Ingest raw frames.", cls=ButlerCommand)
@@ -112,7 +111,7 @@ def define_visits(*args, **kwargs):
 @options_file_option()
 def ingest_raws(*args, **kwargs):
     """Ingest raw frames into from a directory into the butler registry"""
-    cli_handle_exception(script.ingestRaws, *args, **kwargs)
+    script.ingestRaws(*args, **kwargs)
 
 
 @click.command(short_help="Add an instrument to the repository", cls=ButlerCommand)
@@ -121,7 +120,7 @@ def ingest_raws(*args, **kwargs):
 def register_instrument(*args, **kwargs):
     """Add an instrument to the data repository.
     """
-    cli_handle_exception(script.registerInstrument, *args, **kwargs)
+    script.registerInstrument(*args, **kwargs)
 
 
 @click.command(short_help="Add an instrument's curated calibrations.", cls=ButlerCommand)
@@ -136,4 +135,4 @@ def register_instrument(*args, **kwargs):
 def write_curated_calibrations(*args, **kwargs):
     """Add an instrument's curated calibrations to the data repository.
     """
-    cli_handle_exception(script.writeCuratedCalibrations, *args, **kwargs)
+    script.writeCuratedCalibrations(*args, **kwargs)

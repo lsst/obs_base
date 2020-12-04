@@ -31,6 +31,8 @@ from lsst.obs.base.cli.cmd.commands import fits_re
 
 class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
 
+    mockFunc = "lsst.obs.base.cli.cmd.commands.script.ingestRaws"
+
     @staticmethod
     def defaultExpected():
         return dict(config={},
