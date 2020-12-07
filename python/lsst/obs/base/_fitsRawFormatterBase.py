@@ -339,6 +339,8 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
             return self.readVariance()
         elif component == "filter":
             return self.makeFilter()
+        elif component == "filterLabel":
+            return self.makeFilterLabel()
         elif component == "visitInfo":
             return self.makeVisitInfo()
         elif component == "wcs":
@@ -371,7 +373,7 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
             full.setVariance(variance)
         full.setDetector(self.getDetector(self.observationInfo.detector_num))
         info = full.getInfo()
-        info.setFilter(self.makeFilter())
+        info.setFilterLabel(self.makeFilterLabel())
         info.setVisitInfo(self.makeVisitInfo())
         info.setWcs(self.makeWcs(info.getVisitInfo(), info.getDetector()))
         # We don't need to call stripMetadata() here because it has already
