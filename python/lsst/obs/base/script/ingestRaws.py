@@ -41,7 +41,7 @@ def ingestRaws(repo, locations, regex, output_run, config=None, config_file=None
     output_run : `str`
         The path to the location, the run, where datasets should be put.
     config : `dict` [`str`, `str`] or `None`
-        Key-vaule pairs to apply as overrides to the ingest config.
+        Key-value pairs to apply as overrides to the ingest config.
     config_file : `str` or `None`
         Path to a config file that contains overrides to the ingest config.
     transfer : `str` or None
@@ -65,7 +65,7 @@ def ingestRaws(repo, locations, regex, output_run, config=None, config_file=None
     if config_file is not None:
         configOverrides.addFileOverride(config_file)
     if config is not None:
-        for name, value in config:
+        for name, value in config.items():
             configOverrides.addValueOverride(name, value)
     configOverrides.applyTo(ingestConfig)
     ingester = TaskClass(config=ingestConfig, butler=butler)
