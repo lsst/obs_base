@@ -30,7 +30,7 @@ from lsst.obs.base.cli.cmd import convert
 
 class ConvertTestCase(CliCmdTestBase, unittest.TestCase):
 
-    mockFunc = "lsst.obs.base.cli.cmd.commands.script.convert"
+    mockFuncName = "lsst.obs.base.cli.cmd.commands.script.convert"
 
     @staticmethod
     def defaultExpected():

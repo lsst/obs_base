@@ -30,7 +30,7 @@ from lsst.obs.base.cli.cmd import write_curated_calibrations
 
 class WriteCuratedCalibrationsTest(CliCmdTestBase, unittest.TestCase):
 
-    mockFunc = "lsst.obs.base.cli.cmd.commands.script.writeCuratedCalibrations"
+    mockFuncName = "lsst.obs.base.cli.cmd.commands.script.writeCuratedCalibrations"
 
     @staticmethod
     def defaultExpected():

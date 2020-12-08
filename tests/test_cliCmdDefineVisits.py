@@ -30,7 +30,7 @@ from lsst.obs.base.cli.cmd import define_visits
 
 class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
 
-    mockFunc = "lsst.obs.base.cli.cmd.commands.script.defineVisits"
+    mockFuncName = "lsst.obs.base.cli.cmd.commands.script.defineVisits"
 
     @staticmethod
     def defaultExpected():
