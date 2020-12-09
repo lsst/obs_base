@@ -30,6 +30,8 @@ from lsst.obs.base.cli.cmd import register_instrument
 
 class RegisterInstrumentTest(CliCmdTestBase, unittest.TestCase):
 
+    mockFuncName = "lsst.obs.base.cli.cmd.commands.script.registerInstrument"
+
     @staticmethod
     def defaultExpected():
         return dict()
