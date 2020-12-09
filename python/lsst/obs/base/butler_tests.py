@@ -143,7 +143,11 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
         self.assertEqual(exp.getDetector().getId(), self.butler_get_data.detectorIds[name])
         self.assertEqual(exp.getDetector().getName(), self.butler_get_data.detector_names[name])
         self.assertEqual(exp.getDetector().getSerial(), self.butler_get_data.detector_serials[name])
-        self.assertEqual(exp.getFilter().getName(), self.butler_get_data.filters[name])
+        # obs_test does not have physical filters, so include a fallback
+        exposureFilter = exp.getFilterLabel()
+        filterName = exposureFilter.physicalLabel if exposureFilter.hasPhysicalLabel() \
+            else exposureFilter.bandLabel
+        self.assertEqual(filterName, self.butler_get_data.filters[name])
         exposureId = self.butler.get('ccdExposureId', dataId=self.dataIds[name])
         self.assertEqual(exposureId, self.butler_get_data.exposureIds[name])
         self.assertEqual(exp.getInfo().getVisitInfo().getExposureTime(), self.butler_get_data.exptimes[name])

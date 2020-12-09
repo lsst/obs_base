@@ -23,7 +23,7 @@
 
 # Need to enable PSFs to be instantiated
 import lsst.afw.detection  # noqa: F401
-from lsst.afw.image import makeExposure, makeMaskedImage, Filter, stripFilterKeywords
+from lsst.afw.image import makeExposure, makeMaskedImage
 
 from lsst.daf.butler import StorageClassDelegate
 
@@ -32,9 +32,9 @@ class ExposureAssembler(StorageClassDelegate):
 
     EXPOSURE_COMPONENTS = set(("image", "variance", "mask", "wcs", "psf"))
     EXPOSURE_INFO_COMPONENTS = set(("apCorrMap", "coaddInputs", "photoCalib", "metadata",
-                                    "filter", "transmissionCurve", "visitInfo",
+                                    "filterLabel", "transmissionCurve", "visitInfo",
                                     "detector", "validPolygon"))
-    EXPOSURE_READ_COMPONENTS = {"bbox", "dimensions", "xy0"}
+    EXPOSURE_READ_COMPONENTS = {"bbox", "dimensions", "xy0", "filter"}
 
     COMPONENT_MAP = {"bbox": "BBox", "xy0": "XY0"}
     """Map component name to actual getter name."""
@@ -44,9 +44,9 @@ class ExposureAssembler(StorageClassDelegate):
 
         Returns
         -------
-        expComps : `dict`
+        expComps : `set` [`str`]
             Components associated with the top level Exposure.
-        expInfoComps : `dict`
+        expInfoComps : `set` [`str`]
             Components associated with the ExposureInfo
 
         Raises
@@ -95,7 +95,7 @@ class ExposureAssembler(StorageClassDelegate):
                 # an ExposureInfo composite so trap for that and only get
                 # the ExposureInfo if the method is supported
                 composite = composite.getInfo()
-            return super().getComponent(composite, componentName)
+            return super().getComponent(composite, self.COMPONENT_MAP.get(componentName, componentName))
         else:
             raise AttributeError("Do not know how to retrieve component {} from {}".format(componentName,
                                                                                            type(composite)))
@@ -166,14 +166,6 @@ class ExposureAssembler(StorageClassDelegate):
                                                subset=expInfoItems, override=composite.getInfo())
         components.update(fromExposureInfo)
 
-        # We must reproduce some of the metadata manipulation that occurs
-        # in ExposureInfo::FitsWriteData.
-
-        # Force the FILTER header to be overwritten
-        if "filter" in components and "metadata" in components:
-            md = components["metadata"].component
-            md["FILTER"] = components["filter"].component.getName()
-
         return components
 
     def assemble(self, components):
@@ -237,18 +229,8 @@ class ExposureAssembler(StorageClassDelegate):
         info.setDetector(components.pop("detector", None))
         info.setTransmissionCurve(components.pop("transmissionCurve", None))
 
-        # Filter needs to be updated specially to match Exposure behavior
-        # from ExposureFitsReader::MetadataReader
-
-        # Override the serialized filter knowing that we are using FILTER
-        md = info.getMetadata()
-        if "filter" in components and "FILTER" in md:
-            filter = Filter(md, True)
-            stripFilterKeywords(md)
-            if filter.getName() != components["filter"].getName():
-                components["filter"] = filter
-
-        info.setFilter(components.pop("filter", None))
+        # TODO: switch back to "filter" as primary component in DM-27177
+        info.setFilterLabel(components.pop("filterLabel", None))
 
         # If we have some components left over that is a problem
         if components:
@@ -292,6 +274,7 @@ class ExposureAssembler(StorageClassDelegate):
             "bbox": imageComponents,
             "dimensions": imageComponents,
             "xy0": imageComponents,
+            "filter": ["filterLabel"],
         }
         forwarder = forwarderMap.get(readComponent)
         if forwarder is not None:

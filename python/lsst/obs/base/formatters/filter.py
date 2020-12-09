@@ -19,9 +19,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# TODO: remove this entire file in DM-27177
+
 from __future__ import annotations
 
-__all__ = ("FilterFormatter",)
+__all__ = ("FilterFormatter", "FilterTranslator",)
 
 import yaml
 from lsst.afw.image import Filter
@@ -32,7 +34,9 @@ from typing import (
     Type,
 )
 
+from lsst.afw.image import FilterLabel
 from lsst.daf.butler.formatters.file import FileFormatter
+from lsst.daf.butler import StorageClassDelegate
 
 
 class FilterFormatter(FileFormatter):
@@ -139,3 +143,54 @@ class FilterFormatter(FileFormatter):
         filter["aliases"] = inMemoryDataset.getAliases()
 
         return yaml.dump(filter).encode()
+
+
+class FilterTranslator(StorageClassDelegate):
+    """Derived-component converter for a Filter that has been stored as
+    a FilterLabel.
+    """
+    # More complex than a Formatter that can read both Filter and FilterLabel,
+    # but can be phased out once Filter is gone without breaking compatibility
+    # with old FilterLabels.
+
+    def getComponent(self, label, derivedName):
+        """Derive a Filter from a FilterLabel.
+
+        Parameters
+        ----------
+        label : `~lsst.afw.image.FilterLabel`
+            The object to convert.
+        derivedName : `str`
+            Name of type to convert to. Only "filter" is supported.
+
+        Returns
+        -------
+        derived : `object`
+            The converted type. Can be `None`.
+
+        Raises
+        ------
+        AttributeError
+            An unknown component was requested.
+        """
+        if derivedName == "filter":
+            # Port of backwards-compatibility code in afw; don't want to
+            # expose it as API.
+
+            # Filters still have standard aliases, so can use almost any name
+            # to define them. Prefer afw_name or band because that's what most
+            # code assumes is Filter.getName().
+            if label == FilterLabel(band="r", physical="HSC-R2"):
+                return Filter("r2", force=True)
+            elif label == FilterLabel(band="i", physical="HSC-I2"):
+                return Filter("i2", force=True)
+            elif label == FilterLabel(physical="solid plate 0.0 0.0"):
+                return Filter("SOLID", force=True)
+            elif label.hasBandLabel():
+                return Filter(label.bandLabel, force=True)
+            else:
+                # FilterLabel guarantees at least one of band or physical
+                # is defined.
+                return Filter(label.physicalLabel, force=True)
+        else:
+            raise AttributeError(f"Do not know how to convert {type(label)} to {derivedName}")

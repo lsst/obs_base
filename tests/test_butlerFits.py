@@ -77,8 +77,8 @@ datastore:
 
 # Components present in the test file
 COMPONENTS = {"wcs", "image", "mask", "coaddInputs", "psf", "visitInfo", "variance", "metadata", "photoCalib",
-              "filter", "validPolygon", "transmissionCurve", "detector", "apCorrMap"}
-READ_COMPONENTS = {"bbox", "xy0", "dimensions"}
+              "filterLabel", "validPolygon", "transmissionCurve", "detector", "apCorrMap"}
+READ_COMPONENTS = {"bbox", "xy0", "dimensions", "filter"}
 
 
 class SimpleConfig(lsst.pex.config.Config):
@@ -279,6 +279,8 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
                 pass
             elif compName == "filter":
                 self.assertEqual(component.getCanonicalName(), reference.getCanonicalName())
+            elif compName == "filterLabel":
+                self.assertEqual(component, reference)
             elif compName == "visitInfo":
                 self.assertEqual(component.getExposureId(), reference.getExposureId(),
                                  "VisitInfo comparison")
