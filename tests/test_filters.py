@@ -58,6 +58,13 @@ class TestFilterDefinitionCollection(lsst.utils.tests.TestCase):
         self.assertEqual(lsst.afw.image.Filter('abc').getFilterProperty().getLambdaEff(), 321)
         self.assertEqual(lsst.afw.image.Filter('def').getFilterProperty().getLambdaEff(), 654)
 
+    def test_findAll(self):
+        self.assertEqual(set(self.filters1.findAll('r')), set())
+        matches = self.filters1.findAll('abc')
+        self.assertEqual(len(matches), 1)
+        match = list(matches)[0]
+        self.assertEqual(match.physical_filter, 'abc')
+
 
 class TestFilterDefinition(lsst.utils.tests.TestCase):
     def setUp(self):
