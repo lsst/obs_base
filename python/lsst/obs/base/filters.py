@@ -191,3 +191,8 @@ class FilterDefinition:
                                           lambdaMin=self.lambdaMin,
                                           lambdaMax=self.lambdaMax,
                                           alias=sorted(aliases))
+
+    def makeFilterLabel(self):
+        """Create a complete FilterLabel for this filter.
+        """
+        return lsst.afw.image.FilterLabel(band=self.band, physical=self.physical_filter)
