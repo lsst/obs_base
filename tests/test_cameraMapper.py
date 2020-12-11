@@ -43,6 +43,37 @@ def setup_module(module):
     lsst.utils.tests.init()
 
 
+class MinCam(lsst.obs.base.Instrument):
+    @property
+    def filterDefinitions(self):
+        return lsst.obs.base.FilterDefinitionCollection(
+            lsst.obs.base.FilterDefinition(physical_filter="u.MP9301", band="u", lambdaEff=374),
+            lsst.obs.base.FilterDefinition(physical_filter="g.MP9401", band="g", lambdaEff=487),
+            lsst.obs.base.FilterDefinition(physical_filter="r.MP9601", band="r", alias={"old-r"},
+                                           lambdaEff=628),
+            lsst.obs.base.FilterDefinition(physical_filter="i.MP9701", band="i", lambdaEff=778),
+            lsst.obs.base.FilterDefinition(physical_filter="z.MP9801", band="z", lambdaEff=1170),
+            # afw_name is so special-cased that only a real example will work
+            lsst.obs.base.FilterDefinition(physical_filter="HSC-R2", band="r", afw_name="r2", lambdaEff=623),
+        )
+
+    @classmethod
+    def getName(cls):
+        return "min"
+
+    def getCamera(self):
+        raise NotImplementedError()
+
+    def register(self, registry):
+        raise NotImplementedError()
+
+    def getRawFormatter(self, dataId):
+        raise NotImplementedError()
+
+    def makeDataIdTranslatorFactory(self):
+        raise NotImplementedError()
+
+
 class MinMapper1(lsst.obs.base.CameraMapper):
     packageName = 'larry'
 
@@ -66,6 +97,7 @@ class MinMapper1(lsst.obs.base.CameraMapper):
 
 class MinMapper2(lsst.obs.base.CameraMapper):
     packageName = 'moe'
+    _gen3instrument = MinCam
 
     # CalibRoot in policy
     # needCalibRegistry
