@@ -23,6 +23,7 @@ import copy
 import os
 import re
 import traceback
+import warnings
 import weakref
 
 from astro_metadata_translator import fix_header
@@ -1028,36 +1029,101 @@ class CameraMapper(dafPersist.Mapper):
         detector = self.camera[detectorName]
         item.setDetector(detector)
 
+    @staticmethod
+    def _resolveFilters(definitions, idFilter, filterLabel):
+        """Identify the filter(s) consistent with partial filter information.
+
+        Parameters
+        ----------
+        definitions : `lsst.obs.base.FilterDefinitionCollection`
+            The filter definitions in which to search for filters.
+        idFilter : `str` or `None`
+            The filter information provided in a data ID.
+        filterLabel : `lsst.afw.image.FilterLabel` or `None`
+            The filter information provided by an exposure; may be incomplete.
+
+        Returns
+        -------
+        filters : `set` [`lsst.obs.base.FilterDefinition`]
+            The set of filters consistent with ``idFilter``
+            and ``filterLabel``.
+        """
+        # Assume none of the filter constraints actually wrong/contradictory.
+        # Then taking the intersection of all constraints will give a unique
+        # result if one exists.
+        matches = set(definitions)
+        if idFilter is not None:
+            matches.intersection_update(definitions.findAll(idFilter))
+        if filterLabel is not None and filterLabel.hasPhysicalLabel():
+            matches.intersection_update(definitions.findAll(filterLabel.physicalLabel))
+        if filterLabel is not None and filterLabel.hasBandLabel():
+            matches.intersection_update(definitions.findAll(filterLabel.bandLabel))
+        return matches
+
     def _setFilter(self, mapping, item, dataId):
-        """Set the filter object in an Exposure.  If the Exposure had a FILTER
-        keyword, this was already processed during load.  But if it didn't,
-        use the filter from the registry.
+        """Set the filter information in an Exposure.
+
+        The Exposure should already have had a filter loaded, but the reader
+        (in ``afw``) had to act on incomplete information. This method
+        cross-checks the filter against the data ID and the standard list
+        of filters.
 
         Parameters
         ----------
         mapping : `lsst.obs.base.Mapping`
-            Where to get the filter from.
+            Where to get the data ID filter from.
         item : `lsst.afw.image.Exposure`
             Exposure to set the filter in.
         dataId : `dict`
             Dataset identifier.
         """
-
         if not (isinstance(item, afwImage.ExposureU) or isinstance(item, afwImage.ExposureI)
                 or isinstance(item, afwImage.ExposureF) or isinstance(item, afwImage.ExposureD)):
             return
 
-        if item.getFilter().getId() != afwImage.Filter.UNKNOWN:
-            return
-
-        actualId = mapping.need(['filter'], dataId)
-        filterName = actualId['filter']
-        if self.filters is not None and filterName in self.filters:
-            filterName = self.filters[filterName]
         try:
-            item.setFilter(afwImage.Filter(filterName))
-        except pexExcept.NotFoundError:
-            self.log.warn("Filter %s not defined.  Set to UNKNOWN." % (filterName))
+            # getGen3Instrument returns class; need to construct it.
+            filterDefinitions = self.getGen3Instrument()().filterDefinitions
+        except NotImplementedError:
+            filterDefinitions = None
+        itemFilter = item.getFilterLabel()  # may be None
+        try:
+            idFilter = mapping.need(['filter'], dataId)['filter']
+        except dafPersist.NoResults:
+            idFilter = None
+
+        if filterDefinitions is not None:
+            definitions = self._resolveFilters(filterDefinitions, idFilter, itemFilter)
+            self.log.debug("Matching filters for id=%r and label=%r are %s.",
+                           idFilter, itemFilter, definitions)
+            if len(definitions) == 1:
+                newLabel = list(definitions)[0].makeFilterLabel()
+                if newLabel != itemFilter:
+                    item.setFilterLabel(newLabel)
+            elif definitions:
+                self.log.warn("Multiple matches for filter %r with data ID %r.", itemFilter, idFilter)
+                # Can we at least add a band?
+                # Never expect multiple definitions with same physical filter.
+                bands = {d.band for d in definitions}  # None counts as separate result!
+                if len(bands) == 1 and itemFilter is None:
+                    band = list(bands)[0]
+                    item.setFilterLabel(afwImage.FilterLabel(band=band))
+            else:
+                # Unknown filter, nothing to be done.
+                self.log.warn("Cannot reconcile filter %r with data ID %r.", itemFilter, idFilter)
+        else:
+            if itemFilter is None:
+                # Old Filter cleanup, without the benefit of FilterDefinition
+                if self.filters is not None and idFilter in self.filters:
+                    idFilter = self.filters[idFilter]
+                try:
+                    # TODO: remove in DM-27177; at that point may not be able
+                    # to process IDs without FilterDefinition.
+                    with warnings.catch_warnings():
+                        warnings.filterwarnings("ignore", category=FutureWarning)
+                        item.setFilter(afwImage.Filter(idFilter))
+                except pexExcept.NotFoundError:
+                    self.log.warn("Filter %s not defined.  Set to UNKNOWN.", idFilter)
 
     def _standardizeExposure(self, mapping, item, dataId, filter=True,
                              trimmed=True, setVisitInfo=True):
