@@ -390,7 +390,7 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(mapper.canStandardize("raw"), True)
         self.assertEqual(mapper.canStandardize("notPresent"), False)
 
-    def testStandardizeFilters(self):
+    def testStandardizeFiltersFilterDefs(self):
         testLabels = [
             (None, None),
             (afwImage.FilterLabel(band="r", physical="r.MP9601"),
@@ -435,6 +435,43 @@ class Mapper2TestCase(unittest.TestCase):
                 testData.append(data)
 
         mapper = MinMapper2(root=ROOT)
+        for label, dataId, corrected in testData:
+            exposure = afwImage.ExposureF()
+            exposure.setFilterLabel(label)
+            mapper._setFilter(mapper.exposures['raw'], exposure, dataId)
+            self.assertEqual(exposure.getFilterLabel(), corrected, msg=f"Started from {label} and {dataId}")
+
+    def testStandardizeFiltersFilterNoDefs(self):
+        testLabels = [
+            None,
+            afwImage.FilterLabel(band="r", physical="r.MP9601"),
+            afwImage.FilterLabel(band="r"),
+            afwImage.FilterLabel(physical="r.MP9601"),
+            afwImage.FilterLabel(band="r", physical="old-r"),
+            afwImage.FilterLabel(physical="old-r"),
+            afwImage.FilterLabel(physical="r2"),
+        ]
+        testIds = [{"visit": 12345, "ccd": 42, "filter": f} for f in {
+            "r", "r.MP9601", "old-r", "r2",
+        }]
+        testData = []
+        # Resolve special combinations where the expected output is different
+        for input in testLabels:
+            for dataId in testIds:
+                if input is None:
+                    # Can still get some filter info out of the Filter registry
+                    if dataId["filter"] == "r2":
+                        data = (input, dataId,
+                                afwImage.FilterLabel(band="r", physical="HSC-R2"))
+                    else:
+                        # Data ID maps to filter(s) with aliases; can't
+                        # unambiguously determine physical filter.
+                        data = (input, dataId, afwImage.FilterLabel(band="r"))
+                else:
+                    data = (input, dataId, input)
+                testData.append(data)
+
+        mapper = MinMapper1(root=ROOT)
         for label, dataId, corrected in testData:
             exposure = afwImage.ExposureF()
             exposure.setFilterLabel(label)
