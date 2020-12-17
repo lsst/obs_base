@@ -616,7 +616,7 @@ insertFakes_config:
 processCcdWithFakes_config:
     persistable: Config
     storage: ConfigStorage
-    python: lsst.pipe.tasks.processCcdWithFakes.processCcdWithFakesConfig
+    python: lsst.pipe.tasks.processCcdWithFakes.ProcessCcdWithFakesConfig
     template: config/processCcdWithFakes.py
 processCcdWithFakes_metadata:
     persistable: PropertySet
