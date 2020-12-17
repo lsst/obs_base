@@ -92,6 +92,31 @@ class FilterDefinitionCollection(collections.abc.Sequence):
         lsst.afw.image.utils.resetFilters()
         cls._defined = None
 
+    def findAll(self, name):
+        """Return the FilterDefinitions that match a particular name.
+
+        This method makes no attempt to prioritize, e.g., band names over
+        physical filter names; any definition that makes *any* reference
+        to the name is returned.
+
+        Parameters
+        ----------
+        name : `str`
+            The name to search for. May be any band, physical, or alias name.
+
+        Returns
+        -------
+        matches : `set` [`FilterDefinition`]
+            All FilterDefinitions containing ``name`` as one of their
+            filter names.
+        """
+        matches = set()
+        for filter in self._filters:
+            if name == filter.physical_filter or name == filter.band or name == filter.afw_name \
+                    or name in filter.alias:
+                matches.add(filter)
+        return matches
+
 
 @dataclasses.dataclass(frozen=True)
 class FilterDefinition:
@@ -191,3 +216,8 @@ class FilterDefinition:
                                           lambdaMin=self.lambdaMin,
                                           lambdaMax=self.lambdaMax,
                                           alias=sorted(aliases))
+
+    def makeFilterLabel(self):
+        """Create a complete FilterLabel for this filter.
+        """
+        return lsst.afw.image.FilterLabel(band=self.band, physical=self.physical_filter)

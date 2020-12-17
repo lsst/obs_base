@@ -58,6 +58,13 @@ class TestFilterDefinitionCollection(lsst.utils.tests.TestCase):
         self.assertEqual(lsst.afw.image.Filter('abc').getFilterProperty().getLambdaEff(), 321)
         self.assertEqual(lsst.afw.image.Filter('def').getFilterProperty().getLambdaEff(), 654)
 
+    def test_findAll(self):
+        self.assertEqual(set(self.filters1.findAll('r')), set())
+        matches = self.filters1.findAll('abc')
+        self.assertEqual(len(matches), 1)
+        match = list(matches)[0]
+        self.assertEqual(match.physical_filter, 'abc')
+
 
 class TestFilterDefinition(lsst.utils.tests.TestCase):
     def setUp(self):
@@ -112,6 +119,8 @@ class TestFilterDefinition(lsst.utils.tests.TestCase):
         filter = lsst.afw.image.Filter('physical')
         self.assertEqual(filter.getName(), 'physical')
         self.assertEqual([], sorted(filter.getAliases()))
+        self.assertEqual(self.physical_only.makeFilterLabel(),
+                         lsst.afw.image.FilterLabel(physical='physical'))
 
     def test_afw_name(self):
         """afw_name is the Filter name, physical_filter is an alias.
@@ -122,6 +131,8 @@ class TestFilterDefinition(lsst.utils.tests.TestCase):
         self.assertEqual(filter.getName(), 'afw only')
         self.assertEqual(filter_alias.getCanonicalName(), 'afw only')
         self.assertEqual(['afw_name'], sorted(filter.getAliases()))
+        self.assertEqual(self.afw_name.makeFilterLabel(),
+                         lsst.afw.image.FilterLabel(physical='afw_name'))
 
     def test_abstract_only(self):
         """band is the Filter name, physical_filter is an alias.
@@ -132,6 +143,8 @@ class TestFilterDefinition(lsst.utils.tests.TestCase):
         self.assertEqual(filter.getName(), 'abstract only')
         self.assertEqual(filter_alias.getCanonicalName(), 'abstract only')
         self.assertEqual(['abstract'], sorted(filter.getAliases()))
+        self.assertEqual(self.abstract.makeFilterLabel(),
+                         lsst.afw.image.FilterLabel(band='abstract only', physical='abstract'))
 
 
 class MemoryTester(lsst.utils.tests.MemoryTestCase):
