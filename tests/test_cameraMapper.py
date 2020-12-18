@@ -218,6 +218,12 @@ class Mapper1TestCase(unittest.TestCase):
 class Mapper2TestCase(unittest.TestCase):
     """A test case for the mapper used by the data butler."""
 
+    def setUp(self):
+        super().setUp()
+        # Force a standard set of filters even for tests that don't use
+        # MinCam directly.
+        MinCam()
+
     def testGetDatasetTypes(self):
         mapper = MinMapper2(root=ROOT)
         expectedTypes = BaseMapper(ROOT).getDatasetTypes()
