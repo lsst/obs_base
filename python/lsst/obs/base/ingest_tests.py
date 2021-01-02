@@ -56,6 +56,10 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     file = ""
     """Full path to a file to ingest in tests."""
 
+    filterLabel = None
+    """The lsst.afw.image.FilterLabel that should be returned by the above
+    file."""
+
     rawIngestTask = "lsst.obs.base.RawIngestTask"
     """The task to use in the Ingest test."""
 
@@ -171,6 +175,10 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
             rawImage = butler.get("raw.image", dataId)
             self.assertEqual(rawImage.getBBox(), exposure.getBBox())
+
+            # check that the filter label got the correct band
+            filterLabel = butler.get("raw.filterLabel", dataId)
+            self.assertEqual(filterLabel, self.filterLabel)
 
         self.checkRepo(files=files)
 

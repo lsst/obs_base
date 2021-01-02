@@ -30,9 +30,13 @@ import lsst.pex.exceptions
 class TestFilterDefinitionCollection(lsst.utils.tests.TestCase):
     def setUp(self):
         self.filters1 = FilterDefinitionCollection(FilterDefinition(physical_filter='abc', lambdaEff=123),
-                                                   FilterDefinition(physical_filter='def', lambdaEff=456))
+                                                   FilterDefinition(physical_filter='def',
+                                                                    band='d',
+                                                                    lambdaEff=456))
         self.filters2 = FilterDefinitionCollection(FilterDefinition(physical_filter='abc', lambdaEff=321),
-                                                   FilterDefinition(physical_filter='def', lambdaEff=654))
+                                                   FilterDefinition(physical_filter='def',
+                                                                    band='dd',
+                                                                    lambdaEff=654))
         FilterDefinitionCollection.reset()
 
     def test_singleton(self):
@@ -64,6 +68,14 @@ class TestFilterDefinitionCollection(lsst.utils.tests.TestCase):
         self.assertEqual(len(matches), 1)
         match = list(matches)[0]
         self.assertEqual(match.physical_filter, 'abc')
+
+    def test_physical_to_band(self):
+        """Test that the physical_to_band dict returns expected values.
+        """
+        self.assertIsNone(self.filters1.physical_to_band['abc'])
+        self.assertEqual(self.filters1.physical_to_band['def'], 'd')
+        self.assertIsNone(self.filters2.physical_to_band['abc'])
+        self.assertEqual(self.filters2.physical_to_band['def'], 'dd')
 
 
 class TestFilterDefinition(lsst.utils.tests.TestCase):

@@ -308,7 +308,9 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
         filter : `~lsst.afw.image.FilterLabel`
             Object that identifies the filter for this image.
         """
-        return lsst.afw.image.FilterLabel.fromPhysical(self.observationInfo.physical_filter)
+        physical = self.observationInfo.physical_filter
+        band = self.filterDefinitions.physical_to_band[physical]
+        return lsst.afw.image.FilterLabel(physical=physical, band=band)
 
     def readComponent(self, component, parameters=None):
         """Read a component held by the Exposure.
