@@ -52,10 +52,11 @@ class MinCam(lsst.obs.base.Instrument):
             lsst.obs.base.FilterDefinition(physical_filter="g.MP9401", band="g", lambdaEff=487),
             lsst.obs.base.FilterDefinition(physical_filter="r.MP9601", band="r", alias={"old-r"},
                                            lambdaEff=628),
-            lsst.obs.base.FilterDefinition(physical_filter="i.MP9701", band="i", lambdaEff=778),
+            lsst.obs.base.FilterDefinition(physical_filter="i.MP9701", band="i", alias={"old-i"},
+                                           lambdaEff=778),
             lsst.obs.base.FilterDefinition(physical_filter="z.MP9801", band="z", lambdaEff=1170),
             # afw_name is so special-cased that only a real example will work
-            lsst.obs.base.FilterDefinition(physical_filter="HSC-R2", band="r", afw_name="r2", lambdaEff=623),
+            lsst.obs.base.FilterDefinition(physical_filter="HSC-I2", band="i", afw_name="i2", lambdaEff=623),
         )
 
     @classmethod
@@ -403,41 +404,41 @@ class Mapper2TestCase(unittest.TestCase):
     def testStandardizeFiltersFilterDefs(self):
         testLabels = [
             (None, None),
-            (afwImage.FilterLabel(band="r", physical="r.MP9601"),
-             afwImage.FilterLabel(band="r", physical="r.MP9601")),
-            (afwImage.FilterLabel(band="r"), afwImage.FilterLabel(band="r", physical="r.MP9601")),
-            (afwImage.FilterLabel(physical="r.MP9601"),
-             afwImage.FilterLabel(band="r", physical="r.MP9601")),
-            (afwImage.FilterLabel(band="r", physical="old-r"),
-             afwImage.FilterLabel(band="r", physical="r.MP9601")),
-            (afwImage.FilterLabel(physical="old-r"),
-             afwImage.FilterLabel(band="r", physical="r.MP9601")),
-            (afwImage.FilterLabel(physical="r2"), afwImage.FilterLabel(band="r", physical="HSC-R2")),
+            (afwImage.FilterLabel(band="i", physical="i.MP9701"),
+             afwImage.FilterLabel(band="i", physical="i.MP9701")),
+            (afwImage.FilterLabel(band="i"), afwImage.FilterLabel(band="r", physical="i.MP9701")),
+            (afwImage.FilterLabel(physical="i.MP9701"),
+             afwImage.FilterLabel(band="i", physical="i.MP9701")),
+            (afwImage.FilterLabel(band="i", physical="old-i"),
+             afwImage.FilterLabel(band="i", physical="i.MP9701")),
+            (afwImage.FilterLabel(physical="old-i"),
+             afwImage.FilterLabel(band="i", physical="i.MP9701")),
+            (afwImage.FilterLabel(physical="i2"), afwImage.FilterLabel(band="i", physical="HSC-I2")),
         ]
         testIds = [{"visit": 12345, "ccd": 42, "filter": f} for f in {
-            "r", "r.MP9601", "old-r", "r2",
+            "i", "i.MP9701", "old-i", "i2",
         }]
         testData = []
         # Resolve special combinations where the expected output is different
         for input, corrected in testLabels:
             for dataId in testIds:
                 if input is None:
-                    if dataId["filter"] == "r":
-                        data = (input, dataId, afwImage.FilterLabel(band="r"))
-                    elif dataId["filter"] == "r2":
-                        data = (input, dataId, afwImage.FilterLabel(band="r", physical="HSC-R2"))
+                    if dataId["filter"] == "i":
+                        data = (input, dataId, afwImage.FilterLabel(band="i"))
+                    elif dataId["filter"] == "i2":
+                        data = (input, dataId, afwImage.FilterLabel(band="i", physical="HSC-I2"))
                     else:
-                        data = (input, dataId, afwImage.FilterLabel(band="r", physical="r.MP9601"))
-                elif input == afwImage.FilterLabel(band="r"):
-                    if dataId["filter"] == "r":
-                        # There are two "r" filters, can't tell which
+                        data = (input, dataId, afwImage.FilterLabel(band="i", physical="i.MP9701"))
+                elif input == afwImage.FilterLabel(band="i"):
+                    if dataId["filter"] == "i":
+                        # There are two "i" filters, can't tell which
                         data = (input, dataId, input)
-                    elif dataId["filter"] == "r2":
-                        data = (input, dataId, afwImage.FilterLabel(band="r", physical="HSC-R2"))
-                elif corrected.physicalLabel == "HSC-R2" and dataId["filter"] in ("r.MP9601", "old-r"):
+                    elif dataId["filter"] == "i2":
+                        data = (input, dataId, afwImage.FilterLabel(band="i", physical="HSC-I2"))
+                elif corrected.physicalLabel == "HSC-I2" and dataId["filter"] in ("i.MP9701", "old-i"):
                     # Contradictory inputs, leave as-is
                     data = (input, dataId, input)
-                elif corrected.physicalLabel == "r.MP9601" and dataId["filter"] == "r2":
+                elif corrected.physicalLabel == "i.MP9701" and dataId["filter"] == "i2":
                     # Contradictory inputs, leave as-is
                     data = (input, dataId, input)
                 else:
@@ -454,15 +455,15 @@ class Mapper2TestCase(unittest.TestCase):
     def testStandardizeFiltersFilterNoDefs(self):
         testLabels = [
             None,
-            afwImage.FilterLabel(band="r", physical="r.MP9601"),
-            afwImage.FilterLabel(band="r"),
-            afwImage.FilterLabel(physical="r.MP9601"),
-            afwImage.FilterLabel(band="r", physical="old-r"),
-            afwImage.FilterLabel(physical="old-r"),
-            afwImage.FilterLabel(physical="r2"),
+            afwImage.FilterLabel(band="i", physical="i.MP9701"),
+            afwImage.FilterLabel(band="i"),
+            afwImage.FilterLabel(physical="i.MP9701"),
+            afwImage.FilterLabel(band="i", physical="old-i"),
+            afwImage.FilterLabel(physical="old-i"),
+            afwImage.FilterLabel(physical="i2"),
         ]
         testIds = [{"visit": 12345, "ccd": 42, "filter": f} for f in {
-            "r", "r.MP9601", "old-r", "r2",
+            "i", "i.MP9701", "old-i", "i2",
         }]
         testData = []
         # Resolve special combinations where the expected output is different
@@ -470,13 +471,13 @@ class Mapper2TestCase(unittest.TestCase):
             for dataId in testIds:
                 if input is None:
                     # Can still get some filter info out of the Filter registry
-                    if dataId["filter"] == "r2":
+                    if dataId["filter"] == "i2":
                         data = (input, dataId,
-                                afwImage.FilterLabel(band="r", physical="HSC-R2"))
+                                afwImage.FilterLabel(band="i", physical="HSC-I2"))
                     else:
                         # Data ID maps to filter(s) with aliases; can't
                         # unambiguously determine physical filter.
-                        data = (input, dataId, afwImage.FilterLabel(band="r"))
+                        data = (input, dataId, afwImage.FilterLabel(band="i"))
                 else:
                     data = (input, dataId, input)
                 testData.append(data)
