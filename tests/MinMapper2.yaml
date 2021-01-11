@@ -18,6 +18,12 @@ exposures:
         persistable: "ImageU"
         level:       "Ccd"
         tables:      "raw"
+    someExp:
+        template:    "bar-%(ccd)02d.fits"
+        python:      "lsst.afw.image.ExposureF"
+        persistable: "ImageF"
+        level:       "Ccd"
+        tables:      "raw"
 
 images:
     some:

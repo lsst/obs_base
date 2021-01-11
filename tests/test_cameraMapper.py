@@ -239,6 +239,10 @@ class Mapper2TestCase(unittest.TestCase):
                               "someGz", "someGz_filename", "someFz", "someFz_filename", "someGz_md",
                               "someFz_sub", "someFz_md", "someGz_sub",
                               "someGz_bbox", "someFz_bbox", "some_bbox", "other_bbox",
+                              "someExp", "someExp_filename", "someExp_md", "someExp_sub",
+                              "someExp_bbox", "someExp_filterLabel", "someExp_photoCalib",
+                              "someExp_visitInfo", "someExp_detector", "someExp_filter",
+                              "someExp_header_wcs", "someExp_wcs",
                               ])
         self.assertEqual(set(mapper.getDatasetTypes()),
                          set(expectedTypes))
