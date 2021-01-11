@@ -1343,16 +1343,26 @@ analysisVisitTable_commonZp:
     storage: ParquetStorage
     python: lsst.pipe.tasks.parquetTable.ParquetTable
     template: plots/%(filter)s/tract-%(tract)d/visit-%(visit)d%(subdir)s/%(tract)d_%(visit)d_commonZp.parq
-analysisMatchFullRefVisitTable:
+analysisAstromMatchFullRefVisitTable:
     description: >
-        Per-visit table (for specific tract) of the matched source-to-external reference
-        catalog assembled by pipe_analysis scripts.  The table is "denormalized", i.e.
-        contains all fields from the original source and external catalogs (but with
+        Per-visit table (for specific tract) of the matched source-to-external astrometric
+        reference catalog assembled by pipe_analysis scripts.  The table is "denormalized",
+         i.e. contains all fields from the original source and external catalogs (but with
         "src_" and "ref_" prefixes on the column names).
     persistable: ignored
     storage: ParquetStorage
     python: lsst.pipe.tasks.parquetTable.ParquetTable
-    template: plots/%(filter)s/tract-%(tract)d/visit-%(visit)d%(subdir)s/%(tract)d_%(visit)d_matchFullRef.parq
+    template: plots/%(filter)s/tract-%(tract)d/visit-%(visit)d%(subdir)s/%(tract)d_%(visit)d_astromMatchFullRef.parq
+analysisPhotomMatchFullRefVisitTable:
+    description: >
+        Per-visit table (for specific tract) of the matched source-to-external photometric
+        reference catalog assembled by pipe_analysis scripts.  The table is "denormalized",
+         i.e. contains all fields from the original source and external catalogs (but with
+        "src_" and "ref_" prefixes on the column names).
+    persistable: ignored
+    storage: ParquetStorage
+    python: lsst.pipe.tasks.parquetTable.ParquetTable
+    template: plots/%(filter)s/tract-%(tract)d/visit-%(visit)d%(subdir)s/%(tract)d_%(visit)d_photomMatchFullRef.parq
 analysisCoaddTable_forced:
     description: >
         Per-tract object table assembled by pipe_analysis scripts (forced photometry).
@@ -1367,26 +1377,46 @@ analysisCoaddTable_unforced:
     storage: ParquetStorage
     python: lsst.pipe.tasks.parquetTable.ParquetTable
     template: plots/%(filter)s/tract-%(tract)d%(subdir)s/%(tract)d_unforced.parq
-analysisMatchFullRefCoaddTable_forced:
+analysisAstromMatchFullRefCoaddTable_forced:
     description: >
-        Per-tract table of the matched source-to-external reference catalog assembled
-        by pipe_analysis scripts (forced photometry).  The table is "denormalized", i.e.
-        contains all fields from the original source and external catalogs (but with
-        "src_" and "ref_" prefixes on the column names).
+        Per-tract table of the matched source-to-external astrometric reference
+        catalog assembled by pipe_analysis scripts (forced photometry).  The table
+        is "denormalized", i.e. contains all fields from the original source and
+        external catalogs (but with "src_" and "ref_" prefixes on the column names).
     persistable: ignored
     storage: ParquetStorage
     python: lsst.pipe.tasks.parquetTable.ParquetTable
-    template: plots/%(filter)s/tract-%(tract)d%(subdir)s/%(tract)d_matchFullRef_forced.parq
-analysisMatchFullRefCoaddTable_unforced:
+    template: plots/%(filter)s/tract-%(tract)d%(subdir)s/%(tract)d_astromMatchFullRef_forced.parq
+analysisAstromMatchFullRefCoaddTable_unforced:
     description: >
-        Per-tract table of the matched source-to-external reference catalog assembled
-        by pipe_analysis scripts (unforced photometry).  The table is "denormalized", i.e.
-        contains all fields from the original source and external catalogs (but with
-        "src_" and "ref_" prefixes on the column names).
+        Per-tract table of the matched source-to-external astrometric reference
+        catalog assembled by pipe_analysis scripts (unforced photometry).  The table
+        is "denormalized", i.e. contains all fields from the original source and
+        external catalogs (but with "src_" and "ref_" prefixes on the column names).
     persistable: ignored
     storage: ParquetStorage
     python: lsst.pipe.tasks.parquetTable.ParquetTable
-    template: plots/%(filter)s/tract-%(tract)d%(subdir)s/%(tract)d_matchFullRef_unforced.parq
+    template: plots/%(filter)s/tract-%(tract)d%(subdir)s/%(tract)d_astromMatchFullRef_unforced.parq
+analysisPhotomMatchFullRefCoaddTable_forced:
+    description: >
+        Per-tract table of the matched source-to-external photometric reference
+        catalog assembled by pipe_analysis scripts (forced photometry).  The table
+        is "denormalized", i.e. contains all fields from the original source and
+        external catalogs (but with "src_" and "ref_" prefixes on the column names).
+    persistable: ignored
+    storage: ParquetStorage
+    python: lsst.pipe.tasks.parquetTable.ParquetTable
+    template: plots/%(filter)s/tract-%(tract)d%(subdir)s/%(tract)d_photomMatchFullRef_forced.parq
+analysisPhotomMatchFullRefCoaddTable_unforced:
+    description: >
+        Per-tract table of the matched source-to-external photometric reference
+        catalog assembled by pipe_analysis scripts (unforced photometry).  The table
+        is "denormalized", i.e. contains all fields from the original source and
+        external catalogs (but with "src_" and "ref_" prefixes on the column names).
+    persistable: ignored
+    storage: ParquetStorage
+    python: lsst.pipe.tasks.parquetTable.ParquetTable
+    template: plots/%(filter)s/tract-%(tract)d%(subdir)s/%(tract)d_photomMatchFullRef_unforced.parq
 analysisColorTable:
     description: >
         Principal color table assembled by pipe_analysis scripts.
