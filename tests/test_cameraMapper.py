@@ -335,6 +335,20 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(image.getHeight(), 400)
         self.assertEqual(image.getWidth(), 300)
 
+    def testFilter(self):
+        """Test that the same (patched) filter is returned through all Butler
+        retrieval paths.
+        """
+        mapper = MinMapper2(root=ROOT)
+
+        butler = dafPersist.ButlerFactory(mapper=mapper).create()
+        image = butler.get("someExp", ccd=35)
+        filter = butler.get("someExp_filterLabel", ccd=35)
+        # Test only valid with a complete filter
+        self.assertEqual(image.getFilterLabel(), afwImage.FilterLabel(band="r", physical="r.MP9601"))
+        # Datasets should give consistent answers
+        self.assertEqual(filter, image.getFilterLabel())
+
     def testDetector(self):
         mapper = MinMapper2(root=ROOT)
         butler = dafPersist.ButlerFactory(mapper=mapper).create()
