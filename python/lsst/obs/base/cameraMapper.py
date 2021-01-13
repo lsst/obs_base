@@ -470,7 +470,19 @@ class CameraMapper(dafPersist.Mapper):
                             # TODO: deprecate in DM-27177, remove in DM-27811
                             def getFilterLabel(datasetType, pythonType, location, dataId):
                                 fitsReader = afwImage.ExposureFitsReader(location.getLocationsWithRoot()[0])
-                                return fitsReader.readFilterLabel()
+                                storedFilter = fitsReader.readFilterLabel()
+
+                                # Apply standardization used by full Exposure
+                                try:
+                                    # mapping is local to enclosing scope
+                                    idFilter = mapping.need(['filter'], dataId)['filter']
+                                except dafPersist.NoResults:
+                                    idFilter = None
+                                bestFilter = self._getBestFilter(storedFilter, idFilter)
+                                if bestFilter is not None:
+                                    return bestFilter
+                                else:
+                                    return storedFilter
 
                             setMethods("filterLabel", bypassImpl=getFilterLabel)
 
@@ -1060,6 +1072,55 @@ class CameraMapper(dafPersist.Mapper):
             matches.intersection_update(definitions.findAll(filterLabel.bandLabel))
         return matches
 
+    def _getBestFilter(self, storedLabel, idFilter):
+        """Estimate the most complete filter information consistent with the
+        file or registry.
+
+        Parameters
+        ----------
+        storedLabel : `lsst.afw.image.FilterLabel` or `None`
+            The filter previously stored in the file.
+        idFilter : `str` or `None`
+            The filter implied by the data ID, if any.
+
+        Returns
+        -------
+        bestFitler : `lsst.afw.image.FilterLabel` or `None`
+            The complete filter to describe the dataset. May be equal to
+            ``storedLabel``. `None` if no recommendation can be generated.
+        """
+        try:
+            # getGen3Instrument returns class; need to construct it.
+            filterDefinitions = self.getGen3Instrument()().filterDefinitions
+        except NotImplementedError:
+            filterDefinitions = None
+
+        if filterDefinitions is not None:
+            definitions = self._resolveFilters(filterDefinitions, idFilter, storedLabel)
+            self.log.debug("Matching filters for id=%r and label=%r are %s.",
+                           idFilter, storedLabel, definitions)
+            if len(definitions) == 1:
+                newLabel = list(definitions)[0].makeFilterLabel()
+                return newLabel
+            elif definitions:
+                self.log.warn("Multiple matches for filter %r with data ID %r.", storedLabel, idFilter)
+                # Can we at least add a band?
+                # Never expect multiple definitions with same physical filter.
+                bands = {d.band for d in definitions}  # None counts as separate result!
+                if len(bands) == 1 and storedLabel is None:
+                    band = list(bands)[0]
+                    return afwImage.FilterLabel(band=band)
+                else:
+                    return None
+            else:
+                # Unknown filter, nothing to be done.
+                self.log.warn("Cannot reconcile filter %r with data ID %r.", storedLabel, idFilter)
+                return None
+
+        # Not practical to recommend a FilterLabel without filterDefinitions
+
+        return None
+
     def _setFilter(self, mapping, item, dataId):
         """Set the filter information in an Exposure.
 
@@ -1081,49 +1142,29 @@ class CameraMapper(dafPersist.Mapper):
                 or isinstance(item, afwImage.ExposureF) or isinstance(item, afwImage.ExposureD)):
             return
 
-        try:
-            # getGen3Instrument returns class; need to construct it.
-            filterDefinitions = self.getGen3Instrument()().filterDefinitions
-        except NotImplementedError:
-            filterDefinitions = None
         itemFilter = item.getFilterLabel()  # may be None
         try:
             idFilter = mapping.need(['filter'], dataId)['filter']
         except dafPersist.NoResults:
             idFilter = None
 
-        if filterDefinitions is not None:
-            definitions = self._resolveFilters(filterDefinitions, idFilter, itemFilter)
-            self.log.debug("Matching filters for id=%r and label=%r are %s.",
-                           idFilter, itemFilter, definitions)
-            if len(definitions) == 1:
-                newLabel = list(definitions)[0].makeFilterLabel()
-                if newLabel != itemFilter:
-                    item.setFilterLabel(newLabel)
-            elif definitions:
-                self.log.warn("Multiple matches for filter %r with data ID %r.", itemFilter, idFilter)
-                # Can we at least add a band?
-                # Never expect multiple definitions with same physical filter.
-                bands = {d.band for d in definitions}  # None counts as separate result!
-                if len(bands) == 1 and itemFilter is None:
-                    band = list(bands)[0]
-                    item.setFilterLabel(afwImage.FilterLabel(band=band))
-            else:
-                # Unknown filter, nothing to be done.
-                self.log.warn("Cannot reconcile filter %r with data ID %r.", itemFilter, idFilter)
-        else:
-            if itemFilter is None:
-                # Old Filter cleanup, without the benefit of FilterDefinition
-                if self.filters is not None and idFilter in self.filters:
-                    idFilter = self.filters[idFilter]
-                try:
-                    # TODO: remove in DM-27177; at that point may not be able
-                    # to process IDs without FilterDefinition.
-                    with warnings.catch_warnings():
-                        warnings.filterwarnings("ignore", category=FutureWarning)
-                        item.setFilter(afwImage.Filter(idFilter))
-                except pexExcept.NotFoundError:
-                    self.log.warn("Filter %s not defined.  Set to UNKNOWN.", idFilter)
+        bestFilter = self._getBestFilter(itemFilter, idFilter)
+        if bestFilter is not None:
+            if bestFilter != itemFilter:
+                item.setFilterLabel(bestFilter)
+            # Already using bestFilter, avoid unnecessary edits
+        elif itemFilter is None:
+            # Old Filter cleanup, without the benefit of FilterDefinition
+            if self.filters is not None and idFilter in self.filters:
+                idFilter = self.filters[idFilter]
+            try:
+                # TODO: remove in DM-27177; at that point may not be able
+                # to process IDs without FilterDefinition.
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", category=FutureWarning)
+                    item.setFilter(afwImage.Filter(idFilter))
+            except pexExcept.NotFoundError:
+                self.log.warn("Filter %s not defined.  Set to UNKNOWN.", idFilter)
 
     def _standardizeExposure(self, mapping, item, dataId, filter=True,
                              trimmed=True, setVisitInfo=True):
