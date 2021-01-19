@@ -180,7 +180,7 @@ class Mapping(object):
             addFunc = getattr(mapper, addFunc)
             additionalData = addFunc(self.datasetType, actualId)
             assert isinstance(additionalData, PropertySet), \
-                "Bad type for returned data: %s" (type(additionalData),)
+                "Bad type for returned data: %s" % (type(additionalData),)
         else:
             additionalData = None
 
