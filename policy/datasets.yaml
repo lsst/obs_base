@@ -1493,7 +1493,7 @@ measurePhotonTransferCurve_metadata:
 photonTransferCurveDataset:
     description: "Persisted output data from the MeasurePhotonTransferCurveTask"
     persistable: ignored
-    python: lsst.cp.pipe.ptc.PhotonTransferCurveDataset
+    python: lsst.ip.isr.PhotonTransferCurveDataset
     storage: FitsCatalogStorage
     tables: 'raw'
     template: ''
