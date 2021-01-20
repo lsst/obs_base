@@ -183,7 +183,6 @@ class FitsExposureFormatter(Formatter):
                         'visitInfo': ('readVisitInfo', False),
                         'transmissionCurve': ('readTransmissionCurve', False),
                         'detector': ('readDetector', False),
-                        'extras': ('readExtraComponents', False),
                         'exposureInfo': ('readExposureInfo', False),
                         }
         method, hasParams = componentMap.get(component, (None, False))
