@@ -33,7 +33,7 @@ class ExposureAssembler(StorageClassDelegate):
     EXPOSURE_COMPONENTS = set(("image", "variance", "mask", "wcs", "psf"))
     EXPOSURE_INFO_COMPONENTS = set(("apCorrMap", "coaddInputs", "photoCalib", "metadata",
                                     "filterLabel", "transmissionCurve", "visitInfo",
-                                    "detector", "validPolygon"))
+                                    "detector", "validPolygon", "summaryStats"))
     EXPOSURE_READ_COMPONENTS = {"bbox", "dimensions", "xy0", "filter"}
 
     COMPONENT_MAP = {"bbox": "BBox", "xy0": "XY0"}
@@ -228,6 +228,7 @@ class ExposureAssembler(StorageClassDelegate):
         info.setValidPolygon(components.pop("validPolygon", None))
         info.setDetector(components.pop("detector", None))
         info.setTransmissionCurve(components.pop("transmissionCurve", None))
+        info.setSummaryStats(components.pop("summaryStats", None))
 
         # TODO: switch back to "filter" as primary component in DM-27177
         info.setFilterLabel(components.pop("filterLabel", None))

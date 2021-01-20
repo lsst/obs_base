@@ -29,6 +29,7 @@ from lsst.daf.butler import Formatter
 # out lots of headers and there is no way to recover them
 from lsst.afw.fits import readMetadata
 from lsst.afw.image import ExposureFitsReader, ImageFitsReader, MaskFitsReader, MaskedImageFitsReader
+from lsst.afw.image import ExposureInfo
 # Needed for ApCorrMap to resolve properly
 from lsst.afw.math import BoundedField  # noqa: F401
 
@@ -164,28 +165,29 @@ class FitsExposureFormatter(Formatter):
         """
 
         # Metadata is handled explicitly elsewhere
-        componentMap = {'wcs': ('readWcs', False),
-                        'coaddInputs': ('readCoaddInputs', False),
-                        'psf': ('readPsf', False),
-                        'image': ('readImage', True),
-                        'mask': ('readMask', True),
-                        'variance': ('readVariance', True),
-                        'photoCalib': ('readPhotoCalib', False),
-                        'bbox': ('readBBox', True),
-                        'dimensions': ('readBBox', True),
-                        'xy0': ('readXY0', True),
+        componentMap = {'wcs': ('readWcs', False, None),
+                        'coaddInputs': ('readCoaddInputs', False, None),
+                        'psf': ('readPsf', False, None),
+                        'image': ('readImage', True, None),
+                        'mask': ('readMask', True, None),
+                        'variance': ('readVariance', True, None),
+                        'photoCalib': ('readPhotoCalib', False, None),
+                        'bbox': ('readBBox', True, None),
+                        'dimensions': ('readBBox', True, None),
+                        'xy0': ('readXY0', True, None),
                         # TODO: deprecate in DM-27170, remove in DM-27177
-                        'filter': ('readFilter', False),
+                        'filter': ('readFilter', False, None),
                         # TODO: deprecate in DM-27177, remove in DM-27811
-                        'filterLabel': ('readFilterLabel', False),
-                        'validPolygon': ('readValidPolygon', False),
-                        'apCorrMap': ('readApCorrMap', False),
-                        'visitInfo': ('readVisitInfo', False),
-                        'transmissionCurve': ('readTransmissionCurve', False),
-                        'detector': ('readDetector', False),
-                        'exposureInfo': ('readExposureInfo', False),
+                        'filterLabel': ('readFilterLabel', False, None),
+                        'validPolygon': ('readValidPolygon', False, None),
+                        'apCorrMap': ('readApCorrMap', False, None),
+                        'visitInfo': ('readVisitInfo', False, None),
+                        'transmissionCurve': ('readTransmissionCurve', False, None),
+                        'detector': ('readDetector', False, None),
+                        'exposureInfo': ('readExposureInfo', False, None),
+                        'summaryStats': ('readComponent', False, ExposureInfo.KEY_SUMMARY_STATS),
                         }
-        method, hasParams = componentMap.get(component, (None, False))
+        method, hasParams, componentName = componentMap.get(component, (None, False, None))
 
         if method:
             # This reader can read standalone Image/Mask files as well
@@ -200,10 +202,14 @@ class FitsExposureFormatter(Formatter):
                     parameters = {}
                 self.fileDescriptor.storageClass.validateParameters(parameters)
 
-                if hasParams and parameters:
-                    thisComponent = caller(**parameters)
+                if componentName is None:
+                    if hasParams and parameters:
+                        thisComponent = caller(**parameters)
+                    else:
+                        thisComponent = caller()
                 else:
-                    thisComponent = caller()
+                    thisComponent = caller(componentName)
+
                 if component == "dimensions" and thisComponent is not None:
                     thisComponent = thisComponent.getDimensions()
                 return thisComponent
