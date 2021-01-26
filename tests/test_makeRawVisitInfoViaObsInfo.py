@@ -62,7 +62,7 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
         self.header = {
             "DATE-OBS": self.datetime_begin.isot,
             "DATE-END": self.datetime_end.isot,
-            "INSTRUME": "Irrelevant",
+            "INSTRUME": "SomeCamera",
             "TELESCOP": "LSST",
             "TIMESYS": "UTC",
             "EXPTIME": self.exposure_time,
@@ -86,6 +86,7 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
         self.assertEqual(visitInfo.getExposureId(), self.exposure_id)
         self.assertEqual(visitInfo.getDate(), DateTime("2001-01-02T03:04:06.123456789Z", DateTime.UTC))
         self.assertEqual(len(self.header), beforeLength)
+        self.assertEqual(visitInfo.getInstrumentLabel(), "SomeCamera")
 
     def testObservationInfo2VisitInfo(self):
 
@@ -98,6 +99,7 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
         self.assertAlmostEqual(visitInfo.getExposureTime(), self.exposure_time.to_value("s"))
         self.assertEqual(visitInfo.getExposureId(), self.exposure_id)
         self.assertEqual(visitInfo.getDate(), DateTime("2001-01-02T03:04:06.123456789Z", DateTime.UTC))
+        self.assertEqual(visitInfo.getInstrumentLabel(), "SomeCamera")
 
 
 if __name__ == "__main__":
