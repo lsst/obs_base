@@ -22,6 +22,7 @@
 __all__ = ("FitsRawFormatterBase",)
 
 from abc import ABCMeta, abstractmethod
+from deprecated.sphinx import deprecated
 
 from astro_metadata_translator import ObservationInfo
 
@@ -280,6 +281,8 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
             log.warn("Cannot create a valid WCS from metadata: %s", e.args[0])
             return None
 
+    # TODO: remove in DM-27177
+    @deprecated(reason="Replaced with makeFilterLabel. Will be removed after v22.", category=FutureWarning)
     def makeFilter(self):
         """Construct a Filter from metadata.
 
@@ -295,6 +298,19 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
             `~lsst.afw.image.utils.defineFilter`.
         """
         return lsst.afw.image.Filter(self.observationInfo.physical_filter)
+
+    # TODO: deprecate in DM-27177, remove in DM-27811
+    def makeFilterLabel(self):
+        """Construct a FilterLabel from metadata.
+
+        Returns
+        -------
+        filter : `~lsst.afw.image.FilterLabel`
+            Object that identifies the filter for this image.
+        """
+        physical = self.observationInfo.physical_filter
+        band = self.filterDefinitions.physical_to_band[physical]
+        return lsst.afw.image.FilterLabel(physical=physical, band=band)
 
     def readComponent(self, component, parameters=None):
         """Read a component held by the Exposure.
@@ -325,6 +341,8 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
             return self.readVariance()
         elif component == "filter":
             return self.makeFilter()
+        elif component == "filterLabel":
+            return self.makeFilterLabel()
         elif component == "visitInfo":
             return self.makeVisitInfo()
         elif component == "wcs":
@@ -357,7 +375,7 @@ class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
             full.setVariance(variance)
         full.setDetector(self.getDetector(self.observationInfo.detector_num))
         info = full.getInfo()
-        info.setFilter(self.makeFilter())
+        info.setFilterLabel(self.makeFilterLabel())
         info.setVisitInfo(self.makeVisitInfo())
         info.setWcs(self.makeWcs(info.getVisitInfo(), info.getDetector()))
         # We don't need to call stripMetadata() here because it has already

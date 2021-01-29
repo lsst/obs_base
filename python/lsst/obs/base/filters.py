@@ -48,8 +48,16 @@ class FilterDefinitionCollection(collections.abc.Sequence):
     the filter collection that defined them.
     """
 
+    physical_to_band = {}
+    """A mapping from physical filter name to band name.
+    This is a convenience feature to allow file readers to create a FilterLabel
+    when reading a raw file that only has a physical filter name, without
+    iterating over the entire collection.
+    """
+
     def __init__(self, *filters):
         self._filters = list(filters)
+        self.physical_to_band = {filter.physical_filter: filter.band for filter in self._filters}
 
     def __getitem__(self, key):
         return self._filters[key]

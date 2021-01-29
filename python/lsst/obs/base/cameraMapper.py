@@ -25,6 +25,7 @@ import re
 import traceback
 import warnings
 import weakref
+from deprecated.sphinx import deprecated
 
 from astro_metadata_translator import fix_header
 from lsst.utils import doImport
@@ -460,7 +461,9 @@ class CameraMapper(dafPersist.Mapper):
 
                             setMethods("visitInfo", bypassImpl=getVisitInfo)
 
-                            # TODO: deprecate in DM-27170, remove in DM-27177
+                            # TODO: remove in DM-27177
+                            @deprecated(reason="Replaced with getFilterLabel. Will be removed after v22.",
+                                        category=FutureWarning)
                             def getFilter(datasetType, pythonType, location, dataId):
                                 fitsReader = afwImage.ExposureFitsReader(location.getLocationsWithRoot()[0])
                                 return fitsReader.readFilter()
