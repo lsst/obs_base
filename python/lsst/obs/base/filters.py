@@ -166,6 +166,11 @@ class FilterDefinition:
     of `~lsst.afw.image.Filter` aliases.
     """
 
+    doc: str = None
+    """A short description of this filter, possibly with a link to more
+    information.
+    """
+
     afw_name: str = None
     """If not None, the name of the `~lsst.afw.image.Filter` object.
 
