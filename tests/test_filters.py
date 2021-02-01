@@ -32,6 +32,7 @@ class TestFilterDefinitionCollection(lsst.utils.tests.TestCase):
         self.filters1 = FilterDefinitionCollection(FilterDefinition(physical_filter='abc', lambdaEff=123),
                                                    FilterDefinition(physical_filter='def',
                                                                     band='d',
+                                                                    doc="This is a test filter.",
                                                                     lambdaEff=456))
         self.filters2 = FilterDefinitionCollection(FilterDefinition(physical_filter='abc', lambdaEff=321),
                                                    FilterDefinition(physical_filter='def',
