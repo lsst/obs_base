@@ -3,11 +3,10 @@
 This configuration only affects single-package Sphinx documenation builds.
 """
 
-from documenteer.sphinxconfig.stackconf import build_package_configs
-import lsst.obs.base
+from documenteer.conf.pipelinespkg import *  # noqa: F403
 
-
-_g = globals()
-_g.update(build_package_configs(
-    project_name='obs_base',
-    version=lsst.obs.base.version.__version__))
+project = "obs_base"
+html_theme_options["logotext"] = project  # noqa: F405
+html_title = project
+html_short_title = project
+doxylink = {}
