@@ -27,6 +27,7 @@ __all__ = ("FilterDefinition", "FilterDefinitionCollection")
 
 import dataclasses
 import collections.abc
+import warnings
 
 import numpy as np
 
@@ -81,9 +82,12 @@ class FilterDefinitionCollection(collections.abc.Sequence):
             ``defineFilters``.
         """
         if self._defined is None:
-            self.reset()
-            for filter in self._filters:
-                filter.defineFilter()
+            with warnings.catch_warnings():
+                # surpress Filter warnings; we already know this is deprecated
+                warnings.simplefilter('ignore', category=FutureWarning)
+                self.reset()
+                for filter in self._filters:
+                    filter.defineFilter()
             FilterDefinitionCollection._defined = self
         elif self._defined is self:
             # noop: we've already defined these filters, so do nothing
@@ -97,7 +101,10 @@ class FilterDefinitionCollection(collections.abc.Sequence):
         """Reset the afw Filter definitions and clear the `defined` singleton.
         Use this in unittests that define different filters.
         """
-        lsst.afw.image.utils.resetFilters()
+        with warnings.catch_warnings():
+            # surpress Filter warnings; we already know this is deprecated
+            warnings.simplefilter('ignore', category=FutureWarning)
+            lsst.afw.image.utils.resetFilters()
         cls._defined = None
 
     def findAll(self, name):
@@ -224,11 +231,14 @@ class FilterDefinition:
         if self.afw_name is not None:
             if self.band is not None:
                 aliases.add(self.band)
-        lsst.afw.image.utils.defineFilter(name,
-                                          lambdaEff=self.lambdaEff,
-                                          lambdaMin=self.lambdaMin,
-                                          lambdaMax=self.lambdaMax,
-                                          alias=sorted(aliases))
+        with warnings.catch_warnings():
+            # surpress Filter warnings; we already know this is deprecated
+            warnings.simplefilter('ignore', category=FutureWarning)
+            lsst.afw.image.utils.defineFilter(name,
+                                              lambdaEff=self.lambdaEff,
+                                              lambdaMin=self.lambdaMin,
+                                              lambdaMax=self.lambdaMax,
+                                              alias=sorted(aliases))
 
     def makeFilterLabel(self):
         """Create a complete FilterLabel for this filter.
