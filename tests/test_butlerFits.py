@@ -77,7 +77,7 @@ datastore:
 
 # Components present in the test file
 COMPONENTS = {"wcs", "image", "mask", "coaddInputs", "psf", "visitInfo", "variance", "metadata", "photoCalib",
-              "filterLabel", "validPolygon", "transmissionCurve", "detector", "apCorrMap"}
+              "filterLabel", "validPolygon", "transmissionCurve", "detector", "apCorrMap", "summaryStats"}
 READ_COMPONENTS = {"bbox", "xy0", "dimensions", "filter"}
 
 
@@ -307,6 +307,8 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
                 c_amps = {a.getName() for a in component.getAmplifiers()}
                 r_amps = {a.getName() for a in reference.getAmplifiers()}
                 self.assertEqual(c_amps, r_amps)
+            elif compName == 'summaryStats':
+                self.assertEqual(component.psfSigma, reference.psfSigma)
             else:
                 raise RuntimeError(f"Unexpected component '{compName}' encountered in test")
 
