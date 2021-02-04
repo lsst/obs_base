@@ -41,7 +41,7 @@ from lsst.daf.butler import (
     FileDataset,
     Formatter,
 )
-from lsst.pex.config import Config, ChoiceField
+from lsst.pex.config import Config, ChoiceField, Field
 from lsst.pipe.base import Task
 
 from ._instrument import Instrument, makeExposureRecordFromObsInfo
@@ -156,6 +156,12 @@ def makeTransferChoiceField(doc="How to transfer files (None for no transfer).",
 
 class RawIngestConfig(Config):
     transfer = makeTransferChoiceField()
+    failFast = Field(
+        dtype=bool,
+        default=False,
+        doc="If True, stop ingest as soon as any problem is encountered with any file. "
+            "Otherwise problems files will be skipped and logged and a report issued at completion.",
+    )
 
 
 class RawIngestTask(Task):
@@ -243,6 +249,8 @@ class RawIngestTask(Task):
             datasets = []
             FormatterClass = Formatter
             instrument = None
+            if self.config.failFast:
+                raise RuntimeError(f"Problem extracting metadata from file {filename}") from e
         else:
             self.log.debug("Extracted metadata from file %s", filename)
             # The data model currently assumes that whilst multiple datasets
@@ -250,9 +258,12 @@ class RawIngestTask(Task):
             # same formatter.
             try:
                 instrument = Instrument.fromName(datasets[0].dataId["instrument"], self.butler.registry)
-            except LookupError:
+            except LookupError as e:
                 self.log.warning("Instrument %s for file %s not known to registry",
                                  datasets[0].dataId["instrument"], filename)
+                if self.config.failFast:
+                    raise RuntimeError(f"Instrument {datasets[0].dataId['instrument']} for"
+                                       f" file {filename} not known to registry") from e
                 datasets = []
                 FormatterClass = Formatter
                 instrument = None
@@ -544,6 +555,8 @@ class RawIngestTask(Task):
                 n_exposures_failed += 1
                 self.log.warning("Exposure %s:%s could not be registered: %s",
                                  exposure.record.instrument, exposure.record.obs_id, e)
+                if self.config.failFast:
+                    raise e
                 continue
 
             # Override default run if nothing specified explicitly
@@ -563,6 +576,8 @@ class RawIngestTask(Task):
                 self.log.warning("Failed to ingest the following for reason: %s", e)
                 for f in exposure.files:
                     self.log.warning("- %s", f.filename)
+                if self.config.failFast:
+                    raise e
                 continue
 
             # Success for this exposure
