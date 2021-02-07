@@ -193,8 +193,8 @@ class FitsImageFormatterBase(Formatter):
         if method:
             # This reader can read standalone Image/Mask files as well
             # when dealing with components.
-            reader = self._readerClass(self.fileDescriptor.location.path)
-            caller = getattr(reader, method, None)
+            self._reader = self._readerClass(self.fileDescriptor.location.path)
+            caller = getattr(self._reader, method, None)
 
             if caller:
                 if parameters is None:
@@ -237,8 +237,8 @@ class FitsImageFormatterBase(Formatter):
         if parameters is None:
             parameters = {}
         fileDescriptor.storageClass.validateParameters(parameters)
-        reader = self._readerClass(fileDescriptor.location.path)
-        return reader.read(**parameters)
+        self._reader = self._readerClass(fileDescriptor.location.path)
+        return self._reader.read(**parameters)
 
     def read(self, component=None):
         """Read data from a file.
