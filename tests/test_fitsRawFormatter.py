@@ -136,9 +136,14 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
         self.warnContext = self.assertLogs(level="WARNING")
         self.logContext = lsst.log.UsePythonLogging()
 
+        # Make a data ID to pass to the formatter.
+        universe = lsst.daf.butler.DimensionUniverse()
+        dataId = lsst.daf.butler.DataCoordinate.standardize(instrument="Cam1", exposure=2, detector=10,
+                                                            physical_filter="u", band="u", universe=universe)
+
         # We have no file in these tests, so make an empty descriptor.
         fileDescriptor = lsst.daf.butler.FileDescriptor(None, None)
-        self.formatter = SimpleFitsRawFormatter(fileDescriptor)
+        self.formatter = SimpleFitsRawFormatter(fileDescriptor, dataId)
         # Force the formatter's metadata to be what we've created above.
         self.formatter._metadata = self.metadata
 
