@@ -32,12 +32,12 @@ import lsst.afw.image
 from lsst.daf.butler import FileDescriptor
 import lsst.log
 
-from .formatters.fitsExposure import FitsExposureFormatter
+from .formatters.fitsExposure import FitsImageFormatterBase
 from .makeRawVisitInfoViaObsInfo import MakeRawVisitInfoViaObsInfo
 from .utils import createInitialSkyWcsFromBoresight, InitialSkyWcsError
 
 
-class FitsRawFormatterBase(FitsExposureFormatter, metaclass=ABCMeta):
+class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
     """Abstract base class for reading and writing raw data to and from
     FITS files.
     """

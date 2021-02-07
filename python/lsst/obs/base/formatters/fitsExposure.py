@@ -34,12 +34,13 @@ from lsst.afw.image import ExposureInfo
 from lsst.afw.math import BoundedField  # noqa: F401
 
 
-class FitsExposureFormatter(Formatter):
-    """Interface for reading and writing Exposures to and from FITS files.
+class FitsImageFormatterBase(Formatter):
+    """Base class interface for reading and writing afw images to and from
+    FITS files.
 
     This Formatter supports write recipes.
 
-    Each ``FitsExposureFormatter`` recipe for FITS compression should
+    Each ``FitsImageFormatterBase`` recipe for FITS compression should
     define ``image``, ``mask`` and ``variance`` entries, each of which may
     contain ``compression`` and ``scaling`` entries. Defaults will be
     provided for any missing elements under ``compression`` and
@@ -69,7 +70,7 @@ class FitsExposureFormatter(Formatter):
     * ``bzero`` (`float`): manually specified ``BSCALE``
       (for ``MANUAL`` scaling)
 
-    A very simple example YAML recipe:
+    A very simple example YAML recipe (for the ``Exposure`` specialization):
 
     .. code-block:: yaml
 
@@ -86,7 +87,7 @@ class FitsExposureFormatter(Formatter):
     extension = ".fits"
     _metadata = None
     supportedWriteParameters = frozenset({"recipe"})
-    _readerClass = ExposureFitsReader
+    _readerClass: type  # must be set by concrete subclasses
 
     unsupportedParameters = {}
     """Support all parameters."""
@@ -418,21 +419,28 @@ class FitsExposureFormatter(Formatter):
         return validated
 
 
-class FitsImageFormatter(FitsExposureFormatter):
+class FitsExposureFormatter(FitsImageFormatterBase):
+    """Specialization for `~lsst.afw.image.Exposure` reading.
+    """
+
+    _readerClass = ExposureFitsReader
+
+
+class FitsImageFormatter(FitsImageFormatterBase):
     """Specialisation for `~lsst.afw.image.Image` reading.
     """
 
     _readerClass = ImageFitsReader
 
 
-class FitsMaskFormatter(FitsExposureFormatter):
+class FitsMaskFormatter(FitsImageFormatterBase):
     """Specialisation for `~lsst.afw.image.Mask` reading.
     """
 
     _readerClass = MaskFitsReader
 
 
-class FitsMaskedImageFormatter(FitsExposureFormatter):
+class FitsMaskedImageFormatter(FitsImageFormatterBase):
     """Specialisation for `~lsst.afw.image.MaskedImage` reading.
     """
 
