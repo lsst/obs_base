@@ -27,6 +27,7 @@ __all__ = ("FilterDefinition", "FilterDefinitionCollection")
 
 import dataclasses
 import collections.abc
+import re
 import warnings
 
 import numpy as np
@@ -221,16 +222,54 @@ class FilterDefinition:
         """
         aliases = set(self.alias)
         name = self.physical_filter
-        if self.band is not None:
-            name = self.band
-            aliases.add(self.physical_filter)
-        if self.afw_name is not None:
+
+        current_names = set(lsst.afw.image.Filter.getNames())
+        # band can be defined multiple times -- only use the first
+        # occurrence
+        band = self.band
+        if band is not None:
+            # Special case code that uses afw_name to override the band.
+            # This was generally used as a workaround.
+            if self.afw_name is not None and (mat := re.match(fr"{band}(\d)+$", self.afw_name)):
+                i = int(mat.group(1))
+            else:
+                i = 0
+            while i < 50:  # in some instruments gratings or ND filters are combined
+                if i == 0:
+                    nband = band
+                else:
+                    nband = f"{band}{i}"
+                if nband not in current_names:
+                    band = nband
+                    name = band
+                    aliases.add(self.physical_filter)
+                    break
+                i += 1
+            else:
+                warnings.warn(f"Too many band aliases found for physical_filter {self.physical_filter}"
+                              f" with band {band}")
+
+        if self.physical_filter == self.band and self.physical_filter in current_names:
+            # We have already defined a filter like this
+            return
+
+        # Do not add an alias for band if the given afw_name matches
+        # the dynamically calculated band.
+        if self.afw_name is not None and self.afw_name != band and self.afw_name not in current_names:
+            # This will override the band setting above but it
+            # is still used as an alias below
             name = self.afw_name
             aliases.add(self.physical_filter)
-        # Only add `physical_filter/band` as an alias if afw_name is defined.ee
-        if self.afw_name is not None:
-            if self.band is not None:
-                aliases.add(self.band)
+
+            # Only add physical_filter/band as an alias if afw_name is defined.
+            if band is not None:
+                aliases.add(band)
+
+        # Aliases are a serious issue so as a last attempt to clean up
+        # remove any registered names from the new aliases
+        # This usually means some variant filter name is being used
+        aliases.difference_update(current_names)
+
         with warnings.catch_warnings():
             # surpress Filter warnings; we already know this is deprecated
             warnings.simplefilter('ignore', category=FutureWarning)

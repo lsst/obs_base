@@ -123,7 +123,7 @@ class TestFilterDefinition(lsst.utils.tests.TestCase):
         self.assertEqual(filter2.getName(), 'g2')
         self.assertEqual(filter2_alias.getCanonicalName(), 'g2')
         self.assertEqual(filter2, filter2_alias)
-        self.assertEqual(['HIJK', 'HSC-G2', 'g'], sorted(filter2.getAliases()))
+        self.assertEqual(['HIJK', 'HSC-G2'], sorted(filter2.getAliases()))
 
     def test_physical_only(self):
         """physical_filter is the only name this filter has.
