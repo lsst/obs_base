@@ -22,6 +22,8 @@
 __all__ = ("FitsExposureFormatter", "FitsImageFormatter", "FitsMaskFormatter",
            "FitsMaskedImageFormatter")
 
+import warnings
+
 from astro_metadata_translator import fix_header
 from lsst.daf.base import PropertySet
 from lsst.daf.butler import Formatter
@@ -29,17 +31,18 @@ from lsst.daf.butler import Formatter
 # out lots of headers and there is no way to recover them
 from lsst.afw.fits import readMetadata
 from lsst.afw.image import ExposureFitsReader, ImageFitsReader, MaskFitsReader, MaskedImageFitsReader
-from lsst.afw.image import ExposureInfo
+from lsst.afw.image import ExposureInfo, FilterLabel
 # Needed for ApCorrMap to resolve properly
 from lsst.afw.math import BoundedField  # noqa: F401
 
 
-class FitsExposureFormatter(Formatter):
-    """Interface for reading and writing Exposures to and from FITS files.
+class FitsImageFormatterBase(Formatter):
+    """Base class interface for reading and writing afw images to and from
+    FITS files.
 
     This Formatter supports write recipes.
 
-    Each ``FitsExposureFormatter`` recipe for FITS compression should
+    Each ``FitsImageFormatterBase`` recipe for FITS compression should
     define ``image``, ``mask`` and ``variance`` entries, each of which may
     contain ``compression`` and ``scaling`` entries. Defaults will be
     provided for any missing elements under ``compression`` and
@@ -69,7 +72,7 @@ class FitsExposureFormatter(Formatter):
     * ``bzero`` (`float`): manually specified ``BSCALE``
       (for ``MANUAL`` scaling)
 
-    A very simple example YAML recipe:
+    A very simple example YAML recipe (for the ``Exposure`` specialization):
 
     .. code-block:: yaml
 
@@ -86,7 +89,7 @@ class FitsExposureFormatter(Formatter):
     extension = ".fits"
     _metadata = None
     supportedWriteParameters = frozenset({"recipe"})
-    _readerClass = ExposureFitsReader
+    _readerClass: type  # must be set by concrete subclasses
 
     unsupportedParameters = {}
     """Support all parameters."""
@@ -192,8 +195,8 @@ class FitsExposureFormatter(Formatter):
         if method:
             # This reader can read standalone Image/Mask files as well
             # when dealing with components.
-            reader = self._readerClass(self.fileDescriptor.location.path)
-            caller = getattr(reader, method, None)
+            self._reader = self._readerClass(self.fileDescriptor.location.path)
+            caller = getattr(self._reader, method, None)
 
             if caller:
                 if parameters is None:
@@ -212,6 +215,7 @@ class FitsExposureFormatter(Formatter):
 
                 if component == "dimensions" and thisComponent is not None:
                     thisComponent = thisComponent.getDimensions()
+
                 return thisComponent
         else:
             raise KeyError(f"Unknown component requested: {component}")
@@ -236,8 +240,8 @@ class FitsExposureFormatter(Formatter):
         if parameters is None:
             parameters = {}
         fileDescriptor.storageClass.validateParameters(parameters)
-        reader = self._readerClass(fileDescriptor.location.path)
-        return reader.read(**parameters)
+        self._reader = self._readerClass(fileDescriptor.location.path)
+        return self._reader.read(**parameters)
 
     def read(self, component=None):
         """Read data from a file.
@@ -418,21 +422,118 @@ class FitsExposureFormatter(Formatter):
         return validated
 
 
-class FitsImageFormatter(FitsExposureFormatter):
+class FitsExposureFormatter(FitsImageFormatterBase):
+    """Specialization for `~lsst.afw.image.Exposure` reading.
+    """
+
+    _readerClass = ExposureFitsReader
+
+    def _fixFilterLabels(self, file_filter_label, should_be_standardized=None):
+        """Compare the filter label read from the file with the one in the
+        data ID.
+
+        Parameters
+        ----------
+        file_filter_label : `lsst.afw.image.FilterLabel` or `None`
+            Filter label read from the file, if there was one.
+        should_be_standardized : `bool`, optional
+            If `True`, expect ``file_filter_label`` to be consistent with the
+            data ID and warn only if it is not.  If `False`, expect it to be
+            inconsistent and warn only if the data ID is incomplete and hence
+            the `FilterLabel` cannot be fixed.  If `None` (default) guess
+            whether the file should be standardized by looking at the
+            serialization version number in file, which requires this method to
+            have been run after `readFull` or `readComponent`.
+
+        Returns
+        -------
+        filter_label : `lsst.afw.image.FilterLabel` or `None`
+            The preferred filter label; may be the given one or one built from
+            the data ID.  `None` is returned if there should never be any
+            filters associated with this dataset type.
+
+        Notes
+        -----
+        Most test coverage for this method is in ci_hsc_gen3, where we have
+        much easier access to test data that exhibits the problems it attempts
+        to solve.
+        """
+        # Remember filter data ID keys that weren't in this particular data ID,
+        # so we can warn about them later.
+        missing = []
+        band = None
+        physical_filter = None
+        if "band" in self.dataId.graph.dimensions.names:
+            band = self.dataId.get("band")
+            # band isn't in the data ID; is that just because this data ID
+            # hasn't been filled in with everything the Registry knows, or
+            # because this dataset is never associated with a band?
+            if band is None and not self.dataId.hasFull() and "band" in self.dataId.graph.implied.names:
+                missing.append("band")
+        if "physical_filter" in self.dataId.graph.dimensions.names:
+            physical_filter = self.dataId.get("physical_filter")
+            # Same check as above for band, but for physical_filter.
+            if (physical_filter is None and not self.dataId.hasFull()
+                    and "physical_filter" in self.dataId.graph.implied.names):
+                missing.append("physical_filter")
+        if should_be_standardized is None:
+            version = self._reader.readSerializationVersion()
+            should_be_standardized = (version >= 2)
+        if missing:
+            # Data ID identifies a filter but the actual filter label values
+            # haven't been fetched from the database; we have no choice but
+            # to use the one in the file.
+            # Warn if that's more likely than not to be bad, because the file
+            # predates filter standardization.
+            if not should_be_standardized:
+                warnings.warn(f"Data ID {self.dataId} is missing (implied) value(s) for {missing}; "
+                              "the correctness of this Exposure's FilterLabel cannot be guaranteed. "
+                              "Call Registry.expandDataId before Butler.get to avoid this.")
+            return file_filter_label
+        if band is None and physical_filter is None:
+            data_id_filter_label = None
+        else:
+            data_id_filter_label = FilterLabel(band=band, physical=physical_filter)
+        if data_id_filter_label != file_filter_label and should_be_standardized:
+            # File was written after FilterLabel and standardization, but its
+            # FilterLabel doesn't agree with the data ID: this indicates a bug
+            # in whatever code produced the Exposure (though it may be one that
+            # has been fixed since the file was written).
+            warnings.warn(f"Reading {self.fileDescriptor.location} with data ID {self.dataId}: "
+                          f"filter label mismatch (file is {file_filter_label}, data ID is "
+                          f"{data_id_filter_label}).  This is probably a bug in the code that produced it.")
+        return data_id_filter_label
+
+    def readComponent(self, component, parameters=None):
+        # Docstring inherited.
+        obj = super().readComponent(component, parameters)
+        if component == "filterLabel":
+            return self._fixFilterLabels(obj)
+        else:
+            return obj
+
+    def readFull(self, parameters=None):
+        # Docstring inherited.
+        full = super().readFull(parameters)
+        full.getInfo().setFilterLabel(self._fixFilterLabels(full.getInfo().getFilterLabel()))
+        return full
+
+
+class FitsImageFormatter(FitsImageFormatterBase):
     """Specialisation for `~lsst.afw.image.Image` reading.
     """
 
     _readerClass = ImageFitsReader
 
 
-class FitsMaskFormatter(FitsExposureFormatter):
+class FitsMaskFormatter(FitsImageFormatterBase):
     """Specialisation for `~lsst.afw.image.Mask` reading.
     """
 
     _readerClass = MaskFitsReader
 
 
-class FitsMaskedImageFormatter(FitsExposureFormatter):
+class FitsMaskedImageFormatter(FitsImageFormatterBase):
     """Specialisation for `~lsst.afw.image.MaskedImage` reading.
     """
 
