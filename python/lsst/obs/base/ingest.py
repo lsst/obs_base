@@ -488,8 +488,14 @@ class RawIngestTask(Task):
                 for relfile, metadata in index.items():
                     file = os.path.realpath(os.path.abspath(os.path.join(directory, relfile)))
                     if file in index_entries:
-                        self.log.warning("File %s already specified in an index file, ignoring one from %s",
-                                         file, path)
+                        # ObservationInfo overrides raw metadata
+                        if isinstance(metadata, ObservationInfo) \
+                                and not isinstance(index_entries[file], ObservationInfo):
+                            self.log.warning("File %s already specified in an index file but overriding"
+                                             " with ObservationInfo content from %s", file, path)
+                        else:
+                            self.log.warning("File %s already specified in an index file, "
+                                             "ignoring content from %s", file, path)
                     else:
                         index_entries[file] = metadata
                 continue
@@ -519,8 +525,15 @@ class RawIngestTask(Task):
                     if file_in_dir in index:
                         file = os.path.realpath(os.path.abspath(os.path.join(directory, file_in_dir)))
                         if file in index_entries:
-                            self.log.warning("File %s already specified in an index file, "
-                                             "ignoring one from %s", file, possible_index)
+                            # ObservationInfo overrides raw metadata
+                            if isinstance(index[file_in_dir], ObservationInfo) \
+                                    and not isinstance(index_entries[file], ObservationInfo):
+                                self.log.warning("File %s already specified in an index file but overriding"
+                                                 " with ObservationInfo content from %s",
+                                                 file, possible_index)
+                            else:
+                                self.log.warning("File %s already specified in an index file, "
+                                                 "ignoring content from %s", file, possible_index)
                         else:
                             index_entries[file] = index[file_in_dir]
 
