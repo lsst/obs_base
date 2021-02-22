@@ -29,7 +29,7 @@ from collections import defaultdict
 from multiprocessing import Pool
 
 from astro_metadata_translator import ObservationInfo, merge_headers
-from astro_metadata_translator.indexing import read_sidecar
+from astro_metadata_translator.indexing import read_sidecar, read_index
 from lsst.afw.fits import readMetadata
 from lsst.daf.butler import (
     Butler,
@@ -423,6 +423,141 @@ class RawIngestTask(Task):
                                             universe=self.universe)
         return RawFileDatasetInfo(obsInfo=obsInfo, dataId=dataId)
 
+    def expandIndexFiles(self, files):
+        """Given a list of files, look for index files and read them.
+
+        Parameters
+        ----------
+        files : iterable over `str` or path-like objects
+            Paths to the files to be ingested.  Will be made absolute
+            if they are not already.
+
+        Returns
+        -------
+        index : `dict[str, Any]`
+            Merged contents of all relevant index files found. These can
+            be explicitly specified index files or ones found in the
+            directory alongside a data file to be ingested.
+        updated_files : `set[str]`
+            Updated list of the input files with entries removed that were
+            found listed in an index file.
+        bad_index_files: `set[str]`
+            Files that looked like index files but failed to read properly.
+        """
+        # Look for index files that can speed up ingest. These can be
+        # explicit index files or index files found in directories containing
+        # files.  Group by directory and then look in those directories.
+
+        # Create set of input files to allow easy removal of entries
+        # Convert to absolute path for easy comparison with index content
+        files_set = {os.path.realpath(os.path.abspath(f)) for f in files}
+
+        # The content of all index entries indexed by full path to file
+        # to be ingested
+        index_entries = {}
+
+        # Files we failed to read
+        bad_index_files = set()
+
+        # Any good index files that were found and used
+        good_index_files = set()
+
+        # The directories containing requested files
+        by_directory = {}
+
+        for path in files_set:
+            # Keep an eye out for explicit index files
+            directory, file_in_dir = os.path.split(path)
+            if file_in_dir.endswith(".json"):
+                # Assume any explicit JSON file is an index
+                # Read the index and convert to absolute paths
+                try:
+                    index = read_index(path, force_dict=True)
+                except Exception as e:
+                    if self.config.failFast:
+                        raise RuntimeError(f"Problem reading index from {path}") from e
+                    self.log.warning("Problem reading index from %s, skipping it: '%s'", path, e)
+                    bad_index_files.add(path)
+                    continue
+
+                self.log.debug("Extracted index metadata from file %s", path)
+
+                # Record that we used this index file
+                good_index_files.add(path)
+
+                for relfile, metadata in index.items():
+                    file = os.path.realpath(os.path.abspath(os.path.join(directory, relfile)))
+                    if file in index_entries:
+                        self.log.warning("File %s already specified in an index file, ignoring one from %s",
+                                         file, path)
+                    else:
+                        index_entries[file] = metadata
+                continue
+
+            by_directory.setdefault(directory, set()).add(file_in_dir)
+
+        # Look for index files in those directories
+        for directory, files_in_directory in by_directory.items():
+            possible_index = os.path.join(directory, "_index.json")
+            if os.path.exists(possible_index):
+                # if a derived index file is found we should only use
+                # information for requested files.
+                try:
+                    index = read_index(possible_index, force_dict=True)
+                except Exception as e:
+                    if self.config.failFast:
+                        raise RuntimeError("Problem reading index from inferred "
+                                           f"location {file_in_dir}") from e
+                    self.log.warning("Problem reading index from inferred location %s, skipping it: %s",
+                                     file_in_dir, e)
+                    bad_index_files.add(possible_index)
+                else:
+                    good_index_files.add(possible_index)
+                    self.log.debug("Extracted potential index metadata from inferred file %s", possible_index)
+
+                for file_in_dir in files_in_directory:
+                    if file_in_dir in index:
+                        file = os.path.realpath(os.path.abspath(os.path.join(directory, file_in_dir)))
+                        if file in index_entries:
+                            self.log.warning("File %s already specified in an index file, "
+                                             "ignoring one from %s", file, possible_index)
+                        else:
+                            index_entries[file] = index[file_in_dir]
+
+        # Remove files from list that have index entries and also
+        # any files that we determined to be explicit index files
+        # or any index files that we failed to read.
+        files = files_set - set(index_entries) - good_index_files - bad_index_files
+
+        return index_entries, files, good_index_files, bad_index_files
+
+    def processIndexEntries(self, index_entries):
+        """Convert index entries to RawFileData.
+
+        Parameters
+        ----------
+        index_entries : `dict[str, Any]`
+            Dict indexed by name of file to ingest and with keys either
+            raw metadata or translated `ObservationInfo`.
+
+        Returns
+        -------
+        data :  `RawFileData`
+            A structure containing the metadata extracted from the file,
+            as well as the original filename.  All fields will be populated,
+            but the `RawFileData.dataId` attribute will be a minimal
+            (unexpanded) `DataCoordinate` instance.
+        """
+        fileData = []
+        for filename, metadata in index_entries.items():
+            datasets = [self._calculate_dataset_info(metadata, filename)]
+            instrument, formatterClass = self._determine_instrument_formatter(datasets[0].dataId, filename)
+            if instrument is None:
+                datasets = []
+            fileData.append(RawFileData(datasets=datasets, filename=filename,
+                                        FormatterClass=formatterClass, instrumentClass=instrument))
+        return fileData
+
     def groupByExposure(self, files: Iterable[RawFileData]) -> List[RawExposureData]:
         """Group an iterable of `RawFileData` by exposure.
 
@@ -519,6 +654,20 @@ class RawIngestTask(Task):
             pool = Pool(processes)
         mapFunc = map if pool is None else pool.imap_unordered
 
+        # Look for index files and read them
+        # There should be far fewer index files than data files
+        index_entries, files, good_index_files, bad_index_files = self.expandIndexFiles(files)
+        if bad_index_files:
+            self.log.info("Failed to read the following index files:"),
+            for bad in sorted(bad_index_files):
+                self.log.info("- %s", bad)
+
+        indexFileData = self.processIndexEntries(index_entries)
+        if indexFileData:
+            self.log.info("Successfully extracted metadata for %d file%s from %d index file%s",
+                          len(indexFileData), "" if len(indexFileData) == 1 else "s",
+                          len(good_index_files), "" if len(good_index_files) == 1 else "s")
+
         # Extract metadata and build per-detector regions.
         # This could run in a subprocess so collect all output
         # before looking at failures.
@@ -538,6 +687,8 @@ class RawIngestTask(Task):
         self.log.info("Successfully extracted metadata from %d file%s with %d failure%s",
                       len(fileData), "" if len(fileData) == 1 else "s",
                       len(bad_files), "" if len(bad_files) == 1 else "s")
+
+        fileData.extend(indexFileData)
 
         # Use that metadata to group files (and extracted metadata) by
         # exposure.  Never parallelized because it's intrinsically a gather
