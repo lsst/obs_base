@@ -42,7 +42,7 @@ from lsst.daf.butler import (
     Formatter,
 )
 from lsst.pex.config import Config, ChoiceField, Field
-from lsst.pipe.base import Task
+from lsst.pipe.base import Task, timeMethod
 
 from ._instrument import Instrument, makeExposureRecordFromObsInfo
 from ._fitsRawFormatterBase import FitsRawFormatterBase
@@ -530,6 +530,7 @@ class RawIngestTask(Task):
         self.butler.ingest(*datasets, transfer=self.config.transfer, run=run)
         return datasets
 
+    @timeMethod
     def run(self, files, *, pool: Optional[Pool] = None, processes: int = 1, run: Optional[str] = None):
         """Ingest files into a Butler data repository.
 
