@@ -29,6 +29,7 @@ from collections import defaultdict
 from multiprocessing import Pool
 
 from astro_metadata_translator import ObservationInfo, merge_headers
+from astro_metadata_translator.indexing import read_sidecar
 from lsst.afw.fits import readMetadata
 from lsst.daf.butler import (
     Butler,
@@ -272,11 +273,29 @@ class RawIngestTask(Task):
         # Instead return a RawFileData with no datasets and allow
         # the caller to report the failure.
 
+        # The options for extracting metadata are:
+        # - This is a JSON index file with metadata so use it directly
+        #   (assumes the file is then not listed explicitly)
+        # - Read metadata from a _index.json file in the same directory as the
+        #   non-JSON file. Should be cached. This is tricky when process pools
+        #   are used since the same index file could be found by
+        #   multiple processes.
+        # - Read metadata from a sidecar .json file (a file of the same name
+        #   as the data file but with .json extension)
+        # - Read metadata from the file itself
+
         try:
-            # Manually merge the primary and "first data" headers here because
-            # we do not know in general if an input file has set INHERIT=T.
-            phdu = readMetadata(filename, 0)
-            header = merge_headers([phdu, readMetadata(filename)], mode="overwrite")
+            root, ext = os.path.splitext(filename)
+            sidecar_file = root + ".json"
+            if os.path.exists(sidecar_file):
+                header = read_sidecar(sidecar_file)
+            else:
+                # Read the metadata from the data file itself
+                # Manually merge the primary and "first data" headers here
+                # because we do not know in general if an input file has
+                # set INHERIT=T.
+                phdu = readMetadata(filename, 0)
+                header = merge_headers([phdu, readMetadata(filename)], mode="overwrite")
             datasets = [self._calculate_dataset_info(header, filename)]
         except Exception as e:
             self.log.debug("Problem extracting metadata from %s: %s", filename, e)
@@ -316,8 +335,8 @@ class RawIngestTask(Task):
 
         Parameters
         ----------
-        header : `Mapping`
-            Header from the dataset.
+        header : `Mapping` or `ObservationInfo`
+            Header from the dataset or previously-translated content.
         filename : `str`
             Filename to use for error messages.
 
@@ -355,9 +374,24 @@ class RawIngestTask(Task):
             "visit_id": False,
         }
 
-        obsInfo = ObservationInfo(header, pedantic=False, filename=filename,
-                                  required={k for k in ingest_subset if ingest_subset[k]},
-                                  subset=set(ingest_subset))
+        if isinstance(header, ObservationInfo):
+            obsInfo = header
+            missing = []
+            # Need to check the required properties are present
+            for property, required in ingest_subset.items():
+                if not required:
+                    continue
+                value = getattr(obsInfo, property)
+                if value is None:
+                    missing.append(property)
+            if missing:
+                raise ValueError(f"Requested required properties are missing from file {filename}:"
+                                 f" {missing} (via JSON)")
+
+        else:
+            obsInfo = ObservationInfo(header, pedantic=False, filename=filename,
+                                      required={k for k in ingest_subset if ingest_subset[k]},
+                                      subset=set(ingest_subset))
 
         dataId = DataCoordinate.standardize(instrument=obsInfo.instrument,
                                             exposure=obsInfo.exposure_id,
