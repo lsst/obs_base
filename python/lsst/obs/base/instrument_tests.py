@@ -28,10 +28,56 @@ to get a functional test of an Instrument.
 import abc
 import dataclasses
 
-from lsst.obs.base import Instrument
+from lsst.obs.base import Instrument, FilterDefinitionCollection, FilterDefinition
 from lsst.obs.base.gen2to3 import TranslatorFactory
 from lsst.daf.butler import Registry
 from lsst.daf.butler import RegistryConfig
+from lsst.daf.butler.core.utils import getFullTypeName
+
+
+DUMMY_FILTER_DEFINITIONS = FilterDefinitionCollection(
+    FilterDefinition(physical_filter="dummy_u", band="u", lambdaEff=0),
+    FilterDefinition(physical_filter="dummy_g", band="g", lambdaEff=0),
+)
+
+
+class DummyCam(Instrument):
+
+    filterDefinitions = DUMMY_FILTER_DEFINITIONS
+
+    @classmethod
+    def getName(cls):
+        return "DummyCam"
+
+    def getCamera(self):
+        return None
+
+    def register(self, registry):
+        """Insert Instrument, physical_filter, and detector entries into a
+        `Registry`.
+        """
+        dataId = {"instrument": self.getName(), "class_name": getFullTypeName(DummyCam),
+                  "detector_max": 2}
+        with registry.transaction():
+            registry.syncDimensionData("instrument", dataId)
+
+            for d in (1, 2):
+                self._registerFilters(registry)
+                registry.syncDimensionData("detector",
+                                           dict(dataId, id=d, full_name=str(d)))
+
+    def getRawFormatter(self, dataId):
+        # Docstring inherited fromt Instrument.getRawFormatter.
+        return None
+
+    def writeCuratedCalibrations(self, butler):
+        pass
+
+    def applyConfigOverrides(self, name, config):
+        pass
+
+    def makeDataIdTranslatorFactory(self) -> TranslatorFactory:
+        return TranslatorFactory()
 
 
 @dataclasses.dataclass
