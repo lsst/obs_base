@@ -388,6 +388,11 @@ singleFrameDriver_config:
     storage: ConfigStorage
     python: lsst.pipe.drivers.singleFrameDriver.SingleFrameDriverConfig
     template: config/singleFrameDriver.py
+sourceTableDriver_config:
+    persistable: Config
+    storage: ConfigStorage
+    python: lsst.pipe.drivers.sourceTableDriver.SourceTableDriverConfig
+    template: config/sourceTableDriver.py
 mergeCoaddDetections_metadata:
     persistable: PropertySet
     storage: YamlStorage
