@@ -306,6 +306,15 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         pathInStore = "prefix-" + os.path.basename(self.file)
         newPath = butler.datastore.root.join(pathInStore)
         os.symlink(os.path.abspath(self.file), newPath.ospath)
+        sidecar_uri = ButlerURI(self.file)
+        sidecar_uri.updateExtension(".json")
+        if sidecar_uri.exists():
+            # Need to also make symlink to side car file if one exists
+            # because ingester will not follow the link
+            newSidecar = ButlerURI(newPath)
+            newSidecar.updateExtension(".json")
+            os.symlink(sidecar_uri.ospath, newSidecar.ospath)
+
         self._ingestRaws(transfer="auto", file=newPath.ospath)
         self.verifyIngest()
 
