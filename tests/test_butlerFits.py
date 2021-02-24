@@ -55,7 +55,7 @@ storageClasses:
     inheritsFrom: ExposureF
 datastore:
   # Want to check disassembly so can't use InMemory
-  cls: lsst.daf.butler.datastores.posixDatastore.PosixDatastore
+  cls: lsst.daf.butler.datastores.fileDatastore.FileDatastore
   formatters:
     ExposureCompositeF: lsst.obs.base.formatters.fitsExposure.FitsExposureFormatter
     lossless:
