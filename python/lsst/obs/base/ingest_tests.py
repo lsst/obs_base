@@ -50,6 +50,12 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     actual directory will be a tempdir under this one.
     """
 
+    ingestDatasetTypeName = "raw"
+    """The DatasetType to use for the ingest.
+
+    If this is not an Exposure dataset type the tests will be more limited.
+    """
+
     dataIds = []
     """list of butler data IDs of files that should have been ingested."""
 
@@ -150,7 +156,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         This only really affects files that contain multiple datasets.
         """
         butler = Butler(self.root, run=self.outputRun)
-        datasets = list(butler.registry.queryDatasets("raw", collections=self.outputRun))
+        datasets = list(butler.registry.queryDatasets(self.ingestDatasetTypeName, collections=self.outputRun))
         self.assertEqual(len(datasets), len(self.dataIds))
 
         # Get the URI to the first dataset and check it is inside the
@@ -158,26 +164,39 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         datasetUri = butler.getURI(datasets[0])
         self.assertIsNotNone(datasetUri.relative_to(butler.datastore.root))
 
+        # Get the relevant dataset type
+        datasetType = butler.registry.getDatasetType(self.ingestDatasetTypeName)
+
         for dataId in self.dataIds:
+
+            # Raws can be large so we don't want to read them every time
+            # but for now read the full dataset if it's not an Exposure
+
+            if not datasetType.storageClass.name.startswith("Exposure"):
+                exposure = butler.get(self.ingestDatasetTypeName, dataId)
+                # Could be anything so nothing to test by default
+                continue
+
             # Check that we can read metadata from a raw
-            metadata = butler.get("raw.metadata", dataId)
+            metadata = butler.get(f"{self.ingestDatasetTypeName}.metadata", dataId)
             if not fullCheck:
                 continue
             fullCheck = False
-            exposure = butler.get("raw", dataId)
+            exposure = butler.get(self.ingestDatasetTypeName, dataId)
+
             self.assertEqual(metadata.toDict(), exposure.getMetadata().toDict())
 
             # Since components follow a different code path we check that
             # WCS match and also we check that at least the shape
             # of the image is the same (rather than doing per-pixel equality)
-            wcs = butler.get("raw.wcs", dataId)
+            wcs = butler.get(f"{self.ingestDatasetTypeName}.wcs", dataId)
             self.assertEqual(wcs, exposure.getWcs())
 
-            rawImage = butler.get("raw.image", dataId)
+            rawImage = butler.get(f"{self.ingestDatasetTypeName}.image", dataId)
             self.assertEqual(rawImage.getBBox(), exposure.getBBox())
 
             # check that the filter label got the correct band
-            filterLabel = butler.get("raw.filterLabel", dataId)
+            filterLabel = butler.get(f"{self.ingestDatasetTypeName}.filterLabel", dataId)
             self.assertEqual(filterLabel, self.filterLabel)
 
         self.checkRepo(files=files)
@@ -255,7 +274,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         # Check that it really did have a URI outside of datastore
         srcUri = ButlerURI(self.file)
         butler = Butler(self.root, run=self.outputRun)
-        datasets = list(butler.registry.queryDatasets("raw", collections=self.outputRun))
+        datasets = list(butler.registry.queryDatasets(self.ingestDatasetTypeName, collections=self.outputRun))
         datastoreUri = butler.getURI(datasets[0])
         self.assertEqual(datastoreUri, srcUri)
 
@@ -295,7 +314,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         butler = Butler(self.root, run=self.outputRun)
 
         # Check that the URI associated with this path is the right one
-        uri = butler.getURI("raw", self.dataIds[0])
+        uri = butler.getURI(self.ingestDatasetTypeName, self.dataIds[0])
         self.assertEqual(uri.relative_to(butler.datastore.root), pathInStore)
 
     def testFailOnConflict(self):
