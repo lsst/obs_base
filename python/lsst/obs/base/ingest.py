@@ -319,11 +319,13 @@ class RawIngestTask(Task):
         #   as the data file but with .json extension)
         # - Read metadata from the file itself
 
+        used_sidecar = False
         try:
             root, ext = os.path.splitext(filename)
             sidecar_file = root + ".json"
             if os.path.exists(sidecar_file):
                 header = read_sidecar(sidecar_file)
+                used_sidecar = True
             else:
                 # Read the metadata from the data file itself
                 # Manually merge the primary and "first data" headers here
@@ -333,16 +335,18 @@ class RawIngestTask(Task):
                 header = merge_headers([phdu, readMetadata(filename)], mode="overwrite")
             datasets = [self._calculate_dataset_info(header, filename)]
         except Exception as e:
-            self.log.debug("Problem extracting metadata from %s: %s", filename, e)
+            sidecar_text = " (via sidecar)" if used_sidecar else ""
+            self.log.debug("Problem extracting metadata from %s%s: %s", filename, sidecar_text, e)
             # Indicate to the caller that we failed to read
             datasets = []
             formatterClass = Formatter
             instrument = None
             self._on_metadata_failure(filename, e)
             if self.config.failFast:
-                raise RuntimeError(f"Problem extracting metadata from file {filename}") from e
+                raise RuntimeError(f"Problem extracting metadata for file {filename}{sidecar_text}") from e
         else:
-            self.log.debug("Extracted metadata from file %s", filename)
+            self.log.debug("Extracted metadata for file %s%s", filename,
+                           " (via sidecar)" if used_sidecar else "")
             # The data model currently assumes that whilst multiple datasets
             # can be associated with a single file, they must all share the
             # same formatter.
