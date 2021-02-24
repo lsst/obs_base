@@ -454,7 +454,9 @@ class RawIngestTask(Task):
 
         # Create set of input files to allow easy removal of entries
         # Convert to absolute path for easy comparison with index content
-        files_set = {os.path.realpath(os.path.abspath(f)) for f in files}
+        # Do not convert to real paths since we have to assume that index
+        # files are in this location and not the location linked from
+        files_set = {os.path.abspath(f) for f in files}
 
         # The content of all index entries indexed by full path to file
         # to be ingested
@@ -490,7 +492,7 @@ class RawIngestTask(Task):
                 good_index_files.add(path)
 
                 for relfile, metadata in index.items():
-                    file = os.path.realpath(os.path.abspath(os.path.join(directory, relfile)))
+                    file = os.path.abspath(os.path.join(directory, relfile))
                     if file in index_entries:
                         # ObservationInfo overrides raw metadata
                         if isinstance(metadata, ObservationInfo) \
@@ -527,7 +529,7 @@ class RawIngestTask(Task):
 
                 for file_in_dir in files_in_directory:
                     if file_in_dir in index:
-                        file = os.path.realpath(os.path.abspath(os.path.join(directory, file_in_dir)))
+                        file = os.path.abspath(os.path.join(directory, file_in_dir))
                         if file in index_entries:
                             # ObservationInfo overrides raw metadata
                             if isinstance(index[file_in_dir], ObservationInfo) \
