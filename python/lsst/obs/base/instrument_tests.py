@@ -33,6 +33,7 @@ from lsst.obs.base.gen2to3 import TranslatorFactory
 from lsst.daf.butler import Registry
 from lsst.daf.butler import RegistryConfig
 from lsst.daf.butler.core.utils import getFullTypeName
+from lsst.daf.butler.formatters.yaml import YamlFormatter
 
 
 DUMMY_FILTER_DEFINITIONS = FilterDefinitionCollection(
@@ -68,7 +69,7 @@ class DummyCam(Instrument):
 
     def getRawFormatter(self, dataId):
         # Docstring inherited fromt Instrument.getRawFormatter.
-        return None
+        return YamlFormatter
 
     def writeCuratedCalibrations(self, butler):
         pass

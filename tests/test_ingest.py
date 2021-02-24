@@ -25,38 +25,50 @@ import shutil
 import tempfile
 import unittest
 
-import lsst.daf.butler as dafButler
 import lsst.daf.butler.tests as butlerTests
+from lsst.daf.butler import DatasetType
+from lsst.daf.butler.core.utils import getFullTypeName
 
+from lsst.obs.base.ingest_tests import IngestTestBase
 from lsst.obs.base import RawIngestTask
 
 
 TESTDIR = os.path.dirname(__file__)
 
 
-class RawIngestTestCase(unittest.TestCase):
+class DummyCamRawIngestTask(RawIngestTask):
+    """For DummyCam we ingest a different dataset type that can return
+    a non-Exposure"""
+
+    def getDatasetType(self):
+        """Return the DatasetType of the datasets ingested by this Task.
+        """
+        return DatasetType("raw_dict", ("instrument", "detector", "exposure"), "StructuredDataDict",
+                           universe=self.butler.registry.dimensions)
+
+
+class RawIngestTestCase(IngestTestBase, unittest.TestCase):
+
+    ingestDatasetTypeName = "raw_dict"
+    rawIngestTask = getFullTypeName(DummyCamRawIngestTask)
+    visits = None  # No camera geom to calculate visit region
+    curatedCalibrationDatasetTypes = ()
+    ingestDir = TESTDIR
+    instrumentClassName = "lsst.obs.base.instrument_tests.DummyCam"
+    file = os.path.join(TESTDIR, "fakedata", "dataset_1.yaml")
+    dataIds = [dict(instrument="DummyCam", exposure=100, detector=1)]
+
+    def testWriteCuratedCalibrations(self):
+        """There are no curated calibrations in this test instrument"""
+        pass
+
+
+class TestTaskPickle(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
-        """Create a new butler once only."""
         cls.root = tempfile.mkdtemp(dir=TESTDIR)
-
-        dataIds = {
-            "instrument": ["DummyCam"],
-            "physical_filter": ["d-r"],
-            "exposure": [42, 43, 44],
-        }
-
-        cls.creatorButler = butlerTests.makeTestRepo(cls.root, dataIds)
-
-        # Create dataset types used by the tests
-        cls.storageClassFactory = dafButler.StorageClassFactory()
-        for datasetTypeName, storageClassName in (("raw", "ExposureF"),
-                                                  ):
-            storageClass = cls.storageClassFactory.getStorageClass(storageClassName)
-            butlerTests.addDatasetType(cls.creatorButler,
-                                       datasetTypeName,
-                                       {"instrument", "exposure"},
-                                       storageClass)
+        cls.creatorButler = butlerTests.makeTestRepo(cls.root, {})
 
     @classmethod
     def tearDownClass(cls):
