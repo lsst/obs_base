@@ -79,6 +79,11 @@ class RawIngestTestCase(IngestTestBase, unittest.TestCase):
         pass
 
 
+class RawIngestIndexTestCase(RawIngestTestCase):
+    """This time ingest via an index file."""
+    file = os.path.join(TESTDIR, "fakedata2", "dataset_1.yaml")
+
+
 class TestTaskPickle(unittest.TestCase):
 
     @classmethod

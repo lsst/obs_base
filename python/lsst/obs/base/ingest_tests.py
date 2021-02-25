@@ -303,14 +303,28 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         """
         # symlink into repo root manually
         butler = Butler(self.root, run=self.outputRun)
-        pathInStore = "prefix-" + os.path.basename(self.file)
+
+        # If we have an index file in the source directory we need to
+        # create a symlink for that as well but we also have to reuse the
+        # test file name and not make a new name unless we change the
+        # content of the index
+        source_file_uri = ButlerURI(self.file)
+        index_file = source_file_uri.dirname().join("_index.json")
+        pathInStore = source_file_uri.basename()
+        if index_file.exists():
+            os.symlink(index_file.ospath, butler.datastore.root.join("_index.json").ospath)
+        else:
+            # No index file so we are free to pick any name
+            pathInStore = "prefix-" + pathInStore
+
         newPath = butler.datastore.root.join(pathInStore)
         os.symlink(os.path.abspath(self.file), newPath.ospath)
-        sidecar_uri = ButlerURI(self.file)
+
+        # If there is a sidecar file we need to link that in as well
+        # since we do not follow symlinks.
+        sidecar_uri = ButlerURI(source_file_uri)
         sidecar_uri.updateExtension(".json")
         if sidecar_uri.exists():
-            # Need to also make symlink to side car file if one exists
-            # because ingester will not follow the link
             newSidecar = ButlerURI(newPath)
             newSidecar.updateExtension(".json")
             os.symlink(sidecar_uri.ospath, newSidecar.ospath)
