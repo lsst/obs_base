@@ -37,7 +37,7 @@ class InstrumentTestCase(InstrumentTests, unittest.TestCase):
 
     data = InstrumentTestData(name="DummyCam",
                               nDetectors=2,
-                              firstDetectorName="1",
+                              firstDetectorName="RXX_S00",
                               physical_filters={"dummy_g", "dummy_u"})
 
     def test_getCamera(self):

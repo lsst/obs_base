@@ -26,7 +26,7 @@ import tempfile
 import unittest
 
 import lsst.daf.butler.tests as butlerTests
-from lsst.daf.butler import DatasetType
+from lsst.daf.butler import DatasetType, Butler, DataCoordinate
 from lsst.daf.butler.core.utils import getFullTypeName
 
 from lsst.obs.base.ingest_tests import IngestTestBase
@@ -51,12 +51,28 @@ class RawIngestTestCase(IngestTestBase, unittest.TestCase):
 
     ingestDatasetTypeName = "raw_dict"
     rawIngestTask = getFullTypeName(DummyCamRawIngestTask)
-    visits = None  # No camera geom to calculate visit region
     curatedCalibrationDatasetTypes = ()
     ingestDir = TESTDIR
     instrumentClassName = "lsst.obs.base.instrument_tests.DummyCam"
     file = os.path.join(TESTDIR, "fakedata", "dataset_1.yaml")
-    dataIds = [dict(instrument="DummyCam", exposure=100, detector=1)]
+    dataIds = [dict(instrument="DummyCam", exposure=100, detector=0)]
+
+    @property
+    def visits(self):
+        butler = Butler(self.root, collections=[self.outputRun])
+        return {
+            DataCoordinate.standardize(
+                instrument="DummyCam",
+                visit=100,
+                universe=butler.registry.dimensions
+            ): [
+                DataCoordinate.standardize(
+                    instrument="DummyCam",
+                    exposure=100,
+                    universe=butler.registry.dimensions
+                )
+            ]
+        }
 
     def testWriteCuratedCalibrations(self):
         """There are no curated calibrations in this test instrument"""
