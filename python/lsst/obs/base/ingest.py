@@ -43,6 +43,7 @@ from lsst.daf.butler import (
     DimensionUniverse,
     FileDataset,
     Formatter,
+    Progress,
 )
 from lsst.pex.config import Config, ChoiceField, Field
 from lsst.pipe.base import Task, timeMethod
@@ -265,6 +266,7 @@ class RawIngestTask(Task):
         self._on_success = on_success
         self._on_metadata_failure = on_metadata_failure
         self._on_ingest_failure = on_ingest_failure
+        self.progress = Progress("obs.base.RawIngestTask")
 
         # Import all the instrument classes so that we ensure that we
         # have all the relevant metadata translators loaded.
@@ -734,7 +736,7 @@ class RawIngestTask(Task):
             """Filter out bad files and return good with list of bad."""
             good_files = []
             bad_files = []
-            for fileDatum in file_data:
+            for fileDatum in self.progress.wrap(file_data, desc="Reading image metadata", total=len(files)):
                 if not fileDatum.datasets:
                     bad_files.append(fileDatum.filename)
                 else:
@@ -872,7 +874,7 @@ class RawIngestTask(Task):
         n_exposures = 0
         n_exposures_failed = 0
         n_ingests_failed = 0
-        for exposure in exposureData:
+        for exposure in self.progress.wrap(exposureData, desc="Ingesting raw exposures"):
 
             self.log.debug("Attempting to ingest %d file%s from exposure %s:%s",
                            *_log_msg_counter(exposure.files),
