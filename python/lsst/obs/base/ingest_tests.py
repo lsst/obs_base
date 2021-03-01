@@ -276,7 +276,9 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         butler = Butler(self.root, run=self.outputRun)
         datasets = list(butler.registry.queryDatasets(self.ingestDatasetTypeName, collections=self.outputRun))
         datastoreUri = butler.getURI(datasets[0])
-        self.assertEqual(datastoreUri, srcUri)
+        # These are known to be file URIs but sometimes we can end up with
+        # scheme-less and file and they won't compare
+        self.assertEqual(datastoreUri.ospath, srcUri.ospath)
 
     def testCopy(self):
         self._ingestRaws(transfer="copy")
