@@ -51,6 +51,11 @@ class FitsGenericFormatter(FileFormatter):
         """
         if not os.path.exists(path):
             return None
+        if self.fileDescriptor.parameters:
+            try:
+                return pytype.readFitsWithOptions(path, options=self.fileDescriptor.parameters)
+            except AttributeError:
+                pass
 
         return pytype.readFits(path)
 
