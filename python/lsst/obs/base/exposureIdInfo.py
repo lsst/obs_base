@@ -22,6 +22,7 @@
 __all__ = ["ExposureIdInfo"]
 
 from lsst.daf.butler import DataCoordinate
+from lsst.afw.table import IdFactory
 
 
 class ExposureIdInfo:
@@ -52,11 +53,10 @@ class ExposureIdInfo:
 
     .. code-block:: python
 
-        from lsst.afw.table import IdFactory, SourceTable
-        sourceIdFactory = IdFactory.makeSource(info.expId, info.unusedBits)
+        from lsst.afw.table import SourceTable
         schema = SourceTable.makeMinimalSchema()
         #...add fields to schema as desired, then...
-        sourceTable = SourceTable.make(self.schema, sourceIdFactory)
+        sourceTable = SourceTable.make(self.schema, info.makeSourceIdFactory())
 
     An `ExposureIdInfo` instance can be obtained from a Gen2 data butler
     ``butler`` and dictionary ``dataId`` that identifies a visit and a detector
@@ -146,3 +146,15 @@ class ExposureIdInfo:
             return IdFactory.computeReservedFromMaxBits(self.expBits)
         else:
             return self.maxBits - self.expBits
+
+    def makeSourceIdFactory(self):
+        """Make a `lsst.afw.table.SourceTable.IdFactory` instance from this
+        exposure information.
+
+        Returns
+        -------
+        idFactory : `lsst.afw.table.SourceTable.IdFactory`
+            An ID factory that generates new IDs that fold in the image IDs
+            managed by this object.
+        """
+        return IdFactory.makeSource(self.expId, self.unusedBits)
