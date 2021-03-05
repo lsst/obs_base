@@ -396,7 +396,8 @@ class RawIngestTask(Task):
                 )
         return data
 
-    def prep(self, files, *, pool: Optional[Pool] = None, processes: int = 1) -> Iterator[RawExposureData]:
+    def prep(self, files, *, pool: Optional[Pool] = None, processes: int = 1
+             ) -> Tuple[Iterator[RawExposureData], List[str]]:
         """Perform all ingest preprocessing steps that do not involve actually
         modifying the database.
 
@@ -411,9 +412,9 @@ class RawIngestTask(Task):
         processes : `int`, optional
             The number of processes to use.  Ignored if ``pool`` is not `None`.
 
-        Yields
-        ------
-        exposure : `RawExposureData`
+        Returns
+        -------
+        exposures : `Iterator` [ `RawExposureData` ]
             Data structures containing dimension records, filenames, and data
             IDs to be ingested (one structure for each exposure).
         bad_files : `list` of `str`
