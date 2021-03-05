@@ -466,7 +466,7 @@ class RawIngestTask(Task):
         return mapFunc(self.expandDataIds, exposureData), bad_files
 
     def ingestExposureDatasets(self, exposure: RawExposureData, *, run: Optional[str] = None
-                               ) -> List[DatasetRef]:
+                               ) -> List[FileDataset]:
         """Ingest all raw files in one exposure.
 
         Parameters
@@ -481,15 +481,16 @@ class RawIngestTask(Task):
 
         Returns
         -------
-        refs : `list` of `lsst.daf.butler.DatasetRef`
-            Dataset references for ingested raws.
+        datasets : `list` of `lsst.daf.butler.FileDataset`
+            Per-file structures identifying the files ingested and their
+            dataset representation in the data repository.
         """
         datasets = [FileDataset(path=os.path.abspath(file.filename),
                                 refs=[DatasetRef(self.datasetType, d.dataId) for d in file.datasets],
                                 formatter=file.FormatterClass)
                     for file in exposure.files]
         self.butler.ingest(*datasets, transfer=self.config.transfer, run=run)
-        return [ref for dataset in datasets for ref in dataset.refs]
+        return datasets
 
     def run(self, files, *, pool: Optional[Pool] = None, processes: int = 1, run: Optional[str] = None):
         """Ingest files into a Butler data repository.
@@ -570,7 +571,9 @@ class RawIngestTask(Task):
                 runs.add(this_run)
             try:
                 with self.butler.transaction():
-                    refs.extend(self.ingestExposureDatasets(exposure, run=this_run))
+                    datasets_for_exposure = self.ingestExposureDatasets(exposure, run=this_run)
+                for dataset in datasets_for_exposure:
+                    refs.extend(dataset.refs)
             except Exception as e:
                 n_ingests_failed += 1
                 self.log.warning("Failed to ingest the following for reason: %s", e)
