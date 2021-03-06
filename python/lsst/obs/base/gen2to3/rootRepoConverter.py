@@ -168,7 +168,8 @@ class RootRepoConverter(StandardRepoConverter):
                                       storageClass="SimpleCatalog")
             if self.subset is None:
                 regex = re.compile(r"(\d+)\.fits")
-                for fileName in os.listdir(os.path.join(self.root, "ref_cats", refCat)):
+                for fileName in self.progress.wrap(os.listdir(os.path.join(self.root, "ref_cats", refCat)),
+                                                   desc=f"Processing refcat {refCat}"):
                     m = regex.match(fileName)
                     if m is not None:
                         htmId = int(m.group(1))
@@ -176,7 +177,8 @@ class RootRepoConverter(StandardRepoConverter):
                         yield FileDataset(path=os.path.join(self.root, "ref_cats", refCat, fileName),
                                           refs=DatasetRef(datasetType, dataId))
             else:
-                for begin, end in self.subset.skypix[dimension]:
+                for begin, end in self.progress.wrap(self.subset.skypix[dimension],
+                                                     desc=f"Processing ranges for refcat {refCat}"):
                     for htmId in range(begin, end):
                         dataId = self.task.registry.expandDataId({dimension: htmId})
                         yield FileDataset(path=os.path.join(self.root, "ref_cats", refCat, f"{htmId}.fits"),
@@ -189,9 +191,10 @@ class RootRepoConverter(StandardRepoConverter):
             return self.instrument.makeRefCatCollectionName("gen2")
         return super().getRun(datasetTypeName, calibDate)
 
-    def _finish(self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]]):
+    def _finish(self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]],
+                count: int) -> None:
         # Docstring inherited from RepoConverter.
-        super()._finish(datasets)
+        super()._finish(datasets, count)
         if self._refCats:
             # Set up a CHAINED collection named something like "refcats" to
             # also point to "refcats/gen2".  It's conceivable (but unlikely)

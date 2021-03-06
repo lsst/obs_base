@@ -39,7 +39,7 @@ from typing import (
     Tuple,
 )
 
-from lsst.daf.butler import DatasetType, DimensionUniverse, StorageClass, FormatterParameter
+from lsst.daf.butler import DatasetType, DimensionUniverse, StorageClass, FormatterParameter, Progress
 from ..translators import TranslatorFactory
 from .parser import PathElementParser
 from .scanner import PathElementHandler, DirectoryScanner
@@ -327,9 +327,19 @@ class BuilderTree(BuilderNode):
     of its children can be pruned, it is replaced by a `BuilderPrunedTree`
     (which can then be pruned itself).  It builds `SubdirectoryHandler`
     instances when not pruned.
+
+    Parameters
+    ----------
+    progress : `Progress`, optional
+        Object to use to report incremental progress.
     """
-    def __init__(self):
+    def __init__(self, progress: Optional[Progress] = None):
         self._children = {}  # Maps template path element to BuilderNode
+        self.progress = progress
+
+    MAX_PROGRESS_LEVEL: int = 2
+    """Maximum directory level at which progress bars are created.
+    """
 
     def insert(self, level: int, leaf: BuilderInput):
         """Insert an input leaf node into the tree, recursively constructing
@@ -354,7 +364,8 @@ class BuilderTree(BuilderNode):
                 leaf = BuilderDuplicateInputs(conflict, leaf)
             self._children[element] = leaf
         else:
-            child = self._children.setdefault(element, BuilderTree())
+            progress = self.progress if nextLevel <= self.MAX_PROGRESS_LEVEL else None
+            child = self._children.setdefault(element, BuilderTree(progress))
             child.insert(nextLevel, leaf)
 
     def fill(self, scanner: DirectoryScanner, allKeys: Dict[str, type], previousKeys: Dict[str, type], *,
@@ -414,7 +425,7 @@ class BuilderTree(BuilderNode):
               fileIgnoreRegEx: Optional[re.Pattern], dirIgnoreRegEx: Optional[re.Pattern]
               ) -> PathElementHandler:
         # Docstring inherited from BuilderNode.
-        built = SubdirectoryHandler(parser)
+        built = SubdirectoryHandler(parser, progress=self.progress)
         self.fill(built.scanner, allKeys, cumulativeKeys, fileIgnoreRegEx=fileIgnoreRegEx,
                   dirIgnoreRegEx=dirIgnoreRegEx)
         return built

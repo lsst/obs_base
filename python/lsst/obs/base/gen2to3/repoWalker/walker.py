@@ -43,6 +43,7 @@ from lsst.daf.butler import (
     DataCoordinate,
     DatasetType,
     FileDataset,
+    Progress,
 )
 from .builders import BuilderTargetInput, BuilderSkipInput, BuilderTree
 from .scanner import DirectoryScanner
@@ -66,17 +67,20 @@ class RepoWalker:
         A regular expression pattern that identifies non-dataset subdirectories
         that can be ignored, to be applied at all levels of the directory tree.
     log : `Log`, optional
-            Logger for warnings and diagnostic information.
+        Logger for warnings and diagnostic information.
+    progress : `Progress`, optional
+        Object to use to report incremental progress.
     """
     def __init__(self, inputs: Iterable[Union[Target, Skip]], *,
                  fileIgnoreRegEx: Optional[re.Pattern] = None,
                  dirIgnoreRegEx: Optional[re.Pattern] = None,
-                 log: Optional[Log] = None):
+                 log: Optional[Log] = None,
+                 progress: Optional[Progress] = None):
         super().__init__()
         if log is None:
             log = Log.getLogger("obs.base.gen2to3.TranslatorFactory")
         self.log = log
-        tree = BuilderTree()
+        tree = BuilderTree(progress)
         allKeys: Dict[str, type] = {}
         for leaf in inputs:
             tree.insert(0, leaf)
