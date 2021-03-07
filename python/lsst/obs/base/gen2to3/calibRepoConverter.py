@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING, Dict, Iterator, List, Mapping, Sequence, Tuple
 import astropy.time
 import astropy.units as u
 
-from lsst.daf.butler import DataCoordinate, FileDataset, Timespan
+from lsst.daf.butler import CollectionType, DataCoordinate, FileDataset, Timespan
 from .repoConverter import RepoConverter
 from .repoWalker import RepoWalker
 
@@ -291,6 +291,7 @@ class CalibRepoConverter(RepoConverter):
             self.task.log.warn(msg)
 
         # Done reading from Gen2, time to certify into Gen3.
+        self.task.registry.registerCollection(self.collection, type=CollectionType.CALIBRATION)
         for timespan, refs in refsByTimespan.items():
             self.task.registry.certify(self.collection, refs, timespan)
 
