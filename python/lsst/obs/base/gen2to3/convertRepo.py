@@ -649,6 +649,10 @@ class ConvertRepoTask(Task):
             converters.append(converter)
             rerunConverters[spec.runName] = converter
 
+        # Walk Gen2 repos to find datasets to convert.
+        for converter in converters:
+            converter.prep()
+
         # Register the instrument if we're configured to do so.
         if self.config.doRegisterInstrument:
             self.instrument.register(self.registry)
@@ -676,10 +680,6 @@ class ConvertRepoTask(Task):
         # Define visits (also does nothing if we weren't configurd to convert
         # the 'raw' dataset type).
         rootConverter.runDefineVisits(pool=pool)
-
-        # Walk Gen2 repos to find datasets convert.
-        for converter in converters:
-            converter.prep()
 
         # Insert dimensions that are potentially shared by all Gen2
         # repositories (and are hence managed directly by the Task, rather
