@@ -274,7 +274,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         self._ingestRaws(transfer="direct")
 
         # Check that it really did have a URI outside of datastore
-        srcUri = ButlerURI(self.file)
+        srcUri = ButlerURI(self.file, forceAbsolute=True)
         butler = Butler(self.root, run=self.outputRun)
         datasets = list(butler.registry.queryDatasets(self.ingestDatasetTypeName, collections=self.outputRun))
         datastoreUri = butler.getURI(datasets[0])

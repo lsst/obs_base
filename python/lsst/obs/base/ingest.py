@@ -428,6 +428,10 @@ class RawIngestTask(Task):
     def locateAndReadIndexFiles(self, files):
         """Given a list of files, look for index files and read them.
 
+        Index files can either be explicitly in the list of files to
+        ingest, or else located in the same directory as a file to ingest.
+        Index entries are always used if present.
+
         Parameters
         ----------
         files : iterable over `str` or path-like objects
@@ -445,13 +449,6 @@ class RawIngestTask(Task):
             found listed in an index file.
         bad_index_files: `set[str]`
             Files that looked like index files but failed to read properly.
-
-        Notes
-        -----
-        Looks for explicit index files (named ``_index.json``) and also
-        looks for implicit index files that are in the same directory as
-        an explicitly specified data file. These index files can significantly
-        improve ingest speed.
         """
         # Create set of input files to allow easy removal of entries and
         # convert to absolute path for easy comparison with index content.
@@ -459,76 +456,70 @@ class RawIngestTask(Task):
         # files are in this location and not the location which it links to.
         files_set = {os.path.abspath(f) for f in files}
 
-        # The content of all index entries indexed by full path to file
-        # to be ingested
+        # Index files must be named this
+        index_root_file = "_index.json"
+
+        # Group the files by directory
+        files_by_directory = {}
+
+        for path in files_set:
+            directory, file_in_dir = os.path.split(path)
+            files_by_directory.setdefault(directory, set()).add(file_in_dir)
+
+        # All the metadata read from index files with keys of full path
         index_entries = {}
 
-        # Files we failed to read
+        # Index files we failed to read
         bad_index_files = set()
 
         # Any good index files that were found and used
         good_index_files = set()
 
-        # The directories containing requested files
-        by_directory = {}
+        # Look for index files in those directories
+        for directory, files_in_directory in files_by_directory.items():
+            possible_index_file = os.path.join(directory, index_root_file)
+            if os.path.exists(possible_index_file):
+                # If we are explicitly requesting an index file the
+                # messages should be different
+                index_msg = "inferred"
+                is_implied = True
+                if index_root_file in files_in_directory:
+                    index_msg = "explicit"
+                    is_implied = False
 
-        for path in files_set:
-            # Keep an eye out for explicit index files
-            directory, file_in_dir = os.path.split(path)
-            if file_in_dir.endswith(".json"):
-                # Assume any explicit JSON file is an index
-                # Read the index and convert to absolute paths
+                # Try to read the index file and catch and report any
+                # problems.
                 try:
-                    index = read_index(path, force_dict=True)
+                    index = read_index(possible_index_file, force_dict=True)
                 except Exception as e:
+                    # For now only trigger the callback if the index file
+                    # was asked for explicitly.
+                    if not is_implied:
+                        self._on_metadata_failure(possible_index_file, e)
                     if self.config.failFast:
-                        raise RuntimeError(f"Problem reading index from {path}") from e
-                    self.log.warning("Problem reading index from %s, skipping it: '%s'", path, e)
-                    bad_index_files.add(path)
+                        raise RuntimeError(f"Problem reading index file from {index_msg} "
+                                           f"location {possible_index_file}") from e
+                    bad_index_files.add(possible_index_file)
                     continue
 
-                self.log.debug("Extracted index metadata from file %s", path)
+                self.log.debug("Extracted index metadata from %s file %s", index_msg, possible_index_file)
+                good_index_files.add(possible_index_file)
 
-                # Record that we used this index file
-                good_index_files.add(path)
-
-                for relfile, metadata in index.items():
-                    file = os.path.abspath(os.path.join(directory, relfile))
-                    if file in index_entries:
-                        # ObservationInfo overrides raw metadata
-                        if isinstance(metadata, ObservationInfo) \
-                                and not isinstance(index_entries[file], ObservationInfo):
-                            self.log.warning("File %s already specified in an index file but overriding"
-                                             " with ObservationInfo content from %s", file, path)
-                        else:
-                            self.log.warning("File %s already specified in an index file, "
-                                             "ignoring content from %s", file, path)
-                    else:
-                        index_entries[file] = metadata
-                continue
-
-            by_directory.setdefault(directory, set()).add(file_in_dir)
-
-        # Look for index files in those directories
-        for directory, files_in_directory in by_directory.items():
-            possible_index = os.path.join(directory, "_index.json")
-            if os.path.exists(possible_index):
-                # if a derived index file is found we should only use
-                # information for requested files.
-                try:
-                    index = read_index(possible_index, force_dict=True)
-                except Exception as e:
-                    if self.config.failFast:
-                        raise RuntimeError("Problem reading index from inferred "
-                                           f"location {file_in_dir}") from e
-                    self.log.warning("Problem reading index from inferred location %s, skipping it: %s",
-                                     file_in_dir, e)
-                    bad_index_files.add(possible_index)
+                # Go through the index adding entries for files.
+                # If we have non-index files in this directory marked for
+                # ingest we should only get index information for those.
+                # If the index file was explicit we use all entries.
+                if is_implied:
+                    files_to_ingest = files_in_directory
                 else:
-                    good_index_files.add(possible_index)
-                    self.log.debug("Extracted potential index metadata from inferred file %s", possible_index)
+                    files_to_ingest = set(index)
 
-                for file_in_dir in files_in_directory:
+                # Copy relevant metadata into a single dict for all index
+                # entries.
+                for file_in_dir in files_to_ingest:
+                    # Skip an explicitly specified index file.
+                    if file_in_dir == index_root_file:
+                        continue
                     if file_in_dir in index:
                         file = os.path.abspath(os.path.join(directory, file_in_dir))
                         if file in index_entries:
@@ -537,12 +528,14 @@ class RawIngestTask(Task):
                                     and not isinstance(index_entries[file], ObservationInfo):
                                 self.log.warning("File %s already specified in an index file but overriding"
                                                  " with ObservationInfo content from %s",
-                                                 file, possible_index)
+                                                 file, possible_index_file)
                             else:
                                 self.log.warning("File %s already specified in an index file, "
-                                                 "ignoring content from %s", file, possible_index)
-                        else:
-                            index_entries[file] = index[file_in_dir]
+                                                 "ignoring content from %s", file, possible_index_file)
+                                # Do nothing in this case
+                                continue
+
+                        index_entries[file] = index[file_in_dir]
 
         # Remove files from list that have index entries and also
         # any files that we determined to be explicit index files
