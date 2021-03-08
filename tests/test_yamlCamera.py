@@ -26,6 +26,7 @@ from lsst.obs.base.yamlCamera import makeCamera
 
 
 class YamlCameraTestCase(unittest.TestCase):
+    """Test the YAML camera geometry."""
 
     def setUp(self):
         self.cameraFile = pkg_resources.resource_filename("lsst.obs.base", "test/dummycam.yaml")

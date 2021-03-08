@@ -38,7 +38,7 @@ TESTDIR = os.path.dirname(__file__)
 
 class DummyCamRawIngestTask(RawIngestTask):
     """For DummyCam we ingest a different dataset type that can return
-    a non-Exposure"""
+    a non-Exposure."""
 
     def getDatasetType(self):
         """Return the DatasetType of the datasets ingested by this Task.
@@ -48,6 +48,7 @@ class DummyCamRawIngestTask(RawIngestTask):
 
 
 class RawIngestTestCase(IngestTestBase, unittest.TestCase):
+    """Test ingest using JSON sidecar files."""
 
     ingestDatasetTypeName = "raw_dict"
     rawIngestTask = getFullTypeName(DummyCamRawIngestTask)
@@ -80,11 +81,12 @@ class RawIngestTestCase(IngestTestBase, unittest.TestCase):
 
 
 class RawIngestIndexTestCase(RawIngestTestCase):
-    """This time ingest via an index file."""
+    """Test ingest using JSON index files."""
     file = os.path.join(TESTDIR, "fakedata2", "dataset_1.yaml")
 
 
-class TestTaskPickle(unittest.TestCase):
+class TestRawIngestTaskPickle(unittest.TestCase):
+    """Test that pickling of the RawIngestTask works properly."""
 
     @classmethod
     def setUpClass(cls):

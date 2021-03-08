@@ -168,9 +168,11 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         datasetType = butler.registry.getDatasetType(self.ingestDatasetTypeName)
 
         for dataId in self.dataIds:
-
-            # Raws can be large so we don't want to read them every time
-            # but for now read the full dataset if it's not an Exposure
+            # For testing we only read the entire dataset the first time
+            # round if this is an Exposure. If it's not an Exposure
+            # we always read it completely but we don't read components
+            # because for an arbitrary dataset type we can't easily tell
+            # what component to test.
 
             if not datasetType.storageClass.name.startswith("Exposure"):
                 exposure = butler.get(self.ingestDatasetTypeName, dataId)
@@ -276,9 +278,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         butler = Butler(self.root, run=self.outputRun)
         datasets = list(butler.registry.queryDatasets(self.ingestDatasetTypeName, collections=self.outputRun))
         datastoreUri = butler.getURI(datasets[0])
-        # These are known to be file URIs but sometimes we can end up with
-        # scheme-less and file and they won't compare
-        self.assertEqual(datastoreUri.ospath, srcUri.ospath)
+        self.assertEqual(datastoreUri, srcUri)
 
     def testCopy(self):
         self._ingestRaws(transfer="copy")
@@ -303,13 +303,13 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         """Test that files already in the directory can be added to the
         registry in-place.
         """
-        # symlink into repo root manually
         butler = Butler(self.root, run=self.outputRun)
 
-        # If we have an index file in the source directory we need to
-        # create a symlink for that as well but we also have to reuse the
-        # test file name and not make a new name unless we change the
-        # content of the index
+        # If the test uses an index file the index file needs to also
+        # appear in the datastore root along with the file to be ingested.
+        # In that scenario the file name being used for ingest can not
+        # be modified and must have the same name as found in the index
+        # file itself.
         source_file_uri = ButlerURI(self.file)
         index_file = source_file_uri.dirname().join("_index.json")
         pathInStore = source_file_uri.basename()
@@ -319,18 +319,20 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             # No index file so we are free to pick any name
             pathInStore = "prefix-" + pathInStore
 
+        # Create a symlink to the original file so that it looks like it
+        # is now inside the datastore.
         newPath = butler.datastore.root.join(pathInStore)
         os.symlink(os.path.abspath(self.file), newPath.ospath)
 
-        # If there is a sidecar file we need to link that in as well
-        # since we do not follow symlinks.
-        sidecar_uri = ButlerURI(source_file_uri)
-        sidecar_uri.updateExtension(".json")
+        # If there is a sidecar file it needs to be linked in as well
+        # since ingest code does not follow symlinks.
+        sidecar_uri = ButlerURI(source_file_uri).updatedExtension(".json")
         if sidecar_uri.exists():
-            newSidecar = ButlerURI(newPath)
-            newSidecar.updateExtension(".json")
+            newSidecar = ButlerURI(newPath).updatedExtension(".json")
             os.symlink(sidecar_uri.ospath, newSidecar.ospath)
 
+        # Run ingest with auto mode since that should automatically determine
+        # that an in-place ingest is happening.
         self._ingestRaws(transfer="auto", file=newPath.ospath)
         self.verifyIngest()
 

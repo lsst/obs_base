@@ -1,4 +1,4 @@
-# This file is part of obs_lsst.
+# This file is part of obs_base.
 #
 # Developed for the LSST Data Management System.
 # This product includes software developed by the LSST Project
@@ -20,16 +20,13 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
-#
 ---
-#
-# Simplest possible single chip camera
+
+# Simplest possible single chip camera used for obs_base testing.
 
 name : DummyCam
 
-#
 # A single amplifier ("segment" to the camera team)
-#
 AMP : &AMP
     perAmpData : True
     # trimmed
@@ -44,25 +41,15 @@ AMP : &AMP
     rawParallelPrescanBBox  : [[0,    1], [0,         0]]  # pixels digitised before first parallel transfer
     rawParallelOverscanBBox : [[10, 2002], [512,     46]]  # parallel overscan
 
-    #nRowPreParallelTransfer : 0         # number of rows digitised before first parallel transfer
-    #extended : 10                       # number of pixels in the extended register
-    #extended0 : 0                       # first pixel in the extended register
-    #h_overscan : 22                     # number of overscan pixels in x (serial)
-    #h_overscan0 : 0                     # first overscan pixel in x (serial)
-    #v_overscan : 46                     # number of overscan pixel in y (parallel)
-    #v_overscan0 : 0                     # first overscan pixel in y (parallel)
+    saturation : 142857
 
-    saturation : 142857                  # saturation level, DN XXX Should this be in electrons?
-
-    # Linearity correction is still under discussion, so this is a placeholder.
+    # Linearity correction
     linearityType : PROPORTIONAL
     linearityThreshold : 0
     linearityMax : 142857                # == saturation
     linearityCoeffs : [0, 142857]        # == [linearityThreshold, linearityMax]
 
-#
 # A single CCD
-#
 CCD : &CCD
     detectorType : 0
     refpos : [2047.5, 2001.5]
@@ -85,7 +72,6 @@ CCD : &CCD
 
 
 # Layout of CCDs within an raft
-#
 RAFT:
   ccds :
     S00: &S00                      # Sensor (0, 0)
@@ -93,19 +79,14 @@ RAFT:
       id : 0
       offset : [0.0, 0.0]
 
-
-#
 # Specify the geometrical transformations relevant to the camera in all appropriate
 # (and known!) coordinate systems
-#
 plateScale : 9.5695
 transforms : {'nativeSys': 'FocalPlane', 'FieldAngle': {'transformType': 'radial', 'coeffs': [0.0, 1.0, 0.0]}}
 
-#
 # Define our specific devices
 #
 # All the CCDs present in this file
-#
 CCDs :
   RXX_S00 :
     << : *S00

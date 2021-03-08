@@ -251,17 +251,18 @@ class RawIngestTask(Task):
 
         Parameters
         ----------
-        dataId : `DataCoordinate`
+        dataId : `lsst.daf.butler.DataCoordinate`
             The dataId associated with this dataset.
         filename : `str`
             Filename used for error reporting.
 
         Returns
         -------
-        instrument : `Instrument`
-            Instance of the `Instrument` associated with this dataset.
+        instrument : `Instrument` or `None`
+            Instance of the `Instrument` associated with this dataset. `None`
+            indicates that the instrument could not be determined.
         formatterClass : `type`
-            Class to be used as the formatter for this dataset
+            Class to be used as the formatter for this dataset.
         """
         # The data model currently assumes that whilst multiple datasets
         # can be associated with a single file, they must all share the
@@ -276,6 +277,7 @@ class RawIngestTask(Task):
                 raise RuntimeError(f"Instrument {dataId['instrument']} for"
                                    f" file {filename} not known to registry") from e
             FormatterClass = Formatter
+            # Indicate that we could not work out the instrument.
             instrument = None
         else:
             FormatterClass = instrument.getRawFormatter(dataId)
@@ -295,7 +297,7 @@ class RawIngestTask(Task):
             A structure containing the metadata extracted from the file,
             as well as the original filename.  All fields will be populated,
             but the `RawFileData.dataId` attribute will be a minimal
-            (unexpanded) `DataCoordinate` instance.
+            (unexpanded) `~lsst.daf.butler.DataCoordinate` instance.
 
         Notes
         -----
@@ -363,7 +365,7 @@ class RawIngestTask(Task):
 
         Parameters
         ----------
-        header : `Mapping` or `ObservationInfo`
+        header : `Mapping` or `astro_metadata_translator.ObservationInfo`
             Header from the dataset or previously-translated content.
         filename : `str`
             Filename to use for error messages.
@@ -565,7 +567,7 @@ class RawIngestTask(Task):
             A structure containing the metadata extracted from the file,
             as well as the original filename.  All fields will be populated,
             but the `RawFileData.dataId` attribute will be a minimal
-            (unexpanded) `DataCoordinate` instance.
+            (unexpanded) `~lsst.daf.butler.DataCoordinate` instance.
         """
         fileData = []
         for filename, metadata in index_entries.items():
@@ -591,7 +593,7 @@ class RawIngestTask(Task):
             A list of structures that group the file-level information by
             exposure. All fields will be populated.  The
             `RawExposureData.dataId` attributes will be minimal (unexpanded)
-            `DataCoordinate` instances.
+            `~lsst.daf.butler.DataCoordinate` instances.
         """
         exposureDimensions = self.universe["exposure"].graph
         byExposure = defaultdict(list)
@@ -618,8 +620,8 @@ class RawIngestTask(Task):
         exposure : `RawExposureData`
             An updated version of the input structure, with
             `RawExposureData.dataId` and nested `RawFileData.dataId` attributes
-            updated to data IDs for which `DataCoordinate.hasRecords` returns
-            `True`.
+            updated to data IDs for which
+            `~lsst.daf.butler.DataCoordinate.hasRecords` returns `True`.
         """
         # We start by expanded the exposure-level data ID; we won't use that
         # directly in file ingest, but this lets us do some database lookups

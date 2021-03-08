@@ -45,26 +45,15 @@ DUMMY_FILTER_DEFINITIONS = FilterDefinitionCollection(
 )
 
 
-class TestYamlFormatter(YamlFormatter):
-    """Specialist formatter for tests that can make a WCS"""
+class DummyCamYamlWcsFormatter(YamlFormatter):
+    """Specialist formatter for tests that can make a WCS."""
 
     @classmethod
     def makeRawSkyWcsFromBoresight(cls, boresight, orientation, detector):
         """Class method to make a raw sky WCS from boresight and detector.
 
-        Parameters
-        ----------
-        boresight : `lsst.geom.SpherePoint`
-            The ICRS boresight RA/Dec
-        orientation : `lsst.geom.Angle`
-            The rotation angle of the focal plane on the sky.
-        detector : `lsst.afw.cameraGeom.Detector`, unused
-            Where to get the camera geomtry from.
-
-        Returns
-        -------
-        skyWcs : `~lsst.afw.geom.SkyWcs`
-            Reversible mapping from pixel coordinates to sky coordinates.
+        This uses the API expected by define-visits. A working example
+        can be found in `FitsRawFormatterBase`.
 
         Notes
         -----
@@ -103,7 +92,7 @@ class DummyCam(Instrument):
 
     def getRawFormatter(self, dataId):
         # Docstring inherited fromt Instrument.getRawFormatter.
-        return TestYamlFormatter
+        return DummyCamYamlWcsFormatter
 
     def writeCuratedCalibrations(self, butler):
         pass
