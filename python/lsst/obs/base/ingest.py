@@ -297,37 +297,34 @@ class RawIngestTask(Task):
             A structure containing the metadata extracted from the file,
             as well as the original filename.  All fields will be populated,
             but the `RawFileData.dataId` attribute will be a minimal
-            (unexpanded) `~lsst.daf.butler.DataCoordinate` instance.
+            (unexpanded) `~lsst.daf.butler.DataCoordinate` instance. The
+            ``instrumentClsas`` field will be `None` if there is a problem
+            with metadata extraction.
 
         Notes
         -----
         Assumes that there is a single dataset associated with the given
         file.  Instruments using a single file to store multiple datasets
         must implement their own version of this method.
+
+        By default the method will catch all exceptions unless the ``failFast``
+        configuration item is `True`.  If an error is encountered the
+        `_on_metadata_failure()` method will be called. If no exceptions
+        result and an error was encountered the returned object will have
+        a null-instrument class and no datasets.
+
+        This method supports sidecar JSON files which can be used to
+        extract metadata without having to read the data file itself.
+        The sidecar file is always used if found.
         """
 
-        # We do not want to stop ingest if we are given a bad file.
-        # Instead return a RawFileData with no datasets and allow
-        # the caller to report the failure.
-
-        # The options for extracting metadata are:
-        # - This is a JSON index file with metadata so use it directly
-        #   (assumes the file is then not listed explicitly)
-        # - Read metadata from a _index.json file in the same directory as the
-        #   non-JSON file. Should be cached. This is tricky when process pools
-        #   are used since the same index file could be found by
-        #   multiple processes.
-        # - Read metadata from a sidecar .json file (a file of the same name
-        #   as the data file but with .json extension)
-        # - Read metadata from the file itself
-
-        used_sidecar = False
+        sidecar_fail_msg = ""
         try:
             root, ext = os.path.splitext(filename)
             sidecar_file = root + ".json"
             if os.path.exists(sidecar_file):
                 header = read_sidecar(sidecar_file)
-                used_sidecar = True
+                sidecar_fail_msg = " (via sidecar)"
             else:
                 # Read the metadata from the data file itself
                 # Manually merge the primary and "first data" headers here
@@ -337,18 +334,17 @@ class RawIngestTask(Task):
                 header = merge_headers([phdu, readMetadata(filename)], mode="overwrite")
             datasets = [self._calculate_dataset_info(header, filename)]
         except Exception as e:
-            sidecar_text = " (via sidecar)" if used_sidecar else ""
-            self.log.debug("Problem extracting metadata from %s%s: %s", filename, sidecar_text, e)
+            self.log.debug("Problem extracting metadata from %s%s: %s", filename, sidecar_fail_msg, e)
             # Indicate to the caller that we failed to read
             datasets = []
             formatterClass = Formatter
             instrument = None
             self._on_metadata_failure(filename, e)
             if self.config.failFast:
-                raise RuntimeError(f"Problem extracting metadata for file {filename}{sidecar_text}") from e
+                raise RuntimeError("Problem extracting metadata for file "
+                                   f"{filename}{sidecar_fail_msg}") from e
         else:
-            self.log.debug("Extracted metadata for file %s%s", filename,
-                           " (via sidecar)" if used_sidecar else "")
+            self.log.debug("Extracted metadata for file %s%s", filename, sidecar_fail_msg)
             # The data model currently assumes that whilst multiple datasets
             # can be associated with a single file, they must all share the
             # same formatter.
@@ -429,7 +425,7 @@ class RawIngestTask(Task):
                                             universe=self.universe)
         return RawFileDatasetInfo(obsInfo=obsInfo, dataId=dataId)
 
-    def expandIndexFiles(self, files):
+    def locateAndReadIndexFiles(self, files):
         """Given a list of files, look for index files and read them.
 
         Parameters
@@ -440,7 +436,7 @@ class RawIngestTask(Task):
 
         Returns
         -------
-        index : `dict[str, Any]`
+        index : `dict` [`str`, Any]
             Merged contents of all relevant index files found. These can
             be explicitly specified index files or ones found in the
             directory alongside a data file to be ingested.
@@ -449,15 +445,18 @@ class RawIngestTask(Task):
             found listed in an index file.
         bad_index_files: `set[str]`
             Files that looked like index files but failed to read properly.
-        """
-        # Look for index files that can speed up ingest. These can be
-        # explicit index files or index files found in directories containing
-        # files.  Group by directory and then look in those directories.
 
-        # Create set of input files to allow easy removal of entries
-        # Convert to absolute path for easy comparison with index content
+        Notes
+        -----
+        Looks for explicit index files (named ``_index.json``) and also
+        looks for implicit index files that are in the same directory as
+        an explicitly specified data file. These index files can significantly
+        improve ingest speed.
+        """
+        # Create set of input files to allow easy removal of entries and
+        # convert to absolute path for easy comparison with index content.
         # Do not convert to real paths since we have to assume that index
-        # files are in this location and not the location linked from
+        # files are in this location and not the location which it links to.
         files_set = {os.path.abspath(f) for f in files}
 
         # The content of all index entries indexed by full path to file
@@ -557,7 +556,7 @@ class RawIngestTask(Task):
 
         Parameters
         ----------
-        index_entries : `dict[str, Any]`
+        index_entries : `dict` [`str`, Any]
             Dict indexed by name of file to ingest and with keys either
             raw metadata or translated `ObservationInfo`.
 
@@ -677,7 +676,7 @@ class RawIngestTask(Task):
 
         # Look for index files and read them
         # There should be far fewer index files than data files
-        index_entries, files, good_index_files, bad_index_files = self.expandIndexFiles(files)
+        index_entries, files, good_index_files, bad_index_files = self.locateAndReadIndexFiles(files)
         if bad_index_files:
             self.log.info("Failed to read the following index files:"),
             for bad in sorted(bad_index_files):
