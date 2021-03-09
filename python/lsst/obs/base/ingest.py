@@ -588,10 +588,23 @@ class RawIngestTask(Task):
         """
         fileData = []
         for filename, metadata in index_entries.items():
-            datasets = [self._calculate_dataset_info(metadata, filename)]
-            instrument, formatterClass = self._determine_instrument_formatter(datasets[0].dataId, filename)
-            if instrument is None:
+            try:
+                datasets = [self._calculate_dataset_info(metadata, filename)]
+            except Exception as e:
+                self.log.debug("Problem extracting metadata for file %s found in index file: %s",
+                               filename, e)
                 datasets = []
+                formatterClass = Formatter
+                instrument = None
+                self._on_metadata_failure(filename, e)
+                if self.config.failFast:
+                    raise RuntimeError(f"Problem extracting metadata for file {filename} "
+                                       "found in index file") from e
+            else:
+                instrument, formatterClass = self._determine_instrument_formatter(datasets[0].dataId,
+                                                                                  filename)
+                if instrument is None:
+                    datasets = []
             fileData.append(RawFileData(datasets=datasets, filename=filename,
                                         FormatterClass=formatterClass, instrumentClass=instrument))
         return fileData
