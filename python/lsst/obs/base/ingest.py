@@ -24,7 +24,7 @@ __all__ = ("RawIngestTask", "RawIngestConfig", "makeTransferChoiceField")
 
 import os.path
 from dataclasses import dataclass, InitVar
-from typing import Callable, List, Iterator, Iterable, Tuple, Type, Optional, Any
+from typing import Callable, List, Iterator, Iterable, Tuple, Type, Optional, Any, Union
 from collections import defaultdict
 from multiprocessing import Pool
 
@@ -54,6 +54,31 @@ def _do_nothing(*args, **kwargs) -> None:
     in callback arguments.
     """
     pass
+
+
+def _log_msg_counter(noun: Union[int, Iterable]) -> Tuple[int, str]:
+    """Function to count the iterable and return the count and plural modifier.
+
+    Parameters
+    ----------
+    noun : Iterable or `int`
+        Thing to count. If given an integer it is assumed to be the count
+        to use to calculate modifier.
+
+    Returns
+    -------
+    num : `int`
+        Number of items found in ``noun``.
+    modifier : `str`
+        Character to add to the end of a string referring to these items
+        to indicate whether it was a single item or not. Returns empty
+        string if there is one item or "s" otherwise.
+    """
+    if isinstance(noun, int):
+        num = noun
+    else:
+        num = len(noun)
+    return num, "" if num == 1 else "s"
 
 
 @dataclass
@@ -692,9 +717,9 @@ class RawIngestTask(Task):
             indexFileData, bad_index_file_data = _partition_good_bad(indexFileData)
             self.log.info("Successfully extracted metadata for %d file%s found in %d index file%s"
                           " with %d failure%s",
-                          len(indexFileData), "" if len(indexFileData) == 1 else "s",
-                          len(good_index_files), "" if len(good_index_files) == 1 else "s",
-                          len(bad_index_file_data), "" if len(bad_index_file_data) == 1 else "s")
+                          *_log_msg_counter(indexFileData),
+                          *_log_msg_counter(good_index_files),
+                          *_log_msg_counter(bad_index_file_data))
 
         # Extract metadata and build per-detector regions.
         # This could run in a subprocess so collect all output
@@ -705,8 +730,8 @@ class RawIngestTask(Task):
         # reporting
         fileData, bad_files = _partition_good_bad(fileData)
         self.log.info("Successfully extracted metadata from %d file%s with %d failure%s",
-                      len(fileData), "" if len(fileData) == 1 else "s",
-                      len(bad_files), "" if len(bad_files) == 1 else "s")
+                      *_log_msg_counter(fileData),
+                      *_log_msg_counter(bad_files))
 
         # Combine with data from index files
         if indexFileData:
@@ -818,7 +843,7 @@ class RawIngestTask(Task):
         for exposure in exposureData:
 
             self.log.debug("Attempting to ingest %d file%s from exposure %s:%s",
-                           len(exposure.files), "" if len(exposure.files) == 1 else "s",
+                           *_log_msg_counter(exposure.files),
                            exposure.record.instrument, exposure.record.obs_id)
 
             try:
@@ -873,13 +898,12 @@ class RawIngestTask(Task):
 
         self.log.info("Successfully processed data from %d exposure%s with %d failure%s from exposure"
                       " registration and %d failure%s from file ingest.",
-                      n_exposures, "" if n_exposures == 1 else "s",
-                      n_exposures_failed, "" if n_exposures_failed == 1 else "s",
-                      n_ingests_failed, "" if n_ingests_failed == 1 else "s")
+                      *_log_msg_counter(n_exposures),
+                      *_log_msg_counter(n_exposures_failed),
+                      *_log_msg_counter(n_ingests_failed))
         if n_exposures_failed > 0 or n_ingests_failed > 0:
             had_failure = True
-        self.log.info("Ingested %d distinct Butler dataset%s",
-                      len(refs), "" if len(refs) == 1 else "s")
+        self.log.info("Ingested %d distinct Butler dataset%s", *_log_msg_counter(refs))
 
         if had_failure:
             raise RuntimeError("Some failures encountered during ingestion")
