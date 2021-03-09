@@ -460,11 +460,11 @@ class RawIngestTask(Task):
         index_root_file = "_index.json"
 
         # Group the files by directory
-        files_by_directory = {}
+        files_by_directory = defaultdict(set)
 
         for path in files_set:
             directory, file_in_dir = os.path.split(path)
-            files_by_directory.setdefault(directory, set()).add(file_in_dir)
+            files_by_directory[directory].add(file_in_dir)
 
         # All the metadata read from index files with keys of full path
         index_entries = {}
