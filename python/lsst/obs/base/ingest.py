@@ -667,6 +667,17 @@ class RawIngestTask(Task):
             pool = Pool(processes)
         mapFunc = map if pool is None else pool.imap_unordered
 
+        def _partition_good_bad(file_data: Iterable[RawFileData]) -> Tuple[List[RawFileData], List[str]]:
+            """Filter out bad files and return good with list of bad."""
+            good_files = []
+            bad_files = []
+            for fileDatum in file_data:
+                if not fileDatum.datasets:
+                    bad_files.append(fileDatum.filename)
+                else:
+                    good_files.append(fileDatum)
+            return good_files, bad_files
+
         # Look for index files and read them
         # There should be far fewer index files than data files
         index_entries, files, good_index_files, bad_index_files = self.locateAndReadIndexFiles(files)
@@ -675,11 +686,15 @@ class RawIngestTask(Task):
             for bad in sorted(bad_index_files):
                 self.log.info("- %s", bad)
 
+        # Now convert all the index file entries to standard form for ingest
         indexFileData = self.processIndexEntries(index_entries)
         if indexFileData:
-            self.log.info("Successfully extracted metadata for %d file%s from %d index file%s",
+            indexFileData, bad_index_file_data = _partition_good_bad(indexFileData)
+            self.log.info("Successfully extracted metadata for %d file%s found in %d index file%s"
+                          " with %d failure%s",
                           len(indexFileData), "" if len(indexFileData) == 1 else "s",
-                          len(good_index_files), "" if len(good_index_files) == 1 else "s")
+                          len(good_index_files), "" if len(good_index_files) == 1 else "s",
+                          len(bad_index_file_data), "" if len(bad_index_file_data) == 1 else "s")
 
         # Extract metadata and build per-detector regions.
         # This could run in a subprocess so collect all output
@@ -688,20 +703,15 @@ class RawIngestTask(Task):
 
         # Filter out all the failed reads and store them for later
         # reporting
-        good_files = []
-        bad_files = []
-        for fileDatum in fileData:
-            if not fileDatum.datasets:
-                bad_files.append(fileDatum.filename)
-            else:
-                good_files.append(fileDatum)
-        fileData = good_files
-
+        fileData, bad_files = _partition_good_bad(fileData)
         self.log.info("Successfully extracted metadata from %d file%s with %d failure%s",
                       len(fileData), "" if len(fileData) == 1 else "s",
                       len(bad_files), "" if len(bad_files) == 1 else "s")
 
-        fileData.extend(indexFileData)
+        # Combine with data from index files
+        if indexFileData:
+            fileData.extend(indexFileData)
+            bad_files.extend(bad_index_file_data)
 
         # Use that metadata to group files (and extracted metadata) by
         # exposure.  Never parallelized because it's intrinsically a gather
