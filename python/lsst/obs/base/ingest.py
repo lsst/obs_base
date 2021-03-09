@@ -469,17 +469,17 @@ class RawIngestTask(Task):
             Merged contents of all relevant index files found. These can
             be explicitly specified index files or ones found in the
             directory alongside a data file to be ingested.
-        updated_files : `set[str]`
+        updated_files : iterable of `str`
             Updated list of the input files with entries removed that were
-            found listed in an index file.
+            found listed in an index file. Order is not guaranteed to
+            match the order of the files given to this routine.
         bad_index_files: `set[str]`
             Files that looked like index files but failed to read properly.
         """
-        # Create set of input files to allow easy removal of entries and
-        # convert to absolute path for easy comparison with index content.
+        # Convert the paths to absolute for easy comparison with index content.
         # Do not convert to real paths since we have to assume that index
         # files are in this location and not the location which it links to.
-        files_set = {os.path.abspath(f) for f in files}
+        files = tuple(os.path.abspath(f) for f in files)
 
         # Index files must be named this
         index_root_file = "_index.json"
@@ -487,7 +487,7 @@ class RawIngestTask(Task):
         # Group the files by directory
         files_by_directory = defaultdict(set)
 
-        for path in files_set:
+        for path in files:
             directory, file_in_dir = os.path.split(path)
             files_by_directory[directory].add(file_in_dir)
 
@@ -565,9 +565,15 @@ class RawIngestTask(Task):
         # Remove files from list that have index entries and also
         # any files that we determined to be explicit index files
         # or any index files that we failed to read.
-        files = files_set - set(index_entries) - good_index_files - bad_index_files
+        filtered = set(files) - set(index_entries) - good_index_files - bad_index_files
 
-        return index_entries, files, good_index_files, bad_index_files
+        # The filtered list loses the initial order. Retaining the order
+        # is good for testing but does have a cost if there are many
+        # files when copying the good values out. A dict would have faster
+        # lookups (using the files as keys) but use more memory.
+        ordered = [f for f in filtered if f in files]
+
+        return index_entries, ordered, good_index_files, bad_index_files
 
     def processIndexEntries(self, index_entries):
         """Convert index entries to RawFileData.
