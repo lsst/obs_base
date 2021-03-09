@@ -720,7 +720,7 @@ class RawIngestTask(Task):
         # There should be far fewer index files than data files
         index_entries, files, good_index_files, bad_index_files = self.locateAndReadIndexFiles(files)
         if bad_index_files:
-            self.log.info("Failed to read the following index files:"),
+            self.log.info("Failed to read the following explicitly requested index files:"),
             for bad in sorted(bad_index_files):
                 self.log.info("- %s", bad)
 
@@ -750,6 +750,7 @@ class RawIngestTask(Task):
         # Combine with data from index files
         fileData.extend(indexFileData)
         bad_files.extend(bad_index_file_data)
+        bad_files.extend(bad_index_files)
 
         # Use that metadata to group files (and extracted metadata) by
         # exposure.  Never parallelized because it's intrinsically a gather
