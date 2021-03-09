@@ -33,7 +33,7 @@ from lsst.obs.base.ingest_tests import IngestTestBase
 from lsst.obs.base import RawIngestTask
 
 
-TESTDIR = os.path.dirname(__file__)
+TESTDIR = os.path.abspath(os.path.dirname(__file__))
 
 
 class DummyCamRawIngestTask(RawIngestTask):
