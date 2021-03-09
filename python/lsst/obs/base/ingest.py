@@ -725,6 +725,7 @@ class RawIngestTask(Task):
                 self.log.info("- %s", bad)
 
         # Now convert all the index file entries to standard form for ingest
+        bad_index_file_data = []
         indexFileData = self.processIndexEntries(index_entries)
         if indexFileData:
             indexFileData, bad_index_file_data = _partition_good_bad(indexFileData)
@@ -747,9 +748,8 @@ class RawIngestTask(Task):
                       *_log_msg_counter(bad_files))
 
         # Combine with data from index files
-        if indexFileData:
-            fileData.extend(indexFileData)
-            bad_files.extend(bad_index_file_data)
+        fileData.extend(indexFileData)
+        bad_files.extend(bad_index_file_data)
 
         # Use that metadata to group files (and extracted metadata) by
         # exposure.  Never parallelized because it's intrinsically a gather
