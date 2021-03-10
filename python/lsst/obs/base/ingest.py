@@ -543,6 +543,11 @@ class RawIngestTask(Task):
                 # entries.
                 for file_in_dir in files_to_ingest:
                     # Skip an explicitly specified index file.
+                    # This should never happen because an explicit index
+                    # file will force ingest of all files in the index
+                    # and not use the explicit file list. If somehow
+                    # this is not true we continue. Raising an exception
+                    # seems like the wrong thing to do since this is harmless.
                     if file_in_dir == index_root_file:
                         continue
                     if file_in_dir in index:
