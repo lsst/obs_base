@@ -380,7 +380,7 @@ class RawIngestTask(Task):
 
         Parameters
         ----------
-        header : `Mapping` or `astro_metadata_translator.ObservationInfo`
+        header : Mapping or `astro_metadata_translator.ObservationInfo`
             Header from the dataset or previously-translated content.
         filename : `str`
             Filename to use for error messages.
@@ -581,7 +581,8 @@ class RawIngestTask(Task):
         ----------
         index_entries : `dict` [`str`, Any]
             Dict indexed by name of file to ingest and with keys either
-            raw metadata or translated `ObservationInfo`.
+            raw metadata or translated
+            `~astro_metadata_translator.ObservationInfo`.
 
         Returns
         -------
