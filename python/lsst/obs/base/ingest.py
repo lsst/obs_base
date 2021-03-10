@@ -50,14 +50,16 @@ from ._fitsRawFormatterBase import FitsRawFormatterBase
 
 
 def _do_nothing(*args, **kwargs) -> None:
-    """A function that accepts anything and does nothing, for use as a default
-    in callback arguments.
+    """Do nothing.
+
+    This is a function that accepts anything and does nothing.
+    For use as a default in callback arguments.
     """
     pass
 
 
 def _log_msg_counter(noun: Union[int, Iterable]) -> Tuple[int, str]:
-    """Function to count the iterable and return the count and plural modifier.
+    """Count the iterable and return the count and plural modifier.
 
     Parameters
     ----------
@@ -83,13 +85,10 @@ def _log_msg_counter(noun: Union[int, Iterable]) -> Tuple[int, str]:
 
 @dataclass
 class RawFileDatasetInfo:
-    """Structure that holds information about a single dataset within a
-    raw file.
-    """
+    """Information about a single dataset within a raw file."""
 
     dataId: DataCoordinate
-    """Data ID for this file (`lsst.daf.butler.DataCoordinate`).
-    """
+    """Data ID for this file (`lsst.daf.butler.DataCoordinate`)."""
 
     obsInfo: ObservationInfo
     """Standardized observation metadata extracted directly from the file
@@ -99,9 +98,7 @@ class RawFileDatasetInfo:
 
 @dataclass
 class RawFileData:
-    """Structure that holds information about a single raw file, used during
-    ingest.
-    """
+    """Information about a single raw file, used during ingest."""
 
     datasets: List[RawFileDatasetInfo]
     """The information describing each dataset within this raw file.
@@ -126,9 +123,7 @@ class RawFileData:
 
 @dataclass
 class RawExposureData:
-    """Structure that holds information about a complete raw exposure, used
-    during ingest.
-    """
+    """Information about a complete raw exposure, used during ingest."""
 
     dataId: DataCoordinate
     """Data ID for this exposure (`lsst.daf.butler.DataCoordinate`).
@@ -154,8 +149,7 @@ class RawExposureData:
 
 
 def makeTransferChoiceField(doc="How to transfer files (None for no transfer).", default="auto"):
-    """Create a Config field with options for how to transfer files between
-    data repositories.
+    """Create a Config field with options for transferring data between repos.
 
     The allowed options for the field are exactly those supported by
     `lsst.daf.butler.Datastore.ingest`.
@@ -188,6 +182,8 @@ def makeTransferChoiceField(doc="How to transfer files (None for no transfer).",
 
 
 class RawIngestConfig(Config):
+    """Configuration class for RawIngestTask."""
+
     transfer = makeTransferChoiceField()
     failFast = Field(
         dtype=bool,
@@ -243,8 +239,7 @@ class RawIngestTask(Task):
     _DefaultName = "ingest"
 
     def getDatasetType(self):
-        """Return the DatasetType of the datasets ingested by this Task.
-        """
+        """Return the DatasetType of the datasets ingested by this Task."""
         return DatasetType("raw", ("instrument", "detector", "exposure"), "Exposure",
                            universe=self.butler.registry.dimensions)
 
@@ -342,7 +337,6 @@ class RawIngestTask(Task):
         extract metadata without having to read the data file itself.
         The sidecar file is always used if found.
         """
-
         sidecar_fail_msg = ""
         try:
             root, ext = os.path.splitext(filename)
@@ -646,8 +640,9 @@ class RawIngestTask(Task):
                 for dataId, exposureFiles in byExposure.items()]
 
     def expandDataIds(self, data: RawExposureData) -> RawExposureData:
-        """Expand the data IDs associated with a raw exposure to include
-        additional metadata records.
+        """Expand the data IDs associated with a raw exposure.
+
+        This adds the metadata records.
 
         Parameters
         ----------
@@ -690,8 +685,7 @@ class RawIngestTask(Task):
 
     def prep(self, files, *, pool: Optional[Pool] = None, processes: int = 1
              ) -> Tuple[Iterator[RawExposureData], List[str]]:
-        """Perform all ingest preprocessing steps that do not involve actually
-        modifying the database.
+        """Perform all non-database-updating ingest preprocessing steps.
 
         Parameters
         ----------
