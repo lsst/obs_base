@@ -37,6 +37,7 @@ from lsst.obs.base import RawIngestTask
 
 
 TESTDIR = os.path.abspath(os.path.dirname(__file__))
+INGESTDIR = os.path.join(TESTDIR, "data", "ingest")
 
 
 class DummyCamRawIngestTask(RawIngestTask):
@@ -58,7 +59,7 @@ class RawIngestTestCase(IngestTestBase, unittest.TestCase):
     curatedCalibrationDatasetTypes = ()
     ingestDir = TESTDIR
     instrumentClassName = "lsst.obs.base.instrument_tests.DummyCam"
-    file = os.path.join(TESTDIR, "fakedata", "dataset_1.yaml")
+    file = os.path.join(INGESTDIR, "sidecar_data", "dataset_1.yaml")
     dataIds = [dict(instrument="DummyCam", exposure=100, detector=0)]
 
     @property
@@ -85,7 +86,7 @@ class RawIngestTestCase(IngestTestBase, unittest.TestCase):
 
 class RawIngestImpliedIndexTestCase(RawIngestTestCase):
     """Test ingest using JSON index files."""
-    file = os.path.join(TESTDIR, "fakedata2", "dataset_1.yaml")
+    file = os.path.join(INGESTDIR, "indexed_data", "dataset_1.yaml")
 
 
 class RawIngestEdgeCaseTestCase(unittest.TestCase):
@@ -116,7 +117,7 @@ datastore:
 
         # Different test files
         self.bad_metadata_file = os.path.join(TESTDIR, "data", "small.fits")
-        self.good_file = os.path.join(TESTDIR, "fakedata", "dataset_2.yaml")
+        self.good_file = os.path.join(INGESTDIR, "sidecar_data", "dataset_2.yaml")
         self.bad_instrument_file = os.path.join(TESTDIR, "data", "calexp.fits")
 
     def testSimpleIngest(self):
@@ -127,20 +128,20 @@ datastore:
 
         # Now parallelized
         files = [self.good_file,
-                 os.path.join(TESTDIR, "fakedata", "dataset_1.yaml")]
+                 os.path.join(INGESTDIR, "sidecar_data", "dataset_1.yaml")]
         self.task.run(files, processes=2, run=self.outputRun)
         datasets = list(self.butler.registry.queryDatasets("raw_dict", collections=self.outputRun))
         self.assertEqual(len(datasets), 2)
 
     def testExplicitIndex(self):
-        files = [os.path.join(TESTDIR, "fakedata2", "_index.json")]
+        files = [os.path.join(INGESTDIR, "indexed_data", "_index.json")]
         self.task.run(files, run=self.outputRun)
 
         datasets = list(self.butler.registry.queryDatasets("raw_dict", collections=self.outputRun))
         self.assertEqual(len(datasets), 2)
 
         # Try again with an explicit index and a file that is in that index
-        files.append(os.path.join(TESTDIR, "fakedata2", "dataset_2.yaml"))
+        files.append(os.path.join(INGESTDIR, "indexed_data", "dataset_2.yaml"))
         new_run = self.outputRun + "b"
         self.task.run(files, run=new_run)
 
@@ -149,8 +150,8 @@ datastore:
 
         # Now with two index files that point to the same files.
         # Look for the warning from duplication.
-        files = [os.path.join(TESTDIR, "fakedata2", "_index.json"),
-                 os.path.join(TESTDIR, "fakedata2", "translated_subdir", "_index.json")]
+        files = [os.path.join(INGESTDIR, "indexed_data", "_index.json"),
+                 os.path.join(INGESTDIR, "indexed_data", "translated_subdir", "_index.json")]
         new_run = self.outputRun + "c"
 
         with self.assertLogs(level="WARNING") as cm:
@@ -164,8 +165,8 @@ datastore:
         # Again with an index file of metadata and one of translated.
         # Translated should win.
         # Put the metadata one first to test that order is preserved.
-        files = [os.path.join(TESTDIR, "fakedata2", "metadata_subdir", "_index.json"),
-                 os.path.join(TESTDIR, "fakedata2", "_index.json")]
+        files = [os.path.join(INGESTDIR, "indexed_data", "metadata_subdir", "_index.json"),
+                 os.path.join(INGESTDIR, "indexed_data", "_index.json")]
         new_run = self.outputRun + "d"
         with self.assertLogs(level="WARNING") as cm:
             with lsst.log.UsePythonLogging():
@@ -176,8 +177,8 @@ datastore:
         # Again with an index file of metadata and one of translated.
         # Translated should win.
         # Put the metadata one first to test that order is preserved.
-        files = [os.path.join(TESTDIR, "fakedata2", "_index.json"),
-                 os.path.join(TESTDIR, "fakedata2", "metadata_subdir", "_index.json")]
+        files = [os.path.join(INGESTDIR, "indexed_data", "_index.json"),
+                 os.path.join(INGESTDIR, "indexed_data", "metadata_subdir", "_index.json")]
 
         new_run = self.outputRun + "e"
         with self.assertLogs(level="WARNING") as cm:
@@ -186,12 +187,12 @@ datastore:
         self.assertIn("already specified in an index file, ignoring", cm.output[0])
 
         # Bad index file
-        files = [os.path.join(TESTDIR, "fakedata2", "bad_subdir", "_index.json")]
+        files = [os.path.join(INGESTDIR, "indexed_data", "bad_index", "_index.json")]
         with self.assertRaises(RuntimeError):
             self.task.run(files, run=self.outputRun)
 
         # Bad index file due to bad instrument
-        files = [os.path.join(TESTDIR, "fakedata2", "bad_instrument_subdir", "_index.json")]
+        files = [os.path.join(INGESTDIR, "indexed_data", "bad_instrument", "_index.json")]
         with self.assertLogs(level="WARNING") as cm:
             with lsst.log.UsePythonLogging():
                 with self.assertRaises(RuntimeError):
@@ -207,7 +208,7 @@ datastore:
 
         # Ingest 3 files. 2 of them will implicitly find an index and one
         # will use a sidecar
-        files = [os.path.join(TESTDIR, "fakedata2", f"dataset_{n}.yaml") for n in (1, 2, 3)]
+        files = [os.path.join(INGESTDIR, "indexed_data", f"dataset_{n}.yaml") for n in (1, 2, 3)]
         new_run = self.outputRun
         self.task.run(files, run=new_run)
 
@@ -220,7 +221,7 @@ datastore:
         # Ingest files with conflicting exposure definitions
         # Ingest 3 files. One of them will implicitly find an index and one
         # will use a sidecar. The 3rd will fail due to exposure conflict
-        files = [os.path.join(TESTDIR, "fakedata2", f"dataset_{n}.yaml") for n in (1, 3, 4)]
+        files = [os.path.join(INGESTDIR, "indexed_data", f"dataset_{n}.yaml") for n in (1, 3, 4)]
         new_run = self.outputRun + "_bad_exposure"
         with self.assertRaises(ConflictingDefinitionError):
             self.task.run(files, run=new_run)
@@ -268,17 +269,17 @@ datastore:
 
         # Ingest of a metadata index file that will fail translation
         with self.assertRaises(RuntimeError) as cm:
-            self.task.run([os.path.join(TESTDIR, "fakedata2", "metadata_subdir", "_index.json")])
+            self.task.run([os.path.join(INGESTDIR, "indexed_data", "metadata_subdir", "_index.json")])
         self.assertIn("Problem extracting metadata", str(cm.exception))
 
         # ingest of a bad index file
         with self.assertRaises(RuntimeError) as cm:
-            self.task.run([os.path.join(TESTDIR, "fakedata2", "bad_subdir", "_index.json")])
+            self.task.run([os.path.join(INGESTDIR, "indexed_data", "bad_index", "_index.json")])
         self.assertIn("Problem reading index file", str(cm.exception))
 
         # ingest of an implied bad index file
         with self.assertRaises(RuntimeError) as cm:
-            self.task.run([os.path.join(TESTDIR, "fakedata2", "bad_implied", "dataset_2.yaml")])
+            self.task.run([os.path.join(INGESTDIR, "indexed_data", "bad_implied", "dataset_2.yaml")])
 
     def testCallbacks(self):
         """Test the callbacks for failures."""
@@ -322,14 +323,14 @@ datastore:
 
         # An index file with metadata that won't translate
         metadata_failures[:] = []
-        files = [os.path.join(TESTDIR, "fakedata2", "metadata_subdir", "_index.json")]
+        files = [os.path.join(INGESTDIR, "indexed_data", "metadata_subdir", "_index.json")]
         with self.assertRaises(RuntimeError):
             self.task.run(files, run=self.outputRun)
         self.assertEqual(len(metadata_failures), 2)
 
         # Bad index file
         metadata_failures[:] = []
-        files = [os.path.join(TESTDIR, "fakedata2", "bad_subdir", "_index.json")]
+        files = [os.path.join(INGESTDIR, "indexed_data", "bad_index", "_index.json")]
         with self.assertRaises(RuntimeError):
             self.task.run(files, run=self.outputRun)
         self.assertEqual(len(metadata_failures), 1)
@@ -339,7 +340,7 @@ datastore:
         successes[:] = []
         # Ingest 4 files. 2 of them will implicitly find an index and one
         # will use a sidecar. The 4th will fail due to exposure conflict.
-        files = [os.path.join(TESTDIR, "fakedata2", f"dataset_{n}.yaml") for n in (1, 2, 3, 4)]
+        files = [os.path.join(INGESTDIR, "indexed_data", f"dataset_{n}.yaml") for n in (1, 2, 3, 4)]
         new_run = self.outputRun + "_fail"
         with self.assertRaises(RuntimeError):
             self.task.run(files, run=new_run)
