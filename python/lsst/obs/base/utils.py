@@ -128,7 +128,7 @@ def bboxFromIraf(irafBBoxStr):
     return geom.BoxI(geom.PointI(x0 - 1, y0 - 1), geom.PointI(x1 - 1, y1 - 1))
 
 
-def getInstrument(instrumentName, registry=None):
+def getInstrument(instrumentName, registry=None, collection_prefix=None):
     """Return an instance of a named instrument.
 
     If the instrument name not is qualified (does not contain a '.') and a
@@ -143,6 +143,11 @@ def getInstrument(instrumentName, registry=None):
     registry : `lsst.daf.butler.Registry`, optional
         Butler registry to query to find information about the instrument, by
         default None
+    collection_prefix : `str`, optional
+        Prefix for collection names to use instead of the intrument's own name.
+        This is primarily for use in simulated-data repositories, where the
+        instrument name may not be necessary and/or sufficient to distinguish
+        between collections.
 
     Returns
     -------
@@ -159,7 +164,7 @@ def getInstrument(instrumentName, registry=None):
     """
     if "." not in instrumentName and registry is not None:
         try:
-            instr = Instrument.fromName(instrumentName, registry)
+            instr = Instrument.fromName(instrumentName, registry, collection_prefix=collection_prefix)
         except Exception as err:
             raise RuntimeError(
                 f"Could not get instrument from name: {instrumentName}. Failed with exception: {err}")
@@ -168,7 +173,7 @@ def getInstrument(instrumentName, registry=None):
             instr = doImport(instrumentName)
         except Exception as err:
             raise RuntimeError(f"Could not import instrument: {instrumentName}. Failed with exception: {err}")
-        instr = instr()
+        instr = instr(collection_prefix=collection_prefix)
     if not isinstance(instr, Instrument):
         raise TypeError(f"{instrumentName} is not an Instrument subclass.")
     return instr

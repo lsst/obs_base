@@ -60,8 +60,18 @@ StandardCuratedCalibrationDatasetTypes = {
 class Instrument(metaclass=ABCMeta):
     """Base class for instrument-specific logic for the Gen3 Butler.
 
-    Concrete instrument subclasses should be directly constructable with no
-    arguments.
+    Parameters
+    ----------
+    collection_prefix : `str`, optional
+        Prefix for collection names to use instead of the intrument's own name.
+        This is primarily for use in simulated-data repositories, where the
+        instrument name may not be necessary and/or sufficient to distinguish
+        between collections.
+
+    Notes
+    -----
+    Concrete instrument subclasses must have the same construction signature as
+    the base class.
     """
 
     configPaths: Sequence[str] = ()
@@ -107,9 +117,12 @@ class Instrument(metaclass=ABCMeta):
         """
         return None
 
-    def __init__(self):
+    def __init__(self, collection_prefix: Optional[str] = None):
         self.filterDefinitions.reset()
         self.filterDefinitions.defineFilters()
+        if collection_prefix is None:
+            collection_prefix = self.getName()
+        self.collection_prefix = collection_prefix
 
     @classmethod
     @abstractmethod
@@ -204,7 +217,7 @@ class Instrument(metaclass=ABCMeta):
         return getPackageDir(cls.obsDataPackage)
 
     @staticmethod
-    def fromName(name: str, registry: Registry) -> Instrument:
+    def fromName(name: str, registry: Registry, collection_prefix: Optional[str] = None) -> Instrument:
         """Given an instrument name and a butler, retrieve a corresponding
         instantiated instrument object.
 
@@ -214,6 +227,11 @@ class Instrument(metaclass=ABCMeta):
             Name of the instrument (must match the return value of `getName`).
         registry : `lsst.daf.butler.Registry`
             Butler registry to query to find the information.
+        collection_prefix : `str`, optional
+            Prefix for collection names to use instead of the intrument's own
+            name.  This is primarily for use in simulated-data repositories,
+            where the instrument name may not be necessary and/or sufficient to
+            distinguish between collections.
 
         Returns
         -------
@@ -241,7 +259,7 @@ class Instrument(metaclass=ABCMeta):
         if not isinstance(cls, str):
             raise TypeError(f"Unexpected class name retrieved from {name} instrument dimension (got {cls})")
         instrument = doImport(cls)
-        return instrument()
+        return instrument(collection_prefix=collection_prefix)
 
     @staticmethod
     def importAll(registry: Registry) -> None:
@@ -793,9 +811,10 @@ class Instrument(metaclass=ABCMeta):
         Returns
         -------
         name : `str`
-            Collection name to use that includes the instrument name.
+            Collection name to use that includes the instrument's recommended
+            prefix.
         """
-        return "/".join((self.getName(),) + labels)
+        return "/".join((self.collection_prefix,) + labels)
 
 
 def makeExposureRecordFromObsInfo(obsInfo, universe):
