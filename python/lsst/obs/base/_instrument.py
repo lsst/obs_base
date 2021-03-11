@@ -670,8 +670,7 @@ class Instrument(metaclass=ABCMeta):
         """
         return Instrument.formatCollectionTimestamp(datetime.datetime.now(tz=datetime.timezone.utc))
 
-    @classmethod
-    def makeDefaultRawIngestRunName(cls) -> str:
+    def makeDefaultRawIngestRunName(self) -> str:
         """Make the default instrument-specific run collection string for raw
         data ingest.
 
@@ -681,10 +680,9 @@ class Instrument(metaclass=ABCMeta):
             Run collection name to be used as the default for ingestion of
             raws.
         """
-        return cls.makeCollectionName("raw", "all")
+        return self.makeCollectionName("raw", "all")
 
-    @classmethod
-    def makeUnboundedCalibrationRunName(cls, *labels: str) -> str:
+    def makeUnboundedCalibrationRunName(self, *labels: str) -> str:
         """Make a RUN collection name appropriate for inserting calibration
         datasets whose validity ranges are unbounded.
 
@@ -700,10 +698,9 @@ class Instrument(metaclass=ABCMeta):
         name : `str`
             Run collection name.
         """
-        return cls.makeCollectionName("calib", *labels, "unbounded")
+        return self.makeCollectionName("calib", *labels, "unbounded")
 
-    @classmethod
-    def makeCuratedCalibrationRunName(cls, calibDate: str, *labels: str) -> str:
+    def makeCuratedCalibrationRunName(self, calibDate: str, *labels: str) -> str:
         """Make a RUN collection name appropriate for inserting curated
         calibration datasets with the given ``CALIBDATE`` metadata value.
 
@@ -722,10 +719,9 @@ class Instrument(metaclass=ABCMeta):
         name : `str`
             Run collection name.
         """
-        return cls.makeCollectionName("calib", *labels, "curated", cls.formatCollectionTimestamp(calibDate))
+        return self.makeCollectionName("calib", *labels, "curated", self.formatCollectionTimestamp(calibDate))
 
-    @classmethod
-    def makeCalibrationCollectionName(cls, *labels: str) -> str:
+    def makeCalibrationCollectionName(self, *labels: str) -> str:
         """Make a CALIBRATION collection name appropriate for associating
         calibration datasets with validity ranges.
 
@@ -741,7 +737,7 @@ class Instrument(metaclass=ABCMeta):
         name : `str`
             Calibration collection name.
         """
-        return cls.makeCollectionName("calib", *labels)
+        return self.makeCollectionName("calib", *labels)
 
     @staticmethod
     def makeRefCatCollectionName(*labels: str) -> str:
@@ -771,8 +767,7 @@ class Instrument(metaclass=ABCMeta):
         """
         return "/".join(("refcats",) + labels)
 
-    @classmethod
-    def makeUmbrellaCollectionName(cls) -> str:
+    def makeUmbrellaCollectionName(self) -> str:
         """Return the name of the umbrella ``CHAINED`` collection for this
         instrument that combines all standard recommended input collections.
 
@@ -783,10 +778,9 @@ class Instrument(metaclass=ABCMeta):
         name : `str`
             Name for the umbrella collection.
         """
-        return cls.makeCollectionName("defaults")
+        return self.makeCollectionName("defaults")
 
-    @classmethod
-    def makeCollectionName(cls, *labels: str) -> str:
+    def makeCollectionName(self, *labels: str) -> str:
         """Get the instrument-specific collection string to use as derived
         from the supplied labels.
 
@@ -801,7 +795,7 @@ class Instrument(metaclass=ABCMeta):
         name : `str`
             Collection name to use that includes the instrument name.
         """
-        return "/".join((cls.getName(),) + labels)
+        return "/".join((self.getName(),) + labels)
 
 
 def makeExposureRecordFromObsInfo(obsInfo, universe):

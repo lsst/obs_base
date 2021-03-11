@@ -911,7 +911,7 @@ class RawIngestTask(Task):
             # Override default run if nothing specified explicitly.
             if run is None:
                 instrumentClass = exposure.files[0].instrumentClass
-                this_run = instrumentClass.makeDefaultRawIngestRunName()
+                this_run = instrumentClass().makeDefaultRawIngestRunName()
             else:
                 this_run = run
             if this_run not in runs:
