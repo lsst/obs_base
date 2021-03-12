@@ -50,6 +50,12 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     actual directory will be a tempdir under this one.
     """
 
+    ingestDatasetTypeName = "raw"
+    """The DatasetType to use for the ingest.
+
+    If this is not an Exposure dataset type the tests will be more limited.
+    """
+
     dataIds = []
     """list of butler data IDs of files that should have been ingested."""
 
@@ -111,15 +117,15 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
     @classmethod
     def setUpClass(cls):
-        # Use a temporary working directory
+        # Use a temporary working directory.
         cls.root = tempfile.mkdtemp(dir=cls.ingestDir)
         cls._createRepo()
 
-        # Register the instrument and its static metadata
+        # Register the instrument and its static metadata.
         cls._registerInstrument()
 
     def setUp(self):
-        # Want a unique run name per test
+        # Want a unique run name per test.
         self.outputRun = "raw_ingest_" + self.id()
 
     @classmethod
@@ -150,34 +156,49 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         This only really affects files that contain multiple datasets.
         """
         butler = Butler(self.root, run=self.outputRun)
-        datasets = list(butler.registry.queryDatasets("raw", collections=self.outputRun))
+        datasets = list(butler.registry.queryDatasets(self.ingestDatasetTypeName, collections=self.outputRun))
         self.assertEqual(len(datasets), len(self.dataIds))
 
         # Get the URI to the first dataset and check it is inside the
-        # datastore
+        # datastore.
         datasetUri = butler.getURI(datasets[0])
         self.assertIsNotNone(datasetUri.relative_to(butler.datastore.root))
 
+        # Get the relevant dataset type.
+        datasetType = butler.registry.getDatasetType(self.ingestDatasetTypeName)
+
         for dataId in self.dataIds:
-            # Check that we can read metadata from a raw
-            metadata = butler.get("raw.metadata", dataId)
+            # For testing we only read the entire dataset the first time
+            # round if this is an Exposure. If it's not an Exposure
+            # we always read it completely but we don't read components
+            # because for an arbitrary dataset type we can't easily tell
+            # what component to test.
+
+            if not datasetType.storageClass.name.startswith("Exposure"):
+                exposure = butler.get(self.ingestDatasetTypeName, dataId)
+                # Could be anything so nothing to test by default
+                continue
+
+            # Check that we can read metadata from a raw.
+            metadata = butler.get(f"{self.ingestDatasetTypeName}.metadata", dataId)
             if not fullCheck:
                 continue
             fullCheck = False
-            exposure = butler.get("raw", dataId)
+            exposure = butler.get(self.ingestDatasetTypeName, dataId)
+
             self.assertEqual(metadata.toDict(), exposure.getMetadata().toDict())
 
             # Since components follow a different code path we check that
             # WCS match and also we check that at least the shape
             # of the image is the same (rather than doing per-pixel equality)
-            wcs = butler.get("raw.wcs", dataId)
+            wcs = butler.get(f"{self.ingestDatasetTypeName}.wcs", dataId)
             self.assertEqual(wcs, exposure.getWcs())
 
-            rawImage = butler.get("raw.image", dataId)
+            rawImage = butler.get(f"{self.ingestDatasetTypeName}.image", dataId)
             self.assertEqual(rawImage.getBBox(), exposure.getBBox())
 
-            # check that the filter label got the correct band
-            filterLabel = butler.get("raw.filterLabel", dataId)
+            # Check that the filter label got the correct band.
+            filterLabel = butler.get(f"{self.ingestDatasetTypeName}.filterLabel", dataId)
             self.assertEqual(filterLabel, self.filterLabel)
 
         self.checkRepo(files=files)
@@ -201,7 +222,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         to create a repository."""
         runner = LogCliRunner()
         result = runner.invoke(butlerCli, ["create", cls.root])
-        # Classmethod so assertEqual does not work
+        # Classmethod so assertEqual does not work.
         assert result.exit_code == 0, f"output: {result.output} exception: {result.exception}"
 
     def _ingestRaws(self, transfer, file=None):
@@ -231,7 +252,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         to register the instrument."""
         runner = LogCliRunner()
         result = runner.invoke(butlerCli, ["register-instrument", cls.root, cls.instrumentClassName])
-        # Classmethod so assertEqual does not work
+        # Classmethod so assertEqual does not work.
         assert result.exit_code == 0, f"output: {result.output} exception: {result.exception}"
 
     def _writeCuratedCalibrations(self):
@@ -252,10 +273,10 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     def testDirect(self):
         self._ingestRaws(transfer="direct")
 
-        # Check that it really did have a URI outside of datastore
-        srcUri = ButlerURI(self.file)
+        # Check that it really did have a URI outside of datastore.
+        srcUri = ButlerURI(self.file, forceAbsolute=True)
         butler = Butler(self.root, run=self.outputRun)
-        datasets = list(butler.registry.queryDatasets("raw", collections=self.outputRun))
+        datasets = list(butler.registry.queryDatasets(self.ingestDatasetTypeName, collections=self.outputRun))
         datastoreUri = butler.getURI(datasets[0])
         self.assertEqual(datastoreUri, srcUri)
 
@@ -282,20 +303,45 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         """Test that files already in the directory can be added to the
         registry in-place.
         """
-        # symlink into repo root manually
         butler = Butler(self.root, run=self.outputRun)
-        pathInStore = "prefix-" + os.path.basename(self.file)
+
+        # If the test uses an index file the index file needs to also
+        # appear in the datastore root along with the file to be ingested.
+        # In that scenario the file name being used for ingest can not
+        # be modified and must have the same name as found in the index
+        # file itself.
+        source_file_uri = ButlerURI(self.file)
+        index_file = source_file_uri.dirname().join("_index.json")
+        pathInStore = source_file_uri.basename()
+        if index_file.exists():
+            os.symlink(index_file.ospath, butler.datastore.root.join("_index.json").ospath)
+        else:
+            # No index file so we are free to pick any name.
+            pathInStore = "prefix-" + pathInStore
+
+        # Create a symlink to the original file so that it looks like it
+        # is now inside the datastore.
         newPath = butler.datastore.root.join(pathInStore)
         os.symlink(os.path.abspath(self.file), newPath.ospath)
+
+        # If there is a sidecar file it needs to be linked in as well
+        # since ingest code does not follow symlinks.
+        sidecar_uri = ButlerURI(source_file_uri).updatedExtension(".json")
+        if sidecar_uri.exists():
+            newSidecar = ButlerURI(newPath).updatedExtension(".json")
+            os.symlink(sidecar_uri.ospath, newSidecar.ospath)
+
+        # Run ingest with auto mode since that should automatically determine
+        # that an in-place ingest is happening.
         self._ingestRaws(transfer="auto", file=newPath.ospath)
         self.verifyIngest()
 
         # Recreate a butler post-ingest (the earlier one won't see the
-        # ingested files)
+        # ingested files).
         butler = Butler(self.root, run=self.outputRun)
 
-        # Check that the URI associated with this path is the right one
-        uri = butler.getURI("raw", self.dataIds[0])
+        # Check that the URI associated with this path is the right one.
+        uri = butler.getURI(self.ingestDatasetTypeName, self.dataIds[0])
         self.assertEqual(uri.relative_to(butler.datastore.root), pathInStore)
 
     def testFailOnConflict(self):

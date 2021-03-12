@@ -24,11 +24,12 @@ __all__ = ("RawIngestTask", "RawIngestConfig", "makeTransferChoiceField")
 
 import os.path
 from dataclasses import dataclass, InitVar
-from typing import Callable, List, Iterator, Iterable, Tuple, Type, Optional, Any
+from typing import Callable, List, Iterator, Iterable, Tuple, Type, Optional, Any, Union
 from collections import defaultdict
 from multiprocessing import Pool
 
 from astro_metadata_translator import ObservationInfo, merge_headers
+from astro_metadata_translator.indexing import read_sidecar, read_index
 from lsst.afw.fits import readMetadata
 from lsst.daf.butler import (
     Butler,
@@ -42,28 +43,59 @@ from lsst.daf.butler import (
     Formatter,
 )
 from lsst.pex.config import Config, ChoiceField, Field
-from lsst.pipe.base import Task
+from lsst.pipe.base import Task, timeMethod
 
 from ._instrument import Instrument, makeExposureRecordFromObsInfo
 from ._fitsRawFormatterBase import FitsRawFormatterBase
 
 
 def _do_nothing(*args, **kwargs) -> None:
-    """A function that accepts anything and does nothing, for use as a default
-    in callback arguments.
+    """Do nothing.
+
+    This is a function that accepts anything and does nothing.
+    For use as a default in callback arguments.
     """
     pass
 
 
+def _log_msg_counter(noun: Union[int, Iterable]) -> Tuple[int, str]:
+    """Count the iterable and return the count and plural modifier.
+
+    Parameters
+    ----------
+    noun : Iterable or `int`
+        Thing to count. If given an integer it is assumed to be the count
+        to use to calculate modifier.
+
+    Returns
+    -------
+    num : `int`
+        Number of items found in ``noun``.
+    modifier : `str`
+        Character to add to the end of a string referring to these items
+        to indicate whether it was a single item or not. Returns empty
+        string if there is one item or "s" otherwise.
+
+    Examples
+    --------
+
+    .. code-block:: python
+
+       log.warning("Found %d file%s", *_log_msg_counter(nfiles))
+    """
+    if isinstance(noun, int):
+        num = noun
+    else:
+        num = len(noun)
+    return num, "" if num == 1 else "s"
+
+
 @dataclass
 class RawFileDatasetInfo:
-    """Structure that holds information about a single dataset within a
-    raw file.
-    """
+    """Information about a single dataset within a raw file."""
 
     dataId: DataCoordinate
-    """Data ID for this file (`lsst.daf.butler.DataCoordinate`).
-    """
+    """Data ID for this file (`lsst.daf.butler.DataCoordinate`)."""
 
     obsInfo: ObservationInfo
     """Standardized observation metadata extracted directly from the file
@@ -73,9 +105,7 @@ class RawFileDatasetInfo:
 
 @dataclass
 class RawFileData:
-    """Structure that holds information about a single raw file, used during
-    ingest.
-    """
+    """Information about a single raw file, used during ingest."""
 
     datasets: List[RawFileDatasetInfo]
     """The information describing each dataset within this raw file.
@@ -100,9 +130,7 @@ class RawFileData:
 
 @dataclass
 class RawExposureData:
-    """Structure that holds information about a complete raw exposure, used
-    during ingest.
-    """
+    """Information about a complete raw exposure, used during ingest."""
 
     dataId: DataCoordinate
     """Data ID for this exposure (`lsst.daf.butler.DataCoordinate`).
@@ -128,8 +156,7 @@ class RawExposureData:
 
 
 def makeTransferChoiceField(doc="How to transfer files (None for no transfer).", default="auto"):
-    """Create a Config field with options for how to transfer files between
-    data repositories.
+    """Create a Config field with options for transferring data between repos.
 
     The allowed options for the field are exactly those supported by
     `lsst.daf.butler.Datastore.ingest`.
@@ -162,6 +189,8 @@ def makeTransferChoiceField(doc="How to transfer files (None for no transfer).",
 
 
 class RawIngestConfig(Config):
+    """Configuration class for RawIngestTask."""
+
     transfer = makeTransferChoiceField()
     failFast = Field(
         dtype=bool,
@@ -217,8 +246,7 @@ class RawIngestTask(Task):
     _DefaultName = "ingest"
 
     def getDatasetType(self):
-        """Return the DatasetType of the datasets ingested by this Task.
-        """
+        """Return the DatasetType of the datasets ingested by this Task."""
         return DatasetType("raw", ("instrument", "detector", "exposure"), "Exposure",
                            universe=self.butler.registry.dimensions)
 
@@ -241,9 +269,46 @@ class RawIngestTask(Task):
         Instrument.importAll(self.butler.registry)
 
     def _reduce_kwargs(self):
-        # Add extra parameters to pickle
+        # Add extra parameters to pickle.
         return dict(**super()._reduce_kwargs(), butler=self.butler, on_success=self._on_success,
                     on_metadata_failure=self._on_metadata_failure, on_ingest_failure=self._on_ingest_failure)
+
+    def _determine_instrument_formatter(self, dataId, filename):
+        """Determine the instrument and formatter class.
+
+        Parameters
+        ----------
+        dataId : `lsst.daf.butler.DataCoordinate`
+            The dataId associated with this dataset.
+        filename : `str`
+            Filename used for error reporting.
+
+        Returns
+        -------
+        instrument : `Instrument` or `None`
+            Instance of the `Instrument` associated with this dataset. `None`
+            indicates that the instrument could not be determined.
+        formatterClass : `type`
+            Class to be used as the formatter for this dataset.
+        """
+        # The data model currently assumes that whilst multiple datasets
+        # can be associated with a single file, they must all share the
+        # same formatter.
+        try:
+            instrument = Instrument.fromName(dataId["instrument"], self.butler.registry)
+        except LookupError as e:
+            self._on_metadata_failure(filename, e)
+            self.log.warning("Instrument %s for file %s not known to registry",
+                             dataId["instrument"], filename)
+            if self.config.failFast:
+                raise RuntimeError(f"Instrument {dataId['instrument']} for"
+                                   f" file {filename} not known to registry") from e
+            FormatterClass = Formatter
+            # Indicate that we could not work out the instrument.
+            instrument = None
+        else:
+            FormatterClass = instrument.getRawFormatter(dataId)
+        return instrument, FormatterClass
 
     def extractMetadata(self, filename: str) -> RawFileData:
         """Extract and process metadata from a single raw file.
@@ -259,56 +324,62 @@ class RawIngestTask(Task):
             A structure containing the metadata extracted from the file,
             as well as the original filename.  All fields will be populated,
             but the `RawFileData.dataId` attribute will be a minimal
-            (unexpanded) `DataCoordinate` instance.
+            (unexpanded) `~lsst.daf.butler.DataCoordinate` instance. The
+            ``instrumentClass`` field will be `None` if there is a problem
+            with metadata extraction.
 
         Notes
         -----
         Assumes that there is a single dataset associated with the given
         file.  Instruments using a single file to store multiple datasets
         must implement their own version of this method.
+
+        By default the method will catch all exceptions unless the ``failFast``
+        configuration item is `True`.  If an error is encountered the
+        `_on_metadata_failure()` method will be called. If no exceptions
+        result and an error was encountered the returned object will have
+        a null-instrument class and no datasets.
+
+        This method supports sidecar JSON files which can be used to
+        extract metadata without having to read the data file itself.
+        The sidecar file is always used if found.
         """
-
-        # We do not want to stop ingest if we are given a bad file.
-        # Instead return a RawFileData with no datasets and allow
-        # the caller to report the failure.
-
+        sidecar_fail_msg = ""  # Requires prepended space when set.
         try:
-            # Manually merge the primary and "first data" headers here because
-            # we do not know in general if an input file has set INHERIT=T.
-            phdu = readMetadata(filename, 0)
-            header = merge_headers([phdu, readMetadata(filename)], mode="overwrite")
+            root, ext = os.path.splitext(filename)
+            sidecar_file = root + ".json"
+            if os.path.exists(sidecar_file):
+                header = read_sidecar(sidecar_file)
+                sidecar_fail_msg = " (via sidecar)"
+            else:
+                # Read the metadata from the data file itself.
+                # Manually merge the primary and "first data" headers here
+                # because we do not know in general if an input file has
+                # set INHERIT=T.
+                phdu = readMetadata(filename, 0)
+                header = merge_headers([phdu, readMetadata(filename)], mode="overwrite")
             datasets = [self._calculate_dataset_info(header, filename)]
         except Exception as e:
-            self.log.debug("Problem extracting metadata from %s: %s", filename, e)
-            # Indicate to the caller that we failed to read
+            self.log.debug("Problem extracting metadata from %s%s: %s", filename, sidecar_fail_msg, e)
+            # Indicate to the caller that we failed to read.
             datasets = []
-            FormatterClass = Formatter
+            formatterClass = Formatter
             instrument = None
             self._on_metadata_failure(filename, e)
             if self.config.failFast:
-                raise RuntimeError(f"Problem extracting metadata from file {filename}") from e
+                raise RuntimeError("Problem extracting metadata for file "
+                                   f"{filename}{sidecar_fail_msg}") from e
         else:
-            self.log.debug("Extracted metadata from file %s", filename)
+            self.log.debug("Extracted metadata for file %s%s", filename, sidecar_fail_msg)
             # The data model currently assumes that whilst multiple datasets
             # can be associated with a single file, they must all share the
             # same formatter.
-            try:
-                instrument = Instrument.fromName(datasets[0].dataId["instrument"], self.butler.registry)
-            except LookupError as e:
-                self._on_metadata_failure(filename, e)
-                self.log.warning("Instrument %s for file %s not known to registry",
-                                 datasets[0].dataId["instrument"], filename)
-                if self.config.failFast:
-                    raise RuntimeError(f"Instrument {datasets[0].dataId['instrument']} for"
-                                       f" file {filename} not known to registry") from e
+            instrument, formatterClass = self._determine_instrument_formatter(datasets[0].dataId, filename)
+            if instrument is None:
                 datasets = []
-                FormatterClass = Formatter
-                instrument = None
-            else:
-                FormatterClass = instrument.getRawFormatter(datasets[0].dataId)
 
         return RawFileData(datasets=datasets, filename=filename,
-                           FormatterClass=FormatterClass,
+                           FormatterClass=formatterClass,
                            instrumentClass=instrument)
 
     def _calculate_dataset_info(self, header, filename):
@@ -316,8 +387,8 @@ class RawIngestTask(Task):
 
         Parameters
         ----------
-        header : `Mapping`
-            Header from the dataset.
+        header : Mapping or `astro_metadata_translator.ObservationInfo`
+            Header from the dataset or previously-translated content.
         filename : `str`
             Filename to use for error messages.
 
@@ -328,7 +399,7 @@ class RawIngestTask(Task):
             dataset.
         """
         # To ensure we aren't slowed down for no reason, explicitly
-        # list here the properties we need for the schema
+        # list here the properties we need for the schema.
         # Use a dict with values a boolean where True indicates
         # that it is required that we calculate this property.
         ingest_subset = {
@@ -355,15 +426,206 @@ class RawIngestTask(Task):
             "visit_id": False,
         }
 
-        obsInfo = ObservationInfo(header, pedantic=False, filename=filename,
-                                  required={k for k in ingest_subset if ingest_subset[k]},
-                                  subset=set(ingest_subset))
+        if isinstance(header, ObservationInfo):
+            obsInfo = header
+            missing = []
+            # Need to check the required properties are present.
+            for property, required in ingest_subset.items():
+                if not required:
+                    continue
+                # getattr does not need to be protected because it is using
+                # the defined list above containing properties that must exist.
+                value = getattr(obsInfo, property)
+                if value is None:
+                    missing.append(property)
+            if missing:
+                raise ValueError(f"Requested required properties are missing from file {filename}:"
+                                 f" {missing} (via JSON)")
+
+        else:
+            obsInfo = ObservationInfo(header, pedantic=False, filename=filename,
+                                      required={k for k in ingest_subset if ingest_subset[k]},
+                                      subset=set(ingest_subset))
 
         dataId = DataCoordinate.standardize(instrument=obsInfo.instrument,
                                             exposure=obsInfo.exposure_id,
                                             detector=obsInfo.detector_num,
                                             universe=self.universe)
         return RawFileDatasetInfo(obsInfo=obsInfo, dataId=dataId)
+
+    def locateAndReadIndexFiles(self, files):
+        """Given a list of files, look for index files and read them.
+
+        Index files can either be explicitly in the list of files to
+        ingest, or else located in the same directory as a file to ingest.
+        Index entries are always used if present.
+
+        Parameters
+        ----------
+        files : iterable over `str` or path-like objects
+            Paths to the files to be ingested.  Will be made absolute
+            if they are not already.
+
+        Returns
+        -------
+        index : `dict` [`str`, Any]
+            Merged contents of all relevant index files found. These can
+            be explicitly specified index files or ones found in the
+            directory alongside a data file to be ingested.
+        updated_files : iterable of `str`
+            Updated list of the input files with entries removed that were
+            found listed in an index file. Order is not guaranteed to
+            match the order of the files given to this routine.
+        bad_index_files: `set[str]`
+            Files that looked like index files but failed to read properly.
+        """
+        # Convert the paths to absolute for easy comparison with index content.
+        # Do not convert to real paths since we have to assume that index
+        # files are in this location and not the location which it links to.
+        files = tuple(os.path.abspath(f) for f in files)
+
+        # Index files must be named this.
+        index_root_file = "_index.json"
+
+        # Group the files by directory.
+        files_by_directory = defaultdict(set)
+
+        for path in files:
+            directory, file_in_dir = os.path.split(path)
+            files_by_directory[directory].add(file_in_dir)
+
+        # All the metadata read from index files with keys of full path.
+        index_entries = {}
+
+        # Index files we failed to read.
+        bad_index_files = set()
+
+        # Any good index files that were found and used.
+        good_index_files = set()
+
+        # Look for index files in those directories.
+        for directory, files_in_directory in files_by_directory.items():
+            possible_index_file = os.path.join(directory, index_root_file)
+            if os.path.exists(possible_index_file):
+                # If we are explicitly requesting an index file the
+                # messages should be different.
+                index_msg = "inferred"
+                is_implied = True
+                if index_root_file in files_in_directory:
+                    index_msg = "explicit"
+                    is_implied = False
+
+                # Try to read the index file and catch and report any
+                # problems.
+                try:
+                    index = read_index(possible_index_file, force_dict=True)
+                except Exception as e:
+                    # Only trigger the callback if the index file
+                    # was asked for explicitly. Triggering on implied file
+                    # might be surprising.
+                    if not is_implied:
+                        self._on_metadata_failure(possible_index_file, e)
+                    if self.config.failFast:
+                        raise RuntimeError(f"Problem reading index file from {index_msg} "
+                                           f"location {possible_index_file}") from e
+                    bad_index_files.add(possible_index_file)
+                    continue
+
+                self.log.debug("Extracted index metadata from %s file %s", index_msg, possible_index_file)
+                good_index_files.add(possible_index_file)
+
+                # Go through the index adding entries for files.
+                # If we have non-index files in this directory marked for
+                # ingest we should only get index information for those.
+                # If the index file was explicit we use all entries.
+                if is_implied:
+                    files_to_ingest = files_in_directory
+                else:
+                    files_to_ingest = set(index)
+
+                # Copy relevant metadata into a single dict for all index
+                # entries.
+                for file_in_dir in files_to_ingest:
+                    # Skip an explicitly specified index file.
+                    # This should never happen because an explicit index
+                    # file will force ingest of all files in the index
+                    # and not use the explicit file list. If somehow
+                    # this is not true we continue. Raising an exception
+                    # seems like the wrong thing to do since this is harmless.
+                    if file_in_dir == index_root_file:
+                        self.log.info("Logic error found scanning directory %s. Please file ticket.",
+                                      directory)
+                        continue
+                    if file_in_dir in index:
+                        file = os.path.abspath(os.path.join(directory, file_in_dir))
+                        if file in index_entries:
+                            # ObservationInfo overrides raw metadata
+                            if isinstance(index[file_in_dir], ObservationInfo) \
+                                    and not isinstance(index_entries[file], ObservationInfo):
+                                self.log.warning("File %s already specified in an index file but overriding"
+                                                 " with ObservationInfo content from %s",
+                                                 file, possible_index_file)
+                            else:
+                                self.log.warning("File %s already specified in an index file, "
+                                                 "ignoring content from %s", file, possible_index_file)
+                                # Do nothing in this case
+                                continue
+
+                        index_entries[file] = index[file_in_dir]
+
+        # Remove files from list that have index entries and also
+        # any files that we determined to be explicit index files
+        # or any index files that we failed to read.
+        filtered = set(files) - set(index_entries) - good_index_files - bad_index_files
+
+        # The filtered list loses the initial order. Retaining the order
+        # is good for testing but does have a cost if there are many
+        # files when copying the good values out. A dict would have faster
+        # lookups (using the files as keys) but use more memory.
+        ordered = [f for f in filtered if f in files]
+
+        return index_entries, ordered, good_index_files, bad_index_files
+
+    def processIndexEntries(self, index_entries):
+        """Convert index entries to RawFileData.
+
+        Parameters
+        ----------
+        index_entries : `dict` [`str`, Any]
+            Dict indexed by name of file to ingest and with keys either
+            raw metadata or translated
+            `~astro_metadata_translator.ObservationInfo`.
+
+        Returns
+        -------
+        data :  `RawFileData`
+            A structure containing the metadata extracted from the file,
+            as well as the original filename.  All fields will be populated,
+            but the `RawFileData.dataId` attribute will be a minimal
+            (unexpanded) `~lsst.daf.butler.DataCoordinate` instance.
+        """
+        fileData = []
+        for filename, metadata in index_entries.items():
+            try:
+                datasets = [self._calculate_dataset_info(metadata, filename)]
+            except Exception as e:
+                self.log.debug("Problem extracting metadata for file %s found in index file: %s",
+                               filename, e)
+                datasets = []
+                formatterClass = Formatter
+                instrument = None
+                self._on_metadata_failure(filename, e)
+                if self.config.failFast:
+                    raise RuntimeError(f"Problem extracting metadata for file {filename} "
+                                       "found in index file") from e
+            else:
+                instrument, formatterClass = self._determine_instrument_formatter(datasets[0].dataId,
+                                                                                  filename)
+                if instrument is None:
+                    datasets = []
+            fileData.append(RawFileData(datasets=datasets, filename=filename,
+                                        FormatterClass=formatterClass, instrumentClass=instrument))
+        return fileData
 
     def groupByExposure(self, files: Iterable[RawFileData]) -> List[RawExposureData]:
         """Group an iterable of `RawFileData` by exposure.
@@ -379,20 +641,21 @@ class RawIngestTask(Task):
             A list of structures that group the file-level information by
             exposure. All fields will be populated.  The
             `RawExposureData.dataId` attributes will be minimal (unexpanded)
-            `DataCoordinate` instances.
+            `~lsst.daf.butler.DataCoordinate` instances.
         """
         exposureDimensions = self.universe["exposure"].graph
         byExposure = defaultdict(list)
         for f in files:
-            # Assume that the first dataset is representative for the file
+            # Assume that the first dataset is representative for the file.
             byExposure[f.datasets[0].dataId.subset(exposureDimensions)].append(f)
 
         return [RawExposureData(dataId=dataId, files=exposureFiles, universe=self.universe)
                 for dataId, exposureFiles in byExposure.items()]
 
     def expandDataIds(self, data: RawExposureData) -> RawExposureData:
-        """Expand the data IDs associated with a raw exposure to include
-        additional metadata records.
+        """Expand the data IDs associated with a raw exposure.
+
+        This adds the metadata records.
 
         Parameters
         ----------
@@ -406,8 +669,8 @@ class RawIngestTask(Task):
         exposure : `RawExposureData`
             An updated version of the input structure, with
             `RawExposureData.dataId` and nested `RawFileData.dataId` attributes
-            updated to data IDs for which `DataCoordinate.hasRecords` returns
-            `True`.
+            updated to data IDs for which
+            `~lsst.daf.butler.DataCoordinate.hasRecords` returns `True`.
         """
         # We start by expanded the exposure-level data ID; we won't use that
         # directly in file ingest, but this lets us do some database lookups
@@ -435,8 +698,7 @@ class RawIngestTask(Task):
 
     def prep(self, files, *, pool: Optional[Pool] = None, processes: int = 1
              ) -> Tuple[Iterator[RawExposureData], List[str]]:
-        """Perform all ingest preprocessing steps that do not involve actually
-        modifying the database.
+        """Perform all non-database-updating ingest preprocessing steps.
 
         Parameters
         ----------
@@ -461,25 +723,52 @@ class RawIngestTask(Task):
             pool = Pool(processes)
         mapFunc = map if pool is None else pool.imap_unordered
 
+        def _partition_good_bad(file_data: Iterable[RawFileData]) -> Tuple[List[RawFileData], List[str]]:
+            """Filter out bad files and return good with list of bad."""
+            good_files = []
+            bad_files = []
+            for fileDatum in file_data:
+                if not fileDatum.datasets:
+                    bad_files.append(fileDatum.filename)
+                else:
+                    good_files.append(fileDatum)
+            return good_files, bad_files
+
+        # Look for index files and read them.
+        # There should be far fewer index files than data files.
+        index_entries, files, good_index_files, bad_index_files = self.locateAndReadIndexFiles(files)
+        if bad_index_files:
+            self.log.info("Failed to read the following explicitly requested index files:"),
+            for bad in sorted(bad_index_files):
+                self.log.info("- %s", bad)
+
+        # Now convert all the index file entries to standard form for ingest.
+        bad_index_file_data = []
+        indexFileData = self.processIndexEntries(index_entries)
+        if indexFileData:
+            indexFileData, bad_index_file_data = _partition_good_bad(indexFileData)
+            self.log.info("Successfully extracted metadata for %d file%s found in %d index file%s"
+                          " with %d failure%s",
+                          *_log_msg_counter(indexFileData),
+                          *_log_msg_counter(good_index_files),
+                          *_log_msg_counter(bad_index_file_data))
+
         # Extract metadata and build per-detector regions.
         # This could run in a subprocess so collect all output
         # before looking at failures.
         fileData: Iterator[RawFileData] = mapFunc(self.extractMetadata, files)
 
         # Filter out all the failed reads and store them for later
-        # reporting
-        good_files = []
-        bad_files = []
-        for fileDatum in fileData:
-            if not fileDatum.datasets:
-                bad_files.append(fileDatum.filename)
-            else:
-                good_files.append(fileDatum)
-        fileData = good_files
-
+        # reporting.
+        fileData, bad_files = _partition_good_bad(fileData)
         self.log.info("Successfully extracted metadata from %d file%s with %d failure%s",
-                      len(fileData), "" if len(fileData) == 1 else "s",
-                      len(bad_files), "" if len(bad_files) == 1 else "s")
+                      *_log_msg_counter(fileData),
+                      *_log_msg_counter(bad_files))
+
+        # Combine with data from index files.
+        fileData.extend(indexFileData)
+        bad_files.extend(bad_index_file_data)
+        bad_files.extend(bad_index_files)
 
         # Use that metadata to group files (and extracted metadata) by
         # exposure.  Never parallelized because it's intrinsically a gather
@@ -530,6 +819,7 @@ class RawIngestTask(Task):
         self.butler.ingest(*datasets, transfer=self.config.transfer, run=run)
         return datasets
 
+    @timeMethod
     def run(self, files, *, pool: Optional[Pool] = None, processes: int = 1, run: Optional[str] = None):
         """Ingest files into a Butler data repository.
 
@@ -585,7 +875,7 @@ class RawIngestTask(Task):
         for exposure in exposureData:
 
             self.log.debug("Attempting to ingest %d file%s from exposure %s:%s",
-                           len(exposure.files), "" if len(exposure.files) == 1 else "s",
+                           *_log_msg_counter(exposure.files),
                            exposure.record.instrument, exposure.record.obs_id)
 
             try:
@@ -599,7 +889,7 @@ class RawIngestTask(Task):
                     raise e
                 continue
 
-            # Override default run if nothing specified explicitly
+            # Override default run if nothing specified explicitly.
             if run is None:
                 instrumentClass = exposure.files[0].instrumentClass
                 this_run = instrumentClass.makeDefaultRawIngestRunName()
@@ -625,7 +915,7 @@ class RawIngestTask(Task):
                 for dataset in datasets_for_exposure:
                     refs.extend(dataset.refs)
 
-            # Success for this exposure
+            # Success for this exposure.
             n_exposures += 1
             self.log.info("Exposure %s:%s ingested successfully",
                           exposure.record.instrument, exposure.record.obs_id)
@@ -640,13 +930,12 @@ class RawIngestTask(Task):
 
         self.log.info("Successfully processed data from %d exposure%s with %d failure%s from exposure"
                       " registration and %d failure%s from file ingest.",
-                      n_exposures, "" if n_exposures == 1 else "s",
-                      n_exposures_failed, "" if n_exposures_failed == 1 else "s",
-                      n_ingests_failed, "" if n_ingests_failed == 1 else "s")
+                      *_log_msg_counter(n_exposures),
+                      *_log_msg_counter(n_exposures_failed),
+                      *_log_msg_counter(n_ingests_failed))
         if n_exposures_failed > 0 or n_ingests_failed > 0:
             had_failure = True
-        self.log.info("Ingested %d distinct Butler dataset%s",
-                      len(refs), "" if len(refs) == 1 else "s")
+        self.log.info("Ingested %d distinct Butler dataset%s", *_log_msg_counter(refs))
 
         if had_failure:
             raise RuntimeError("Some failures encountered during ingestion")

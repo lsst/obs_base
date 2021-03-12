@@ -1,0 +1,114 @@
+# This file is part of obs_base.
+#
+# Developed for the LSST Data Management System.
+# This product includes software developed by the LSST Project
+# (http://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
+# see <http://www.lsstcorp.org/LegalNotices/>.
+#
+---
+
+# Simplest possible single chip camera used for obs_base testing.
+
+name : DummyCam
+
+# A single amplifier ("segment" to the camera team)
+AMP : &AMP
+    perAmpData : True
+    # trimmed
+    dataExtent : [512, 2002]
+    readCorner : LL
+    #                         [[x0,  y0], [xsize, ysize]]
+    rawBBox                 : [[0,    0], [576,    2048]]  # total size of one amp's raw data
+
+    rawDataBBox             : [[10,   0], [512,    2002]]  # data region in raw data
+    rawSerialPrescanBBox    : [[0,    0], [10,     2002]]  # serial prescan (often == extended)
+    rawSerialOverscanBBox   : [[522,  0], [54,     2002]]  # serial overscan
+    rawParallelPrescanBBox  : [[0,    1], [0,         0]]  # pixels digitised before first parallel transfer
+    rawParallelOverscanBBox : [[10, 2002], [512,     46]]  # parallel overscan
+
+    saturation : 142857
+
+    # Linearity correction
+    linearityType : PROPORTIONAL
+    linearityThreshold : 0
+    linearityMax : 142857                # == saturation
+    linearityCoeffs : [0, 142857]        # == [linearityThreshold, linearityMax]
+
+# A single CCD
+CCD : &CCD
+    detectorType : 0
+    refpos : [2047.5, 2001.5]
+    offset : [.nan, .nan]
+    # This is the orientation we need to put the serial direction along the x-axis
+    bbox : [[0, 0], [4095, 4003]]
+    pixelSize : [0.010, 0.010]          # in mm
+    transformDict : {nativeSys : 'Pixels', transforms : None}
+    transposeDetector : False
+    pitch : 0.0                         # (degrees)
+    yaw : 0.0                           # rotation in plane of camera (degrees)
+    roll : 0.0                          # (degrees)
+
+    amplifiers:
+      C00: &C00
+        <<: *AMP
+        hdu : 1
+        flipXY : [False, False]
+        ixy : [0, 0]
+
+
+# Layout of CCDs within an raft
+RAFT:
+  ccds :
+    S00: &S00                      # Sensor (0, 0)
+      << : *CCD
+      id : 0
+      offset : [0.0, 0.0]
+
+# Specify the geometrical transformations relevant to the camera in all appropriate
+# (and known!) coordinate systems
+plateScale : 9.5695
+transforms : {'nativeSys': 'FocalPlane', 'FieldAngle': {'transformType': 'radial', 'coeffs': [0.0, 1.0, 0.0]}}
+
+# Define our specific devices
+#
+# All the CCDs present in this file
+CCDs :
+  RXX_S00 :
+    << : *S00
+    id : 0
+    serial : DummyCam-1
+    physicalType : FAKE
+    refpos : [2036.5, 2000.5]
+    offset : [-0.515, -0.055]
+    amplifiers :
+      C00 :
+        << : *C00
+        gain : 2.42
+        readNoise : 25.14
+  RXX_S01 :
+    << : *S00
+    id : 1
+    serial : DummyCam-2
+    physicalType : FAKE
+    refpos : [20.5, 20.5]
+    offset : [-00, -0.0]
+    amplifiers :
+      C00 :
+        << : *C00
+        gain : 2.42
+        readNoise : 25.14

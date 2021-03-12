@@ -19,55 +19,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import datetime
-import unittest
-
-from lsst.obs.base import Instrument, FilterDefinitionCollection
-from lsst.obs.base.gen2to3 import TranslatorFactory
-from lsst.obs.base.instrument_tests import InstrumentTests, InstrumentTestData
-from lsst.daf.butler.core.utils import getFullTypeName
-
 """Tests of the Instrument class.
 """
 
+import datetime
+import unittest
 
-class DummyCam(Instrument):
-
-    filterDefinitions = FilterDefinitionCollection()
-
-    @classmethod
-    def getName(cls):
-        return "DummyCam"
-
-    def getCamera(self):
-        return None
-
-    def register(self, registry):
-        """Insert Instrument, physical_filter, and detector entries into a
-        `Registry`.
-        """
-        dataId = {"instrument": self.getName(), "class_name": getFullTypeName(DummyCam)}
-        with registry.transaction():
-            registry.syncDimensionData("instrument", dataId)
-            for f in ("dummy_g", "dummy_u"):
-                registry.syncDimensionData("physical_filter",
-                                           dict(dataId, physical_filter=f, band=f[-1]))
-            for d in (1, 2):
-                registry.syncDimensionData("detector",
-                                           dict(dataId, id=d, full_name=str(d)))
-
-    def getRawFormatter(self, dataId):
-        # Docstring inherited fromt Instrument.getRawFormatter.
-        return None
-
-    def writeCuratedCalibrations(self, butler):
-        pass
-
-    def applyConfigOverrides(self, name, config):
-        pass
-
-    def makeDataIdTranslatorFactory(self) -> TranslatorFactory:
-        return TranslatorFactory()
+from lsst.obs.base import Instrument
+from lsst.obs.base.instrument_tests import InstrumentTests, InstrumentTestData, DummyCam
 
 
 class InstrumentTestCase(InstrumentTests, unittest.TestCase):
@@ -78,7 +37,7 @@ class InstrumentTestCase(InstrumentTests, unittest.TestCase):
 
     data = InstrumentTestData(name="DummyCam",
                               nDetectors=2,
-                              firstDetectorName="1",
+                              firstDetectorName="RXX_S00",
                               physical_filters={"dummy_g", "dummy_u"})
 
     def test_getCamera(self):
