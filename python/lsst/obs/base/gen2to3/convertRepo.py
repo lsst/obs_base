@@ -740,4 +740,4 @@ class ConvertRepoTask(Task):
                     # safe-ish to assume that's the one the rerun used.
                     chain.append(self.instrument.makeCalibrationCollectionName(*calibs[0].labels))
                 self.log.info("Defining %s from chain %s.", spec.chainName, chain)
-                self.butler3.registry.setCollectionChain(spec.chainName, chain)
+                self.butler3.registry.setCollectionChain(spec.chainName, chain, flatten=True)
