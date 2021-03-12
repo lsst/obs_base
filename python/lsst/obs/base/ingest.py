@@ -22,17 +22,19 @@
 
 __all__ = ("RawIngestTask", "RawIngestConfig", "makeTransferChoiceField")
 
-import os.path
+import json
+import re
 from dataclasses import dataclass, InitVar
 from typing import Callable, List, Iterator, Iterable, Tuple, Type, Optional, Any, Union
 from collections import defaultdict
 from multiprocessing import Pool
 
 from astro_metadata_translator import ObservationInfo, merge_headers
-from astro_metadata_translator.indexing import read_sidecar, read_index
+from astro_metadata_translator.indexing import process_sidecar_data, process_index_data
 from lsst.afw.fits import readMetadata
 from lsst.daf.butler import (
     Butler,
+    ButlerURI,
     CollectionType,
     DataCoordinate,
     DatasetRef,
@@ -112,8 +114,8 @@ class RawFileData:
     (`list` of `RawFileDatasetInfo`)
     """
 
-    filename: str
-    """Name of the file this information was extracted from (`str`).
+    filename: ButlerURI
+    """URI of the file this information was extracted from (`str`).
 
     This is the path prior to ingest, not the path after ingest.
     """
@@ -219,7 +221,7 @@ class RawIngestTask(Task):
         `RawIngestConfig.failFast` is `False`.
     on_metadata_failure : `Callable`, optional
         A callback invoked when a failure occurs trying to translate the
-        metadata for a file.  Will be passed the filename and the exception, in
+        metadata for a file.  Will be passed the URI and the exception, in
         that order, as positional arguments.  Guaranteed to be called in an
         ``except`` block, allowing the callback to re-raise or replace (with
         ``raise ... from``) to override the task's usual error handling (before
@@ -280,8 +282,8 @@ class RawIngestTask(Task):
         ----------
         dataId : `lsst.daf.butler.DataCoordinate`
             The dataId associated with this dataset.
-        filename : `str`
-            Filename used for error reporting.
+        filename : `ButlerURI`
+            URI of file used for error reporting.
 
         Returns
         -------
@@ -310,13 +312,13 @@ class RawIngestTask(Task):
             FormatterClass = instrument.getRawFormatter(dataId)
         return instrument, FormatterClass
 
-    def extractMetadata(self, filename: str) -> RawFileData:
+    def extractMetadata(self, filename: ButlerURI) -> RawFileData:
         """Extract and process metadata from a single raw file.
 
         Parameters
         ----------
-        filename : `str`
-            Path to the file.
+        filename : `ButlerURI`
+            URI to the file.
 
         Returns
         -------
@@ -346,18 +348,23 @@ class RawIngestTask(Task):
         """
         sidecar_fail_msg = ""  # Requires prepended space when set.
         try:
-            root, ext = os.path.splitext(filename)
-            sidecar_file = root + ".json"
-            if os.path.exists(sidecar_file):
-                header = read_sidecar(sidecar_file)
+            sidecar_file = filename.updatedExtension(".json")
+            if sidecar_file.exists():
+                content = json.loads(sidecar_file.read())
+                header = process_sidecar_data(content)
                 sidecar_fail_msg = " (via sidecar)"
             else:
                 # Read the metadata from the data file itself.
                 # Manually merge the primary and "first data" headers here
                 # because we do not know in general if an input file has
                 # set INHERIT=T.
-                phdu = readMetadata(filename, 0)
-                header = merge_headers([phdu, readMetadata(filename)], mode="overwrite")
+                # For remote files download the entire file to get the
+                # header. This is very inefficient and it would be better
+                # to have some way of knowing where in the file the headers
+                # are and to only download those parts of the file.
+                with filename.as_local() as local_file:
+                    phdu = readMetadata(local_file.ospath, 0)
+                    header = merge_headers([phdu, readMetadata(local_file.ospath)], mode="overwrite")
             datasets = [self._calculate_dataset_info(header, filename)]
         except Exception as e:
             self.log.debug("Problem extracting metadata from %s%s: %s", filename, sidecar_fail_msg, e)
@@ -389,7 +396,7 @@ class RawIngestTask(Task):
         ----------
         header : Mapping or `astro_metadata_translator.ObservationInfo`
             Header from the dataset or previously-translated content.
-        filename : `str`
+        filename : `ButlerURI`
             Filename to use for error messages.
 
         Returns
@@ -443,7 +450,7 @@ class RawIngestTask(Task):
                                  f" {missing} (via JSON)")
 
         else:
-            obsInfo = ObservationInfo(header, pedantic=False, filename=filename,
+            obsInfo = ObservationInfo(header, pedantic=False, filename=str(filename),
                                       required={k for k in ingest_subset if ingest_subset[k]},
                                       subset=set(ingest_subset))
 
@@ -462,9 +469,8 @@ class RawIngestTask(Task):
 
         Parameters
         ----------
-        files : iterable over `str` or path-like objects
-            Paths to the files to be ingested.  Will be made absolute
-            if they are not already.
+        files : iterable over `ButlerURI`
+            URIs to the files to be ingested.
 
         Returns
         -------
@@ -482,7 +488,7 @@ class RawIngestTask(Task):
         # Convert the paths to absolute for easy comparison with index content.
         # Do not convert to real paths since we have to assume that index
         # files are in this location and not the location which it links to.
-        files = tuple(os.path.abspath(f) for f in files)
+        files = tuple(f.abspath() for f in files)
 
         # Index files must be named this.
         index_root_file = "_index.json"
@@ -491,7 +497,7 @@ class RawIngestTask(Task):
         files_by_directory = defaultdict(set)
 
         for path in files:
-            directory, file_in_dir = os.path.split(path)
+            directory, file_in_dir = path.split()
             files_by_directory[directory].add(file_in_dir)
 
         # All the metadata read from index files with keys of full path.
@@ -505,8 +511,8 @@ class RawIngestTask(Task):
 
         # Look for index files in those directories.
         for directory, files_in_directory in files_by_directory.items():
-            possible_index_file = os.path.join(directory, index_root_file)
-            if os.path.exists(possible_index_file):
+            possible_index_file = directory.join(index_root_file)
+            if possible_index_file.exists():
                 # If we are explicitly requesting an index file the
                 # messages should be different.
                 index_msg = "inferred"
@@ -518,7 +524,8 @@ class RawIngestTask(Task):
                 # Try to read the index file and catch and report any
                 # problems.
                 try:
-                    index = read_index(possible_index_file, force_dict=True)
+                    content = json.loads(possible_index_file.read())
+                    index = process_index_data(content, force_dict=True)
                 except Exception as e:
                     # Only trigger the callback if the index file
                     # was asked for explicitly. Triggering on implied file
@@ -557,7 +564,7 @@ class RawIngestTask(Task):
                                       directory)
                         continue
                     if file_in_dir in index:
-                        file = os.path.abspath(os.path.join(directory, file_in_dir))
+                        file = directory.join(file_in_dir)
                         if file in index_entries:
                             # ObservationInfo overrides raw metadata
                             if isinstance(index[file_in_dir], ObservationInfo) \
@@ -812,15 +819,15 @@ class RawIngestTask(Task):
             Per-file structures identifying the files ingested and their
             dataset representation in the data repository.
         """
-        datasets = [FileDataset(path=os.path.abspath(file.filename),
+        datasets = [FileDataset(path=file.filename.abspath(),
                                 refs=[DatasetRef(self.datasetType, d.dataId) for d in file.datasets],
                                 formatter=file.FormatterClass)
                     for file in exposure.files]
         self.butler.ingest(*datasets, transfer=self.config.transfer, run=run)
         return datasets
 
-    @timeMethod
-    def run(self, files, *, pool: Optional[Pool] = None, processes: int = 1, run: Optional[str] = None):
+    def ingestFiles(self, files, *, pool: Optional[Pool] = None, processes: int = 1,
+                    run: Optional[str] = None):
         """Ingest files into a Butler data repository.
 
         This creates any new exposure or visit Dimension entries needed to
@@ -831,9 +838,8 @@ class RawIngestTask(Task):
 
         Parameters
         ----------
-        files : iterable over `str` or path-like objects
-            Paths to the files to be ingested.  Will be made absolute
-            if they are not already.
+        files : iterable over `ButlerURI`
+            URIs to the files to be ingested.
         pool : `multiprocessing.Pool`, optional
             If not `None`, a process pool with which to parallelize some
             operations.
@@ -847,17 +853,10 @@ class RawIngestTask(Task):
         -------
         refs : `list` of `lsst.daf.butler.DatasetRef`
             Dataset references for ingested raws.
-
-        Notes
-        -----
-        This method inserts all datasets for an exposure within a transaction,
-        guaranteeing that partial exposures are never ingested.  The exposure
-        dimension record is inserted with `Registry.syncDimensionData` first
-        (in its own transaction), which inserts only if a record with the same
-        primary key does not already exist.  This allows different files within
-        the same exposure to be incremented in different runs.
         """
+
         exposureData, bad_files = self.prep(files, pool=pool, processes=processes)
+
         # Up to this point, we haven't modified the data repository at all.
         # Now we finally do that, with one transaction per exposure.  This is
         # not parallelized at present because the performance of this step is
@@ -867,6 +866,7 @@ class RawIngestTask(Task):
         # operations done in advance to reduce the time spent inside
         # transactions.
         self.butler.registry.registerDatasetType(self.datasetType)
+
         refs = []
         runs = set()
         n_exposures = 0
@@ -919,6 +919,70 @@ class RawIngestTask(Task):
             n_exposures += 1
             self.log.info("Exposure %s:%s ingested successfully",
                           exposure.record.instrument, exposure.record.obs_id)
+
+        return refs, bad_files, n_exposures, n_exposures_failed, n_ingests_failed
+
+    @timeMethod
+    def run(self, files, *, pool: Optional[Pool] = None, processes: int = 1, run: Optional[str] = None,
+            file_filter: Union[str, re.Pattern] = r"\.fit[s]?\b", group_files: bool = True):
+        """Ingest files into a Butler data repository.
+
+        This creates any new exposure or visit Dimension entries needed to
+        identify the ingested files, creates new Dataset entries in the
+        Registry and finally ingests the files themselves into the Datastore.
+        Any needed instrument, detector, and physical_filter Dimension entries
+        must exist in the Registry before `run` is called.
+
+        Parameters
+        ----------
+        files : iterable over `ButlerURI`, `str` or path-like objects
+            Paths to the files to be ingested.  Can refer to directories.
+            Will be made absolute if they are not already.
+        pool : `multiprocessing.Pool`, optional
+            If not `None`, a process pool with which to parallelize some
+            operations.
+        processes : `int`, optional
+            The number of processes to use.  Ignored if ``pool`` is not `None`.
+        run : `str`, optional
+            Name of a RUN-type collection to write to, overriding
+            the default derived from the instrument name.
+        file_filter : `str` or `re.Pattern`, optional
+            Pattern to use to discover files to ingest within directories.
+            The default is to search for FITS files. The regex applies to
+            files within the directory.
+        group_files : `bool`, optional
+            Group files by directory if they have been discovered in
+            directories. Will not affect files explicitly provided.
+
+        Returns
+        -------
+        refs : `list` of `lsst.daf.butler.DatasetRef`
+            Dataset references for ingested raws.
+
+        Notes
+        -----
+        This method inserts all datasets for an exposure within a transaction,
+        guaranteeing that partial exposures are never ingested.  The exposure
+        dimension record is inserted with `Registry.syncDimensionData` first
+        (in its own transaction), which inserts only if a record with the same
+        primary key does not already exist.  This allows different files within
+        the same exposure to be incremented in different runs.
+        """
+
+        refs = []
+        bad_files = []
+        n_exposures = 0
+        n_exposures_failed = 0
+        n_ingests_failed = 0
+        for group in ButlerURI.findFileResources(files, file_filter, group_files):
+            new_refs, bad, n_exp, n_exp_fail, n_ingest_fail = self.ingestFiles(group, pool=pool,
+                                                                               processes=processes,
+                                                                               run=run)
+            refs.extend(new_refs)
+            bad_files.extend(bad)
+            n_exposures += n_exp
+            n_exposures_failed += n_exp_fail
+            n_ingests_failed += n_ingest_fail
 
         had_failure = False
 
