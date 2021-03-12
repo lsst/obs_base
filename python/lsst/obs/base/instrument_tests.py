@@ -72,7 +72,7 @@ class DummyCam(Instrument):
 
     def getCamera(self):
         # Return something that can be indexed by detector number
-        # but also has to support getIdIter
+        # but also has to support getIdIter.
         filename = pkg_resources.resource_filename("lsst.obs.base", "test/dummycam.yaml")
         return makeCamera(filename)
 
@@ -152,12 +152,12 @@ class InstrumentTests(metaclass=abc.ABCMeta):
         registryConfig = RegistryConfig()
         registryConfig["db"] = "sqlite://"
         registry = Registry.createFromConfig(registryConfig)
-        # check that the registry starts out empty
+        # Check that the registry starts out empty.
         self.assertFalse(registry.queryDataIds(["instrument"]).toSequence())
         self.assertFalse(registry.queryDataIds(["detector"]).toSequence())
         self.assertFalse(registry.queryDataIds(["physical_filter"]).toSequence())
 
-        # register the instrument and check that certain dimensions appear
+        # Register the instrument and check that certain dimensions appear.
         self.instrument.register(registry)
         instrumentDataIds = registry.queryDataIds(["instrument"]).toSequence()
         self.assertEqual(len(instrumentDataIds), 1)
@@ -171,7 +171,7 @@ class InstrumentTests(metaclass=abc.ABCMeta):
         filterNames = {dataId['physical_filter'] for dataId in physicalFilterDataIds}
         self.assertGreaterEqual(filterNames, self.data.physical_filters)
 
-        # Check that the instrument class can be retrieved
+        # Check that the instrument class can be retrieved.
         registeredInstrument = Instrument.fromName(self.instrument.getName(), registry)
         self.assertEqual(type(registeredInstrument), type(self.instrument))
 
@@ -181,4 +181,4 @@ class InstrumentTests(metaclass=abc.ABCMeta):
     def testMakeTranslatorFactory(self):
         factory = self.instrument.makeDataIdTranslatorFactory()
         self.assertIsInstance(factory, TranslatorFactory)
-        str(factory)  # just make sure this doesn't raise.
+        str(factory)  # Just make sure this doesn't raise.

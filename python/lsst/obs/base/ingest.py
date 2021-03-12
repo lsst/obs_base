@@ -75,6 +75,13 @@ def _log_msg_counter(noun: Union[int, Iterable]) -> Tuple[int, str]:
         Character to add to the end of a string referring to these items
         to indicate whether it was a single item or not. Returns empty
         string if there is one item or "s" otherwise.
+
+    Examples
+    --------
+
+    .. code-block:: python
+
+       log.warning("Found %d file%s", *_log_msg_counter(nfiles))
     """
     if isinstance(noun, int):
         num = noun
@@ -262,7 +269,7 @@ class RawIngestTask(Task):
         Instrument.importAll(self.butler.registry)
 
     def _reduce_kwargs(self):
-        # Add extra parameters to pickle
+        # Add extra parameters to pickle.
         return dict(**super()._reduce_kwargs(), butler=self.butler, on_success=self._on_success,
                     on_metadata_failure=self._on_metadata_failure, on_ingest_failure=self._on_ingest_failure)
 
@@ -318,7 +325,7 @@ class RawIngestTask(Task):
             as well as the original filename.  All fields will be populated,
             but the `RawFileData.dataId` attribute will be a minimal
             (unexpanded) `~lsst.daf.butler.DataCoordinate` instance. The
-            ``instrumentClsas`` field will be `None` if there is a problem
+            ``instrumentClass`` field will be `None` if there is a problem
             with metadata extraction.
 
         Notes
@@ -337,7 +344,7 @@ class RawIngestTask(Task):
         extract metadata without having to read the data file itself.
         The sidecar file is always used if found.
         """
-        sidecar_fail_msg = ""
+        sidecar_fail_msg = ""  # Requires prepended space when set.
         try:
             root, ext = os.path.splitext(filename)
             sidecar_file = root + ".json"
@@ -345,7 +352,7 @@ class RawIngestTask(Task):
                 header = read_sidecar(sidecar_file)
                 sidecar_fail_msg = " (via sidecar)"
             else:
-                # Read the metadata from the data file itself
+                # Read the metadata from the data file itself.
                 # Manually merge the primary and "first data" headers here
                 # because we do not know in general if an input file has
                 # set INHERIT=T.
@@ -354,7 +361,7 @@ class RawIngestTask(Task):
             datasets = [self._calculate_dataset_info(header, filename)]
         except Exception as e:
             self.log.debug("Problem extracting metadata from %s%s: %s", filename, sidecar_fail_msg, e)
-            # Indicate to the caller that we failed to read
+            # Indicate to the caller that we failed to read.
             datasets = []
             formatterClass = Formatter
             instrument = None
@@ -392,7 +399,7 @@ class RawIngestTask(Task):
             dataset.
         """
         # To ensure we aren't slowed down for no reason, explicitly
-        # list here the properties we need for the schema
+        # list here the properties we need for the schema.
         # Use a dict with values a boolean where True indicates
         # that it is required that we calculate this property.
         ingest_subset = {
@@ -422,10 +429,12 @@ class RawIngestTask(Task):
         if isinstance(header, ObservationInfo):
             obsInfo = header
             missing = []
-            # Need to check the required properties are present
+            # Need to check the required properties are present.
             for property, required in ingest_subset.items():
                 if not required:
                     continue
+                # getattr does not need to be protected because it is using
+                # the defined list above containing properties that must exist.
                 value = getattr(obsInfo, property)
                 if value is None:
                     missing.append(property)
@@ -475,31 +484,31 @@ class RawIngestTask(Task):
         # files are in this location and not the location which it links to.
         files = tuple(os.path.abspath(f) for f in files)
 
-        # Index files must be named this
+        # Index files must be named this.
         index_root_file = "_index.json"
 
-        # Group the files by directory
+        # Group the files by directory.
         files_by_directory = defaultdict(set)
 
         for path in files:
             directory, file_in_dir = os.path.split(path)
             files_by_directory[directory].add(file_in_dir)
 
-        # All the metadata read from index files with keys of full path
+        # All the metadata read from index files with keys of full path.
         index_entries = {}
 
-        # Index files we failed to read
+        # Index files we failed to read.
         bad_index_files = set()
 
-        # Any good index files that were found and used
+        # Any good index files that were found and used.
         good_index_files = set()
 
-        # Look for index files in those directories
+        # Look for index files in those directories.
         for directory, files_in_directory in files_by_directory.items():
             possible_index_file = os.path.join(directory, index_root_file)
             if os.path.exists(possible_index_file):
                 # If we are explicitly requesting an index file the
-                # messages should be different
+                # messages should be different.
                 index_msg = "inferred"
                 is_implied = True
                 if index_root_file in files_in_directory:
@@ -511,8 +520,9 @@ class RawIngestTask(Task):
                 try:
                     index = read_index(possible_index_file, force_dict=True)
                 except Exception as e:
-                    # For now only trigger the callback if the index file
-                    # was asked for explicitly.
+                    # Only trigger the callback if the index file
+                    # was asked for explicitly. Triggering on implied file
+                    # might be surprising.
                     if not is_implied:
                         self._on_metadata_failure(possible_index_file, e)
                     if self.config.failFast:
@@ -543,6 +553,8 @@ class RawIngestTask(Task):
                     # this is not true we continue. Raising an exception
                     # seems like the wrong thing to do since this is harmless.
                     if file_in_dir == index_root_file:
+                        self.log.info("Logic error found scanning directory %s. Please file ticket.",
+                                      directory)
                         continue
                     if file_in_dir in index:
                         file = os.path.abspath(os.path.join(directory, file_in_dir))
@@ -634,7 +646,7 @@ class RawIngestTask(Task):
         exposureDimensions = self.universe["exposure"].graph
         byExposure = defaultdict(list)
         for f in files:
-            # Assume that the first dataset is representative for the file
+            # Assume that the first dataset is representative for the file.
             byExposure[f.datasets[0].dataId.subset(exposureDimensions)].append(f)
 
         return [RawExposureData(dataId=dataId, files=exposureFiles, universe=self.universe)
@@ -722,15 +734,15 @@ class RawIngestTask(Task):
                     good_files.append(fileDatum)
             return good_files, bad_files
 
-        # Look for index files and read them
-        # There should be far fewer index files than data files
+        # Look for index files and read them.
+        # There should be far fewer index files than data files.
         index_entries, files, good_index_files, bad_index_files = self.locateAndReadIndexFiles(files)
         if bad_index_files:
             self.log.info("Failed to read the following explicitly requested index files:"),
             for bad in sorted(bad_index_files):
                 self.log.info("- %s", bad)
 
-        # Now convert all the index file entries to standard form for ingest
+        # Now convert all the index file entries to standard form for ingest.
         bad_index_file_data = []
         indexFileData = self.processIndexEntries(index_entries)
         if indexFileData:
@@ -747,13 +759,13 @@ class RawIngestTask(Task):
         fileData: Iterator[RawFileData] = mapFunc(self.extractMetadata, files)
 
         # Filter out all the failed reads and store them for later
-        # reporting
+        # reporting.
         fileData, bad_files = _partition_good_bad(fileData)
         self.log.info("Successfully extracted metadata from %d file%s with %d failure%s",
                       *_log_msg_counter(fileData),
                       *_log_msg_counter(bad_files))
 
-        # Combine with data from index files
+        # Combine with data from index files.
         fileData.extend(indexFileData)
         bad_files.extend(bad_index_file_data)
         bad_files.extend(bad_index_files)
@@ -877,7 +889,7 @@ class RawIngestTask(Task):
                     raise e
                 continue
 
-            # Override default run if nothing specified explicitly
+            # Override default run if nothing specified explicitly.
             if run is None:
                 instrumentClass = exposure.files[0].instrumentClass
                 this_run = instrumentClass.makeDefaultRawIngestRunName()
@@ -903,7 +915,7 @@ class RawIngestTask(Task):
                 for dataset in datasets_for_exposure:
                     refs.extend(dataset.refs)
 
-            # Success for this exposure
+            # Success for this exposure.
             n_exposures += 1
             self.log.info("Exposure %s:%s ingested successfully",
                           exposure.record.instrument, exposure.record.obs_id)

@@ -117,15 +117,15 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
     @classmethod
     def setUpClass(cls):
-        # Use a temporary working directory
+        # Use a temporary working directory.
         cls.root = tempfile.mkdtemp(dir=cls.ingestDir)
         cls._createRepo()
 
-        # Register the instrument and its static metadata
+        # Register the instrument and its static metadata.
         cls._registerInstrument()
 
     def setUp(self):
-        # Want a unique run name per test
+        # Want a unique run name per test.
         self.outputRun = "raw_ingest_" + self.id()
 
     @classmethod
@@ -160,11 +160,11 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         self.assertEqual(len(datasets), len(self.dataIds))
 
         # Get the URI to the first dataset and check it is inside the
-        # datastore
+        # datastore.
         datasetUri = butler.getURI(datasets[0])
         self.assertIsNotNone(datasetUri.relative_to(butler.datastore.root))
 
-        # Get the relevant dataset type
+        # Get the relevant dataset type.
         datasetType = butler.registry.getDatasetType(self.ingestDatasetTypeName)
 
         for dataId in self.dataIds:
@@ -179,7 +179,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
                 # Could be anything so nothing to test by default
                 continue
 
-            # Check that we can read metadata from a raw
+            # Check that we can read metadata from a raw.
             metadata = butler.get(f"{self.ingestDatasetTypeName}.metadata", dataId)
             if not fullCheck:
                 continue
@@ -197,7 +197,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             rawImage = butler.get(f"{self.ingestDatasetTypeName}.image", dataId)
             self.assertEqual(rawImage.getBBox(), exposure.getBBox())
 
-            # check that the filter label got the correct band
+            # Check that the filter label got the correct band.
             filterLabel = butler.get(f"{self.ingestDatasetTypeName}.filterLabel", dataId)
             self.assertEqual(filterLabel, self.filterLabel)
 
@@ -222,7 +222,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         to create a repository."""
         runner = LogCliRunner()
         result = runner.invoke(butlerCli, ["create", cls.root])
-        # Classmethod so assertEqual does not work
+        # Classmethod so assertEqual does not work.
         assert result.exit_code == 0, f"output: {result.output} exception: {result.exception}"
 
     def _ingestRaws(self, transfer, file=None):
@@ -252,7 +252,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         to register the instrument."""
         runner = LogCliRunner()
         result = runner.invoke(butlerCli, ["register-instrument", cls.root, cls.instrumentClassName])
-        # Classmethod so assertEqual does not work
+        # Classmethod so assertEqual does not work.
         assert result.exit_code == 0, f"output: {result.output} exception: {result.exception}"
 
     def _writeCuratedCalibrations(self):
@@ -273,7 +273,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     def testDirect(self):
         self._ingestRaws(transfer="direct")
 
-        # Check that it really did have a URI outside of datastore
+        # Check that it really did have a URI outside of datastore.
         srcUri = ButlerURI(self.file, forceAbsolute=True)
         butler = Butler(self.root, run=self.outputRun)
         datasets = list(butler.registry.queryDatasets(self.ingestDatasetTypeName, collections=self.outputRun))
@@ -316,7 +316,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         if index_file.exists():
             os.symlink(index_file.ospath, butler.datastore.root.join("_index.json").ospath)
         else:
-            # No index file so we are free to pick any name
+            # No index file so we are free to pick any name.
             pathInStore = "prefix-" + pathInStore
 
         # Create a symlink to the original file so that it looks like it
@@ -337,10 +337,10 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         self.verifyIngest()
 
         # Recreate a butler post-ingest (the earlier one won't see the
-        # ingested files)
+        # ingested files).
         butler = Butler(self.root, run=self.outputRun)
 
-        # Check that the URI associated with this path is the right one
+        # Check that the URI associated with this path is the right one.
         uri = butler.getURI(self.ingestDatasetTypeName, self.dataIds[0])
         self.assertEqual(uri.relative_to(butler.datastore.root), pathInStore)
 
