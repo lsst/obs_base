@@ -361,6 +361,16 @@ class ConvertRepoConfig(Config):
         dtype=bool,
         default=False,
     )
+    doExpandDataIds = Field(
+        "If True (default), expand data IDs to include extra metadata before "
+        "ingesting them. "
+        "This may be required in order to associate calibration datasets with "
+        "validity ranges or populate file templates, so setting this to False "
+        "is considered advanced usage (and it may not always work).  When it "
+        "does, it can provide a considerable speedup.",
+        dtype=bool,
+        default=True,
+    )
     doMakeUmbrellaCollection = Field(
         "If True (default), define an '<instrument>/defaults' CHAINED "
         "collection that includes everything found in the root repo as well "
@@ -385,6 +395,11 @@ class ConvertRepoConfig(Config):
 
     def setDefaults(self):
         self.transfer = None
+
+    def validate(self):
+        super().validate()
+        if self.relatedOnly and not self.doExpandDataIds():
+            raise ValueError("relatedOnly requires doExpandDataIds.")
 
 
 class ConvertRepoTask(Task):
@@ -615,6 +630,8 @@ class ConvertRepoTask(Task):
             pool = Pool(processes)
         if calibs is None:
             calibs = [CalibRepo(path=None)]
+        elif calibs and not self.config.doExpandDataIds:
+            raise ValueError("Cannot convert calib repos with config.doExpandDataIds=False.")
         if visits is not None:
             subset = ConversionSubset(instrument=self.instrument.getName(), visits=frozenset(visits))
         else:
@@ -622,6 +639,11 @@ class ConvertRepoTask(Task):
                 self.log.warn("config.relatedOnly is True but all visits are being ingested; "
                               "no filtering will be done.")
             subset = None
+        if (not self.config.doExpandDataIds
+                and self.butler.datastore.needs_expanded_data_ids(self.config.transfer)):
+            self.log.warn("config.doExpandDataIds=False but datastore reports that expanded data "
+                          "IDs may be needed.",
+                          self.config.transfer)
 
         # Check that at most one CalibRepo is marked as default, to fail before
         # we actually write anything.
@@ -711,8 +733,9 @@ class ConvertRepoTask(Task):
             converter.findDatasets()
 
         # Expand data IDs.
-        for converter in converters:
-            converter.expandDataIds()
+        if self.config.doExpandDataIds:
+            for converter in converters:
+                converter.expandDataIds()
 
         if self.dry_run:
             return
