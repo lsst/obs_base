@@ -126,8 +126,8 @@ class RawFileData:
     subclass of `FitsRawFormatterBase`).
     """
 
-    instrumentClass: Optional[Type[Instrument]]
-    """The `Instrument` class associated with this file. Can be `None`
+    instrument: Optional[Instrument]
+    """The `Instrument` instance associated with this file. Can be `None`
     if ``datasets`` is an empty list."""
 
 
@@ -329,7 +329,7 @@ class RawIngestTask(Task):
             as well as the original filename.  All fields will be populated,
             but the `RawFileData.dataId` attribute will be a minimal
             (unexpanded) `~lsst.daf.butler.DataCoordinate` instance. The
-            ``instrumentClass`` field will be `None` if there is a problem
+            ``instrument`` field will be `None` if there is a problem
             with metadata extraction.
 
         Notes
@@ -406,7 +406,7 @@ class RawIngestTask(Task):
 
         return RawFileData(datasets=datasets, filename=filename,
                            FormatterClass=formatterClass,
-                           instrumentClass=instrument)
+                           instrument=instrument)
 
     def _calculate_dataset_info(self, header, filename):
         """Calculate a RawFileDatasetInfo from the supplied information.
@@ -650,7 +650,7 @@ class RawIngestTask(Task):
                 if instrument is None:
                     datasets = []
             fileData.append(RawFileData(datasets=datasets, filename=filename,
-                                        FormatterClass=formatterClass, instrumentClass=instrument))
+                                        FormatterClass=formatterClass, instrument=instrument))
         return fileData
 
     def groupByExposure(self, files: Iterable[RawFileData]) -> List[RawExposureData]:
@@ -910,8 +910,8 @@ class RawIngestTask(Task):
 
             # Override default run if nothing specified explicitly.
             if run is None:
-                instrumentClass = exposure.files[0].instrumentClass
-                this_run = instrumentClass().makeDefaultRawIngestRunName()
+                instrument = exposure.files[0].instrument
+                this_run = instrument.makeDefaultRawIngestRunName()
             else:
                 this_run = run
             if this_run not in runs:
