@@ -108,6 +108,7 @@ class RootRepoConverter(StandardRepoConverter):
 
     def runRawIngest(self, pool=None):
         if self.task.raws is None:
+            self.task.log.info(f"Skipping raw ingest for {self.root}.")
             return
         self.task.log.info(f"Finding raws in root {self.root}.")
         if self.subset is not None:
@@ -118,17 +119,26 @@ class RootRepoConverter(StandardRepoConverter):
         else:
             dataRefs = self.butler2.subset(self.task.config.rawDatasetType)
         dataPaths = getDataPaths(dataRefs)
-        self.task.log.info("Ingesting raws from root %s into run %s.", self.root, self.task.raws.butler.run)
-        self._rawRefs.extend(self.task.raws.run(dataPaths, pool=pool))
+        if not self.task.dry_run:
+            self.task.log.info("Ingesting raws from root %s into run %s.",
+                               self.root, self.task.raws.butler.run)
+            self._rawRefs.extend(self.task.raws.run(dataPaths, pool=pool))
+        else:
+            self.task.log.info("[dry run] skipping ingesting raws from root %s into run %s.",
+                               self.root, self.task.raws.butler.run)
         self._chain = [self.task.raws.butler.run]
 
     def runDefineVisits(self, pool=None):
         if self.task.defineVisits is None:
+            self.task.log.info(f"Skipping visit definition for {self.root}.")
             return
         dimensions = DimensionGraph(self.task.universe, names=["exposure"])
         exposureDataIds = set(ref.dataId.subset(dimensions) for ref in self._rawRefs)
-        self.task.log.info("Defining visits from exposures.")
-        self.task.defineVisits.run(exposureDataIds, pool=pool)
+        if not self.task.dry_run:
+            self.task.log.info("Defining visits from exposures.")
+            self.task.defineVisits.run(exposureDataIds, pool=pool)
+        else:
+            self.task.log.info("[dry run] Skipping defining visits from exposures.")
 
     def prep(self):
         # Docstring inherited from RepoConverter.
