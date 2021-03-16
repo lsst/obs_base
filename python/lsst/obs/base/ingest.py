@@ -974,15 +974,23 @@ class RawIngestTask(Task):
         n_exposures = 0
         n_exposures_failed = 0
         n_ingests_failed = 0
-        for group in ButlerURI.findFileResources(files, file_filter, group_files):
-            new_refs, bad, n_exp, n_exp_fail, n_ingest_fail = self.ingestFiles(group, pool=pool,
-                                                                               processes=processes,
-                                                                               run=run)
-            refs.extend(new_refs)
-            bad_files.extend(bad)
-            n_exposures += n_exp
-            n_exposures_failed += n_exp_fail
-            n_ingests_failed += n_ingest_fail
+        if group_files:
+            for group in ButlerURI.findFileResources(files, file_filter, group_files):
+                new_refs, bad, n_exp, n_exp_fail, n_ingest_fail = self.ingestFiles(group, pool=pool,
+                                                                                   processes=processes,
+                                                                                   run=run)
+                refs.extend(new_refs)
+                bad_files.extend(bad)
+                n_exposures += n_exp
+                n_exposures_failed += n_exp_fail
+                n_ingests_failed += n_ingest_fail
+        else:
+            refs, bad_files, n_exposures, n_exposures_failed, n_ingests_failed = self.ingestFiles(
+                ButlerURI.findFileResources(files, file_filter, group_files),
+                pool=pool,
+                processes=processes,
+                run=run,
+            )
 
         had_failure = False
 
