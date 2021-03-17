@@ -44,6 +44,8 @@ from lsst.utils import doImport
 from lsst.daf.butler import DataCoordinate, FileDataset, DatasetType, Progress
 from lsst.sphgeom import RangeSet, Region
 from .repoWalker import RepoWalker
+from ..ingest import _log_msg_counter
+
 
 if TYPE_CHECKING:
     from ..mapping import Mapping as CameraMapperMapping  # disambiguate from collections.abc.Mapping
@@ -455,19 +457,15 @@ class RepoConverter(ABC):
         with self.progress.bar(desc="Expanding data IDs", total=self._fileDatasetCount) as progressBar:
             for datasetType, datasetsByCalibDate in self._fileDatasets.items():
                 for calibDate, datasetsForCalibDate in datasetsByCalibDate.items():
-                    nDatasets = len(datasetsForCalibDate)
-                    suffix = "" if nDatasets == 1 else "s"
                     if calibDate is not None:
-                        self.task.log.info("Expanding data IDs for %s %s dataset%s at calibDate %s.",
-                                           nDatasets,
+                        self.task.log.info("Expanding data IDs for %d dataset%s of type %s at calibDate %s.",
+                                           *_log_msg_counter(datasetsForCalibDate),
                                            datasetType.name,
-                                           suffix,
                                            calibDate)
                     else:
-                        self.task.log.info("Expanding data IDs for %s %s non-calibration dataset%s.",
-                                           nDatasets,
-                                           datasetType.name,
-                                           suffix)
+                        self.task.log.info("Expanding data IDs for %d non-calibration dataset%s of type %s.",
+                                           *_log_msg_counter(datasetsForCalibDate),
+                                           datasetType.name)
                     expanded = []
                     for dataset in datasetsForCalibDate:
                         for i, ref in enumerate(dataset.refs):
@@ -504,9 +502,8 @@ class RepoConverter(ABC):
                     except LookupError:
                         self.task.log.warn(f"No run configured for dataset type {datasetType.name}.")
                         continue
-                    nDatasets = len(datasetsForCalibDate)
-                    self.task.log.info("Ingesting %s %s dataset%s into run %s.", nDatasets,
-                                       datasetType.name, "" if nDatasets == 1 else "s", run)
+                    self.task.log.info("Ingesting %d dataset%s into run %s of type %s.",
+                                       *_log_msg_counter(datasetsForCalibDate), run, datasetType.name)
                     try:
                         self.task.registry.registerRun(run)
                         self.task.butler3.ingest(*datasetsForCalibDate, transfer=self.task.config.transfer,
