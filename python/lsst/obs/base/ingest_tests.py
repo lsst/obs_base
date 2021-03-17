@@ -186,7 +186,13 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             fullCheck = False
             exposure = butler.get(self.ingestDatasetTypeName, dataId)
 
-            self.assertEqual(metadata.toDict(), exposure.getMetadata().toDict())
+            # Comparing headers will not work directly because of header
+            # fix up provenance.
+            metadata_headers = metadata.toDict()
+            exposure_headers = exposure.getMetadata().toDict()
+            metadata_headers.pop("HIERARCH ASTRO METADATA FIX DATE", None)
+            exposure_headers.pop("HIERARCH ASTRO METADATA FIX DATE", None)
+            self.assertEqual(metadata_headers, exposure_headers)
 
             # Since components follow a different code path we check that
             # WCS match and also we check that at least the shape
