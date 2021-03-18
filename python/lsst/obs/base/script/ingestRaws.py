@@ -20,7 +20,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from lsst.daf.butler import Butler
-from lsst.daf.butler.core.utils import findFileResources
 from lsst.pipe.base.configOverrides import ConfigOverrides
 from lsst.utils import doImport
 
@@ -69,5 +68,4 @@ def ingestRaws(repo, locations, regex, output_run, config=None, config_file=None
             configOverrides.addValueOverride(name, value)
     configOverrides.applyTo(ingestConfig)
     ingester = TaskClass(config=ingestConfig, butler=butler)
-    files = findFileResources(locations, regex)
-    ingester.run(files, run=output_run, processes=processes)
+    ingester.run(locations, run=output_run, processes=processes, file_filter=regex)
