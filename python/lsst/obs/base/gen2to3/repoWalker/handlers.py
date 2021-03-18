@@ -44,6 +44,7 @@ from lsst.daf.butler import (
     DatasetRef,
     DatasetType,
     FileDataset,
+    Progress,
 )
 from ..translators import Translator
 from .parser import PathElementParser
@@ -206,6 +207,8 @@ class SubdirectoryHandler(ParsedPathElementHandler):
     parser : `PathElementParser`
         An object that matches the path element this handler is responsible for
         and extracts a (partial) Gen2 data ID from it.
+    progress : `Progress`, optional
+        Object to use to report incremental progress.
 
     Notes
     -----
@@ -213,9 +216,9 @@ class SubdirectoryHandler(ParsedPathElementHandler):
     populated with child handlers after the `SubdirectoryHandler` is created.
     """
 
-    def __init__(self, parser: PathElementParser):
+    def __init__(self, parser: PathElementParser, progress: Optional[Progress] = None):
         super().__init__(parser=parser)
-        self.scanner = DirectoryScanner()
+        self.scanner = DirectoryScanner(progress=progress)
 
     __slots__ = ("scanner",)
 

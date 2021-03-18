@@ -42,6 +42,7 @@ from lsst.daf.butler import (
     DataId,
     DimensionGraph,
     DimensionRecord,
+    Progress,
     Timespan,
 )
 
@@ -325,6 +326,7 @@ class DefineVisitsTask(Task):
         super().__init__(config, **kwargs)
         self.butler = butler
         self.universe = self.butler.registry.dimensions
+        self.progress = Progress("obs.base.DefineVisitsTask")
         self.makeSubtask("groupExposures")
         self.makeSubtask("computeVisitRegions", butler=self.butler)
 
@@ -545,7 +547,8 @@ class DefineVisitsTask(Task):
                              zip(definitions, itertools.repeat(collections)))
         # Iterate over visits and insert dimension data, one transaction per
         # visit.  If a visit already exists, we skip all other inserts.
-        for visitRecords in allRecords:
+        for visitRecords in self.progress.wrap(allRecords, total=len(definitions),
+                                               desc="Computing regions and inserting visits"):
             with self.butler.registry.transaction():
                 if self.butler.registry.syncDimensionData("visit", visitRecords.visit):
                     self.butler.registry.insertDimensionData("visit_definition",

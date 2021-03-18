@@ -41,9 +41,11 @@ from typing import (
 )
 
 from lsst.utils import doImport
-from lsst.daf.butler import DataCoordinate, FileDataset, DatasetType
+from lsst.daf.butler import DataCoordinate, FileDataset, DatasetType, Progress
 from lsst.sphgeom import RangeSet, Region
 from .repoWalker import RepoWalker
+from ..ingest import _log_msg_counter
+
 
 if TYPE_CHECKING:
     from ..mapping import Mapping as CameraMapperMapping  # disambiguate from collections.abc.Mapping
@@ -212,10 +214,12 @@ class RepoConverter(ABC):
         self.root = os.path.realpath(os.path.expanduser(root))
         self.instrument = instrument
         self.subset = subset
+        self.progress = Progress("obs.base.gen2to3")
         self._run = run
         self._repoWalker = None  # Created in prep
         self._fileDatasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]] \
             = defaultdict(lambda: defaultdict(list))
+        self._fileDatasetCount = 0
 
     @abstractmethod
     def isDatasetTypeSpecial(self, datasetTypeName: str) -> bool:
@@ -400,7 +404,8 @@ class RepoConverter(ABC):
         else:
             fileIgnoreRegEx = None
         self._repoWalker = RepoWalker(walkerInputs, fileIgnoreRegEx=fileIgnoreRegEx,
-                                      log=self.task.log.getChild("repoWalker"))
+                                      log=self.task.log.getChild("repoWalker"),
+                                      progress=self.progress)
 
     def iterDatasets(self) -> Iterator[FileDataset]:
         """Iterate over datasets in the repository that should be ingested into
@@ -437,6 +442,7 @@ class RepoConverter(ABC):
         for datasetType, datasetsByCalibDate in datasetsByTypeAndCalibDate.items():
             for calibDate, datasets in datasetsByCalibDate.items():
                 self._fileDatasets[datasetType][calibDate].extend(datasets)
+                self._fileDatasetCount += len(datasets)
 
     def expandDataIds(self):
         """Expand the data IDs for all datasets to be inserted.
@@ -448,37 +454,35 @@ class RepoConverter(ABC):
         guaranteed to be called between `findDatasets` and `ingest`.
         """
         import itertools
-        for datasetType, datasetsByCalibDate in self._fileDatasets.items():
-            for calibDate, datasetsForCalibDate in datasetsByCalibDate.items():
-                nDatasets = len(datasetsForCalibDate)
-                suffix = "" if nDatasets == 1 else "s"
-                if calibDate is not None:
-                    self.task.log.info("Expanding data IDs for %s %s dataset%s at calibDate %s.",
-                                       nDatasets,
-                                       datasetType.name,
-                                       suffix,
-                                       calibDate)
-                else:
-                    self.task.log.info("Expanding data IDs for %s %s non-calibration dataset%s.",
-                                       nDatasets,
-                                       datasetType.name,
-                                       suffix)
-                expanded = []
-                for dataset in datasetsForCalibDate:
-                    for i, ref in enumerate(dataset.refs):
-                        self.task.log.debug("Expanding data ID %s.", ref.dataId)
-                        try:
-                            dataId = self.task.registry.expandDataId(ref.dataId)
-                            dataset.refs[i] = ref.expanded(dataId)
-                        except LookupError as err:
-                            self.task.log.warn("Skipping ingestion for '%s': %s", dataset.path, err)
-                            # Remove skipped datasets from multi-extension
-                            # FileDatasets
-                            dataset.refs[i] = None  # We will strip off the `None`s after the loop.
-                    dataset.refs[:] = itertools.filterfalse(lambda x: x is None, dataset.refs)
-                    if dataset.refs:
-                        expanded.append(dataset)
-                datasetsForCalibDate[:] = expanded
+        with self.progress.bar(desc="Expanding data IDs", total=self._fileDatasetCount) as progressBar:
+            for datasetType, datasetsByCalibDate in self._fileDatasets.items():
+                for calibDate, datasetsForCalibDate in datasetsByCalibDate.items():
+                    if calibDate is not None:
+                        self.task.log.info("Expanding data IDs for %d dataset%s of type %s at calibDate %s.",
+                                           *_log_msg_counter(datasetsForCalibDate),
+                                           datasetType.name,
+                                           calibDate)
+                    else:
+                        self.task.log.info("Expanding data IDs for %d non-calibration dataset%s of type %s.",
+                                           *_log_msg_counter(datasetsForCalibDate),
+                                           datasetType.name)
+                    expanded = []
+                    for dataset in datasetsForCalibDate:
+                        for i, ref in enumerate(dataset.refs):
+                            self.task.log.debug("Expanding data ID %s.", ref.dataId)
+                            try:
+                                dataId = self.task.registry.expandDataId(ref.dataId)
+                                dataset.refs[i] = ref.expanded(dataId)
+                            except LookupError as err:
+                                self.task.log.warn("Skipping ingestion for '%s': %s", dataset.path, err)
+                                # Remove skipped datasets from multi-extension
+                                # FileDatasets
+                                dataset.refs[i] = None  # We will strip off the `None`s after the loop.
+                        dataset.refs[:] = itertools.filterfalse(lambda x: x is None, dataset.refs)
+                        if dataset.refs:
+                            expanded.append(dataset)
+                        progressBar.update()
+                    datasetsForCalibDate[:] = expanded
 
     def ingest(self):
         """Insert converted datasets into the Gen3 repository.
@@ -488,25 +492,27 @@ class RepoConverter(ABC):
 
         This method is guaranteed to be called after `expandDataIds`.
         """
-        for datasetType, datasetsByCalibDate in self._fileDatasets.items():
-            self.task.registry.registerDatasetType(datasetType)
-            for calibDate, datasetsForCalibDate in datasetsByCalibDate.items():
-                try:
-                    run = self.getRun(datasetType.name, calibDate)
-                except LookupError:
-                    self.task.log.warn(f"No run configured for dataset type {datasetType.name}.")
-                    continue
-                nDatasets = len(datasetsForCalibDate)
-                self.task.log.info("Ingesting %s %s dataset%s into run %s.", nDatasets,
-                                   datasetType.name, "" if nDatasets == 1 else "s", run)
-                try:
-                    self.task.registry.registerRun(run)
-                    self.task.butler3.ingest(*datasetsForCalibDate, transfer=self.task.config.transfer,
-                                             run=run)
-                except LookupError as err:
-                    raise LookupError(
-                        f"Error expanding data ID for dataset type {datasetType.name}."
-                    ) from err
+        with self.progress.bar(desc="Ingesting converted datasets",
+                               total=self._fileDatasetCount) as progressBar:
+            for datasetType, datasetsByCalibDate in self._fileDatasets.items():
+                self.task.registry.registerDatasetType(datasetType)
+                for calibDate, datasetsForCalibDate in datasetsByCalibDate.items():
+                    try:
+                        run = self.getRun(datasetType.name, calibDate)
+                    except LookupError:
+                        self.task.log.warn(f"No run configured for dataset type {datasetType.name}.")
+                        continue
+                    self.task.log.info("Ingesting %d dataset%s into run %s of type %s.",
+                                       *_log_msg_counter(datasetsForCalibDate), run, datasetType.name)
+                    try:
+                        self.task.registry.registerRun(run)
+                        self.task.butler3.ingest(*datasetsForCalibDate, transfer=self.task.config.transfer,
+                                                 run=run)
+                        progressBar.update(len(datasetsForCalibDate))
+                    except LookupError as err:
+                        raise LookupError(
+                            f"Error expanding data ID for dataset type {datasetType.name}."
+                        ) from err
 
     def finish(self) -> None:
         """Finish conversion of a repository.
@@ -514,9 +520,10 @@ class RepoConverter(ABC):
         This is run after ``ingest``, and delegates to `_finish`, which should
         be overridden by derived classes instead of this method.
         """
-        self._finish(self._fileDatasets)
+        self._finish(self._fileDatasets, self._fileDatasetCount)
 
-    def _finish(self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]]) -> None:
+    def _finish(self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]],
+                count: int) -> None:
         """Subclass implementation hook for `_finish`.
 
         The default implementation does nothing.  This is generally the best
@@ -529,6 +536,8 @@ class RepoConverter(ABC):
             Nested mapping containing all converted datasets.  The outer
             mapping keys are `DatasetType` instances.  Values are mappings from
             ``calibDate`` or `None` to a `list` of `FileDataset` instances.
+        count : `int`
+            Total number of `FileDataset` instances in ``datasets``.
         """
         pass
 

@@ -143,7 +143,8 @@ class CalibRepoConverter(RepoConverter):
             return
         yield from results
 
-    def _finish(self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]]):
+    def _finish(self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]],
+                count: int) -> None:
         # Docstring inherited from RepoConverter.
         # Read Gen2 calibration repository and extract validity ranges for
         # all datasetType + calibDate combinations we ingested.
@@ -163,67 +164,69 @@ class CalibRepoConverter(RepoConverter):
         db = sqlite3.connect(calibFile)
         db.row_factory = sqlite3.Row
 
-        for datasetType, datasetsByCalibDate in datasets.items():
-            if not datasetType.isCalibration():
-                continue
-            gen2keys = {}
-            if "detector" in datasetType.dimensions.names:
-                gen2keys[self.task.config.ccdKey] = int
-            if "physical_filter" in datasetType.dimensions.names:
-                gen2keys["filter"] = str
-            translator = self.instrument.makeDataIdTranslatorFactory().makeMatching(
-                datasetType.name,
-                gen2keys,
-                instrument=self.instrument.getName()
-            )
-            for calibDate, datasetsForCalibDate in datasetsByCalibDate.items():
-                assert calibDate is not None, ("datasetType.isCalibration() is set by "
-                                               "the presence of calibDate in the Gen2 template")
-                # Build a mapping that lets us find DatasetRefs by data ID,
-                # for this DatasetType and calibDate.  We know there is only
-                # one ref for each data ID (given DatasetType and calibDate as
-                # well).
-                refsByDataId = {}
-                for dataset in datasetsForCalibDate:
-                    refsByDataId.update((ref.dataId, ref) for ref in dataset.refs)
-                # Query the Gen2 calibration repo for the validity ranges for
-                # this DatasetType and calibDate, and look up the appropriate
-                # refs by data ID.
-                for row in self._queryGen2CalibRegistry(db, datasetType, calibDate):
-                    # For validity times we use TAI as some gen2 repos have
-                    # validity dates very far in the past or future.
-                    timespan = Timespan(
-                        astropy.time.Time(row["validStart"], format="iso", scale="tai"),
-                        astropy.time.Time(row["validEnd"], format="iso", scale="tai"),
-                    )
-                    # Make a Gen2 data ID from query results.
-                    gen2id = {}
-                    if "detector" in datasetType.dimensions.names:
-                        gen2id[self.task.config.ccdKey] = row[self.task.config.ccdKey]
-                    if "physical_filter" in datasetType.dimensions.names:
-                        gen2id["filter"] = row["filter"]
-                    # Translate that to Gen3.
-                    gen3id, _ = translator(gen2id)
-                    dataId = DataCoordinate.standardize(gen3id, graph=datasetType.dimensions)
-                    ref = refsByDataId.get(dataId)
-                    if ref is not None:
-                        # Validity ranges must not overlap for the same dataID
-                        # datasetType combination. Use that as a primary
-                        # key and store the timespan and ref in a tuple
-                        # as the value for later timespan validation.
-                        timespansByDataId[(ref.dataId, ref.datasetType.name)].append((timespan, ref))
-                    else:
-                        # The Gen2 calib registry mentions this dataset, but it
-                        # isn't included in what we've ingested.  This might
-                        # sometimes be a problem, but it should usually
-                        # represent someone just trying to convert a subset of
-                        # the Gen2 repo, so I don't think it's appropriate to
-                        # warn or even log at info, since in that case there
-                        # may be a _lot_ of these messages.
-                        self.task.log.debug(
-                            "Gen2 calibration registry entry has no dataset: %s for calibDate=%s, %s.",
-                            datasetType.name, calibDate, dataId
+        with self.progress.bar(desc="Querying Gen2 calibRegistry", total=count) as progressBar:
+            for datasetType, datasetsByCalibDate in datasets.items():
+                if not datasetType.isCalibration():
+                    continue
+                gen2keys = {}
+                if "detector" in datasetType.dimensions.names:
+                    gen2keys[self.task.config.ccdKey] = int
+                if "physical_filter" in datasetType.dimensions.names:
+                    gen2keys["filter"] = str
+                translator = self.instrument.makeDataIdTranslatorFactory().makeMatching(
+                    datasetType.name,
+                    gen2keys,
+                    instrument=self.instrument.getName()
+                )
+                for calibDate, datasetsForCalibDate in datasetsByCalibDate.items():
+                    assert calibDate is not None, ("datasetType.isCalibration() is set by "
+                                                   "the presence of calibDate in the Gen2 template")
+                    # Build a mapping that lets us find DatasetRefs by data ID,
+                    # for this DatasetType and calibDate.  We know there is
+                    # only one ref for each data ID (given DatasetType and
+                    # calibDate as well).
+                    refsByDataId = {}
+                    for dataset in datasetsForCalibDate:
+                        refsByDataId.update((ref.dataId, ref) for ref in dataset.refs)
+                    # Query the Gen2 calibration repo for the validity ranges
+                    # for this DatasetType and calibDate, and look up the
+                    # appropriate refs by data ID.
+                    for row in self._queryGen2CalibRegistry(db, datasetType, calibDate):
+                        # For validity times we use TAI as some gen2 repos have
+                        # validity dates very far in the past or future.
+                        timespan = Timespan(
+                            astropy.time.Time(row["validStart"], format="iso", scale="tai"),
+                            astropy.time.Time(row["validEnd"], format="iso", scale="tai"),
                         )
+                        # Make a Gen2 data ID from query results.
+                        gen2id = {}
+                        if "detector" in datasetType.dimensions.names:
+                            gen2id[self.task.config.ccdKey] = row[self.task.config.ccdKey]
+                        if "physical_filter" in datasetType.dimensions.names:
+                            gen2id["filter"] = row["filter"]
+                        # Translate that to Gen3.
+                        gen3id, _ = translator(gen2id)
+                        dataId = DataCoordinate.standardize(gen3id, graph=datasetType.dimensions)
+                        ref = refsByDataId.get(dataId)
+                        if ref is not None:
+                            # Validity ranges must not overlap for the same
+                            # dataID datasetType combination. Use that as a
+                            # primary key and store the timespan and ref in a
+                            # tuple as the value for later timespan validation.
+                            timespansByDataId[(ref.dataId, ref.datasetType.name)].append((timespan, ref))
+                        else:
+                            # The Gen2 calib registry mentions this dataset,
+                            # but it isn't included in what we've ingested.
+                            # This might sometimes be a problem, but it should
+                            # usually represent someone just trying to convert
+                            # a subset of the Gen2 repo, so I don't think it's
+                            # appropriate to warn or even log at info, since in
+                            # that case there may be a _lot_ of these messages.
+                            self.task.log.debug(
+                                "Gen2 calibration registry entry has no dataset: %s for calibDate=%s, %s.",
+                                datasetType.name, calibDate, dataId
+                            )
+                    progressBar.update(len(datasetsForCalibDate))
 
         # Analyze the timespans to check for overlap problems
         # Gaps of a day should be closed since we assume differing
@@ -243,7 +246,7 @@ class CalibRepoConverter(RepoConverter):
         # cache the messages for later.
         info_messages = set()
         warn_messages = set()
-        for timespans in timespansByDataId.values():
+        for timespans in self.progress.wrap(timespansByDataId.values(), desc="Fixing validity ranges"):
             # Sort all the timespans and check overlaps
             sorted_timespans = sorted(timespans, key=lambda x: x[0])
             timespan_prev, ref_prev = sorted_timespans.pop(0)

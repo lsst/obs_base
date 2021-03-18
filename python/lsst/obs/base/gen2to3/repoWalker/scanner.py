@@ -46,6 +46,7 @@ from lsst.daf.butler import (
     DataCoordinate,
     DatasetType,
     FileDataset,
+    Progress,
 )
 
 
@@ -167,15 +168,18 @@ class DirectoryScanner:
     ----------
     log : `Log`, optional
         Log to use to report warnings and debug information.
+    progress : `Progress`, optional
+        Object to use to report incremental progress.
     """
-    def __init__(self, log: Optional[Log] = None):
+    def __init__(self, log: Optional[Log] = None, progress: Optional[Progress] = None):
         self._files = []
         self._subdirectories = []
         if log is None:
             log = Log.getLogger("obs.base.gen2to3.walker")
         self.log = log
+        self.progress = progress
 
-    __slots__ = ("_files", "_subdirectories", "log")
+    __slots__ = ("_files", "_subdirectories", "log", "progress")
 
     def add(self, handler: PathElementHandler):
         """Add a new handler to the scanner.
@@ -214,18 +218,38 @@ class DirectoryScanner:
             `bool`, indicating whether that (Gen3) data ID represents one
             that should be included in the scan.
         """
-        unrecognized = []
-        for entry in os.scandir(path):
-            if entry.is_file():
-                handlers = self._files
-            elif entry.is_dir():
-                handlers = self._subdirectories
-            else:
-                continue
-            for handler in handlers:
-                if handler(entry.path, entry.name, datasets, predicate=predicate):
-                    break
-            else:
-                unrecognized.append(entry.name)
-        if unrecognized:
-            self.log.warn("Skipped unrecognized entries in %s: %s", path, unrecognized)
+        with os.scandir(path) as iterator:
+            unrecognized = []
+            recognized = []
+            for entry in iterator:
+                if entry.is_file():
+                    handlers = self._files
+                elif entry.is_dir():
+                    handlers = self._subdirectories
+                else:
+                    continue
+                if self.progress is None:
+                    # No progress reporting; look for a matching handler
+                    # with an immediate depth-first search.
+                    for handler in handlers:
+                        if handler(entry.path, entry.name, datasets, predicate=predicate):
+                            break
+                    else:
+                        unrecognized.append(entry.name)
+                else:
+                    # Caller wants progress reporting, but we won't know how
+                    # many entries we'll have until we're done scanning.  So we
+                    # save them in a list and process them in together later
+                    # (essentially breadth-first search at this level).
+                    recognized.append((entry.path, entry.name, handlers))
+            if self.progress is not None:
+                # Loop through the previously-recognized entries and process
+                # them.
+                for filepath, filename, handlers in self.progress.wrap(recognized, desc=f"Scanning {path}"):
+                    for handler in handlers:
+                        if handler(filepath, filename, datasets, predicate=predicate):
+                            break
+                    else:
+                        unrecognized.append(entry.name)
+            if unrecognized:
+                self.log.warn("Skipped unrecognized entries in %s: %s", path, unrecognized)

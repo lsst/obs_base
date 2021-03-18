@@ -210,9 +210,10 @@ class StandardRepoConverter(RepoConverter):
         """
         return self._chain
 
-    def _finish(self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]]):
+    def _finish(self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]],
+                count: int) -> None:
         # Docstring inherited from RepoConverter.
-        super()._finish(datasets)
+        super()._finish(datasets, count)
         if self._foundSkyMapsByCoaddName:
             self._chain.append(BaseSkyMap.SKYMAP_RUN_COLLECTION_NAME)
 
