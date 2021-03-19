@@ -29,7 +29,7 @@ from typing import Callable, List, Iterator, Iterable, Tuple, Type, Optional, An
 from collections import defaultdict
 from multiprocessing import Pool
 
-from astro_metadata_translator import ObservationInfo, merge_headers
+from astro_metadata_translator import ObservationInfo, merge_headers, MetadataTranslator
 from astro_metadata_translator.indexing import process_sidecar_data, process_index_data
 from lsst.afw.fits import readMetadata
 from lsst.daf.butler import (
@@ -353,7 +353,7 @@ class RawIngestTask(Task):
             sidecar_file = filename.updatedExtension(".json")
             if sidecar_file.exists():
                 content = json.loads(sidecar_file.read())
-                header = process_sidecar_data(content)
+                headers = [process_sidecar_data(content)]
                 sidecar_fail_msg = " (via sidecar)"
             else:
                 # Read the metadata from the data file itself.
@@ -367,7 +367,16 @@ class RawIngestTask(Task):
                 with filename.as_local() as local_file:
                     phdu = readMetadata(local_file.ospath, 0)
                     header = merge_headers([phdu, readMetadata(local_file.ospath)], mode="overwrite")
-            datasets = [self._calculate_dataset_info(header, filename)]
+
+                # Try to work out a translator class.
+                translator_class = MetadataTranslator.determine_translator(header, filename=filename)
+
+                # Obtain additional headers if needed
+                headers = translator_class.read_all_headers(filename.ospath, header)
+
+            # Add each header to the dataset list
+            datasets = [self._calculate_dataset_info(h, filename) for h in headers]
+
         except Exception as e:
             self.log.debug("Problem extracting metadata from %s%s: %s", filename, sidecar_fail_msg, e)
             # Indicate to the caller that we failed to read.
