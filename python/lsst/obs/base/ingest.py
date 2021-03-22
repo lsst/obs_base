@@ -357,22 +357,30 @@ class RawIngestTask(Task):
                 sidecar_fail_msg = " (via sidecar)"
             else:
                 # Read the metadata from the data file itself.
-                # Manually merge the primary and "first data" headers here
-                # because we do not know in general if an input file has
-                # set INHERIT=T.
+
                 # For remote files download the entire file to get the
                 # header. This is very inefficient and it would be better
                 # to have some way of knowing where in the file the headers
                 # are and to only download those parts of the file.
                 with filename.as_local() as local_file:
-                    phdu = readMetadata(local_file.ospath, 0)
-                    header = merge_headers([phdu, readMetadata(local_file.ospath)], mode="overwrite")
+                    # Read the primary. This might be sufficient.
+                    header = readMetadata(local_file.ospath, 0)
 
-                # Try to work out a translator class.
-                translator_class = MetadataTranslator.determine_translator(header, filename=filename)
+                    try:
+                        # Try to work out a translator class early.
+                        translator_class = MetadataTranslator.determine_translator(header, filename=filename)
+                    except ValueError:
+                        # Primary header was not sufficient (maybe this file
+                        # has been compressed or is a MEF with minimal
+                        # primary). Read second header and merge with primary.
+                        header = merge_headers([header, readMetadata(local_file.ospath, 1)], mode="overwrite")
 
-                # Obtain additional headers if needed
-                headers = translator_class.read_all_headers(filename.ospath, header)
+                    # Try again to work out a translator class, letting this
+                    # fail.
+                    translator_class = MetadataTranslator.determine_translator(header, filename=filename)
+
+                    # Obtain additional headers if needed
+                    headers = translator_class.read_all_headers(filename.ospath, header)
 
             # Add each header to the dataset list
             datasets = [self._calculate_dataset_info(h, filename) for h in headers]
