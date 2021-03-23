@@ -29,7 +29,7 @@ from typing import Callable, List, Iterator, Iterable, Tuple, Type, Optional, An
 from collections import defaultdict
 from multiprocessing import Pool
 
-from astro_metadata_translator import ObservationInfo, merge_headers
+from astro_metadata_translator import ObservationInfo, merge_headers, MetadataTranslator
 from astro_metadata_translator.indexing import process_sidecar_data, process_index_data
 from lsst.afw.fits import readMetadata
 from lsst.daf.butler import (
@@ -353,21 +353,38 @@ class RawIngestTask(Task):
             sidecar_file = filename.updatedExtension(".json")
             if sidecar_file.exists():
                 content = json.loads(sidecar_file.read())
-                header = process_sidecar_data(content)
+                headers = [process_sidecar_data(content)]
                 sidecar_fail_msg = " (via sidecar)"
             else:
                 # Read the metadata from the data file itself.
-                # Manually merge the primary and "first data" headers here
-                # because we do not know in general if an input file has
-                # set INHERIT=T.
+
                 # For remote files download the entire file to get the
                 # header. This is very inefficient and it would be better
                 # to have some way of knowing where in the file the headers
                 # are and to only download those parts of the file.
                 with filename.as_local() as local_file:
-                    phdu = readMetadata(local_file.ospath, 0)
-                    header = merge_headers([phdu, readMetadata(local_file.ospath)], mode="overwrite")
-            datasets = [self._calculate_dataset_info(header, filename)]
+                    # Read the primary. This might be sufficient.
+                    header = readMetadata(local_file.ospath, 0)
+
+                    try:
+                        # Try to work out a translator class early.
+                        translator_class = MetadataTranslator.determine_translator(header, filename=filename)
+                    except ValueError:
+                        # Primary header was not sufficient (maybe this file
+                        # has been compressed or is a MEF with minimal
+                        # primary). Read second header and merge with primary.
+                        header = merge_headers([header, readMetadata(local_file.ospath, 1)], mode="overwrite")
+
+                    # Try again to work out a translator class, letting this
+                    # fail.
+                    translator_class = MetadataTranslator.determine_translator(header, filename=filename)
+
+                    # Request the headers to use for ingest
+                    headers = translator_class.determine_translatable_headers(filename.ospath, header)
+
+            # Add each header to the dataset list
+            datasets = [self._calculate_dataset_info(h, filename) for h in headers]
+
         except Exception as e:
             self.log.debug("Problem extracting metadata from %s%s: %s", filename, sidecar_fail_msg, e)
             # Indicate to the caller that we failed to read.
