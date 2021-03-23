@@ -379,8 +379,8 @@ class RawIngestTask(Task):
                     # fail.
                     translator_class = MetadataTranslator.determine_translator(header, filename=filename)
 
-                    # Obtain additional headers if needed
-                    headers = translator_class.read_all_headers(filename.ospath, header)
+                    # Request the headers to use for ingest
+                    headers = translator_class.determine_translatable_headers(filename.ospath, header)
 
             # Add each header to the dataset list
             datasets = [self._calculate_dataset_info(h, filename) for h in headers]
