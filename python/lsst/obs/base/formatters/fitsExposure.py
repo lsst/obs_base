@@ -22,8 +22,6 @@
 __all__ = ("FitsExposureFormatter", "FitsImageFormatter", "FitsMaskFormatter",
            "FitsMaskedImageFormatter")
 
-import warnings
-
 from astro_metadata_translator import fix_header
 from lsst.daf.base import PropertySet
 from lsst.daf.butler import Formatter
@@ -31,9 +29,11 @@ from lsst.daf.butler import Formatter
 # out lots of headers and there is no way to recover them
 from lsst.afw.fits import readMetadata
 from lsst.afw.image import ExposureFitsReader, ImageFitsReader, MaskFitsReader, MaskedImageFitsReader
-from lsst.afw.image import ExposureInfo, FilterLabel
+from lsst.afw.image import ExposureInfo
 # Needed for ApCorrMap to resolve properly
 from lsst.afw.math import BoundedField  # noqa: F401
+
+from ..exposureAssembler import fixFilterLabels
 
 
 class FitsImageFormatterBase(Formatter):
@@ -458,51 +458,12 @@ class FitsExposureFormatter(FitsImageFormatterBase):
         much easier access to test data that exhibits the problems it attempts
         to solve.
         """
-        # Remember filter data ID keys that weren't in this particular data ID,
-        # so we can warn about them later.
-        missing = []
-        band = None
-        physical_filter = None
-        if "band" in self.dataId.graph.dimensions.names:
-            band = self.dataId.get("band")
-            # band isn't in the data ID; is that just because this data ID
-            # hasn't been filled in with everything the Registry knows, or
-            # because this dataset is never associated with a band?
-            if band is None and not self.dataId.hasFull() and "band" in self.dataId.graph.implied.names:
-                missing.append("band")
-        if "physical_filter" in self.dataId.graph.dimensions.names:
-            physical_filter = self.dataId.get("physical_filter")
-            # Same check as above for band, but for physical_filter.
-            if (physical_filter is None and not self.dataId.hasFull()
-                    and "physical_filter" in self.dataId.graph.implied.names):
-                missing.append("physical_filter")
         if should_be_standardized is None:
             version = self._reader.readSerializationVersion()
             should_be_standardized = (version >= 2)
-        if missing:
-            # Data ID identifies a filter but the actual filter label values
-            # haven't been fetched from the database; we have no choice but
-            # to use the one in the file.
-            # Warn if that's more likely than not to be bad, because the file
-            # predates filter standardization.
-            if not should_be_standardized:
-                warnings.warn(f"Data ID {self.dataId} is missing (implied) value(s) for {missing}; "
-                              "the correctness of this Exposure's FilterLabel cannot be guaranteed. "
-                              "Call Registry.expandDataId before Butler.get to avoid this.")
-            return file_filter_label
-        if band is None and physical_filter is None:
-            data_id_filter_label = None
-        else:
-            data_id_filter_label = FilterLabel(band=band, physical=physical_filter)
-        if data_id_filter_label != file_filter_label and should_be_standardized:
-            # File was written after FilterLabel and standardization, but its
-            # FilterLabel doesn't agree with the data ID: this indicates a bug
-            # in whatever code produced the Exposure (though it may be one that
-            # has been fixed since the file was written).
-            warnings.warn(f"Reading {self.fileDescriptor.location} with data ID {self.dataId}: "
-                          f"filter label mismatch (file is {file_filter_label}, data ID is "
-                          f"{data_id_filter_label}).  This is probably a bug in the code that produced it.")
-        return data_id_filter_label
+
+        return fixFilterLabels(file_filter_label, self.dataId, should_be_standardized=should_be_standardized,
+                               msg=f"Reading file {self.fileDescriptor.location}")
 
     def readComponent(self, component, parameters=None):
         # Docstring inherited.

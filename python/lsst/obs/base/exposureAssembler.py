@@ -19,13 +19,97 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+__all__ = ("ExposureAssembler", "fixFilterLabels")
+
 """Support for assembling and disassembling afw Exposures."""
+
+import warnings
 
 # Need to enable PSFs to be instantiated
 import lsst.afw.detection  # noqa: F401
-from lsst.afw.image import makeExposure, makeMaskedImage
+from lsst.afw.image import makeExposure, makeMaskedImage, FilterLabel
 
 from lsst.daf.butler import StorageClassDelegate
+
+
+def fixFilterLabels(file_filter_label, dataId, should_be_standardized=True, msg=None):
+    """Compare the filter label read from the file with the one in the
+    data ID.
+
+    Parameters
+    ----------
+    file_filter_label : `lsst.afw.image.FilterLabel` or `None`
+        Filter label read from the file, if there was one.
+    dataId : `DataId`
+        Data ID to use to fix the filter label if required.
+    should_be_standardized : `bool`, optional
+        If `True`, expect ``file_filter_label`` to be consistent with the
+        data ID and warn only if it is not.  If `False`, expect it to be
+        inconsistent and warn only if the data ID is incomplete and hence
+        the `FilterLabel` cannot be fixed.
+    msg : `str`, optional
+        Message to prepend to warning if there was a consistency problem
+        and the filter label should be standardized. Can be none if no
+        file is relevant (for example if only components are available).
+        Only used for error reporting.
+
+    Returns
+    -------
+    filter_label : `lsst.afw.image.FilterLabel` or `None`
+        The preferred filter label; may be the given one or one built from
+        the data ID.  `None` is returned if there should never be any
+        filters associated with this dataset type.
+
+    Notes
+    -----
+    Most test coverage for this method is in ci_hsc_gen3, where we have
+    much easier access to test data that exhibits the problems it attempts
+    to solve.
+    """
+    # Remember filter data ID keys that weren't in this particular data ID,
+    # so we can warn about them later.
+    missing = []
+    band = None
+    physical_filter = None
+    if "band" in dataId.graph.dimensions.names:
+        band = dataId.get("band")
+        # band isn't in the data ID; is that just because this data ID
+        # hasn't been filled in with everything the Registry knows, or
+        # because this dataset is never associated with a band?
+        if band is None and not dataId.hasFull() and "band" in dataId.graph.implied.names:
+            missing.append("band")
+    if "physical_filter" in dataId.graph.dimensions.names:
+        physical_filter = dataId.get("physical_filter")
+        # Same check as above for band, but for physical_filter.
+        if (physical_filter is None and not dataId.hasFull()
+                and "physical_filter" in dataId.graph.implied.names):
+            missing.append("physical_filter")
+    if missing:
+        # Data ID identifies a filter but the actual filter label values
+        # haven't been fetched from the database; we have no choice but
+        # to use the one in the file.
+        # Warn if that's more likely than not to be bad, because the file
+        # predates filter standardization.
+        if not should_be_standardized:
+            warnings.warn(f"Data ID {dataId} is missing (implied) value(s) for {missing}; "
+                          "the correctness of this Exposure's FilterLabel cannot be guaranteed. "
+                          "Call Registry.expandDataId before Butler.get to avoid this.")
+        return file_filter_label
+    if band is None and physical_filter is None:
+        data_id_filter_label = None
+    else:
+        data_id_filter_label = FilterLabel(band=band, physical=physical_filter)
+    if data_id_filter_label != file_filter_label and should_be_standardized:
+        # File was written after FilterLabel and standardization, but its
+        # FilterLabel doesn't agree with the data ID: this indicates a bug
+        # in whatever code produced the Exposure (though it may be one that
+        # has been fixed since the file was written).
+        if msg is None:
+            msg = "Problem "
+        warnings.warn(f"{msg} with data ID {dataId}: "
+                      f"filter label mismatch (file is {file_filter_label}, data ID is "
+                      f"{data_id_filter_label}).  This is probably a bug in the code that produced it.")
+    return data_id_filter_label
 
 
 class ExposureAssembler(StorageClassDelegate):
@@ -168,7 +252,7 @@ class ExposureAssembler(StorageClassDelegate):
 
         return components
 
-    def assemble(self, components):
+    def assemble(self, components, pytype=None, dataId=None):
         """Construct an Exposure from components.
 
         Parameters
@@ -176,6 +260,10 @@ class ExposureAssembler(StorageClassDelegate):
         components : `dict`
             All the components from which to construct the Exposure.
             Some can be missing.
+        pytype : `type`, optional
+            Type of this dataset. Unused.
+        dataId : `DataId`, optional
+            Data ID associated with this composite dataset.
 
         Returns
         -------
@@ -231,7 +319,11 @@ class ExposureAssembler(StorageClassDelegate):
         info.setSummaryStats(components.pop("summaryStats", None))
 
         # TODO: switch back to "filter" as primary component in DM-27177
-        info.setFilterLabel(components.pop("filterLabel", None))
+        filterLabel = components.pop("filterLabel", None)
+        if filterLabel is not None:
+            filterLabel = fixFilterLabels(filterLabel, dataId=dataId,
+                                          msg="Assembling exposure composite")
+        info.setFilterLabel(filterLabel)
 
         # If we have some components left over that is a problem
         if components:
