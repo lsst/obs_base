@@ -140,8 +140,9 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
     def setUp(self):
         self.gen3root = tempfile.mkdtemp()
         self.gen2Butler = lsst.daf.persistence.Butler(root=self.gen2root, calibRoot=self.gen2calib)
+        self.instrument = self.instrumentClass()
         self.collections = set(type(self).collections)
-        self.collections.add(self.instrumentClass.makeDefaultRawIngestRunName())
+        self.collections.add(self.instrument.makeDefaultRawIngestRunName())
         if len(self.refcats) > 0:
             self.collections.add("refcats")
         if self.skymapName is not None:
@@ -149,7 +150,7 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
 
         # We always write a default calibration collection
         # containing at least the camera
-        self.collections.add(self.instrumentClass.makeCollectionName("calib"))
+        self.collections.add(self.instrument.makeCollectionName("calib"))
 
     def tearDown(self):
         shutil.rmtree(self.gen3root, ignore_errors=True)
@@ -216,7 +217,7 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
         """
         if not calibIds:
             return
-        collection = self.instrumentClass.makeCalibrationCollectionName()
+        collection = self.instrument.makeCalibrationCollectionName()
         with self.subTest(dtype=calibName):
             datasets = {}
             for assoc in gen3Butler.registry.queryDatasetAssociations(calibName, collections=collection):
@@ -244,7 +245,7 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
         detectors : `list` of `int`
             The detector identifiers to ``get`` from the gen3 butler.
         """
-        collection = self.instrumentClass.makeCalibrationCollectionName()
+        collection = self.instrument.makeCalibrationCollectionName()
         datasets = {}
         for assoc in gen3Butler.registry.queryDatasetAssociations("defects", collections=collection):
             # There will in general be multiple refs for each data ID
@@ -295,7 +296,7 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
         """
         self._run_convert()
         gen3Butler = lsst.daf.butler.Butler(self.gen3root,
-                                            collections=self.instrumentClass.makeDefaultRawIngestRunName())
+                                            collections=self.instrument.makeDefaultRawIngestRunName())
         self.check_collections(gen3Butler)
 
         # check every raw detector that the gen2 butler knows about

@@ -365,7 +365,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             raise unittest.SkipTest("Class requests disabling of writeCuratedCalibrations test")
 
         butler = Butler(self.root, writeable=False)
-        collection = self.instrumentClass.makeCalibrationCollectionName()
+        collection = self.instrumentClass().makeCalibrationCollectionName()
 
         # Trying to load a camera with a data ID not known to the registry
         # is an error, because we can't get any temporal information.
