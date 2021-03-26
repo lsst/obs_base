@@ -1437,7 +1437,7 @@ class CameraMapper(dafPersist.Mapper):
 def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo=True):
     """Generate an Exposure from an image-like object
 
-    If the image is a DecoratedImage then also set its WCS and metadata
+    If the image is a DecoratedImage then also set its metadata
     (Image and MaskedImage are missing the necessary metadata
     and Exposure already has those set)
 
