@@ -1446,6 +1446,16 @@ def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo
     image : Image-like object
         Can be one of lsst.afw.image.DecoratedImage, Image, MaskedImage or
         Exposure.
+    dataId : `dict`, optional
+        The data ID identifying the visit of the image.
+    mapper : `lsst.obs.base.CameraMapper`, optional
+        The mapper with which to convert the image.
+    logger : `lsst.log.Log`, optional
+        An existing logger to which to send output.
+    setVisitInfo : `bool`, optional
+        If `True`, create and attach a `lsst.afw.image.VisitInfo` to the
+        result. Ignored if ``image`` is an `~lsst.afw.image.Exposure` with an
+        existing ``VisitInfo``.
 
     Returns
     -------
