@@ -1202,7 +1202,7 @@ class CameraMapper(dafPersist.Mapper):
         """
         try:
             exposure = exposureFromImage(item, dataId, mapper=self, logger=self.log,
-                                         setVisitInfo=setVisitInfo)
+                                         setVisitInfo=setVisitInfo, setFilter=filter)
         except Exception as e:
             self.log.error("Could not turn item=%r into an exposure: %s" % (repr(item), e))
             raise
@@ -1434,7 +1434,7 @@ class CameraMapper(dafPersist.Mapper):
             self._writeRecipes[storageType] = validationMenu[storageType](recipes[storageType])
 
 
-def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo=True):
+def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo=True, setFilter=False):
     """Generate an Exposure from an image-like object
 
     If the image is a DecoratedImage then also set its metadata
@@ -1456,6 +1456,11 @@ def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo
         If `True`, create and attach a `lsst.afw.image.VisitInfo` to the
         result. Ignored if ``image`` is an `~lsst.afw.image.Exposure` with an
         existing ``VisitInfo``.
+    setFilter : `bool`, optional
+        If `True`, create and attach a `lsst.afw.image.FilterLabel` to the
+        result. Converts non-``FilterLabel`` information provided in ``image``.
+        Ignored if ``image`` is an `~lsst.afw.image.Exposure` with existing
+        filter information.
 
     Returns
     -------
@@ -1481,9 +1486,21 @@ def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo
     else:  # Image
         exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image))
 
-    # set VisitInfo if we can
-    if setVisitInfo and exposure.getInfo().getVisitInfo() is None:
-        if metadata is not None:
+    if metadata is not None:
+        # set filter if we can
+        if setFilter and mapper is not None and exposure.getFilterLabel() is None:
+            # Translate whatever was in the metadata
+            if 'FILTER' in metadata:
+                oldFilter = metadata['FILTER']
+                idFilter = dataId['filter'] if 'filter' in dataId else None
+                # oldFilter may not be physical, but _getBestFilter always goes
+                # through the FilterDefinitions instead of returning
+                # unvalidated input.
+                filter = mapper._getBestFilter(afwImage.FilterLabel(physical=oldFilter), idFilter)
+                if filter is not None:
+                    exposure.setFilterLabel(filter)
+        # set VisitInfo if we can
+        if setVisitInfo and exposure.getInfo().getVisitInfo() is None:
             if mapper is None:
                 if not logger:
                     logger = lsstLog.Log.getLogger("CameraMapper")
