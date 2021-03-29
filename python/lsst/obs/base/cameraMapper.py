@@ -1106,6 +1106,15 @@ class CameraMapper(dafPersist.Mapper):
                 newLabel = list(definitions)[0].makeFilterLabel()
                 return newLabel
             elif definitions:
+                # Some instruments have many filters for the same band, of
+                # which one is known by band name and the others always by
+                # afw name (e.g., i, i2).
+                nonAfw = {f for f in definitions if f.afw_name is None}
+                if len(nonAfw) == 1:
+                    newLabel = list(nonAfw)[0].makeFilterLabel()
+                    self.log.debug("Assuming %r is the correct match.", newLabel)
+                    return newLabel
+
                 self.log.warn("Multiple matches for filter %r with data ID %r.", storedLabel, idFilter)
                 # Can we at least add a band?
                 # Never expect multiple definitions with same physical filter.
