@@ -1106,6 +1106,15 @@ class CameraMapper(dafPersist.Mapper):
                 newLabel = list(definitions)[0].makeFilterLabel()
                 return newLabel
             elif definitions:
+                # Some instruments have many filters for the same band, of
+                # which one is known by band name and the others always by
+                # afw name (e.g., i, i2).
+                nonAfw = {f for f in definitions if f.afw_name is None}
+                if len(nonAfw) == 1:
+                    newLabel = list(nonAfw)[0].makeFilterLabel()
+                    self.log.debug("Assuming %r is the correct match.", newLabel)
+                    return newLabel
+
                 self.log.warn("Multiple matches for filter %r with data ID %r.", storedLabel, idFilter)
                 # Can we at least add a band?
                 # Never expect multiple definitions with same physical filter.
@@ -1202,7 +1211,7 @@ class CameraMapper(dafPersist.Mapper):
         """
         try:
             exposure = exposureFromImage(item, dataId, mapper=self, logger=self.log,
-                                         setVisitInfo=setVisitInfo)
+                                         setVisitInfo=setVisitInfo, setFilter=filter)
         except Exception as e:
             self.log.error("Could not turn item=%r into an exposure: %s" % (repr(item), e))
             raise
@@ -1434,10 +1443,10 @@ class CameraMapper(dafPersist.Mapper):
             self._writeRecipes[storageType] = validationMenu[storageType](recipes[storageType])
 
 
-def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo=True):
+def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo=True, setFilter=False):
     """Generate an Exposure from an image-like object
 
-    If the image is a DecoratedImage then also set its WCS and metadata
+    If the image is a DecoratedImage then also set its metadata
     (Image and MaskedImage are missing the necessary metadata
     and Exposure already has those set)
 
@@ -1446,6 +1455,21 @@ def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo
     image : Image-like object
         Can be one of lsst.afw.image.DecoratedImage, Image, MaskedImage or
         Exposure.
+    dataId : `dict`, optional
+        The data ID identifying the visit of the image.
+    mapper : `lsst.obs.base.CameraMapper`, optional
+        The mapper with which to convert the image.
+    logger : `lsst.log.Log`, optional
+        An existing logger to which to send output.
+    setVisitInfo : `bool`, optional
+        If `True`, create and attach a `lsst.afw.image.VisitInfo` to the
+        result. Ignored if ``image`` is an `~lsst.afw.image.Exposure` with an
+        existing ``VisitInfo``.
+    setFilter : `bool`, optional
+        If `True`, create and attach a `lsst.afw.image.FilterLabel` to the
+        result. Converts non-``FilterLabel`` information provided in ``image``.
+        Ignored if ``image`` is an `~lsst.afw.image.Exposure` with existing
+        filter information.
 
     Returns
     -------
@@ -1471,9 +1495,21 @@ def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo
     else:  # Image
         exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image))
 
-    # set VisitInfo if we can
-    if setVisitInfo and exposure.getInfo().getVisitInfo() is None:
-        if metadata is not None:
+    if metadata is not None:
+        # set filter if we can
+        if setFilter and mapper is not None and exposure.getFilterLabel() is None:
+            # Translate whatever was in the metadata
+            if 'FILTER' in metadata:
+                oldFilter = metadata['FILTER']
+                idFilter = dataId['filter'] if 'filter' in dataId else None
+                # oldFilter may not be physical, but _getBestFilter always goes
+                # through the FilterDefinitions instead of returning
+                # unvalidated input.
+                filter = mapper._getBestFilter(afwImage.FilterLabel(physical=oldFilter), idFilter)
+                if filter is not None:
+                    exposure.setFilterLabel(filter)
+        # set VisitInfo if we can
+        if setVisitInfo and exposure.getInfo().getVisitInfo() is None:
             if mapper is None:
                 if not logger:
                     logger = lsstLog.Log.getLogger("CameraMapper")

@@ -416,11 +416,12 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(mapper.canStandardize("notPresent"), False)
 
     def testStandardizeFiltersFilterDefs(self):
+        # tuples are (input, desired output)
         testLabels = [
             (None, None),
             (afwImage.FilterLabel(band="i", physical="i.MP9701"),
              afwImage.FilterLabel(band="i", physical="i.MP9701")),
-            (afwImage.FilterLabel(band="i"), afwImage.FilterLabel(band="r", physical="i.MP9701")),
+            (afwImage.FilterLabel(band="i"), afwImage.FilterLabel(band="i", physical="i.MP9701")),
             (afwImage.FilterLabel(physical="i.MP9701"),
              afwImage.FilterLabel(band="i", physical="i.MP9701")),
             (afwImage.FilterLabel(band="i", physical="old-i"),
@@ -437,18 +438,12 @@ class Mapper2TestCase(unittest.TestCase):
         for input, corrected in testLabels:
             for dataId in testIds:
                 if input is None:
-                    if dataId["filter"] == "i":
-                        data = (input, dataId, afwImage.FilterLabel(band="i"))
-                    elif dataId["filter"] == "i2":
+                    if dataId["filter"] == "i2":
                         data = (input, dataId, afwImage.FilterLabel(band="i", physical="HSC-I2"))
                     else:
                         data = (input, dataId, afwImage.FilterLabel(band="i", physical="i.MP9701"))
-                elif input == afwImage.FilterLabel(band="i"):
-                    if dataId["filter"] == "i":
-                        # There are two "i" filters, can't tell which
-                        data = (input, dataId, input)
-                    elif dataId["filter"] == "i2":
-                        data = (input, dataId, afwImage.FilterLabel(band="i", physical="HSC-I2"))
+                elif input == afwImage.FilterLabel(band="i") and dataId["filter"] == "i2":
+                    data = (input, dataId, afwImage.FilterLabel(band="i", physical="HSC-I2"))
                 elif corrected.physicalLabel == "HSC-I2" and dataId["filter"] in ("i.MP9701", "old-i"):
                     # Contradictory inputs, leave as-is
                     data = (input, dataId, input)
