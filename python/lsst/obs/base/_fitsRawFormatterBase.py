@@ -282,7 +282,8 @@ class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
             return None
 
     # TODO: remove in DM-27177
-    @deprecated(reason="Replaced with makeFilterLabel. Will be removed after v22.", category=FutureWarning)
+    @deprecated(reason="Replaced with makeFilterLabel. Will be removed after v22.",
+                version="v22", category=FutureWarning)
     def makeFilter(self):
         """Construct a Filter from metadata.
 

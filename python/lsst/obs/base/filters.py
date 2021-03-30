@@ -84,7 +84,7 @@ class FilterDefinitionCollection(collections.abc.Sequence):
         """
         if self._defined is None:
             with warnings.catch_warnings():
-                # surpress Filter warnings; we already know this is deprecated
+                # suppress Filter warnings; we already know this is deprecated
                 warnings.simplefilter('ignore', category=FutureWarning)
                 self.reset()
                 for filter in self._filters:
@@ -103,7 +103,7 @@ class FilterDefinitionCollection(collections.abc.Sequence):
         Use this in unittests that define different filters.
         """
         with warnings.catch_warnings():
-            # surpress Filter warnings; we already know this is deprecated
+            # suppress Filter warnings; we already know this is deprecated
             warnings.simplefilter('ignore', category=FutureWarning)
             lsst.afw.image.utils.resetFilters()
         cls._defined = None
@@ -271,7 +271,7 @@ class FilterDefinition:
         aliases.difference_update(current_names)
 
         with warnings.catch_warnings():
-            # surpress Filter warnings; we already know this is deprecated
+            # suppress Filter warnings; we already know this is deprecated
             warnings.simplefilter('ignore', category=FutureWarning)
             lsst.afw.image.utils.defineFilter(name,
                                               lambdaEff=self.lambdaEff,
