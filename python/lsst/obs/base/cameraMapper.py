@@ -463,7 +463,7 @@ class CameraMapper(dafPersist.Mapper):
 
                             # TODO: remove in DM-27177
                             @deprecated(reason="Replaced with getFilterLabel. Will be removed after v22.",
-                                        category=FutureWarning)
+                                        category=FutureWarning, version="v22")
                             def getFilter(datasetType, pythonType, location, dataId):
                                 fitsReader = afwImage.ExposureFitsReader(location.getLocationsWithRoot()[0])
                                 return fitsReader.readFilter()
