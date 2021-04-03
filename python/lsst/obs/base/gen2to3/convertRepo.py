@@ -349,6 +349,15 @@ class ConvertRepoConfig(Config):
         dtype=str,
         default=[]
     )
+    datasetTemplateOverrides = DictField(
+        "Overrides for Gen2 filename templates, keyed by dataset type. "
+        "This can be used to support conversions of Gen2 repos whose mapper "
+        "templates were modified in obs_* packages since the datasets were "
+        "written.",
+        keytype=str,
+        itemtype=str,
+        default={},
+    )
     ccdKey = Field(
         "Key used for the Gen2 equivalent of 'detector' in data IDs.",
         dtype=str,

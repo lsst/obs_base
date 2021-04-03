@@ -335,7 +335,7 @@ class RepoConverter(ABC):
         walkerInputs: List[Union[RepoWalker.Target, RepoWalker.Skip]] = []
         for datasetTypeName, mapping in self.iterMappings():
             try:
-                template = mapping.template
+                template = self.task.config.datasetTemplateOverrides.get(datasetTypeName, mapping.template)
             except RuntimeError:
                 # No template for this dataset in this mapper, so there's no
                 # way there should be instances of this dataset in this repo.
