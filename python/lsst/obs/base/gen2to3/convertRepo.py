@@ -349,6 +349,15 @@ class ConvertRepoConfig(Config):
         dtype=str,
         default=[]
     )
+    datasetTemplateOverrides = DictField(
+        "Overrides for Gen2 filename templates, keyed by dataset type. "
+        "This can be used to support conversions of Gen2 repos whose mapper "
+        "templates were modified in obs_* packages since the datasets were "
+        "written.",
+        keytype=str,
+        itemtype=str,
+        default={},
+    )
     ccdKey = Field(
         "Key used for the Gen2 equivalent of 'detector' in data IDs.",
         dtype=str,
@@ -360,6 +369,16 @@ class ConvertRepoConfig(Config):
         "run().",
         dtype=bool,
         default=False,
+    )
+    doExpandDataIds = Field(
+        "If True (default), expand data IDs to include extra metadata before "
+        "ingesting them. "
+        "This may be required in order to associate calibration datasets with "
+        "validity ranges or populate file templates, so setting this to False "
+        "is considered advanced usage (and it may not always work).  When it "
+        "does, it can provide a considerable speedup.",
+        dtype=bool,
+        default=True,
     )
     doMakeUmbrellaCollection = Field(
         "If True (default), define an '<instrument>/defaults' CHAINED "
@@ -386,6 +405,11 @@ class ConvertRepoConfig(Config):
     def setDefaults(self):
         self.transfer = None
 
+    def validate(self):
+        super().validate()
+        if self.relatedOnly and not self.doExpandDataIds():
+            raise ValueError("relatedOnly requires doExpandDataIds.")
+
 
 class ConvertRepoTask(Task):
     """A task that converts one or more related Gen2 data repositories to a
@@ -405,6 +429,12 @@ class ConvertRepoTask(Task):
         is converted and ``doWriteCuratedCalibrations`` is `True`.
     instrument : `lsst.obs.base.Instrument`
         The Gen3 instrument that should be used for this conversion.
+    dry_run : `bool`, optional
+        If `True` (`False` is default), make no changes to the Gen3 data
+        repository while running as many steps as possible.  This option is
+        best used with a read-only ``butler3`` argument to ensure unexpected
+        edge cases respect this argument (and fail rather than write if they
+        do not).
     **kwargs
         Other keyword arguments are forwarded to the `Task` constructor.
 
@@ -423,7 +453,8 @@ class ConvertRepoTask(Task):
 
     _DefaultName = "convertRepo"
 
-    def __init__(self, config=None, *, butler3: Butler3, instrument: Instrument, **kwargs):
+    def __init__(self, config=None, *, butler3: Butler3, instrument: Instrument, dry_run: bool = False,
+                 **kwargs):
         config.validate()  # Not a CmdlineTask nor PipelineTask, so have to validate the config here.
         super().__init__(config, **kwargs)
         # Make self.butler3 one that doesn't have any collections associated
@@ -448,6 +479,7 @@ class ConvertRepoTask(Task):
         self._usedSkyPix = set()
         self.translatorFactory = self.instrument.makeDataIdTranslatorFactory()
         self.translatorFactory.log = self.log.getChild("translators")
+        self.dry_run = dry_run
 
     def _reduce_kwargs(self):
         # Add extra parameters to pickle
@@ -532,7 +564,13 @@ class ConvertRepoTask(Task):
         """
         for struct in self._configuredSkyMapsBySha1.values():
             if struct.used:
-                struct.instance.register(struct.name, self.butler3)
+                if not self.dry_run:
+                    try:
+                        # If the skymap isn't registerd, this will raise.
+                        self.butler3.registry.expandDataId(skymap=struct.name)
+                    except LookupError:
+                        self.log.info("Registering skymap %s.", struct.name)
+                        struct.instance.register(struct.name, self.butler3)
                 if subset is not None and self.config.relatedOnly:
                     subset.addSkyMap(self.registry, struct.name)
 
@@ -601,6 +639,8 @@ class ConvertRepoTask(Task):
             pool = Pool(processes)
         if calibs is None:
             calibs = [CalibRepo(path=None)]
+        elif calibs and not self.config.doExpandDataIds:
+            raise ValueError("Cannot convert calib repos with config.doExpandDataIds=False.")
         if visits is not None:
             subset = ConversionSubset(instrument=self.instrument.getName(), visits=frozenset(visits))
         else:
@@ -608,6 +648,11 @@ class ConvertRepoTask(Task):
                 self.log.warn("config.relatedOnly is True but all visits are being ingested; "
                               "no filtering will be done.")
             subset = None
+        if (not self.config.doExpandDataIds
+                and self.butler.datastore.needs_expanded_data_ids(self.config.transfer)):
+            self.log.warn("config.doExpandDataIds=False but datastore reports that expanded data "
+                          "IDs may be needed.",
+                          self.config.transfer)
 
         # Check that at most one CalibRepo is marked as default, to fail before
         # we actually write anything.
@@ -649,8 +694,12 @@ class ConvertRepoTask(Task):
             converters.append(converter)
             rerunConverters[spec.runName] = converter
 
+        # Walk Gen2 repos to find datasets to convert.
+        for converter in converters:
+            converter.prep()
+
         # Register the instrument if we're configured to do so.
-        if self.config.doRegisterInstrument:
+        if self.config.doRegisterInstrument and not self.dry_run:
             self.instrument.register(self.registry)
 
         # Run raw ingest (does nothing if we weren't configured to convert the
@@ -661,25 +710,22 @@ class ConvertRepoTask(Task):
         # were requested (which may be implicit, by passing calibs=None).  Also
         # set up a CHAINED collection that points to the default CALIBRATION
         # collection if one is needed.
-        for spec in calibs:
-            if spec.curated:
-                self.instrument.writeCuratedCalibrations(self.butler3, labels=spec.labels)
-            if spec.default and spec.labels:
-                # This is guaranteed to be True at most once in the loop by
-                # logic at the top of this method.
-                defaultCalibName = self.instrument.makeCalibrationCollectionName()
-                self.butler3.registry.registerCollection(defaultCalibName, CollectionType.CHAINED)
-                recommendedCalibName = self.instrument.makeCalibrationCollectionName(*spec.labels)
-                self.butler3.registry.registerCollection(recommendedCalibName, CollectionType.CALIBRATION)
-                self.butler3.registry.setCollectionChain(defaultCalibName, [recommendedCalibName])
+        if not self.dry_run:
+            for spec in calibs:
+                if spec.curated:
+                    self.instrument.writeCuratedCalibrations(self.butler3, labels=spec.labels)
+                if spec.default and spec.labels:
+                    # This is guaranteed to be True at most once in the loop by
+                    # logic at the top of this method.
+                    defaultCalibName = self.instrument.makeCalibrationCollectionName()
+                    self.butler3.registry.registerCollection(defaultCalibName, CollectionType.CHAINED)
+                    recommendedCalibName = self.instrument.makeCalibrationCollectionName(*spec.labels)
+                    self.butler3.registry.registerCollection(recommendedCalibName, CollectionType.CALIBRATION)
+                    self.butler3.registry.setCollectionChain(defaultCalibName, [recommendedCalibName])
 
         # Define visits (also does nothing if we weren't configurd to convert
         # the 'raw' dataset type).
         rootConverter.runDefineVisits(pool=pool)
-
-        # Walk Gen2 repos to find datasets convert.
-        for converter in converters:
-            converter.prep()
 
         # Insert dimensions that are potentially shared by all Gen2
         # repositories (and are hence managed directly by the Task, rather
@@ -696,8 +742,12 @@ class ConvertRepoTask(Task):
             converter.findDatasets()
 
         # Expand data IDs.
-        for converter in converters:
-            converter.expandDataIds()
+        if self.config.doExpandDataIds:
+            for converter in converters:
+                converter.expandDataIds()
+
+        if self.dry_run:
+            return
 
         # Actually ingest datasets.
         for converter in converters:
