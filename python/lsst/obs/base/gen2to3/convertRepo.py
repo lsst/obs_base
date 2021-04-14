@@ -407,7 +407,7 @@ class ConvertRepoConfig(Config):
 
     def validate(self):
         super().validate()
-        if self.relatedOnly and not self.doExpandDataIds():
+        if self.relatedOnly and not self.doExpandDataIds:
             raise ValueError("relatedOnly requires doExpandDataIds.")
 
 
