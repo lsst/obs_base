@@ -649,7 +649,7 @@ class ConvertRepoTask(Task):
                               "no filtering will be done.")
             subset = None
         if (not self.config.doExpandDataIds
-                and self.butler.datastore.needs_expanded_data_ids(self.config.transfer)):
+                and self.butler3.datastore.needs_expanded_data_ids(self.config.transfer)):
             self.log.warn("config.doExpandDataIds=False but datastore reports that expanded data "
                           "IDs may be needed.",
                           self.config.transfer)
