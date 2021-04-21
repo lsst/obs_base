@@ -21,11 +21,15 @@
 
 """Support for assembling and disassembling afw Exposures."""
 
+import logging
+
 # Need to enable PSFs to be instantiated
 import lsst.afw.detection  # noqa: F401
 from lsst.afw.image import makeExposure, makeMaskedImage
 
 from lsst.daf.butler import StorageClassDelegate
+
+log = logging.getLogger(__name__)
 
 
 class ExposureAssembler(StorageClassDelegate):
@@ -150,6 +154,11 @@ class ExposureAssembler(StorageClassDelegate):
             lookups.
         TypeError
             The parent object does not match the supplied `self.storageClass`.
+
+        Notes
+        -----
+        If a PSF is present but is not persistable, the PSF will not be
+        included in the returned components.
         """
         if not self.storageClass.validateInstance(composite):
             raise TypeError("Unexpected type mismatch between parent and StorageClass"
@@ -165,6 +174,11 @@ class ExposureAssembler(StorageClassDelegate):
         fromExposureInfo = super().disassemble(composite,
                                                subset=expInfoItems, override=composite.getInfo())
         components.update(fromExposureInfo)
+
+        if "psf" in components and not components["psf"].component.isPersistable():
+            log.warning("PSF of type %s is not persistable and has been ignored.",
+                        type(components["psf"].component).__name__)
+            del components["psf"]
 
         return components
 
