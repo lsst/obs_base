@@ -30,6 +30,7 @@ from lsst.daf.butler import Formatter
 # Do not use ExposureFitsReader.readMetadata because that strips
 # out lots of headers and there is no way to recover them
 from lsst.afw.fits import readMetadata
+from lsst.daf.butler.core.utils import cached_getter
 from lsst.afw.image import ExposureFitsReader, ImageFitsReader, MaskFitsReader, MaskedImageFitsReader
 from lsst.afw.image import ExposureInfo, FilterLabel
 # Needed for ApCorrMap to resolve properly
@@ -145,16 +146,26 @@ class FitsImageFormatterBase(Formatter):
         except Exception:
             pass
 
-    def readComponent(self, component, parameters=None):
+    @property
+    @cached_getter
+    def checked_parameters(self):
+        """Tthe parameters passed by the butler user, after checking them
+        against the storage class and transforming `None` into an empty `dict`
+        (`dict`).
+        """
+        parameters = self.fileDescriptor.parameters
+        if parameters is None:
+            parameters = {}
+        self.fileDescriptor.storageClass.validateParameters(parameters)
+        return parameters
+
+    def readComponent(self, component):
         """Read a component held by the Exposure.
 
         Parameters
         ----------
         component : `str`, optional
             Component to read from the file.
-        parameters : `dict`, optional
-            If specified, a dictionary of slicing parameters that
-            overrides those in ``fileDescriptor``.
 
         Returns
         -------
@@ -199,15 +210,9 @@ class FitsImageFormatterBase(Formatter):
             caller = getattr(self._reader, method, None)
 
             if caller:
-                if parameters is None:
-                    parameters = self.fileDescriptor.parameters
-                if parameters is None:
-                    parameters = {}
-                self.fileDescriptor.storageClass.validateParameters(parameters)
-
                 if componentName is None:
-                    if hasParams and parameters:
-                        thisComponent = caller(**parameters)
+                    if hasParams:
+                        thisComponent = caller(**self.checked_parameters)
                     else:
                         thisComponent = caller()
                 else:
@@ -220,28 +225,16 @@ class FitsImageFormatterBase(Formatter):
         else:
             raise KeyError(f"Unknown component requested: {component}")
 
-    def readFull(self, parameters=None):
+    def readFull(self):
         """Read the full Exposure object.
-
-        Parameters
-        ----------
-        parameters : `dict`, optional
-            If specified a dictionary of slicing parameters that overrides
-            those in ``fileDescriptor``.
 
         Returns
         -------
         exposure : `~lsst.afw.image.Exposure`
             Complete in-memory exposure.
         """
-        fileDescriptor = self.fileDescriptor
-        if parameters is None:
-            parameters = fileDescriptor.parameters
-        if parameters is None:
-            parameters = {}
-        fileDescriptor.storageClass.validateParameters(parameters)
-        self._reader = self._readerClass(fileDescriptor.location.path)
-        return self._reader.read(**parameters)
+        self._reader = self._readerClass(self.fileDescriptor.location.path)
+        return self._reader.read(**self.checked_parameters)
 
     def read(self, component=None):
         """Read data from a file.
@@ -504,17 +497,17 @@ class FitsExposureFormatter(FitsImageFormatterBase):
                           f"{data_id_filter_label}).  This is probably a bug in the code that produced it.")
         return data_id_filter_label
 
-    def readComponent(self, component, parameters=None):
+    def readComponent(self, component):
         # Docstring inherited.
-        obj = super().readComponent(component, parameters)
+        obj = super().readComponent(component)
         if component == "filterLabel":
             return self._fixFilterLabels(obj)
         else:
             return obj
 
-    def readFull(self, parameters=None):
+    def readFull(self):
         # Docstring inherited.
-        full = super().readFull(parameters)
+        full = super().readFull()
         full.getInfo().setFilterLabel(self._fixFilterLabels(full.getInfo().getFilterLabel()))
         return full
 
