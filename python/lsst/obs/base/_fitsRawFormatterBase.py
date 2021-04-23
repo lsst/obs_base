@@ -375,6 +375,16 @@ class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
         full.setMetadata(self.metadata)
         return full
 
+    def read(self, component=None):
+        # Docstring inherited.
+        parameters = self.fileDescriptor.parameters
+        if parameters is None:
+            parameters = {}
+        if "bbox" in parameters:
+            raise TypeError("Raw formatters do not support reading arbitrary subimages, as some "
+                            "implementations may be assembled on-the-fly.")
+        return super().read(component)
+
     def readRawHeaderWcs(self):
         """Read the SkyWcs stored in the un-modified raw FITS WCS header keys.
         """
