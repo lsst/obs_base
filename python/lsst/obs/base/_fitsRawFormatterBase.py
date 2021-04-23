@@ -313,16 +313,13 @@ class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
         band = self.filterDefinitions.physical_to_band[physical]
         return lsst.afw.image.FilterLabel(physical=physical, band=band)
 
-    def readComponent(self, component, parameters=None):
+    def readComponent(self, component):
         """Read a component held by the Exposure.
 
         Parameters
         ----------
         component : `str`, optional
             Component to read from the file.
-        parameters : `dict`, optional
-            If specified, a dictionary of slicing parameters that
-            overrides those in ``fileDescriptor``.
 
         Returns
         -------
@@ -352,14 +349,8 @@ class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
             return self.makeWcs(visitInfo, detector)
         return None
 
-    def readFull(self, parameters=None):
+    def readFull(self):
         """Read the full Exposure object.
-
-        Parameters
-        ----------
-        parameters : `dict`, optional
-            If specified, a dictionary of slicing parameters that overrides
-            those in the `fileDescriptor` attribute.
 
         Returns
         -------
@@ -384,7 +375,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
         full.setMetadata(self.metadata)
         return full
 
-    def readRawHeaderWcs(self, parameters=None):
+    def readRawHeaderWcs(self):
         """Read the SkyWcs stored in the un-modified raw FITS WCS header keys.
         """
         return lsst.afw.geom.makeSkyWcs(lsst.afw.fits.readMetadata(self.fileDescriptor.location.path))
