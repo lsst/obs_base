@@ -207,6 +207,13 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             filterLabel = butler.get(f"{self.ingestDatasetTypeName}.filterLabel", dataId)
             self.assertEqual(filterLabel, self.filterLabel)
 
+            # Check that the exposure's Detector is the same as the component
+            # we would read (this is tricky for LSST, which modifies its
+            # detector at read time; for most other cameras it should be
+            # trivially satisfied.
+            detector = butler.get(f"{self.ingestDatasetTypeName}.detector", dataId)
+            self.assertDetectorsEqual(detector, exposure.getDetector(), compareTransforms=False)
+
         self.checkRepo(files=files)
 
     def checkRepo(self, files=None):
