@@ -329,7 +329,7 @@ class ConvertRepoConfig(Config):
         "Filename globs that should be ignored instead of being treated as "
         "datasets.",
         dtype=str,
-        default=["README.txt", "*~?", "butler.yaml", "gen3.sqlite3",
+        default=["README.txt", "*.*~*", "butler.yaml", "gen3.sqlite3",
                  "registry.sqlite3", "calibRegistry.sqlite3", "_mapper",
                  "_parent", "repositoryCfg.yaml"]
     )
@@ -649,7 +649,7 @@ class ConvertRepoTask(Task):
                               "no filtering will be done.")
             subset = None
         if (not self.config.doExpandDataIds
-                and self.butler.datastore.needs_expanded_data_ids(self.config.transfer)):
+                and self.butler3.datastore.needs_expanded_data_ids(self.config.transfer)):
             self.log.warn("config.doExpandDataIds=False but datastore reports that expanded data "
                           "IDs may be needed.",
                           self.config.transfer)
