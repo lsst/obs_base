@@ -323,6 +323,8 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             return self.makeFilterLabel()
         elif component == "visitInfo":
             return self.makeVisitInfo()
+        elif component == "detector":
+            return self.getDetector(self.observationInfo.detector_num)
         elif component == "wcs":
             detector = self.getDetector(self.observationInfo.detector_num)
             visitInfo = self.makeVisitInfo()
