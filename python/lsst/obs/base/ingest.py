@@ -918,8 +918,7 @@ class RawIngestTask(Task):
                 self.butler.registry.registerCollection(this_run, type=CollectionType.RUN)
                 runs.add(this_run)
             try:
-                with self.butler.transaction():
-                    datasets_for_exposure = self.ingestExposureDatasets(exposure, run=this_run)
+                datasets_for_exposure = self.ingestExposureDatasets(exposure, run=this_run)
             except Exception as e:
                 self._on_ingest_failure(exposure, e)
                 n_ingests_failed += 1
