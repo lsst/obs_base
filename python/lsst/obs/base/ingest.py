@@ -37,6 +37,7 @@ from lsst.daf.butler import (
     ButlerURI,
     CollectionType,
     DataCoordinate,
+    DatasetIdGenEnum,
     DatasetRef,
     DatasetType,
     DimensionRecord,
@@ -45,6 +46,7 @@ from lsst.daf.butler import (
     Formatter,
     Progress,
 )
+from lsst.daf.butler.registry import UnsupportedIdGeneratorError
 from lsst.pex.config import Config, ChoiceField, Field
 from lsst.pipe.base import Task, timeMethod
 
@@ -842,7 +844,17 @@ class RawIngestTask(Task):
                                 refs=[DatasetRef(self.datasetType, d.dataId) for d in file.datasets],
                                 formatter=file.FormatterClass)
                     for file in exposure.files]
-        self.butler.ingest(*datasets, transfer=self.config.transfer, run=run)
+
+        # Raw files are preferentially ingested using a UUID derived from
+        # the collection name and dataId.
+        # We do not know if this registry can support UUID so try it
+        # and fall back to the UNIQUE option if that fails.
+        try:
+            self.butler.ingest(*datasets, transfer=self.config.transfer, run=run,
+                               idGenerationMode=DatasetIdGenEnum.DATAID_TYPE_RUN)
+        except UnsupportedIdGeneratorError:
+            self.butler.ingest(*datasets, transfer=self.config.transfer, run=run,
+                               idGenerationMode=DatasetIdGenEnum.UNIQUE)
         return datasets
 
     def ingestFiles(self, files, *, pool: Optional[Pool] = None, processes: int = 1,
@@ -918,8 +930,7 @@ class RawIngestTask(Task):
                 self.butler.registry.registerCollection(this_run, type=CollectionType.RUN)
                 runs.add(this_run)
             try:
-                with self.butler.transaction():
-                    datasets_for_exposure = self.ingestExposureDatasets(exposure, run=this_run)
+                datasets_for_exposure = self.ingestExposureDatasets(exposure, run=this_run)
             except Exception as e:
                 self._on_ingest_failure(exposure, e)
                 n_ingests_failed += 1
