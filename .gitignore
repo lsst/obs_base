@@ -21,6 +21,7 @@ doc/xml
 doc/doxygen.conf
 tests/.tests
 tests/.cache
+tests/Test*-*
 version.py
 tests/trivial_camera/qe_curves/ccd00/19700101T000000.ecsv
 tests/trivial_camera/qe_curves/ccd00/19800101T000000.ecsv
