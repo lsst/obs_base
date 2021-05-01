@@ -21,26 +21,31 @@
 
 __all__ = ("FitsRawFormatterBase",)
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from deprecated.sphinx import deprecated
 
-from astro_metadata_translator import ObservationInfo
+from astro_metadata_translator import fix_header, ObservationInfo
 
 import lsst.afw.fits
 import lsst.afw.geom
 import lsst.afw.image
-from lsst.daf.butler import FileDescriptor
+from lsst.daf.butler import FileDescriptor, Formatter
 import lsst.log
 
-from .formatters.fitsExposure import FitsImageFormatterBase
 from .makeRawVisitInfoViaObsInfo import MakeRawVisitInfoViaObsInfo
 from .utils import createInitialSkyWcsFromBoresight, InitialSkyWcsError
 
 
-class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
+class FitsRawFormatterBase(Formatter):
     """Abstract base class for reading and writing raw data to and from
     FITS files.
     """
+
+    supportedExtensions = frozenset({".fits", ".fits.gz", ".fits.fz", ".fz", ".fit"})
+    extension = ".fits"
+
+    unsupportedParameters = {}
+    """Support all parameters."""
 
     # This has to be explicit until we fix camera geometry in DM-20746
     wcsFlipX = False
@@ -50,6 +55,8 @@ class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
         self.filterDefinitions.reset()
         self.filterDefinitions.defineFilters()
         super().__init__(*args, **kwargs)
+        self._metadata = None
+        self._observationInfo = None
 
     @classmethod
     def fromMetadata(cls, metadata, obsInfo=None, storageClass=None, location=None):
@@ -90,8 +97,6 @@ class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
         metadata header to `~astro_metadata_translator.ObservationInfo`.
         """
         return None
-
-    _observationInfo = None
 
     @property
     @abstractmethod
@@ -160,6 +165,28 @@ class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
         if self.observationInfo.tracking_radec is None:
             return False
         return True
+
+    @property
+    def metadata(self):
+        """The metadata read from this file. It will be stripped as
+        components are extracted from it
+        (`lsst.daf.base.PropertyList`).
+        """
+        if self._metadata is None:
+            self._metadata = self.readMetadata()
+        return self._metadata
+
+    def readMetadata(self):
+        """Read all header metadata directly into a PropertyList.
+
+        Returns
+        -------
+        metadata : `~lsst.daf.base.PropertyList`
+            Header metadata.
+        """
+        md = lsst.afw.fits.readMetadata(self.fileDescriptor.location.path)
+        fix_header(md)
+        return md
 
     def stripMetadata(self):
         """Remove metadata entries that are parsed into components.
@@ -383,7 +410,17 @@ class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
         if "bbox" in parameters:
             raise TypeError("Raw formatters do not support reading arbitrary subimages, as some "
                             "implementations may be assembled on-the-fly.")
-        return super().read(component)
+        if self.fileDescriptor.readStorageClass != self.fileDescriptor.storageClass:
+            if component == "metadata":
+                self.stripMetadata()
+                return self.metadata
+            elif component is not None:
+                return self.readComponent(component)
+            else:
+                raise ValueError("Storage class inconsistency ({} vs {}) but no"
+                                 " component requested".format(self.fileDescriptor.readStorageClass.name,
+                                                               self.fileDescriptor.storageClass.name))
+        return self.readFull()
 
     def readRawHeaderWcs(self):
         """Read the SkyWcs stored in the un-modified raw FITS WCS header keys.
