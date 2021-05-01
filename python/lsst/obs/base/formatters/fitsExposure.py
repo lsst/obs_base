@@ -85,9 +85,12 @@ class FitsImageFormatterBase(Formatter):
             variance: *default
 
     """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._reader = None
+
     supportedExtensions = frozenset({".fits", ".fits.gz", ".fits.fz", ".fz", ".fit"})
     extension = ".fits"
-    _metadata = None
     supportedWriteParameters = frozenset({"recipe"})
     _readerClass: type  # must be set by concrete subclasses
 
@@ -95,55 +98,14 @@ class FitsImageFormatterBase(Formatter):
     """Support all parameters."""
 
     @property
-    def metadata(self):
-        """The metadata read from this file. It will be stripped as
-        components are extracted from it
-        (`lsst.daf.base.PropertyList`).
+    def reader(self):
+        """The reader object that backs this Formatter's read operations.
+
+        This is constructed on first use and then cached.
         """
-        if self._metadata is None:
-            self._metadata = self.readMetadata()
-        return self._metadata
-
-    def readMetadata(self):
-        """Read all header metadata directly into a PropertyList.
-
-        Returns
-        -------
-        metadata : `~lsst.daf.base.PropertyList`
-            Header metadata.
-        """
-        md = readMetadata(self.fileDescriptor.location.path)
-        fix_header(md)
-        return md
-
-    def stripMetadata(self):
-        """Remove metadata entries that are parsed into components.
-
-        This is only called when just the metadata is requested; stripping
-        entries there forces code that wants other components to ask for those
-        components directly rather than trying to extract them from the
-        metadata manually, which is fragile.  This behavior is an intentional
-        change from Gen2.
-
-        Parameters
-        ----------
-        metadata : `~lsst.daf.base.PropertyList`
-            Header metadata, to be modified in-place.
-        """
-        # TODO: make sure this covers everything, by delegating to something
-        # that doesn't yet exist in afw.image.ExposureInfo.
-        from lsst.afw.image import bboxFromMetadata
-        from lsst.afw.geom import makeSkyWcs
-
-        # Protect against the metadata being missing
-        try:
-            bboxFromMetadata(self.metadata)  # always strips
-        except LookupError:
-            pass
-        try:
-            makeSkyWcs(self.metadata, strip=True)
-        except Exception:
-            pass
+        if self._reader is None:
+            self._reader = self._readerClass(self.fileDescriptor.location.path)
+        return self._reader
 
     def readComponent(self, component):
         """Read a component held by the Exposure.
@@ -162,57 +124,23 @@ class FitsImageFormatterBase(Formatter):
         ------
         KeyError
             Raised if the requested component cannot be handled.
+
+        Notes
+        -----
+        The default implementation handles the 'bbox', 'dimensions', and 'xy0'
+        parameters common to all image-like storage classes.  Subclasses with
+        additional components should handle them first, then delegate to
+        ``super()`` for these (or, if necessary, delegate first and catch
+        `KeyError`).
         """
-
-        # Metadata is handled explicitly elsewhere
-        componentMap = {'wcs': ('readWcs', False, None),
-                        'coaddInputs': ('readCoaddInputs', False, None),
-                        'psf': ('readPsf', False, None),
-                        'image': ('readImage', True, None),
-                        'mask': ('readMask', True, None),
-                        'variance': ('readVariance', True, None),
-                        'photoCalib': ('readPhotoCalib', False, None),
-                        'bbox': ('readBBox', True, None),
-                        'dimensions': ('readBBox', True, None),
-                        'xy0': ('readXY0', True, None),
-                        # TODO: deprecate in DM-27170, remove in DM-27177
-                        'filter': ('readFilter', False, None),
-                        # TODO: deprecate in DM-27177, remove in DM-27811
-                        'filterLabel': ('readFilterLabel', False, None),
-                        'validPolygon': ('readValidPolygon', False, None),
-                        'apCorrMap': ('readApCorrMap', False, None),
-                        'visitInfo': ('readVisitInfo', False, None),
-                        'transmissionCurve': ('readTransmissionCurve', False, None),
-                        'detector': ('readDetector', False, None),
-                        'exposureInfo': ('readExposureInfo', False, None),
-                        'summaryStats': ('readComponent', False, ExposureInfo.KEY_SUMMARY_STATS),
-                        }
-        method, hasParams, componentName = componentMap.get(component, (None, False, None))
-
-        if method:
-            # This reader can read standalone Image/Mask files as well
-            # when dealing with components.
-            self._reader = self._readerClass(self.fileDescriptor.location.path)
-            caller = getattr(self._reader, method, None)
-
-            if caller:
-                parameters = self.fileDescriptor.parameters
-                if parameters is None:
-                    parameters = {}
-                self.fileDescriptor.storageClass.validateParameters(parameters)
-
-                if componentName is None:
-                    if hasParams and parameters:
-                        thisComponent = caller(**parameters)
-                    else:
-                        thisComponent = caller()
-                else:
-                    thisComponent = caller(componentName)
-
-                if component == "dimensions" and thisComponent is not None:
-                    thisComponent = thisComponent.getDimensions()
-
-                return thisComponent
+        if component in ("bbox", "dimensions", "xy0"):
+            bbox = self.reader.readBBox()
+            if component == "dimensions":
+                return bbox.getDimensions()
+            elif component == "xy0":
+                return bbox.getMin()
+            else:
+                return bbox
         else:
             raise KeyError(f"Unknown component requested: {component}")
 
@@ -229,8 +157,7 @@ class FitsImageFormatterBase(Formatter):
         if parameters is None:
             parameters = {}
         fileDescriptor.storageClass.validateParameters(parameters)
-        self._reader = self._readerClass(fileDescriptor.location.path)
-        return self._reader.read(**parameters)
+        return self.reader.read(**parameters)
 
     def read(self, component=None):
         """Read data from a file.
@@ -411,11 +338,151 @@ class FitsImageFormatterBase(Formatter):
         return validated
 
 
-class FitsExposureFormatter(FitsImageFormatterBase):
-    """Specialization for `~lsst.afw.image.Exposure` reading.
+class FitsImageFormatter(FitsImageFormatterBase):
+    """Specialisation for `~lsst.afw.image.Image` reading.
     """
 
+    _readerClass = ImageFitsReader
+
+
+class FitsMaskFormatter(FitsImageFormatterBase):
+    """Specialisation for `~lsst.afw.image.Mask` reading.
+    """
+
+    _readerClass = MaskFitsReader
+
+
+class FitsMaskedImageFormatter(FitsImageFormatterBase):
+    """Specialisation for `~lsst.afw.image.MaskedImage` reading.
+    """
+
+    _readerClass = MaskedImageFitsReader
+
+    def readComponent(self, component):
+        # Docstring inherited.
+        parameters = self.fileDescriptor.parameters
+        if parameters is None:
+            parameters = {}
+        self.fileDescriptor.storageClass.validateParameters(parameters)
+        if component == "image":
+            return self.reader.readImage(**parameters)
+        elif component == "mask":
+            return self.reader.readMask(**parameters)
+        elif component == "variance":
+            return self.reader.readVariance(**parameters)
+        else:
+            # Delegate to base for bbox, dimensions, xy0.
+            return super().readComponent(component)
+
+
+class FitsExposureFormatter(FitsMaskedImageFormatter):
+    """Specialization for `~lsst.afw.image.Exposure` reading.
+
+    Notes
+    -----
+    This class inherits from `FitsMaskedImageFormatter` even though
+    `lsst.afw.image.Exposure` doesn't inherit from
+    `lsst.afw.image.MaskedImage`; this is just an easy way to be able to
+    delegate to `FitsMaskedImageFormatter.super()` for component-handling, and
+    should be replaced with e.g. both calling a free function if that slight
+    type covariance violation ever becomes a practical problem.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._metadata = None
+
     _readerClass = ExposureFitsReader
+
+    @property
+    def metadata(self):
+        """The metadata read from this file. It will be stripped as
+        components are extracted from it
+        (`lsst.daf.base.PropertyList`).
+        """
+        if self._metadata is None:
+            self._metadata = self.readMetadata()
+        return self._metadata
+
+    def readMetadata(self):
+        """Read all header metadata directly into a PropertyList.
+
+        Returns
+        -------
+        metadata : `~lsst.daf.base.PropertyList`
+            Header metadata.
+        """
+        md = readMetadata(self.fileDescriptor.location.path)
+        fix_header(md)
+        return md
+
+    def stripMetadata(self):
+        """Remove metadata entries that are parsed into components.
+
+        This is only called when just the metadata is requested; stripping
+        entries there forces code that wants other components to ask for those
+        components directly rather than trying to extract them from the
+        metadata manually, which is fragile.  This behavior is an intentional
+        change from Gen2.
+
+        Parameters
+        ----------
+        metadata : `~lsst.daf.base.PropertyList`
+            Header metadata, to be modified in-place.
+        """
+        # TODO: make sure this covers everything, by delegating to something
+        # that doesn't yet exist in afw.image.ExposureInfo.
+        from lsst.afw.image import bboxFromMetadata
+        from lsst.afw.geom import makeSkyWcs
+
+        # Protect against the metadata being missing
+        try:
+            bboxFromMetadata(self.metadata)  # always strips
+        except LookupError:
+            pass
+        try:
+            makeSkyWcs(self.metadata, strip=True)
+        except Exception:
+            pass
+
+    def readComponent(self, component):
+        # Docstring inherited.
+        # Metadata is special because we do extra patching and stripping.
+        if component == "metadata":
+            self.stripMetadata()
+            return self.metadata
+        # Generic components can be read via a string name; DM-27754 will make
+        # this mapping larger at the expense of the following one.
+        genericComponents = {
+            "summaryStats": ExposureInfo.KEY_SUMMARY_STATS,
+        }
+        if (genericComponentName := genericComponents.get(component)) is not None:
+            return self.reader.readComponent(genericComponentName)
+        # Other components have hard-coded method names, but don't take
+        # parameters.
+        standardComponents = {
+            'wcs': 'readWcs',
+            'coaddInputs': 'readCoaddInputs',
+            'psf': 'readPsf',
+            'photoCalib': 'readPhotoCalib',
+            # TODO: deprecate in DM-27170, remove in DM-27177
+            'filter': 'readFilter',
+            # TODO: deprecate in DM-27177, remove in DM-27811
+            'filterLabel': 'readFilterLabel',
+            'validPolygon': 'readValidPolygon',
+            'apCorrMap': 'readApCorrMap',
+            'visitInfo': 'readVisitInfo',
+            'transmissionCurve': 'readTransmissionCurve',
+            'detector': 'readDetector',
+            'exposureInfo': 'readExposureInfo',
+        }
+        if (methodName := standardComponents.get(component)) is not None:
+            result = getattr(self.reader, methodName)()
+            if component == "filterLabel":
+                return self._fixFilterLabels(result)
+            return result
+        # Delegate to MaskedImage and ImageBase implementations for the rest.
+        return super().readComponent(component)
 
     def _fixFilterLabels(self, file_filter_label, should_be_standardized=None):
         """Compare the filter label read from the file with the one in the
@@ -466,7 +533,7 @@ class FitsExposureFormatter(FitsImageFormatterBase):
                     and "physical_filter" in self.dataId.graph.implied.names):
                 missing.append("physical_filter")
         if should_be_standardized is None:
-            version = self._reader.readSerializationVersion()
+            version = self.reader.readSerializationVersion()
             should_be_standardized = (version >= 2)
         if missing:
             # Data ID identifies a filter but the actual filter label values
@@ -493,37 +560,8 @@ class FitsExposureFormatter(FitsImageFormatterBase):
                           f"{data_id_filter_label}).  This is probably a bug in the code that produced it.")
         return data_id_filter_label
 
-    def readComponent(self, component):
-        # Docstring inherited.
-        obj = super().readComponent(component)
-        if component == "filterLabel":
-            return self._fixFilterLabels(obj)
-        else:
-            return obj
-
     def readFull(self):
         # Docstring inherited.
         full = super().readFull()
         full.getInfo().setFilterLabel(self._fixFilterLabels(full.getInfo().getFilterLabel()))
         return full
-
-
-class FitsImageFormatter(FitsImageFormatterBase):
-    """Specialisation for `~lsst.afw.image.Image` reading.
-    """
-
-    _readerClass = ImageFitsReader
-
-
-class FitsMaskFormatter(FitsImageFormatterBase):
-    """Specialisation for `~lsst.afw.image.Mask` reading.
-    """
-
-    _readerClass = MaskFitsReader
-
-
-class FitsMaskedImageFormatter(FitsImageFormatterBase):
-    """Specialisation for `~lsst.afw.image.MaskedImage` reading.
-    """
-
-    _readerClass = MaskedImageFitsReader
