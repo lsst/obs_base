@@ -24,12 +24,8 @@ __all__ = ("FitsExposureFormatter", "FitsImageFormatter", "FitsMaskFormatter",
 
 import warnings
 
-from astro_metadata_translator import fix_header
 from lsst.daf.base import PropertySet
 from lsst.daf.butler import Formatter
-# Do not use ExposureFitsReader.readMetadata because that strips
-# out lots of headers and there is no way to recover them
-from lsst.afw.fits import readMetadata
 from lsst.afw.image import ExposureFitsReader, ImageFitsReader, MaskFitsReader, MaskedImageFitsReader
 from lsst.afw.image import ExposureInfo, FilterLabel
 # Needed for ApCorrMap to resolve properly
@@ -186,10 +182,7 @@ class FitsImageFormatterBase(Formatter):
         """
         fileDescriptor = self.fileDescriptor
         if fileDescriptor.readStorageClass != fileDescriptor.storageClass:
-            if component == "metadata":
-                self.stripMetadata()
-                return self.metadata
-            elif component is not None:
+            if component is not None:
                 return self.readComponent(component)
             else:
                 raise ValueError("Storage class inconsistency ({} vs {}) but no"
@@ -388,69 +381,10 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
     type covariance violation ever becomes a practical problem.
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._metadata = None
-
     _readerClass = ExposureFitsReader
-
-    @property
-    def metadata(self):
-        """The metadata read from this file. It will be stripped as
-        components are extracted from it
-        (`lsst.daf.base.PropertyList`).
-        """
-        if self._metadata is None:
-            self._metadata = self.readMetadata()
-        return self._metadata
-
-    def readMetadata(self):
-        """Read all header metadata directly into a PropertyList.
-
-        Returns
-        -------
-        metadata : `~lsst.daf.base.PropertyList`
-            Header metadata.
-        """
-        md = readMetadata(self.fileDescriptor.location.path)
-        fix_header(md)
-        return md
-
-    def stripMetadata(self):
-        """Remove metadata entries that are parsed into components.
-
-        This is only called when just the metadata is requested; stripping
-        entries there forces code that wants other components to ask for those
-        components directly rather than trying to extract them from the
-        metadata manually, which is fragile.  This behavior is an intentional
-        change from Gen2.
-
-        Parameters
-        ----------
-        metadata : `~lsst.daf.base.PropertyList`
-            Header metadata, to be modified in-place.
-        """
-        # TODO: make sure this covers everything, by delegating to something
-        # that doesn't yet exist in afw.image.ExposureInfo.
-        from lsst.afw.image import bboxFromMetadata
-        from lsst.afw.geom import makeSkyWcs
-
-        # Protect against the metadata being missing
-        try:
-            bboxFromMetadata(self.metadata)  # always strips
-        except LookupError:
-            pass
-        try:
-            makeSkyWcs(self.metadata, strip=True)
-        except Exception:
-            pass
 
     def readComponent(self, component):
         # Docstring inherited.
-        # Metadata is special because we do extra patching and stripping.
-        if component == "metadata":
-            self.stripMetadata()
-            return self.metadata
         # Generic components can be read via a string name; DM-27754 will make
         # this mapping larger at the expense of the following one.
         genericComponents = {
@@ -461,6 +395,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         # Other components have hard-coded method names, but don't take
         # parameters.
         standardComponents = {
+            'metadata': 'readMetadata',
             'wcs': 'readWcs',
             'coaddInputs': 'readCoaddInputs',
             'psf': 'readPsf',
