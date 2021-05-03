@@ -356,8 +356,7 @@ class FitsRawFormatterBase(Formatter):
         exposure : `~lsst.afw.image.Exposure`
             Complete in-memory exposure.
         """
-        from lsst.afw.image import makeExposure, makeMaskedImage
-        full = makeExposure(makeMaskedImage(self.readImage()))
+        full = lsst.afw.image.makeExposure(lsst.afw.image.makeMaskedImage(self.readImage()))
         full.setDetector(self.getDetector(self.observationInfo.detector_num))
         self.attachComponentsFromMetadata(full)
         return full
