@@ -96,19 +96,18 @@ class FitsImageFormatterBase(Formatter):
     """Support all parameters."""
 
     @property
+    @cached_getter
     def reader(self):
         """The reader object that backs this Formatter's read operations.
 
         This is constructed on first use and then cached.
         """
-        if self._reader is None:
-            self._reader = self._readerClass(self.fileDescriptor.location.path)
-        return self._reader
+        return self._readerClass(self.fileDescriptor.location.path)
 
     @property
     @cached_getter
     def checked_parameters(self):
-        """Tthe parameters passed by the butler user, after checking them
+        """The parameters passed by the butler user, after checking them
         against the storage class and transforming `None` into an empty `dict`
         (`dict`).
         """
