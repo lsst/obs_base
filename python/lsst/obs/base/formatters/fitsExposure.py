@@ -27,7 +27,7 @@ import warnings
 from lsst.daf.base import PropertySet
 from lsst.daf.butler import Formatter
 from lsst.daf.butler.core.utils import cached_getter
-from lsst.afw.cameraGeom import AmplifierIsolator
+from lsst.afw.cameraGeom import AmplifierGeometryComparison, AmplifierIsolator
 from lsst.afw.image import ExposureFitsReader, ImageFitsReader, MaskFitsReader, MaskedImageFitsReader
 from lsst.afw.image import ExposureInfo, FilterLabel
 # Needed for ApCorrMap to resolve properly
@@ -358,6 +358,33 @@ class FitsMaskedImageFormatter(FitsImageFormatterBase):
             return super().readComponent(component)
 
 
+def standardizeAmplifierParameters(parameters, on_disk_detector, logCmd):
+    comparison = AmplifierGeometryComparison.EQUAL
+    if (amplifier := parameters.get("amp")) is None:
+        return None, None, comparison
+    if isinstance(amplifier, (int, str)):
+        amp_key = amplifier
+        target_amplifier = None
+    else:
+        amp_key = amplifier.getName()
+        target_amplifier = amplifier
+    if (detector := parameters.get("detector")) is not None:
+        if on_disk_detector is not None:
+            comparison = on_disk_detector[amp_key].compare(detector[amp_key])
+            if comparison & comparison.ASSEMBLY_DIFFERS:
+                raise ValueError(
+                    "The given 'detector' has a different assembly state and/or orientation from "
+                    f"the on-disk one for amp {amp_key}."
+                )
+    else:
+        if on_disk_detector is None:
+            raise ValueError("No on-disk detector and no detector given; cannot identify amplifier subimage.")
+        detector = on_disk_detector
+    if target_amplifier is None:
+        target_amplifier = detector[amp_key]
+    return target_amplifier, detector, comparison
+
+
 class FitsExposureFormatter(FitsMaskedImageFormatter):
     """Specialization for `~lsst.afw.image.Exposure` reading.
 
@@ -499,11 +526,15 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         'detector' parameters (this is a difference from the analogous - but
         formally unrelated - `FitsRawFormatterBase.readFull` method).
         """
-        if (amplifier := self.checked_parameters.get("amp")) is not None:
-            if (detector := self.checked_parameters.get("detector")) is None:
-                detector = self.reader.readDetector()
-            if isinstance(amplifier, (int, str)):
-                amplifier = detector[amplifier]
+        amplifier, detector, comparison = standardizeAmplifierParameters(
+            self.checked_parameters,
+            self.reader.readDetector(),
+        )
+        if amplifier is not None:
+            if comparison & comparison.REGIONS_DIFFER:
+                raise ValueError(f"Reading {self.fileDescriptor.location} with data ID {self.dataId}: "
+                                 "given detector geometry differs from the on-disk detector; note that it "
+                                 "is not necessary to pass a detector unless there is no on-disk detector.")
             amplifier_isolator = AmplifierIsolator(
                 amplifier,
                 self.reader.readBBox(),

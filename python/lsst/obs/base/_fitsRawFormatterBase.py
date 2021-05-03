@@ -407,15 +407,23 @@ class FitsRawFormatterBase(Formatter):
         assembled and `getDetector` hence returns an object consistent with
         that state.
         """
-        if detector is None:
-            detector = self.getDetector(self.observationInfo.detector_num)
+        on_disk_detector = self.getDetector(self.observationInfo.detector_num)
         if isinstance(amplifier, (int, str)):
-            amplifier = detector[amplifier]
+            amplifier = on_disk_detector[amplifier]
+        if detector is not None:
+            # We can always (and cheaply) get the correct detector (the
+            # parameter exists for consistency with non-raw Exposures), so if
+            # user passes one in, check that it's what we expect, but otherwise
+            # ignore it.
+            if on_disk_detector[amplifier.getName()].compare(detector[amplifier.getName()]):
+                raise ValueError("Detector object passed by user is not consistent with the detector for raw "
+                                 f"{self.fileDescriptor.location.path} for amplifier {amplifier.getName()} "
+                                 "(note that passing detector is not actually required in this context).")
         reader = lsst.afw.image.ImageReader(self.fileDescriptor.location.path)
         amplifier_isolator = lsst.afw.cameraGeom.AmplifierIsolator(
             amplifier,
             reader.readBBox(),
-            detector,
+            on_disk_detector,
         )
         subimage = amplifier_isolator.transform_subimage(
             reader.read(bbox=amplifier_isolator.subimage_bbox)
