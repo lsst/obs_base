@@ -29,6 +29,7 @@ from astro_metadata_translator import fix_header, ObservationInfo
 import lsst.afw.fits
 import lsst.afw.geom
 import lsst.afw.image
+import lsst.afw.cameraGeom
 from lsst.daf.butler import FileDescriptor, Formatter
 import lsst.log
 
@@ -327,6 +328,12 @@ class FitsRawFormatterBase(Formatter):
         ------
         KeyError
             Raised if the requested component cannot be handled.
+
+        Notes
+        -----
+        Implementations are not expected to handle any parameters for
+        components, and this is checked in `read`.  Note that this differs
+        from the behavior of the general (not-raw) `FitsExposureFormatter.
         """
         if component == "image":
             return self.readImage()
@@ -355,11 +362,68 @@ class FitsRawFormatterBase(Formatter):
         -------
         exposure : `~lsst.afw.image.Exposure`
             Complete in-memory exposure.
+
+        Notes
+        -----
+        Implementations are not expected to handle any parameters, and this is
+        checked in `read` (the ``amp`` and ``detector`` parameters are handled
+        by `readIsolatedAmplifer`.  Note that this differs from the behavior of
+        the analogous - but formally unrelated `FitsExposureFormatter.readFull`
+        method for general (non-raw) exposures.
         """
         full = lsst.afw.image.makeExposure(lsst.afw.image.makeMaskedImage(self.readImage()))
         full.setDetector(self.getDetector(self.observationInfo.detector_num))
         self.attachComponentsFromMetadata(full)
         return full
+
+    def readIsolatedAmplifier(self, amplifier, detector):
+        """Read an amplifier subimage and attach a single-amplifier detector to
+        it.
+
+        Parameters
+        ----------
+        amplifier : `lsst.afw.cameraGeom.Amplifier`, `int`, or `str`
+            Amplifier to read, either as an object that fully describes what
+            the users wants (including orientation and offsets), or as an
+            integer or string identifier.
+        detector : `lsst.afw.cameraGeom.Detector` or `None`
+            Full detector that corresponds to the orientation and assembly
+            state of the on-disk image.  If `None`, one will be obtained from
+            `getDetector`.
+
+        Returns
+        -------
+        subimage : `lsst.afw.image.Exposure`
+            A single-amplifier subimage of the on-disk image, with
+            ``subimage.getDetector()`` having a single amplifier that is a copy
+            of ``amplifier`` (or the amplifier that identifies).  Trim state
+            should correspond to the on-disk image's trim state, which may be
+            checked by testing whether the on-disk bounding box is the same as
+            ``detector.getBBox()`` (`True` only for trimmed, assembled images).
+
+        Notes
+        -----
+        The default implementation assumes that the on-disk image is already
+        assembled and `getDetector` hence returns an object consistent with
+        that state.
+        """
+        if detector is None:
+            detector = self.getDetector(self.observationInfo.detector_num)
+        if isinstance(amplifier, (int, str)):
+            amplifier = detector[amplifier]
+        reader = lsst.afw.image.ImageReader(self.fileDescriptor.location.path)
+        amplifier_isolator = lsst.afw.cameraGeom.AmplifierIsolator(
+            amplifier,
+            reader.readBBox(),
+            detector,
+        )
+        subimage = amplifier_isolator.transform_subimage(
+            reader.read(bbox=amplifier_isolator.subimage_bbox)
+        )
+        exposure = lsst.afw.image.makeExposure(lsst.afw.image.makeMaskedImage(subimage))
+        exposure.setDetector(amplifier_isolator.make_detector())
+        self.attachComponentsFromMetadata(exposure)
+        return exposure
 
     def read(self, component=None):
         # Docstring inherited.
@@ -370,6 +434,8 @@ class FitsRawFormatterBase(Formatter):
             raise TypeError("Raw formatters do not support reading arbitrary subimages, as some "
                             "implementations may be assembled on-the-fly.")
         if self.fileDescriptor.readStorageClass != self.fileDescriptor.storageClass:
+            if parameters:
+                raise TypeError("Raw formatters do not support any parameters for component loads.")
             if component == "metadata":
                 self.stripMetadata()
                 return self.metadata
@@ -379,7 +445,10 @@ class FitsRawFormatterBase(Formatter):
                 raise ValueError("Storage class inconsistency ({} vs {}) but no"
                                  " component requested".format(self.fileDescriptor.readStorageClass.name,
                                                                self.fileDescriptor.storageClass.name))
-        return self.readFull()
+        if (amplifier := parameters.get("amp")) is not None:
+            return self.readIsolatedAmplifier(amplifier, parameters.get("detector"))
+        else:
+            return self.readFull()
 
     def readRawHeaderWcs(self):
         """Read the SkyWcs stored in the un-modified raw FITS WCS header keys.

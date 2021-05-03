@@ -27,6 +27,7 @@ import warnings
 from lsst.daf.base import PropertySet
 from lsst.daf.butler import Formatter
 from lsst.daf.butler.core.utils import cached_getter
+from lsst.afw.cameraGeom import AmplifierIsolator
 from lsst.afw.image import ExposureFitsReader, ImageFitsReader, MaskFitsReader, MaskedImageFitsReader
 from lsst.afw.image import ExposureInfo, FilterLabel
 # Needed for ApCorrMap to resolve properly
@@ -485,7 +486,34 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         return data_id_filter_label
 
     def readFull(self):
-        # Docstring inherited.
-        full = super().readFull()
-        full.getInfo().setFilterLabel(self._fixFilterLabels(full.getInfo().getFilterLabel()))
-        return full
+        """Read the full Exposure object.
+
+        Returns
+        -------
+        exposure : `~lsst.afw.image.Exposure`
+            Complete in-memory exposure, or a single-amplifier subset thereof.
+
+        Notes
+        -----
+        This implementation handles all parameters, including the 'amp' and
+        'detector' parameters (this is a difference from the analogous - but
+        formally unrelated - `FitsRawFormatterBase.readFull` method).
+        """
+        if (amplifier := self.checked_parameters.get("amp")) is not None:
+            if (detector := self.checked_parameters.get("detector")) is None:
+                detector = self.reader.readDetector()
+            if isinstance(amplifier, (int, str)):
+                amplifier = detector[amplifier]
+            amplifier_isolator = AmplifierIsolator(
+                amplifier,
+                self.reader.readBBox(),
+                detector,
+            )
+            result = amplifier_isolator.transform_subimage(
+                self.reader.read(bbox=amplifier_isolator.subimage_bbox)
+            )
+            result.setDetector(amplifier_isolator.make_detector())
+        else:
+            result = self.reader.read(**self.checked_parameters)
+        result.getInfo().setFilterLabel(self._fixFilterLabels(result.getInfo().getFilterLabel()))
+        return result
