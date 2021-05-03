@@ -26,6 +26,7 @@ import warnings
 
 from lsst.daf.base import PropertySet
 from lsst.daf.butler import Formatter
+from lsst.daf.butler.core.utils import cached_getter
 from lsst.afw.image import ExposureFitsReader, ImageFitsReader, MaskFitsReader, MaskedImageFitsReader
 from lsst.afw.image import ExposureInfo, FilterLabel
 # Needed for ApCorrMap to resolve properly
@@ -103,6 +104,20 @@ class FitsImageFormatterBase(Formatter):
             self._reader = self._readerClass(self.fileDescriptor.location.path)
         return self._reader
 
+    @property
+    @cached_getter
+    def checked_parameters(self):
+        """Tthe parameters passed by the butler user, after checking them
+        against the storage class and transforming `None` into an empty `dict`
+        (`dict`).
+        """
+        fileDescriptor = self.fileDescriptor
+        parameters = fileDescriptor.parameters
+        if parameters is None:
+            parameters = {}
+        fileDescriptor.storageClass.validateParameters(parameters)
+        return parameters
+
     def readComponent(self, component):
         """Read a component held by the Exposure.
 
@@ -148,12 +163,7 @@ class FitsImageFormatterBase(Formatter):
         exposure : `~lsst.afw.image.Exposure`
             Complete in-memory exposure.
         """
-        fileDescriptor = self.fileDescriptor
-        parameters = fileDescriptor.parameters
-        if parameters is None:
-            parameters = {}
-        fileDescriptor.storageClass.validateParameters(parameters)
-        return self.reader.read(**parameters)
+        return self.reader.read(**self.checked_parameters)
 
     def read(self, component=None):
         """Read data from a file.
@@ -353,16 +363,12 @@ class FitsMaskedImageFormatter(FitsImageFormatterBase):
 
     def readComponent(self, component):
         # Docstring inherited.
-        parameters = self.fileDescriptor.parameters
-        if parameters is None:
-            parameters = {}
-        self.fileDescriptor.storageClass.validateParameters(parameters)
         if component == "image":
-            return self.reader.readImage(**parameters)
+            return self.reader.readImage(**self.get_checked_parameters)
         elif component == "mask":
-            return self.reader.readMask(**parameters)
+            return self.reader.readMask(**self.get_checked_parameters)
         elif component == "variance":
-            return self.reader.readVariance(**parameters)
+            return self.reader.readVariance(**self.get_checked_parameters)
         else:
             # Delegate to base for bbox, dimensions, xy0.
             return super().readComponent(component)
