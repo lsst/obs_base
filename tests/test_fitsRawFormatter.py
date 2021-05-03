@@ -28,13 +28,21 @@ import lsst.utils.tests
 
 from astro_metadata_translator import FitsTranslator, StubTranslator
 from astro_metadata_translator.translators.helpers import tracking_from_degree_headers
+from lsst.afw.cameraGeom import makeUpdatedDetector
 from lsst.afw.cameraGeom.testUtils import CameraWrapper, DetectorWrapper
 import lsst.afw.geom
+import lsst.afw.math
 import lsst.daf.base
 import lsst.daf.butler
 import lsst.geom
-from lsst.obs.base import FitsRawFormatterBase, MakeRawVisitInfoViaObsInfo, FilterDefinitionCollection
+from lsst.obs.base import (
+    FilterDefinition,
+    FilterDefinitionCollection,
+    FitsRawFormatterBase,
+    MakeRawVisitInfoViaObsInfo,
+)
 from lsst.obs.base.utils import createInitialSkyWcs, InitialSkyWcsError
+from lsst.obs.base.tests import make_ramp_exposure_untrimmed
 
 
 class SimpleTestingTranslator(FitsTranslator, StubTranslator):
@@ -75,7 +83,8 @@ class MakeTestingRawVisitInfo(MakeRawVisitInfoViaObsInfo):
 
 
 class SimpleFitsRawFormatter(FitsRawFormatterBase):
-    filterDefinitions = FilterDefinitionCollection()
+    filterDefinitions = FilterDefinitionCollection(FilterDefinition(physical_filter="u", band="u",
+                                                                    lambdaEff=300.0))
 
     @property
     def translatorClass(self):
@@ -85,9 +94,11 @@ class SimpleFitsRawFormatter(FitsRawFormatterBase):
         """Use CameraWrapper to create a fake detector that can map from
         PIXELS to FIELD_ANGLE.
 
-        Always return Detector #10, so all the tests are self-consistent.
+        Always return Detector #10, so all the tests are self-consistent, and
+        make sure it is in "assembled" form, since that's what the base
+        formatter implementations assume.
         """
-        return CameraWrapper().camera.get(10)
+        return makeUpdatedDetector(CameraWrapper().camera.get(10))
 
 
 class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
@@ -188,6 +199,49 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
         detector = DetectorWrapper().detector
         with self.assertRaises(InitialSkyWcsError):
             self.formatter.makeWcs(self.visitInfo, detector)
+
+    def test_amp_parameter(self):
+        """Test loading subimages with the 'amp' parameter.
+        """
+        with lsst.utils.tests.getTempFilePath(".fits") as tmpFile:
+            # Get a detector; this must be the same one that's baked into the
+            # simple formatter at the top of this file, so that's how we get
+            # it.
+            detector = self.formatter.getDetector(1)
+            # Make full exposure with ramp values and save just the image to
+            # the temp file (with metadata), so it looks like a raw.
+            full = make_ramp_exposure_untrimmed(detector)
+            full.image.writeFits(tmpFile, metadata=self.metadata)
+            # Loop over amps and try to read them via the formatter.
+            for n, amp in enumerate(detector):
+                for amp_parameter in [amp, amp.getName(), n]:
+                    for parameters in [{"amp": amp_parameter}, {"amp": amp_parameter, "detector": detector}]:
+                        with self.subTest(parameters=parameters):
+                            # Make a new formatter that points at the new file
+                            # and has the right parameters.
+                            formatter = SimpleFitsRawFormatter(
+                                lsst.daf.butler.FileDescriptor(
+                                    lsst.daf.butler.Location(None, path=lsst.daf.butler.ButlerURI(tmpFile)),
+                                    lsst.daf.butler.StorageClassFactory().getStorageClass("ExposureI"),
+                                    parameters=parameters,
+                                ),
+                                self.formatter.dataId,
+                            )
+                            subexp = formatter.read()
+                            self.assertImagesEqual(subexp.image, full[amp.getRawBBox()].image)
+                            self.assertEqual(len(subexp.getDetector()), 1)
+                            self.assertAmplifiersEqual(subexp.getDetector()[0], amp)
+                # We could try transformed amplifiers here that involve flips
+                # and offsets, but:
+                # - we already test the low-level code that does that in afw;
+                # - we test very similar high-level code (which calls that
+                #   same afw code) in the non-raw Exposure formatter, in
+                #   test_butlerFits.py;
+                # - the only instruments that actually have those kinds of
+                #   amplifiers are those in obs_lsst, and that has a different
+                #   raw formatter implementation that we need to test there
+                #   anyway;
+                # - these are kind of expensive tests.
 
 
 class MemoryTester(lsst.utils.tests.MemoryTestCase):
