@@ -139,7 +139,7 @@ class FitsImageFormatterBase(Formatter):
         Notes
         -----
         The default implementation handles the 'bbox', 'dimensions', and 'xy0'
-        parameters common to all image-like storage classes.  Subclasses with
+        components common to all image-like storage classes.  Subclasses with
         additional components should handle them first, then delegate to
         ``super()`` for these (or, if necessary, delegate first and catch
         `KeyError`).
@@ -162,34 +162,17 @@ class FitsImageFormatterBase(Formatter):
         -------
         exposure : `~lsst.afw.image.Exposure`
             Complete in-memory exposure.
+
+        Notes
+        -----
+        The default implementation handles the 'bbox' and 'origin'
+        parameters.  Subclass implementations must handle any other parameters
+        without delegating to this implementation.
         """
         return self.reader.read(**self.checked_parameters)
 
     def read(self, component=None):
-        """Read data from a file.
-
-        Parameters
-        ----------
-        component : `str`, optional
-            Component to read from the file. Only used if the `StorageClass`
-            for reading differed from the `StorageClass` used to write the
-            file.
-
-        Returns
-        -------
-        inMemoryDataset : `object`
-            The requested data as a Python object. The type of object
-            is controlled by the specific formatter.
-
-        Raises
-        ------
-        ValueError
-            Component requested but this file does not seem to be a concrete
-            composite.
-        KeyError
-            Raised when parameters passed with fileDescriptor are not
-            supported.
-        """
+        # Docstring inherited.
         fileDescriptor = self.fileDescriptor
         if fileDescriptor.readStorageClass != fileDescriptor.storageClass:
             if component is not None:
