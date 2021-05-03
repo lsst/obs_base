@@ -116,36 +116,6 @@ class FitsRawFormatterBase(Formatter):
         """
         return lsst.afw.image.ImageU(self.fileDescriptor.location.path)
 
-    def readMask(self):
-        """Read just the mask component of the Exposure.
-
-        May return None (as the default implementation does) to indicate that
-        there is no mask information to be extracted (at least not trivially)
-        from the raw data.  This will prohibit direct reading of just the mask,
-        and set the mask of the full Exposure to zeros.
-
-        Returns
-        -------
-        mask : `~lsst.afw.image.Mask`
-            In-memory mask component.
-        """
-        return None
-
-    def readVariance(self):
-        """Read just the variance component of the Exposure.
-
-        May return None (as the default implementation does) to indicate that
-        there is no variance information to be extracted (at least not
-        trivially) from the raw data.  This will prohibit direct reading of
-        just the variance, and set the variance of the full Exposure to zeros.
-
-        Returns
-        -------
-        image : `~lsst.afw.image.Image`
-            In-memory variance component.
-        """
-        return None
-
     def isOnSky(self):
         """Boolean to determine if the exposure is thought to be on the sky.
 
@@ -361,9 +331,9 @@ class FitsRawFormatterBase(Formatter):
         if component == "image":
             return self.readImage()
         elif component == "mask":
-            return self.readMask()
+            return None
         elif component == "variance":
-            return self.readVariance()
+            return None
         elif component == "filter":
             return self.makeFilter()
         elif component == "filterLabel":
@@ -388,12 +358,6 @@ class FitsRawFormatterBase(Formatter):
         """
         from lsst.afw.image import makeExposure, makeMaskedImage
         full = makeExposure(makeMaskedImage(self.readImage()))
-        mask = self.readMask()
-        if mask is not None:
-            full.setMask(mask)
-        variance = self.readVariance()
-        if variance is not None:
-            full.setVariance(variance)
         full.setDetector(self.getDetector(self.observationInfo.detector_num))
         info = full.getInfo()
         info.setFilterLabel(self.makeFilterLabel())
