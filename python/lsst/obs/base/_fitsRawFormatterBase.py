@@ -30,6 +30,7 @@ import lsst.afw.fits
 import lsst.afw.geom
 import lsst.afw.image
 from lsst.daf.butler import FileDescriptor
+from lsst.daf.butler.core.utils import cached_getter
 import lsst.log
 
 from .formatters.fitsExposure import FitsImageFormatterBase
@@ -100,6 +101,16 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         instrument.
         """
         return None
+
+    @property
+    @cached_getter
+    def checked_parameters(self):
+        # Docstring inherited.
+        parameters = super().checked_parameters
+        if "bbox" in parameters:
+            raise TypeError("Raw formatters do not support reading arbitrary subimages, as some "
+                            "implementations may be assembled on-the-fly.")
+        return parameters
 
     def readImage(self):
         """Read just the image component of the Exposure.
@@ -307,6 +318,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
 
     def readComponent(self, component):
         # Docstring inherited.
+        self.checked_parameters  # just for checking; no supported parameters.
         if component == "image":
             return self.readImage()
         elif component == "filter":
@@ -328,6 +340,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         # Docstring inherited.
         from lsst.afw.image import makeExposure, makeMaskedImage
         full = makeExposure(makeMaskedImage(self.readImage()))
+        self.checked_parameters  # just for checking; no supported parameters.
         full.setDetector(self.getDetector(self.observationInfo.detector_num))
         info = full.getInfo()
         info.setFilterLabel(self.makeFilterLabel())
