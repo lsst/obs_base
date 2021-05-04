@@ -338,9 +338,8 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
 
     def readFull(self):
         # Docstring inherited.
-        from lsst.afw.image import makeExposure, makeMaskedImage
-        full = makeExposure(makeMaskedImage(self.readImage()))
         self.checked_parameters  # just for checking; no supported parameters.
+        full = lsst.afw.image.makeExposure(lsst.afw.image.makeMaskedImage(self.readImage()))
         full.setDetector(self.getDetector(self.observationInfo.detector_num))
         self.attachComponentsFromMetadata(full)
         return full
