@@ -342,13 +342,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         full = makeExposure(makeMaskedImage(self.readImage()))
         self.checked_parameters  # just for checking; no supported parameters.
         full.setDetector(self.getDetector(self.observationInfo.detector_num))
-        info = full.getInfo()
-        info.setFilterLabel(self.makeFilterLabel())
-        info.setVisitInfo(self.makeVisitInfo())
-        info.setWcs(self.makeWcs(info.getVisitInfo(), info.getDetector()))
-        # We don't need to call stripMetadata() here because it has already
-        # been stripped during creation of the ObservationInfo, WCS, etc.
-        full.setMetadata(self.metadata)
+        self.attachComponentsFromMetadata(full)
         return full
 
     def readRawHeaderWcs(self):
@@ -383,3 +377,21 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             self._observationInfo = ObservationInfo(self.metadata, translator_class=self.translatorClass,
                                                     filename=path)
         return self._observationInfo
+
+    def attachComponentsFromMetadata(self, exposure):
+        """Attach all `lsst.afw.image.Exposure` components derived from
+        metadata (including the stripped metadata itself).
+
+        Parameters
+        ----------
+        exposure : `lsst.afw.image.Exposure`
+            Exposure to attach components to (modified in place).  Must already
+            have a detector attached.
+        """
+        info = exposure.getInfo()
+        info.setFilterLabel(self.makeFilterLabel())
+        info.setVisitInfo(self.makeVisitInfo())
+        info.setWcs(self.makeWcs(info.getVisitInfo(), info.getDetector()))
+        # We don't need to call stripMetadata() here because it has already
+        # been stripped during creation of the ObservationInfo, WCS, etc.
+        exposure.setMetadata(self.metadata)
