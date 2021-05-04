@@ -24,7 +24,7 @@ __all__ = ("FitsRawFormatterBase",)
 from abc import ABCMeta, abstractmethod
 from deprecated.sphinx import deprecated
 
-from astro_metadata_translator import ObservationInfo
+from astro_metadata_translator import fix_header, ObservationInfo
 
 import lsst.afw.fits
 import lsst.afw.geom
@@ -50,6 +50,8 @@ class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
         self.filterDefinitions.reset()
         self.filterDefinitions.defineFilters()
         super().__init__(*args, **kwargs)
+        self._metadata = None
+        self._observationInfo = None
 
     @classmethod
     def fromMetadata(cls, metadata, obsInfo=None, storageClass=None, location=None):
@@ -90,8 +92,6 @@ class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
         metadata header to `~astro_metadata_translator.ObservationInfo`.
         """
         return None
-
-    _observationInfo = None
 
     @property
     @abstractmethod
@@ -160,6 +160,28 @@ class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
         if self.observationInfo.tracking_radec is None:
             return False
         return True
+
+    @property
+    def metadata(self):
+        """The metadata read from this file. It will be stripped as
+        components are extracted from it
+        (`lsst.daf.base.PropertyList`).
+        """
+        if self._metadata is None:
+            self._metadata = self.readMetadata()
+        return self._metadata
+
+    def readMetadata(self):
+        """Read all header metadata directly into a PropertyList.
+
+        Returns
+        -------
+        metadata : `~lsst.daf.base.PropertyList`
+            Header metadata.
+        """
+        md = lsst.afw.fits.readMetadata(self.fileDescriptor.location.path)
+        fix_header(md)
+        return md
 
     def stripMetadata(self):
         """Remove metadata entries that are parsed into components.
@@ -314,23 +336,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
         return lsst.afw.image.FilterLabel(physical=physical, band=band)
 
     def readComponent(self, component):
-        """Read a component held by the Exposure.
-
-        Parameters
-        ----------
-        component : `str`, optional
-            Component to read from the file.
-
-        Returns
-        -------
-        obj : component-dependent
-            In-memory component object.
-
-        Raises
-        ------
-        KeyError
-            Raised if the requested component cannot be handled.
-        """
+        # Docstring inherited.
         if component == "image":
             return self.readImage()
         elif component == "mask":
@@ -347,16 +353,13 @@ class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
             detector = self.getDetector(self.observationInfo.detector_num)
             visitInfo = self.makeVisitInfo()
             return self.makeWcs(visitInfo, detector)
+        elif component == "metadata":
+            self.stripMetadata()
+            return self.metadata
         return None
 
     def readFull(self):
-        """Read the full Exposure object.
-
-        Returns
-        -------
-        exposure : `~lsst.afw.image.Exposure`
-            Complete in-memory exposure.
-        """
+        # Docstring inherited.
         from lsst.afw.image import makeExposure, makeMaskedImage
         full = makeExposure(makeMaskedImage(self.readImage()))
         mask = self.readMask()
