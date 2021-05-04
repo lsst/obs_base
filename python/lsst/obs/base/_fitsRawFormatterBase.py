@@ -21,7 +21,7 @@
 
 __all__ = ("FitsRawFormatterBase",)
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from deprecated.sphinx import deprecated
 
 from astro_metadata_translator import fix_header, ObservationInfo
@@ -37,7 +37,7 @@ from .makeRawVisitInfoViaObsInfo import MakeRawVisitInfoViaObsInfo
 from .utils import createInitialSkyWcsFromBoresight, InitialSkyWcsError
 
 
-class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
+class FitsRawFormatterBase(FitsImageFormatterBase):
     """Abstract base class for reading and writing raw data to and from
     FITS files.
     """
