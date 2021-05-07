@@ -167,10 +167,6 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
     def stripMetadata(self):
         """Remove metadata entries that are parsed into components.
         """
-        # NOTE: makeVisitInfo() may not strip any metadata itself, but calling
-        # it ensures that ObservationInfo is created from the metadata, which
-        # will strip the VisitInfo keys and more.
-        self.makeVisitInfo()
         self._createSkyWcsFromMetadata()
 
     def makeVisitInfo(self):
@@ -392,5 +388,5 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         info.setVisitInfo(self.makeVisitInfo())
         info.setWcs(self.makeWcs(info.getVisitInfo(), info.getDetector()))
         # We don't need to call stripMetadata() here because it has already
-        # been stripped during creation of the ObservationInfo, WCS, etc.
+        # been stripped during creation of the WCS.
         exposure.setMetadata(self.metadata)
