@@ -124,7 +124,7 @@ class ReaderFitsImageFormatterBase(FitsImageFormatterBase):
     -----
     This class includes no support for writing.
 
-    Concrete subclasses must provide at least the `_readerClass` attribute
+    Concrete subclasses must provide at least the `ReaderClass` attribute
     and a `write` implementation (even just to disable writing by raising).
 
     The provided implementation of `readComponent` handles only the 'bbox',
@@ -147,7 +147,7 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
 
     Notes
     -----
-    Concrete subclasses must provide at least the `_readerClass` attribute.
+    Concrete subclasses must provide at least the `ReaderClass` attribute.
 
     The provided implementation of `readComponent` handles only the 'bbox',
     'dimensions', and 'xy0' components common to all image-like storage
@@ -208,7 +208,7 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
 
     """
     supportedWriteParameters = frozenset({"recipe"})
-    _readerClass: type  # must be set by concrete subclasses
+    ReaderClass: type  # must be set by concrete subclasses
 
     @property
     @cached_getter
@@ -218,7 +218,7 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
         This is computed on first use and then cached.  It should never be
         accessed when writing.
         """
-        return self._readerClass(self.fileDescriptor.location.path)
+        return self.ReaderClass(self.fileDescriptor.location.path)
 
     def readComponent(self, component):
         # Docstring inherited.
@@ -383,7 +383,7 @@ class FitsImageFormatter(StandardFitsImageFormatterBase):
     from/to FITS.
     """
 
-    _readerClass = ImageFitsReader
+    ReaderClass = ImageFitsReader
 
 
 class FitsMaskFormatter(StandardFitsImageFormatterBase):
@@ -391,7 +391,7 @@ class FitsMaskFormatter(StandardFitsImageFormatterBase):
     from/to FITS.
     """
 
-    _readerClass = MaskFitsReader
+    ReaderClass = MaskFitsReader
 
 
 class FitsMaskedImageFormatter(StandardFitsImageFormatterBase):
@@ -399,7 +399,7 @@ class FitsMaskedImageFormatter(StandardFitsImageFormatterBase):
     from/to FITS.
     """
 
-    _readerClass = MaskedImageFitsReader
+    ReaderClass = MaskedImageFitsReader
 
     def readComponent(self, component):
         # Docstring inherited.
@@ -428,7 +428,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
     type covariance violation ever becomes a practical problem.
     """
 
-    _readerClass = ExposureFitsReader
+    ReaderClass = ExposureFitsReader
 
     def readComponent(self, component):
         # Docstring inherited.
