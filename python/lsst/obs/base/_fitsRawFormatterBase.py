@@ -21,15 +21,16 @@
 
 __all__ = ("FitsRawFormatterBase",)
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from deprecated.sphinx import deprecated
 
-from astro_metadata_translator import ObservationInfo
+from astro_metadata_translator import fix_header, ObservationInfo
 
 import lsst.afw.fits
 import lsst.afw.geom
 import lsst.afw.image
 from lsst.daf.butler import FileDescriptor
+from lsst.daf.butler.core.utils import cached_getter
 import lsst.log
 
 from .formatters.fitsExposure import FitsImageFormatterBase
@@ -37,7 +38,7 @@ from .makeRawVisitInfoViaObsInfo import MakeRawVisitInfoViaObsInfo
 from .utils import createInitialSkyWcsFromBoresight, InitialSkyWcsError
 
 
-class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
+class FitsRawFormatterBase(FitsImageFormatterBase):
     """Abstract base class for reading and writing raw data to and from
     FITS files.
     """
@@ -50,6 +51,8 @@ class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
         self.filterDefinitions.reset()
         self.filterDefinitions.defineFilters()
         super().__init__(*args, **kwargs)
+        self._metadata = None
+        self._observationInfo = None
 
     @classmethod
     def fromMetadata(cls, metadata, obsInfo=None, storageClass=None, location=None):
@@ -91,8 +94,6 @@ class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
         """
         return None
 
-    _observationInfo = None
-
     @property
     @abstractmethod
     def filterDefinitions(self):
@@ -100,6 +101,16 @@ class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
         instrument.
         """
         return None
+
+    @property
+    @cached_getter
+    def checked_parameters(self):
+        # Docstring inherited.
+        parameters = super().checked_parameters
+        if "bbox" in parameters:
+            raise TypeError("Raw formatters do not support reading arbitrary subimages, as some "
+                            "implementations may be assembled on-the-fly.")
+        return parameters
 
     def readImage(self):
         """Read just the image component of the Exposure.
@@ -110,36 +121,6 @@ class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
             In-memory image component.
         """
         return lsst.afw.image.ImageU(self.fileDescriptor.location.path)
-
-    def readMask(self):
-        """Read just the mask component of the Exposure.
-
-        May return None (as the default implementation does) to indicate that
-        there is no mask information to be extracted (at least not trivially)
-        from the raw data.  This will prohibit direct reading of just the mask,
-        and set the mask of the full Exposure to zeros.
-
-        Returns
-        -------
-        mask : `~lsst.afw.image.Mask`
-            In-memory mask component.
-        """
-        return None
-
-    def readVariance(self):
-        """Read just the variance component of the Exposure.
-
-        May return None (as the default implementation does) to indicate that
-        there is no variance information to be extracted (at least not
-        trivially) from the raw data.  This will prohibit direct reading of
-        just the variance, and set the variance of the full Exposure to zeros.
-
-        Returns
-        -------
-        image : `~lsst.afw.image.Image`
-            In-memory variance component.
-        """
-        return None
 
     def isOnSky(self):
         """Boolean to determine if the exposure is thought to be on the sky.
@@ -161,13 +142,31 @@ class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
             return False
         return True
 
+    @property
+    def metadata(self):
+        """The metadata read from this file. It will be stripped as
+        components are extracted from it
+        (`lsst.daf.base.PropertyList`).
+        """
+        if self._metadata is None:
+            self._metadata = self.readMetadata()
+        return self._metadata
+
+    def readMetadata(self):
+        """Read all header metadata directly into a PropertyList.
+
+        Returns
+        -------
+        metadata : `~lsst.daf.base.PropertyList`
+            Header metadata.
+        """
+        md = lsst.afw.fits.readMetadata(self.fileDescriptor.location.path)
+        fix_header(md)
+        return md
+
     def stripMetadata(self):
         """Remove metadata entries that are parsed into components.
         """
-        # NOTE: makeVisitInfo() may not strip any metadata itself, but calling
-        # it ensures that ObservationInfo is created from the metadata, which
-        # will strip the VisitInfo keys and more.
-        self.makeVisitInfo()
         self._createSkyWcsFromMetadata()
 
     def makeVisitInfo(self):
@@ -313,33 +312,11 @@ class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
         band = self.filterDefinitions.physical_to_band[physical]
         return lsst.afw.image.FilterLabel(physical=physical, band=band)
 
-    def readComponent(self, component, parameters=None):
-        """Read a component held by the Exposure.
-
-        Parameters
-        ----------
-        component : `str`, optional
-            Component to read from the file.
-        parameters : `dict`, optional
-            If specified, a dictionary of slicing parameters that
-            overrides those in ``fileDescriptor``.
-
-        Returns
-        -------
-        obj : component-dependent
-            In-memory component object.
-
-        Raises
-        ------
-        KeyError
-            Raised if the requested component cannot be handled.
-        """
+    def readComponent(self, component):
+        # Docstring inherited.
+        self.checked_parameters  # just for checking; no supported parameters.
         if component == "image":
             return self.readImage()
-        elif component == "mask":
-            return self.readMask()
-        elif component == "variance":
-            return self.readVariance()
         elif component == "filter":
             return self.makeFilter()
         elif component == "filterLabel":
@@ -350,44 +327,18 @@ class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
             detector = self.getDetector(self.observationInfo.detector_num)
             visitInfo = self.makeVisitInfo()
             return self.makeWcs(visitInfo, detector)
+        elif component == "metadata":
+            self.stripMetadata()
+            return self.metadata
         return None
 
-    def readFull(self, parameters=None):
-        """Read the full Exposure object.
-
-        Parameters
-        ----------
-        parameters : `dict`, optional
-            If specified, a dictionary of slicing parameters that overrides
-            those in the `fileDescriptor` attribute.
-
-        Returns
-        -------
-        exposure : `~lsst.afw.image.Exposure`
-            Complete in-memory exposure.
-        """
-        from lsst.afw.image import makeExposure, makeMaskedImage
-        full = makeExposure(makeMaskedImage(self.readImage()))
-        mask = self.readMask()
-        if mask is not None:
-            full.setMask(mask)
-        variance = self.readVariance()
-        if variance is not None:
-            full.setVariance(variance)
+    def readFull(self):
+        # Docstring inherited.
+        self.checked_parameters  # just for checking; no supported parameters.
+        full = lsst.afw.image.makeExposure(lsst.afw.image.makeMaskedImage(self.readImage()))
         full.setDetector(self.getDetector(self.observationInfo.detector_num))
-        info = full.getInfo()
-        info.setFilterLabel(self.makeFilterLabel())
-        info.setVisitInfo(self.makeVisitInfo())
-        info.setWcs(self.makeWcs(info.getVisitInfo(), info.getDetector()))
-        # We don't need to call stripMetadata() here because it has already
-        # been stripped during creation of the ObservationInfo, WCS, etc.
-        full.setMetadata(self.metadata)
+        self.attachComponentsFromMetadata(full)
         return full
-
-    def readRawHeaderWcs(self, parameters=None):
-        """Read the SkyWcs stored in the un-modified raw FITS WCS header keys.
-        """
-        return lsst.afw.geom.makeSkyWcs(lsst.afw.fits.readMetadata(self.fileDescriptor.location.path))
 
     def write(self, inMemoryDataset):
         """Write a Python object to a file.
@@ -416,3 +367,21 @@ class FitsRawFormatterBase(FitsImageFormatterBase, metaclass=ABCMeta):
             self._observationInfo = ObservationInfo(self.metadata, translator_class=self.translatorClass,
                                                     filename=path)
         return self._observationInfo
+
+    def attachComponentsFromMetadata(self, exposure):
+        """Attach all `lsst.afw.image.Exposure` components derived from
+        metadata (including the stripped metadata itself).
+
+        Parameters
+        ----------
+        exposure : `lsst.afw.image.Exposure`
+            Exposure to attach components to (modified in place).  Must already
+            have a detector attached.
+        """
+        info = exposure.getInfo()
+        info.setFilterLabel(self.makeFilterLabel())
+        info.setVisitInfo(self.makeVisitInfo())
+        info.setWcs(self.makeWcs(info.getVisitInfo(), info.getDetector()))
+        # We don't need to call stripMetadata() here because it has already
+        # been stripped during creation of the WCS.
+        exposure.setMetadata(self.metadata)

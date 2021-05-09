@@ -22,14 +22,12 @@
 __all__ = ("FitsExposureFormatter", "FitsImageFormatter", "FitsMaskFormatter",
            "FitsMaskedImageFormatter")
 
+from abc import abstractmethod
 import warnings
 
-from astro_metadata_translator import fix_header
 from lsst.daf.base import PropertySet
 from lsst.daf.butler import Formatter
-# Do not use ExposureFitsReader.readMetadata because that strips
-# out lots of headers and there is no way to recover them
-from lsst.afw.fits import readMetadata
+from lsst.daf.butler.core.utils import cached_getter
 from lsst.afw.image import ExposureFitsReader, ImageFitsReader, MaskFitsReader, MaskedImageFitsReader
 from lsst.afw.image import ExposureInfo, FilterLabel
 # Needed for ApCorrMap to resolve properly
@@ -37,12 +35,136 @@ from lsst.afw.math import BoundedField  # noqa: F401
 
 
 class FitsImageFormatterBase(Formatter):
-    """Base class interface for reading and writing afw images to and from
-    FITS files.
+    """Base class formatter for image-like storage classes stored via FITS.
 
-    This Formatter supports write recipes.
+    Notes
+    -----
+    This class makes no assumptions about how many HDUs are used to represent
+    the image on disk, and includes no support for writing.  It's really just a
+    collection of miscellaneous boilerplate common to all FITS image
+    formatters.
 
-    Each ``FitsImageFormatterBase`` recipe for FITS compression should
+    Concrete subclasses must implement `readComponent`, `readFull`, and `write`
+    (even if just to disable them by raising an exception).
+    """
+
+    extension = ".fits"
+    supportedExtensions = frozenset({".fits", ".fits.gz", ".fits.fz", ".fz", ".fit"})
+
+    unsupportedParameters = {}
+    """Support all parameters."""
+
+    @property
+    @cached_getter
+    def checked_parameters(self):
+        """The parameters passed by the butler user, after checking them
+        against the storage class and transforming `None` into an empty `dict`
+        (`dict`).
+
+        This is computed on first use and then cached.  It should never be
+        accessed when writing.  Subclasses that need additional checking should
+        delegate to `super` and then check the result before returning it.
+        """
+        parameters = self.fileDescriptor.parameters
+        if parameters is None:
+            parameters = {}
+        self.fileDescriptor.storageClass.validateParameters(parameters)
+        return parameters
+
+    def read(self, component=None):
+        # Docstring inherited.
+        if self.fileDescriptor.readStorageClass != self.fileDescriptor.storageClass:
+            if component is not None:
+                return self.readComponent(component)
+            else:
+                raise ValueError("Storage class inconsistency ({} vs {}) but no"
+                                 " component requested".format(self.fileDescriptor.readStorageClass.name,
+                                                               self.fileDescriptor.storageClass.name))
+        return self.readFull()
+
+    @abstractmethod
+    def readComponent(self, component):
+        """Read a component dataset.
+
+        Parameters
+        ----------
+        component : `str`, optional
+            Component to read from the file.
+
+        Returns
+        -------
+        obj : component-dependent
+            In-memory component object.
+
+        Raises
+        ------
+        KeyError
+            Raised if the requested component cannot be handled.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def readFull(self):
+        """Read the full dataset (while still accounting for parameters).
+
+        Returns
+        -------
+        obj : component-dependent
+            In-memory component object.
+
+        """
+        raise NotImplementedError()
+
+
+class ReaderFitsImageFormatterBase(FitsImageFormatterBase):
+    """Base class formatter for image-like storage classes stored via FITS
+    backed by a "reader" object similar to `lsst.afw.image.ImageFitsReader`.
+
+    Notes
+    -----
+    This class includes no support for writing.
+
+    Concrete subclasses must provide at least the `ReaderClass` attribute
+    and a `write` implementation (even just to disable writing by raising).
+
+    The provided implementation of `readComponent` handles only the 'bbox',
+    'dimensions', and 'xy0' components common to all image-like storage
+    classes.  Subclasses with additional components should handle them first,
+    then delegate to ``super()`` for these (or, if necessary, delegate first
+    and catch `KeyError`).
+
+    The provided implementation of `readFull` handles only parameters that
+    can be forwarded directly to the reader class (usually ``bbox`` and
+    ``origin``).  Concrete subclasses that need to handle additional parameters
+    should generally reimplement without delegating (the implementation is
+    trivial).
+    """
+
+
+class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
+    """Base class interface for image-like storage stored via FITS,
+    written using LSST code.
+
+    Notes
+    -----
+    Concrete subclasses must provide at least the `ReaderClass` attribute.
+
+    The provided implementation of `readComponent` handles only the 'bbox',
+    'dimensions', and 'xy0' components common to all image-like storage
+    classes.  Subclasses with additional components should handle them first,
+    then delegate to ``super()`` for these (or, if necessary, delegate first
+    and catch `KeyError`).
+
+    The provided implementation of `readFull` handles only parameters that
+    can be forwarded directly to the reader class (usually ``bbox`` and
+    ``origin``).  Concrete subclasses that need to handle additional parameters
+    should generally reimplement without delegating (the implementation is
+    trivial).
+
+    This Formatter supports write recipes, and assumes its in-memory type has
+    ``writeFits`` and (for write recipes) ``writeFitsWithOptions`` methods.
+
+    Each ``StandardFitsImageFormatterBase`` recipe for FITS compression should
     define ``image``, ``mask`` and ``variance`` entries, each of which may
     contain ``compression`` and ``scaling`` entries. Defaults will be
     provided for any missing elements under ``compression`` and
@@ -85,201 +207,35 @@ class FitsImageFormatterBase(Formatter):
             variance: *default
 
     """
-    supportedExtensions = frozenset({".fits", ".fits.gz", ".fits.fz", ".fz", ".fit"})
-    extension = ".fits"
-    _metadata = None
     supportedWriteParameters = frozenset({"recipe"})
-    _readerClass: type  # must be set by concrete subclasses
-
-    unsupportedParameters = {}
-    """Support all parameters."""
+    ReaderClass: type  # must be set by concrete subclasses
 
     @property
-    def metadata(self):
-        """The metadata read from this file. It will be stripped as
-        components are extracted from it
-        (`lsst.daf.base.PropertyList`).
+    @cached_getter
+    def reader(self):
+        """The reader object that backs this formatter's read operations.
+
+        This is computed on first use and then cached.  It should never be
+        accessed when writing.
         """
-        if self._metadata is None:
-            self._metadata = self.readMetadata()
-        return self._metadata
+        return self.ReaderClass(self.fileDescriptor.location.path)
 
-    def readMetadata(self):
-        """Read all header metadata directly into a PropertyList.
-
-        Returns
-        -------
-        metadata : `~lsst.daf.base.PropertyList`
-            Header metadata.
-        """
-        md = readMetadata(self.fileDescriptor.location.path)
-        fix_header(md)
-        return md
-
-    def stripMetadata(self):
-        """Remove metadata entries that are parsed into components.
-
-        This is only called when just the metadata is requested; stripping
-        entries there forces code that wants other components to ask for those
-        components directly rather than trying to extract them from the
-        metadata manually, which is fragile.  This behavior is an intentional
-        change from Gen2.
-
-        Parameters
-        ----------
-        metadata : `~lsst.daf.base.PropertyList`
-            Header metadata, to be modified in-place.
-        """
-        # TODO: make sure this covers everything, by delegating to something
-        # that doesn't yet exist in afw.image.ExposureInfo.
-        from lsst.afw.image import bboxFromMetadata
-        from lsst.afw.geom import makeSkyWcs
-
-        # Protect against the metadata being missing
-        try:
-            bboxFromMetadata(self.metadata)  # always strips
-        except LookupError:
-            pass
-        try:
-            makeSkyWcs(self.metadata, strip=True)
-        except Exception:
-            pass
-
-    def readComponent(self, component, parameters=None):
-        """Read a component held by the Exposure.
-
-        Parameters
-        ----------
-        component : `str`, optional
-            Component to read from the file.
-        parameters : `dict`, optional
-            If specified, a dictionary of slicing parameters that
-            overrides those in ``fileDescriptor``.
-
-        Returns
-        -------
-        obj : component-dependent
-            In-memory component object.
-
-        Raises
-        ------
-        KeyError
-            Raised if the requested component cannot be handled.
-        """
-
-        # Metadata is handled explicitly elsewhere
-        componentMap = {'wcs': ('readWcs', False, None),
-                        'coaddInputs': ('readCoaddInputs', False, None),
-                        'psf': ('readPsf', False, None),
-                        'image': ('readImage', True, None),
-                        'mask': ('readMask', True, None),
-                        'variance': ('readVariance', True, None),
-                        'photoCalib': ('readPhotoCalib', False, None),
-                        'bbox': ('readBBox', True, None),
-                        'dimensions': ('readBBox', True, None),
-                        'xy0': ('readXY0', True, None),
-                        # TODO: deprecate in DM-27170, remove in DM-27177
-                        'filter': ('readFilter', False, None),
-                        # TODO: deprecate in DM-27177, remove in DM-27811
-                        'filterLabel': ('readFilterLabel', False, None),
-                        'validPolygon': ('readValidPolygon', False, None),
-                        'apCorrMap': ('readApCorrMap', False, None),
-                        'visitInfo': ('readVisitInfo', False, None),
-                        'transmissionCurve': ('readTransmissionCurve', False, None),
-                        'detector': ('readDetector', False, None),
-                        'exposureInfo': ('readExposureInfo', False, None),
-                        'summaryStats': ('readComponent', False, ExposureInfo.KEY_SUMMARY_STATS),
-                        }
-        method, hasParams, componentName = componentMap.get(component, (None, False, None))
-
-        if method:
-            # This reader can read standalone Image/Mask files as well
-            # when dealing with components.
-            self._reader = self._readerClass(self.fileDescriptor.location.path)
-            caller = getattr(self._reader, method, None)
-
-            if caller:
-                if parameters is None:
-                    parameters = self.fileDescriptor.parameters
-                if parameters is None:
-                    parameters = {}
-                self.fileDescriptor.storageClass.validateParameters(parameters)
-
-                if componentName is None:
-                    if hasParams and parameters:
-                        thisComponent = caller(**parameters)
-                    else:
-                        thisComponent = caller()
-                else:
-                    thisComponent = caller(componentName)
-
-                if component == "dimensions" and thisComponent is not None:
-                    thisComponent = thisComponent.getDimensions()
-
-                return thisComponent
+    def readComponent(self, component):
+        # Docstring inherited.
+        if component in ("bbox", "dimensions", "xy0"):
+            bbox = self.reader.readBBox()
+            if component == "dimensions":
+                return bbox.getDimensions()
+            elif component == "xy0":
+                return bbox.getMin()
+            else:
+                return bbox
         else:
             raise KeyError(f"Unknown component requested: {component}")
 
-    def readFull(self, parameters=None):
-        """Read the full Exposure object.
-
-        Parameters
-        ----------
-        parameters : `dict`, optional
-            If specified a dictionary of slicing parameters that overrides
-            those in ``fileDescriptor``.
-
-        Returns
-        -------
-        exposure : `~lsst.afw.image.Exposure`
-            Complete in-memory exposure.
-        """
-        fileDescriptor = self.fileDescriptor
-        if parameters is None:
-            parameters = fileDescriptor.parameters
-        if parameters is None:
-            parameters = {}
-        fileDescriptor.storageClass.validateParameters(parameters)
-        self._reader = self._readerClass(fileDescriptor.location.path)
-        return self._reader.read(**parameters)
-
-    def read(self, component=None):
-        """Read data from a file.
-
-        Parameters
-        ----------
-        component : `str`, optional
-            Component to read from the file. Only used if the `StorageClass`
-            for reading differed from the `StorageClass` used to write the
-            file.
-
-        Returns
-        -------
-        inMemoryDataset : `object`
-            The requested data as a Python object. The type of object
-            is controlled by the specific formatter.
-
-        Raises
-        ------
-        ValueError
-            Component requested but this file does not seem to be a concrete
-            composite.
-        KeyError
-            Raised when parameters passed with fileDescriptor are not
-            supported.
-        """
-        fileDescriptor = self.fileDescriptor
-        if fileDescriptor.readStorageClass != fileDescriptor.storageClass:
-            if component == "metadata":
-                self.stripMetadata()
-                return self.metadata
-            elif component is not None:
-                return self.readComponent(component)
-            else:
-                raise ValueError("Storage class inconsistency ({} vs {}) but no"
-                                 " component requested".format(fileDescriptor.readStorageClass.name,
-                                                               fileDescriptor.storageClass.name))
-        return self.readFull()
+    def readFull(self):
+        # Docstring inherited.
+        return self.reader.read(**self.checked_parameters)
 
     def write(self, inMemoryDataset):
         """Write a Python object to a file.
@@ -422,11 +378,99 @@ class FitsImageFormatterBase(Formatter):
         return validated
 
 
-class FitsExposureFormatter(FitsImageFormatterBase):
-    """Specialization for `~lsst.afw.image.Exposure` reading.
+class FitsImageFormatter(StandardFitsImageFormatterBase):
+    """Concrete formatter for reading/writing `~lsst.afw.image.Image`
+    from/to FITS.
     """
 
-    _readerClass = ExposureFitsReader
+    ReaderClass = ImageFitsReader
+
+
+class FitsMaskFormatter(StandardFitsImageFormatterBase):
+    """Concrete formatter for reading/writing `~lsst.afw.image.Mask`
+    from/to FITS.
+    """
+
+    ReaderClass = MaskFitsReader
+
+
+class FitsMaskedImageFormatter(StandardFitsImageFormatterBase):
+    """Concrete formatter for reading/writing `~lsst.afw.image.MaskedImage`
+    from/to FITS.
+    """
+
+    ReaderClass = MaskedImageFitsReader
+
+    def readComponent(self, component):
+        # Docstring inherited.
+        if component == "image":
+            return self.reader.readImage(**self.checked_parameters)
+        elif component == "mask":
+            return self.reader.readMask(**self.checked_parameters)
+        elif component == "variance":
+            return self.reader.readVariance(**self.checked_parameters)
+        else:
+            # Delegate to base for bbox, dimensions, xy0.
+            return super().readComponent(component)
+
+
+class FitsExposureFormatter(FitsMaskedImageFormatter):
+    """Concrete formatter for reading/writing `~lsst.afw.image.Exposure`
+    from/to FITS.
+
+    Notes
+    -----
+    This class inherits from `FitsMaskedImageFormatter` even though
+    `lsst.afw.image.Exposure` doesn't inherit from
+    `lsst.afw.image.MaskedImage`; this is just an easy way to be able to
+    delegate to `FitsMaskedImageFormatter.super()` for component-handling, and
+    should be replaced with e.g. both calling a free function if that slight
+    type covariance violation ever becomes a practical problem.
+    """
+
+    ReaderClass = ExposureFitsReader
+
+    def readComponent(self, component):
+        # Docstring inherited.
+        # Generic components can be read via a string name; DM-27754 will make
+        # this mapping larger at the expense of the following one.
+        genericComponents = {
+            "summaryStats": ExposureInfo.KEY_SUMMARY_STATS,
+        }
+        if (genericComponentName := genericComponents.get(component)) is not None:
+            return self.reader.readComponent(genericComponentName)
+        # Other components have hard-coded method names, but don't take
+        # parameters.
+        standardComponents = {
+            'metadata': 'readMetadata',
+            'wcs': 'readWcs',
+            'coaddInputs': 'readCoaddInputs',
+            'psf': 'readPsf',
+            'photoCalib': 'readPhotoCalib',
+            # TODO: deprecate in DM-27170, remove in DM-27177
+            'filter': 'readFilter',
+            # TODO: deprecate in DM-27177, remove in DM-27811
+            'filterLabel': 'readFilterLabel',
+            'validPolygon': 'readValidPolygon',
+            'apCorrMap': 'readApCorrMap',
+            'visitInfo': 'readVisitInfo',
+            'transmissionCurve': 'readTransmissionCurve',
+            'detector': 'readDetector',
+            'exposureInfo': 'readExposureInfo',
+        }
+        if (methodName := standardComponents.get(component)) is not None:
+            result = getattr(self.reader, methodName)()
+            if component == "filterLabel":
+                return self._fixFilterLabels(result)
+            return result
+        # Delegate to MaskedImage and ImageBase implementations for the rest.
+        return super().readComponent(component)
+
+    def readFull(self):
+        # Docstring inherited.
+        full = super().readFull()
+        full.getInfo().setFilterLabel(self._fixFilterLabels(full.getInfo().getFilterLabel()))
+        return full
 
     def _fixFilterLabels(self, file_filter_label, should_be_standardized=None):
         """Compare the filter label read from the file with the one in the
@@ -477,7 +521,7 @@ class FitsExposureFormatter(FitsImageFormatterBase):
                     and "physical_filter" in self.dataId.graph.implied.names):
                 missing.append("physical_filter")
         if should_be_standardized is None:
-            version = self._reader.readSerializationVersion()
+            version = self.reader.readSerializationVersion()
             should_be_standardized = (version >= 2)
         if missing:
             # Data ID identifies a filter but the actual filter label values
@@ -503,38 +547,3 @@ class FitsExposureFormatter(FitsImageFormatterBase):
                           f"filter label mismatch (file is {file_filter_label}, data ID is "
                           f"{data_id_filter_label}).  This is probably a bug in the code that produced it.")
         return data_id_filter_label
-
-    def readComponent(self, component, parameters=None):
-        # Docstring inherited.
-        obj = super().readComponent(component, parameters)
-        if component == "filterLabel":
-            return self._fixFilterLabels(obj)
-        else:
-            return obj
-
-    def readFull(self, parameters=None):
-        # Docstring inherited.
-        full = super().readFull(parameters)
-        full.getInfo().setFilterLabel(self._fixFilterLabels(full.getInfo().getFilterLabel()))
-        return full
-
-
-class FitsImageFormatter(FitsImageFormatterBase):
-    """Specialisation for `~lsst.afw.image.Image` reading.
-    """
-
-    _readerClass = ImageFitsReader
-
-
-class FitsMaskFormatter(FitsImageFormatterBase):
-    """Specialisation for `~lsst.afw.image.Mask` reading.
-    """
-
-    _readerClass = MaskFitsReader
-
-
-class FitsMaskedImageFormatter(FitsImageFormatterBase):
-    """Specialisation for `~lsst.afw.image.MaskedImage` reading.
-    """
-
-    _readerClass = MaskedImageFitsReader

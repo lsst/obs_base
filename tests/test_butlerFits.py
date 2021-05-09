@@ -33,6 +33,7 @@ import lsst.utils.tests
 import lsst.pex.config
 import lsst.afw.image
 from lsst.afw.image import LOCAL
+from lsst.afw.fits import readMetadata
 from lsst.geom import Box2I, Point2I
 from lsst.base import Packages
 from lsst.daf.base import PropertyList, PropertySet
@@ -329,8 +330,11 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         uriC = self.butler.getURI(refC)
         stat = os.stat(uriC.ospath)
         size = stat.st_size
-        metaDatasetTypeName = DatasetType.nameWithComponent(datasetTypeName, "metadata")
-        meta = self.butler.get(metaDatasetTypeName, dataId)
+        # We can't use butler's Exposure storage class metadata component,
+        # because that intentionally strips keywords that science code
+        # shouldn't ever read (to at least weaken our assumptions that we write
+        # to FITS).  Instead use a lower-level method on the URI for this test.
+        meta = readMetadata(uriC.ospath)
         return meta, size
 
     def testCompression(self):
