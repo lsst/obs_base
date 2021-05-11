@@ -171,10 +171,12 @@ class GroupExposuresTask(Task, metaclass=ABCMeta):
 class ComputeVisitRegionsConfig(Config):
     padding = Field(
         dtype=int,
-        default=0,
+        default=250,
         doc=("Pad raw image bounding boxes with specified number of pixels "
              "when calculating their (conservatively large) region on the "
-             "sky."),
+             "sky.  Note that the config value for pixelMargin of the "
+             "reference object loaders in meas_algorithms should be <= "
+             "the value set here."),
     )
 
 
