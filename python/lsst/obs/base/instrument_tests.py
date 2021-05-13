@@ -28,6 +28,7 @@ to get a functional test of an Instrument.
 import abc
 import dataclasses
 import pkg_resources
+from typing import Set
 
 from lsst.obs.base import Instrument, FilterDefinitionCollection, FilterDefinition
 from lsst.obs.base.gen2to3 import TranslatorFactory
@@ -106,7 +107,7 @@ class DummyCam(Instrument):
 
 @dataclasses.dataclass
 class InstrumentTestData:
-    """Values to test against in sublcasses of `InstrumentTests`.
+    """Values to test against in subclasses of `InstrumentTests`.
     """
 
     name: str
@@ -118,7 +119,7 @@ class InstrumentTestData:
     firstDetectorName: str
     """The name of the first detector in the Camera."""
 
-    physical_filters: {str}
+    physical_filters: Set[str]
     """A subset of the physical filters should be registered."""
 
 
