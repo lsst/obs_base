@@ -54,6 +54,7 @@ StandardCuratedCalibrationDatasetTypes = {
     "qe_curve": {"dimensions": ("instrument", "detector"), "storageClass": "QECurve"},
     "crosstalk": {"dimensions": ("instrument", "detector"), "storageClass": "CrosstalkCalib"},
     "linearizer": {"dimensions": ("instrument", "detector"), "storageClass": "Linearizer"},
+    "bfk": {"dimensions": ("instrument", "detector"), "storageClass": "BrighterFatterKernel"},
 }
 
 
