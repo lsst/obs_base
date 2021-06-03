@@ -37,7 +37,6 @@ from lsst.daf.butler.cli.utils import (
     typeStrAcceptsMultiple
 )
 from ..opt import instrument_argument
-from ... import script
 
 
 # regular expression that can be used to find supported fits file extensions.
@@ -74,6 +73,7 @@ def convert(*args, **kwargs):
     has no chained reruns.  Custom scripts that call ConvertRepoTask should be
     used on more complex suites of repositories.
     """
+    import script
     script.convert(*args, **kwargs)
 
 
@@ -91,6 +91,7 @@ def convert(*args, **kwargs):
 @options_file_option()
 def define_visits(*args, **kwargs):
     """Define visits from exposures in the butler registry."""
+    import script
     script.defineVisits(*args, **kwargs)
 
 
@@ -111,6 +112,7 @@ def define_visits(*args, **kwargs):
 @options_file_option()
 def ingest_raws(*args, **kwargs):
     """Ingest raw frames into from a directory into the butler registry"""
+    import script
     script.ingestRaws(*args, **kwargs)
 
 
@@ -120,6 +122,7 @@ def ingest_raws(*args, **kwargs):
 def register_instrument(*args, **kwargs):
     """Add an instrument to the data repository.
     """
+    import script
     script.registerInstrument(*args, **kwargs)
 
 
@@ -135,4 +138,5 @@ def register_instrument(*args, **kwargs):
 def write_curated_calibrations(*args, **kwargs):
     """Add an instrument's curated calibrations to the data repository.
     """
+    import script
     script.writeCuratedCalibrations(*args, **kwargs)
