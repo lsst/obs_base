@@ -1,0 +1,1 @@
+Not all PSFs are persistable and now if one is encountered as part of composite disassembly it will be ignored. These types of PSFs were already silently dropped when writing a full ``Exposure``.

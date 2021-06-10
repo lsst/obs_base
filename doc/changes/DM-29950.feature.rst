@@ -1,0 +1,1 @@
+Change raw ingest to use a reproducible UUID5 dataset ID. This means that the dataset ID for a raw ingested in one repository will be identical to that used in another.  For integer-based registries this change will have no effect.

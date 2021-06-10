@@ -10,6 +10,16 @@ The ``lsst.obs.base`` module provides the framework and common API for telescope
 New cameras will derive from the classes defined here.
 `lsst.obs.base.tests` provides the tests that all "obs" packages should pass.
 
+.. _lsst.ctrl.mpexec-changes:
+
+Changes
+=======
+
+.. toctree::
+   :maxdepth: 1
+
+   CHANGES.rst
+
 .. _lsst.obs.base-using:
 
 Using lsst.obs.base
