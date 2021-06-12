@@ -33,7 +33,7 @@ from lsst.daf.butler import FileDescriptor
 from lsst.daf.butler.core.utils import cached_getter
 import lsst.log
 
-from .formatters.fitsExposure import FitsImageFormatterBase
+from .formatters.fitsExposure import FitsImageFormatterBase, standardizeAmplifierParameters
 from .makeRawVisitInfoViaObsInfo import MakeRawVisitInfoViaObsInfo
 from .utils import createInitialSkyWcsFromBoresight, InitialSkyWcsError
 
@@ -323,6 +323,8 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             return self.makeFilterLabel()
         elif component == "visitInfo":
             return self.makeVisitInfo()
+        elif component == "detector":
+            return self.getDetector(self.observationInfo.detector_num)
         elif component == "wcs":
             detector = self.getDetector(self.observationInfo.detector_num)
             visitInfo = self.makeVisitInfo()
@@ -334,11 +336,27 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
 
     def readFull(self):
         # Docstring inherited.
-        self.checked_parameters  # just for checking; no supported parameters.
-        full = lsst.afw.image.makeExposure(lsst.afw.image.makeMaskedImage(self.readImage()))
-        full.setDetector(self.getDetector(self.observationInfo.detector_num))
-        self.attachComponentsFromMetadata(full)
-        return full
+        amplifier, detector, _ = standardizeAmplifierParameters(
+            self.checked_parameters,
+            self.getDetector(self.observationInfo.detector_num),
+        )
+        if amplifier is not None:
+            reader = lsst.afw.image.ImageFitsReader(self.fileDescriptor.location.path)
+            amplifier_isolator = lsst.afw.cameraGeom.AmplifierIsolator(
+                amplifier,
+                reader.readBBox(),
+                detector,
+            )
+            subimage = amplifier_isolator.transform_subimage(
+                reader.read(bbox=amplifier_isolator.subimage_bbox)
+            )
+            exposure = lsst.afw.image.makeExposure(lsst.afw.image.makeMaskedImage(subimage))
+            exposure.setDetector(amplifier_isolator.make_detector())
+        else:
+            exposure = lsst.afw.image.makeExposure(lsst.afw.image.makeMaskedImage(self.readImage()))
+            exposure.setDetector(detector)
+        self.attachComponentsFromMetadata(exposure)
+        return exposure
 
     def write(self, inMemoryDataset):
         """Write a Python object to a file.

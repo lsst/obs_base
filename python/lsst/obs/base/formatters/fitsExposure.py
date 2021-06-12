@@ -19,8 +19,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-__all__ = ("FitsExposureFormatter", "FitsImageFormatter", "FitsMaskFormatter",
-           "FitsMaskedImageFormatter")
+__all__ = (
+    "FitsExposureFormatter",
+    "FitsImageFormatter",
+    "FitsMaskFormatter",
+    "FitsMaskedImageFormatter",
+    "standardizeAmplifierParameters",
+)
 
 from abc import abstractmethod
 import warnings
@@ -28,6 +33,7 @@ import warnings
 from lsst.daf.base import PropertySet
 from lsst.daf.butler import Formatter
 from lsst.daf.butler.core.utils import cached_getter
+from lsst.afw.cameraGeom import AmplifierGeometryComparison, AmplifierIsolator
 from lsst.afw.image import ExposureFitsReader, ImageFitsReader, MaskFitsReader, MaskedImageFitsReader
 from lsst.afw.image import ExposureInfo, FilterLabel
 # Needed for ApCorrMap to resolve properly
@@ -414,6 +420,74 @@ class FitsMaskedImageFormatter(StandardFitsImageFormatterBase):
             return super().readComponent(component)
 
 
+def standardizeAmplifierParameters(parameters, on_disk_detector):
+    """Preprocess the Exposure storage class's "amp" and "detector" parameters
+
+    This checks the given objects for consistency with the on-disk geometry and
+    converts amplifier IDs/names to Amplifier instances.
+
+    Parameters
+    ----------
+    parameters : `dict`
+        Dictionary of parameters passed to formatter.  See the Exposure storage
+        class definition in daf_butler for allowed keys and values.
+    on_disk_detector : `lsst.afw.cameraGeom.Detector` or `None`
+        Detector that represents the on-disk image being loaded, or `None` if
+        this is unknown (and hence the user must provide one in
+        ``parameters`` if "amp" is in ``parameters``).
+
+    Returns
+    -------
+    amplifier : `lsst.afw.cameraGeom.Amplifier` or `None`
+        An amplifier object that defines a subimage to load, or `None` if there
+        was no "amp" parameter.
+    detector : `lsst.afw.cameraGeom.Detector` or `None`
+        A detector object whose amplifiers are in the same s/orientation
+        state as the on-disk image.  If there is no "amp" parameter,
+        ``on_disk_detector`` is simply passed through.
+    regions_differ : `bool`
+        `True` if the on-disk detector and the detector given in the parameters
+        had different bounding boxes for one or more regions.  This can happen
+        if the true overscan region sizes can only be determined when the image
+        is actually read, but otherwise it should be considered user error.
+    """
+    if (amplifier := parameters.get("amp")) is None:
+        return None, on_disk_detector, False
+    if "bbox" in parameters or "origin" in parameters:
+        raise ValueError("Cannot pass 'amp' with 'bbox' or 'origin'.")
+    if isinstance(amplifier, (int, str)):
+        amp_key = amplifier
+        target_amplifier = None
+    else:
+        amp_key = amplifier.getName()
+        target_amplifier = amplifier
+    if (detector := parameters.get("detector")) is not None:
+        if on_disk_detector is not None:
+            # User passed a detector and we also found one on disk.  Check them
+            # for consistency.  Note that we are checking the amps we'd get
+            # from the two detectors against each other, not the amplifier we
+            # got directly from the user, as the latter is allowed to differ in
+            # assembly/orientation state.
+            comparison = on_disk_detector[amp_key].compareGeometry(detector[amp_key])
+            if comparison & comparison.ASSEMBLY_DIFFERS:
+                raise ValueError(
+                    "The given 'detector' has a different assembly state and/or orientation from "
+                    f"the on-disk one for amp {amp_key}."
+                )
+    else:
+        if on_disk_detector is None:
+            raise ValueError(
+                f"No on-disk detector and no detector given; cannot load amplifier from key {amp_key}. "
+                "Please provide either a 'detector' parameter or an Amplifier instance in the "
+                "'amp' parameter."
+            )
+        comparison = AmplifierGeometryComparison.EQUAL
+        detector = on_disk_detector
+    if target_amplifier is None:
+        target_amplifier = detector[amp_key]
+    return target_amplifier, detector, comparison & comparison.REGIONS_DIFFER
+
+
 class FitsExposureFormatter(FitsMaskedImageFormatter):
     """Concrete formatter for reading/writing `~lsst.afw.image.Exposure`
     from/to FITS.
@@ -468,9 +542,24 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
 
     def readFull(self):
         # Docstring inherited.
-        full = super().readFull()
-        full.getInfo().setFilterLabel(self._fixFilterLabels(full.getInfo().getFilterLabel()))
-        return full
+        amplifier, detector, _ = standardizeAmplifierParameters(
+            self.checked_parameters,
+            self.reader.readDetector(),
+        )
+        if amplifier is not None:
+            amplifier_isolator = AmplifierIsolator(
+                amplifier,
+                self.reader.readBBox(),
+                detector,
+            )
+            result = amplifier_isolator.transform_subimage(
+                self.reader.read(bbox=amplifier_isolator.subimage_bbox)
+            )
+            result.setDetector(amplifier_isolator.make_detector())
+        else:
+            result = self.reader.read(**self.checked_parameters)
+        result.getInfo().setFilterLabel(self._fixFilterLabels(result.getInfo().getFilterLabel()))
+        return result
 
     def _fixFilterLabels(self, file_filter_label, should_be_standardized=None):
         """Compare the filter label read from the file with the one in the

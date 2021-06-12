@@ -32,9 +32,11 @@ import lsst.utils.tests
 
 import lsst.pex.config
 import lsst.afw.image
-from lsst.afw.image import LOCAL
+from lsst.afw.image import ExposureFitsReader, LOCAL
 from lsst.afw.fits import readMetadata
-from lsst.geom import Box2I, Point2I
+from lsst.afw.math import flipImage
+import lsst.afw.cameraGeom.testUtils  # for test asserts injected into TestCase
+from lsst.geom import Box2I, Extent2I, Point2I
 from lsst.base import Packages
 from lsst.daf.base import PropertyList, PropertySet
 
@@ -44,6 +46,7 @@ from lsst.daf.butler import DatasetType
 from lsst.daf.butler.tests import DatasetTestHelper, makeTestRepo, addDatasetType, makeTestCollection
 
 from lsst.obs.base.exposureAssembler import ExposureAssembler
+from lsst.obs.base.tests import make_ramp_exposure_trimmed, make_ramp_exposure_untrimmed
 
 if TYPE_CHECKING:
     from lsst.daf.butler import DatasetRef
@@ -127,6 +130,8 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
                                                   ("pl", "PropertyList"),
                                                   ("pkg", "Packages"),
                                                   ("config", "Config"),
+                                                  ("int_exp_trimmed", "ExposureI"),
+                                                  ("int_exp_untrimmed", "ExposureI"),
                                                   ):
             storageClass = cls.storageClassFactory.getStorageClass(storageClassName)
             addDatasetType(cls.creatorButler, datasetTypeName, {}, storageClass)
@@ -360,6 +365,69 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         # Data file is so small that Lossy and Compressed are dominated
         # by the extra compression tables
         self.assertEqual(sizeL, sizeC)
+
+    def testExposureFormatterAmpParameter(self):
+        """Test the FitsExposureFormatter implementation of the Exposure
+        StorageClass's 'amp' and 'detector' parameters.
+        """
+        # Our example exposure file has a realistic detector (looks like HSC),
+        # but the image itself doesn't match it.  So we just load the detector,
+        # and use it to make our own more useful images and put them.
+        detector = ExposureFitsReader(os.path.join(TESTDIR, "data", "calexp.fits")).readDetector()
+        trimmed_full = make_ramp_exposure_trimmed(detector)
+        untrimmed_full = make_ramp_exposure_untrimmed(detector)
+        trimmed_ref = self.butler.put(trimmed_full, "int_exp_trimmed")
+        untrimmed_ref = self.butler.put(untrimmed_full, "int_exp_untrimmed")
+        for n, amp in enumerate(detector):
+            # Try to read each amp as it is on disk, with a variety of
+            # parameters that should all do the same thing.
+            for amp_parameter in [amp, amp.getName(), n]:
+                for parameters in [{"amp": amp_parameter}, {"amp": amp_parameter, "detector": detector}]:
+                    with self.subTest(parameters=parameters):
+                        test_trimmed = self.butler.getDirect(trimmed_ref, parameters=parameters)
+                        test_untrimmed = self.butler.getDirect(untrimmed_ref, parameters=parameters)
+                        self.assertImagesEqual(test_trimmed.image, trimmed_full[amp.getBBox()].image)
+                        self.assertImagesEqual(test_untrimmed.image, untrimmed_full[amp.getRawBBox()].image)
+                        self.assertEqual(len(test_trimmed.getDetector()), 1)
+                        self.assertEqual(len(test_untrimmed.getDetector()), 1)
+                        self.assertAmplifiersEqual(test_trimmed.getDetector()[0], amp)
+                        self.assertAmplifiersEqual(test_untrimmed.getDetector()[0], amp)
+            # Try to read various transformed versions of the original amp,
+            # to make sure flips and offsets are applied correctly.
+            # First flip X only.
+            amp_t1 = amp.rebuild().transform(outFlipX=True).finish()
+            test_t1_trimmed = self.butler.getDirect(trimmed_ref, parameters={"amp": amp_t1})
+            self.assertImagesEqual(test_t1_trimmed.image,
+                                   flipImage(trimmed_full[amp.getBBox()].image,
+                                             flipLR=True, flipTB=False))
+            self.assertAmplifiersEqual(test_t1_trimmed.getDetector()[0], amp_t1)
+            test_t1_untrimmed = self.butler.getDirect(untrimmed_ref, parameters={"amp": amp_t1})
+            self.assertImagesEqual(test_t1_untrimmed.image,
+                                   flipImage(untrimmed_full[amp.getRawBBox()].image,
+                                             flipLR=True, flipTB=False))
+            self.assertAmplifiersEqual(test_t1_trimmed.getDetector()[0], amp_t1)
+            # Flip Y only.
+            amp_t2 = amp.rebuild().transform(outFlipY=True).finish()
+            test_t2_trimmed = self.butler.getDirect(trimmed_ref, parameters={"amp": amp_t2})
+            self.assertImagesEqual(test_t2_trimmed.image,
+                                   flipImage(trimmed_full[amp.getBBox()].image,
+                                             flipLR=False, flipTB=True))
+            self.assertAmplifiersEqual(test_t2_trimmed.getDetector()[0], amp_t2)
+            test_t2_untrimmed = self.butler.getDirect(untrimmed_ref, parameters={"amp": amp_t2})
+            self.assertImagesEqual(test_t2_untrimmed.image,
+                                   flipImage(untrimmed_full[amp.getRawBBox()].image,
+                                             flipLR=False, flipTB=True))
+            self.assertAmplifiersEqual(test_t2_trimmed.getDetector()[0], amp_t2)
+            # Add an XY offset only.
+            amp_t3 = amp.rebuild().transform(outOffset=Extent2I(5, 4)).finish()
+            test_t3_trimmed = self.butler.getDirect(trimmed_ref, parameters={"amp": amp_t3})
+            self.assertImagesEqual(test_t3_trimmed.image,
+                                   trimmed_full[amp.getBBox()].image)
+            self.assertAmplifiersEqual(test_t3_trimmed.getDetector()[0], amp_t3)
+            test_t3_untrimmed = self.butler.getDirect(untrimmed_ref, parameters={"amp": amp_t3})
+            self.assertImagesEqual(test_t3_untrimmed.image,
+                                   untrimmed_full[amp.getRawBBox()].image)
+            self.assertAmplifiersEqual(test_t3_trimmed.getDetector()[0], amp_t3)
 
 
 if __name__ == "__main__":
