@@ -44,7 +44,7 @@ NaN = float("nan")
 BadDate = DateTime()
 
 
-class MakeRawVisitInfo(object):
+class MakeRawVisitInfo:
     """Base class functor to make a VisitInfo from the FITS header of a raw
     image.
 

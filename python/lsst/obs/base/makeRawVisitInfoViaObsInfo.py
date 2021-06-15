@@ -44,7 +44,7 @@ from lsst.geom import SpherePoint
 __all__ = ["MakeRawVisitInfoViaObsInfo"]
 
 
-class MakeRawVisitInfoViaObsInfo(object):
+class MakeRawVisitInfoViaObsInfo:
     """Base class functor to make a VisitInfo from the FITS header of a
     raw image using `~astro_metadata_translator.ObservationInfo` translators.
 
