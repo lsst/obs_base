@@ -83,7 +83,10 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
                     visitInfo = maker(self.header)
 
         self.assertAlmostEqual(visitInfo.getExposureTime(), self.exposure_time.to_value("s"))
+        # TODO DM-13943: note that in this test visitInfo.getExposureId() and
+        # visitInfo.id are the same, but that's not true generally.
         self.assertEqual(visitInfo.getExposureId(), self.exposure_id)
+        self.assertEqual(visitInfo.id, self.exposure_id)
         self.assertEqual(visitInfo.getDate(), DateTime("2001-01-02T03:04:06.123456789Z", DateTime.UTC))
         # The header can possibly grow with header fix up provenance.
         self.assertGreaterEqual(len(self.header), beforeLength)
@@ -98,7 +101,10 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
         visitInfo = MakeRawVisitInfoViaObsInfo.observationInfo2visitInfo(obsInfo)
         self.assertIsInstance(visitInfo, lsst.afw.image.VisitInfo)
         self.assertAlmostEqual(visitInfo.getExposureTime(), self.exposure_time.to_value("s"))
+        # TODO DM-13943: note that in this test visitInfo.getExposureId() and
+        # visitInfo.id are the same, but that's not true generally.
         self.assertEqual(visitInfo.getExposureId(), self.exposure_id)
+        self.assertEqual(visitInfo.id, self.exposure_id)
         self.assertEqual(visitInfo.getDate(), DateTime("2001-01-02T03:04:06.123456789Z", DateTime.UTC))
         self.assertEqual(visitInfo.getInstrumentLabel(), "SomeCamera")
 

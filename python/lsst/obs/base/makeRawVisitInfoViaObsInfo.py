@@ -44,7 +44,7 @@ from lsst.geom import SpherePoint
 __all__ = ["MakeRawVisitInfoViaObsInfo"]
 
 
-class MakeRawVisitInfoViaObsInfo(object):
+class MakeRawVisitInfoViaObsInfo:
     """Base class functor to make a VisitInfo from the FITS header of a
     raw image using `~astro_metadata_translator.ObservationInfo` translators.
 
@@ -129,6 +129,7 @@ class MakeRawVisitInfoViaObsInfo(object):
         if obsInfo.dark_time is not None:
             argDict["darkTime"] = obsInfo.dark_time.to_value("s")
         argDict["exposureId"] = obsInfo.detector_exposure_id
+        argDict["id"] = obsInfo.exposure_id
         argDict["instrumentLabel"] = obsInfo.instrument
 
         # VisitInfo uses the middle of the observation for the date
