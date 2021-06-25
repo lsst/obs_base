@@ -858,7 +858,9 @@ class RawIngestTask(Task):
         return datasets
 
     def ingestFiles(self, files, *, pool: Optional[Pool] = None, processes: int = 1,
-                    run: Optional[str] = None):
+                    run: Optional[str] = None,
+                    skip_existing_exposures: bool = False,
+                    update_exposure_records: bool = False):
         """Ingest files into a Butler data repository.
 
         This creates any new exposure or visit Dimension entries needed to
@@ -879,6 +881,19 @@ class RawIngestTask(Task):
         run : `str`, optional
             Name of a RUN-type collection to write to, overriding
             the default derived from the instrument name.
+        skip_existing_exposures : `bool`, optional
+            If `True` (`False` is default), skip ingestion for any files for
+            which the exposure record already exists (even if this is only
+            because other raws from the same exposure have been ingested).
+            Note that this is much slower than just not passing
+            already-ingested files as inputs, because we still need to read and
+            process metadata to identify which exposures to search for.
+        update_exposure_records : `bool`, optional
+            If `True` (`False` is default), update existing exposure records
+            that conflict with the new ones instead of rejecting them.  THIS IS
+            AN ADVANCED OPTION THAT SHOULD ONLY BE USED TO FIX METADATA THAT IS
+            KNOWN TO BE BAD.  This should usually be combined with
+            ``skip_existing_exposures=True``.
 
         Returns
         -------
@@ -910,7 +925,11 @@ class RawIngestTask(Task):
                            exposure.record.instrument, exposure.record.obs_id)
 
             try:
-                self.butler.registry.syncDimensionData("exposure", exposure.record)
+                inserted_or_updated = self.butler.registry.syncDimensionData(
+                    "exposure",
+                    exposure.record,
+                    update=update_exposure_records,
+                )
             except Exception as e:
                 self._on_ingest_failure(exposure, e)
                 n_exposures_failed += 1
@@ -918,6 +937,27 @@ class RawIngestTask(Task):
                                  exposure.record.instrument, exposure.record.obs_id, e)
                 if self.config.failFast:
                     raise e
+                continue
+
+            if isinstance(inserted_or_updated, dict):
+                # Exposure is in the registry and we updated it, so
+                # syncDimensionData returned a dict.
+                self.log.info(
+                    "Exposure %s:%s was already present, but columns %s were updated.",
+                    exposure.record.instrument,
+                    exposure.record.obs_id,
+                    str(list(inserted_or_updated.keys()))
+                )
+                if skip_existing_exposures:
+                    continue
+            elif not inserted_or_updated and skip_existing_exposures:
+                # Exposure is already in the registry, with the right metadata,
+                # and we're configured to skip file ingest if that's the case.
+                self.log.info(
+                    "Exposure %s:%s was already present; skipping file ingestion as requested.",
+                    exposure.record.instrument,
+                    exposure.record.obs_id,
+                )
                 continue
 
             # Override default run if nothing specified explicitly.
@@ -954,7 +994,8 @@ class RawIngestTask(Task):
 
     @timeMethod
     def run(self, files, *, pool: Optional[Pool] = None, processes: int = 1, run: Optional[str] = None,
-            file_filter: Union[str, re.Pattern] = r"\.fit[s]?\b", group_files: bool = True):
+            file_filter: Union[str, re.Pattern] = r"\.fit[s]?\b", group_files: bool = True,
+            skip_existing_exposures: bool = False, update_exposure_records: bool = False):
         """Ingest files into a Butler data repository.
 
         This creates any new exposure or visit Dimension entries needed to
@@ -983,6 +1024,19 @@ class RawIngestTask(Task):
         group_files : `bool`, optional
             Group files by directory if they have been discovered in
             directories. Will not affect files explicitly provided.
+        skip_existing_exposures : `bool`, optional
+            If `True` (`False` is default), skip ingestion for any files for
+            which the exposure record already exists (even if this is only
+            because other raws from the same exposure have been ingested).
+            Note that this is much slower than just not passing
+            already-ingested files as inputs, because we still need to read and
+            process metadata to identify which exposures to search for.
+        update_exposure_records : `bool`, optional
+            If `True` (`False` is default), update existing exposure records
+            that conflict with the new ones instead of rejecting them.  THIS IS
+            AN ADVANCED OPTION THAT SHOULD ONLY BE USED TO FIX METADATA THAT IS
+            KNOWN TO BE BAD.  This should usually be combined with
+            ``skip_existing_exposures=True``.
 
         Returns
         -------
@@ -996,7 +1050,7 @@ class RawIngestTask(Task):
         dimension record is inserted with `Registry.syncDimensionData` first
         (in its own transaction), which inserts only if a record with the same
         primary key does not already exist.  This allows different files within
-        the same exposure to be incremented in different runs.
+        the same exposure to be ingested in different runs.
         """
 
         refs = []
@@ -1006,9 +1060,14 @@ class RawIngestTask(Task):
         n_ingests_failed = 0
         if group_files:
             for group in ButlerURI.findFileResources(files, file_filter, group_files):
-                new_refs, bad, n_exp, n_exp_fail, n_ingest_fail = self.ingestFiles(group, pool=pool,
-                                                                                   processes=processes,
-                                                                                   run=run)
+                new_refs, bad, n_exp, n_exp_fail, n_ingest_fail = self.ingestFiles(
+                    group,
+                    pool=pool,
+                    processes=processes,
+                    run=run,
+                    skip_existing_exposures=skip_existing_exposures,
+                    update_exposure_records=update_exposure_records,
+                )
                 refs.extend(new_refs)
                 bad_files.extend(bad)
                 n_exposures += n_exp
@@ -1020,6 +1079,8 @@ class RawIngestTask(Task):
                 pool=pool,
                 processes=processes,
                 run=run,
+                skip_existing_exposures=skip_existing_exposures,
+                update_exposure_records=update_exposure_records,
             )
 
         had_failure = False

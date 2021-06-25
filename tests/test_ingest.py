@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import json
 import os
 import pickle
 import shutil
@@ -346,6 +347,70 @@ datastore:
             self.task.run(files, run=new_run)
         self.assertEqual(len(ingest_failures), 1)
         self.assertEqual(len(successes), 3)
+
+    def testSkipExistingExposures(self):
+        """Test that skip_existing_exposures=True avoids exceptions from trying
+        to ingest the same file twice.
+
+        Notes
+        -----
+        This option also prevents not-ingested-yet raws from being ingested
+        when exposure already exists, but that's (A) hard to test given the
+        test data we have now and (B) not really ideal behavior, just behavior
+        we can live with in order to have a way to avoid keep duplicate ingests
+        from being an error.
+        """
+        # Ingest the first time.
+        self.task.run([self.good_file], run=self.outputRun)
+        # Attempt to ingest a second time with skip_existing_exposures=False
+        # (default).  This should fail.
+        with self.assertRaises(RuntimeError):
+            self.task.run([self.good_file], run=self.outputRun)
+        # Try again with `skip_existing_exposures=True.
+        self.task.run([self.good_file], run=self.outputRun, skip_existing_exposures=True)
+
+    def testUpdateExposureRecords(self):
+        """Test that update_exposure_records=True allows metadata to be
+        modified.
+        """
+        config = RawIngestTask.ConfigClass(failFast=True)
+        task = DummyCamRawIngestTask(config=config, butler=self.butler)
+        with open(os.path.join(INGESTDIR, "sidecar_data", "dataset_1.json"), 'r') as file:
+            metadata = json.load(file)
+        # Modify unique identifiers to avoid clashes with ingests from
+        # other test methods in this test case, because those share a a
+        # data repository.
+        metadata["observation_id"] = "DummyDataset_testUpdateExposureRecords"
+        metadata["observation_counter"] = 10
+        metadata["exposure_id"] = 500
+        metadata["exposure_group"] = "50"
+        metadata["visit_id"] = 500
+        base_filename = "dataset"
+        try:
+            # Copy the original file to be ingested (.yaml) to a temporary
+            # directory, and write the new metadata next to it.
+            tmp_dir = tempfile.mkdtemp(dir=TESTDIR)
+            raw_filename = os.path.join(tmp_dir, f"{base_filename}.yaml")
+            sidecar_filename = os.path.join(tmp_dir, f"{base_filename}.json")
+            shutil.copy(self.good_file, raw_filename)
+            with open(sidecar_filename, "w") as sidecar_file:
+                json.dump(metadata, sidecar_file)
+            task.run([raw_filename], run=self.outputRun)
+            (record1,) = set(self.butler.registry.queryDimensionRecords("exposure", instrument="DummyCam",
+                                                                        exposure=500))
+            self.assertEqual(record1.exposure_time, metadata["exposure_time"])
+            # Modify some metadata and repeat the process to update the
+            # exposure.
+            metadata["exposure_time"] *= 2.0
+            with open(sidecar_filename, "w") as sidecar_file:
+                json.dump(metadata, sidecar_file)
+            task.run([raw_filename], run=self.outputRun, skip_existing_exposures=True,
+                     update_exposure_records=True)
+            (record2,) = set(self.butler.registry.queryDimensionRecords("exposure", instrument="DummyCam",
+                                                                        exposure=500))
+            self.assertEqual(record2.exposure_time, record1.exposure_time*2)
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 class TestRawIngestTaskPickle(unittest.TestCase):
