@@ -473,7 +473,8 @@ class DefineVisitsTask(Task):
     def run(self, dataIds: Iterable[DataId], *,
             pool: Optional[Pool] = None,
             processes: int = 1,
-            collections: Optional[str] = None):
+            collections: Optional[str] = None,
+            update_records: bool = False):
         """Add visit definitions to the registry for the given exposures.
 
         Parameters
@@ -491,6 +492,13 @@ class DefineVisitsTask(Task):
             ``self.butler.collections``.
             Can be any of the types supported by the ``collections`` argument
             to butler construction.
+        update_records : `bool`, optional
+            If `True` (`False` is default), update existing visit records that
+            conflict with the new ones instead of rejecting them (and when this
+            occurs, update visit_detector_region as well).  THIS IS AN ADVANCED
+            OPTION THAT SHOULD ONLY BE USED TO FIX REGIONS AND/OR METADATA THAT
+            ARE KNOWN TO BE BAD, AND IT CANNOT BE USED TO REMOVE EXPOSURES OR
+            DETECTORS FROM A VISIT.
 
         Raises
         ------
@@ -552,11 +560,27 @@ class DefineVisitsTask(Task):
         for visitRecords in self.progress.wrap(allRecords, total=len(definitions),
                                                desc="Computing regions and inserting visits"):
             with self.butler.registry.transaction():
-                if self.butler.registry.syncDimensionData("visit", visitRecords.visit):
-                    self.butler.registry.insertDimensionData("visit_definition",
-                                                             *visitRecords.visit_definition)
+                inserted_or_updated = self.butler.registry.syncDimensionData(
+                    "visit",
+                    visitRecords.visit,
+                    update=update_records,
+                )
+                if inserted_or_updated:
+                    if inserted_or_updated is True:
+                        # This is a new visit, not an update to an existing
+                        # one, so insert visit definition.
+                        # We don't allow visit definitions to change even when
+                        # asked to update, because we'd have to delete the old
+                        # visit_definitions first and also worry about what
+                        # this does to datasets that already use the visit.
+                        self.butler.registry.insertDimensionData("visit_definition",
+                                                                 *visitRecords.visit_definition)
+                    # [Re]Insert visit_detector_region records for both inserts
+                    # and updates, because we do allow updating to affect the
+                    # region calculations.
                     self.butler.registry.insertDimensionData("visit_detector_region",
-                                                             *visitRecords.visit_detector_region)
+                                                             *visitRecords.visit_detector_region,
+                                                             replace=update_records)
 
 
 def _reduceOrNone(func, iterable):
