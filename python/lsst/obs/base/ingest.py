@@ -819,8 +819,13 @@ class RawIngestTask(Task):
         # down, it'll happen here.
         return mapFunc(self.expandDataIds, exposureData), bad_files
 
-    def ingestExposureDatasets(self, exposure: RawExposureData, *, run: Optional[str] = None
-                               ) -> List[FileDataset]:
+    def ingestExposureDatasets(
+        self,
+        exposure: RawExposureData,
+        *,
+        run: Optional[str] = None,
+        skip_existing_exposures: bool = False,
+    ) -> List[FileDataset]:
         """Ingest all raw files in one exposure.
 
         Parameters
@@ -832,6 +837,18 @@ class RawIngestTask(Task):
         run : `str`, optional
             Name of a RUN-type collection to write to, overriding
             ``self.butler.run``.
+        skip_existing_exposures : `bool`, optional
+            If `True` (`False` is default), skip raws that have already been
+            ingested (i.e. raws for which we already have a dataset with the
+            same data ID in the target collection, even if from another file).
+            Note that this is much slower than just not passing
+            already-ingested files as inputs, because we still need to read and
+            process metadata to identify which exposures to search for.  It
+            also will not work reliably if multiple processes are attempting to
+            ingest raws from the same exposure concurrently, in that different
+            processes may still attempt to ingest the same raw and conflict,
+            causing a failure that prevents other raws from the same exposure
+            from being ingested.
 
         Returns
         -------
@@ -839,10 +856,27 @@ class RawIngestTask(Task):
             Per-file structures identifying the files ingested and their
             dataset representation in the data repository.
         """
-        datasets = [FileDataset(path=file.filename.abspath(),
-                                refs=[DatasetRef(self.datasetType, d.dataId) for d in file.datasets],
-                                formatter=file.FormatterClass)
-                    for file in exposure.files]
+        if skip_existing_exposures:
+            existing = {
+                ref.dataId for ref in self.butler.registry.queryDatasets(
+                    self.datasetType,
+                    collections=[run],
+                    dataId=exposure.dataId,
+                )
+            }
+        else:
+            existing = set()
+        datasets = []
+        for file in exposure.files:
+            refs = [
+                DatasetRef(self.datasetType, d.dataId)
+                for d in file.datasets
+                if d.dataId not in existing
+            ]
+            if refs:
+                datasets.append(
+                    FileDataset(path=file.filename.abspath(), refs=refs, formatter=file.FormatterClass)
+                )
 
         # Raw files are preferentially ingested using a UUID derived from
         # the collection name and dataId.
@@ -878,12 +912,17 @@ class RawIngestTask(Task):
             Name of a RUN-type collection to write to, overriding
             the default derived from the instrument name.
         skip_existing_exposures : `bool`, optional
-            If `True` (`False` is default), skip ingestion for any files for
-            which the exposure record already exists (even if this is only
-            because other raws from the same exposure have been ingested).
+            If `True` (`False` is default), skip raws that have already been
+            ingested (i.e. raws for which we already have a dataset with the
+            same data ID in the target collection, even if from another file).
             Note that this is much slower than just not passing
             already-ingested files as inputs, because we still need to read and
-            process metadata to identify which exposures to search for.
+            process metadata to identify which exposures to search for.  It
+            also will not work reliably if multiple processes are attempting to
+            ingest raws from the same exposure concurrently, in that different
+            processes may still attempt to ingest the same raw and conflict,
+            causing a failure that prevents other raws from the same exposure
+            from being ingested.
         update_exposure_records : `bool`, optional
             If `True` (`False` is default), update existing exposure records
             that conflict with the new ones instead of rejecting them.  THIS IS
@@ -944,17 +983,6 @@ class RawIngestTask(Task):
                     exposure.record.obs_id,
                     str(list(inserted_or_updated.keys()))
                 )
-                if skip_existing_exposures:
-                    continue
-            elif not inserted_or_updated and skip_existing_exposures:
-                # Exposure is already in the registry, with the right metadata,
-                # and we're configured to skip file ingest if that's the case.
-                self.log.info(
-                    "Exposure %s:%s was already present; skipping file ingestion as requested.",
-                    exposure.record.instrument,
-                    exposure.record.obs_id,
-                )
-                continue
 
             # Override default run if nothing specified explicitly.
             if run is None:
@@ -966,7 +994,11 @@ class RawIngestTask(Task):
                 self.butler.registry.registerCollection(this_run, type=CollectionType.RUN)
                 runs.add(this_run)
             try:
-                datasets_for_exposure = self.ingestExposureDatasets(exposure, run=this_run)
+                datasets_for_exposure = self.ingestExposureDatasets(
+                    exposure,
+                    run=this_run,
+                    skip_existing_exposures=skip_existing_exposures,
+                )
             except Exception as e:
                 self._on_ingest_failure(exposure, e)
                 n_ingests_failed += 1
@@ -1021,12 +1053,17 @@ class RawIngestTask(Task):
             Group files by directory if they have been discovered in
             directories. Will not affect files explicitly provided.
         skip_existing_exposures : `bool`, optional
-            If `True` (`False` is default), skip ingestion for any files for
-            which the exposure record already exists (even if this is only
-            because other raws from the same exposure have been ingested).
+            If `True` (`False` is default), skip raws that have already been
+            ingested (i.e. raws for which we already have a dataset with the
+            same data ID in the target collection, even if from another file).
             Note that this is much slower than just not passing
             already-ingested files as inputs, because we still need to read and
-            process metadata to identify which exposures to search for.
+            process metadata to identify which exposures to search for.  It
+            also will not work reliably if multiple processes are attempting to
+            ingest raws from the same exposure concurrently, in that different
+            processes may still attempt to ingest the same raw and conflict,
+            causing a failure that prevents other raws from the same exposure
+            from being ingested.
         update_exposure_records : `bool`, optional
             If `True` (`False` is default), update existing exposure records
             that conflict with the new ones instead of rejecting them.  THIS IS
