@@ -196,7 +196,7 @@ class SkipHandler(ParsedPathElementHandler):
                predicate: Callable[[DataCoordinate], bool]):
         # Docstring inherited from ParsedPathElementHandler.
         if self._message is not None:
-            self.log.warn("Skipping %s: %s", path, self._message)
+            self.log.warning("Skipping %s: %s", path, self._message)
 
 
 class SubdirectoryHandler(ParsedPathElementHandler):

@@ -99,7 +99,7 @@ class MakeRawVisitInfo:
         self.setArgDict(md, argDict)
         for key in list(argDict.keys()):  # use a copy because we may delete items
             if argDict[key] is None:
-                self.log.warn("argDict[%s] is None; stripping", key)
+                self.log.warning("argDict[%s] is None; stripping", key)
                 del argDict[key]
         return VisitInfo(**argDict)
 
@@ -193,10 +193,10 @@ class MakeRawVisitInfo:
             The offset date.
         """
         if not date.isValid():
-            self.log.warn("date is invalid; cannot offset it")
+            self.log.warning("date is invalid; cannot offset it")
             return date
         if math.isnan(offsetSec):
-            self.log.warn("offsetSec is invalid; cannot offset date")
+            self.log.warning("offsetSec is invalid; cannot offset date")
             return date
         dateNSec = date.nsecs(DateTime.TAI)
         return DateTime(dateNSec + int(offsetSec*1.0e9), DateTime.TAI)
@@ -225,7 +225,7 @@ class MakeRawVisitInfo:
         """
         try:
             if not md.exists(key):
-                self.log.warn("Key=\"{}\" not in metadata".format(key))
+                self.log.warning("Key=\"{}\" not in metadata".format(key))
                 return default
             val = md.getScalar(key)
             if self.doStripHeader:
@@ -234,7 +234,7 @@ class MakeRawVisitInfo:
         except Exception as e:
             # this should never happen, but is a last ditch attempt to avoid
             # exceptions
-            self.log.warn('Could not read key="{}" in metadata: {}'.format(key, e))
+            self.log.warning('Could not read key="{}" in metadata: {}'.format(key, e))
         return default
 
     def popFloat(self, md, key):
@@ -257,7 +257,7 @@ class MakeRawVisitInfo:
         try:
             return float(val)
         except Exception as e:
-            self.log.warn("Could not interpret {} value {} as a float: {}".format(key, repr(val), e))
+            self.log.warning("Could not interpret {} value {} as a float: {}".format(key, repr(val), e))
         return NaN
 
     def popAngle(self, md, key, units=astropy.units.deg):
@@ -285,7 +285,8 @@ class MakeRawVisitInfo:
             try:
                 return (astropy.coordinates.Angle(angleStr, unit=units).deg)*degrees
             except Exception as e:
-                self.log.warn("Could not intepret {} value {} as an angle: {}".format(key, repr(angleStr), e))
+                self.log.warning("Could not intepret {} value {} as an angle: {}".format(key, repr(angleStr),
+                                                                                         e))
         return NaN*degrees
 
     def popIsoDate(self, md, key, timesys=None):
@@ -322,7 +323,7 @@ class MakeRawVisitInfo:
                 # no time zone
                 return DateTime(astropyTime.tai.isot, DateTime.TAI)
             except Exception as e:
-                self.log.warn("Could not parse {} = {} as an ISO date: {}".format(key, isoDateStr, e))
+                self.log.warning("Could not parse {} = {} as an ISO date: {}".format(key, isoDateStr, e))
         return BadDate
 
     def popMjdDate(self, md, key, timesys=None):
@@ -356,7 +357,7 @@ class MakeRawVisitInfo:
             # time zone
             return DateTime(astropyTime.tai.isot, DateTime.TAI)
         except Exception as e:
-            self.log.warn("Could not parse {} = {} as an MJD date: {}".format(key, mjdDate, e))
+            self.log.warning("Could not parse {} = {} as an MJD date: {}".format(key, mjdDate, e))
         return BadDate
 
     @staticmethod

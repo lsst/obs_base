@@ -230,7 +230,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         log = lsst.log.Log.getLogger("fitsRawFormatter")
         if visitInfo is None:
             msg = "No VisitInfo; cannot access boresight information. Defaulting to metadata-based SkyWcs."
-            log.warn(msg)
+            log.warning(msg)
             if skyWcs is None:
                 raise InitialSkyWcsError("Failed to create both metadata and boresight-based SkyWcs."
                                          "See warnings in log messages for details.")
@@ -277,7 +277,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             return lsst.afw.geom.makeSkyWcs(self.metadata, strip=True)
         except TypeError as e:
             log = lsst.log.Log.getLogger("fitsRawFormatter")
-            log.warn("Cannot create a valid WCS from metadata: %s", e.args[0])
+            log.warning("Cannot create a valid WCS from metadata: %s", e.args[0])
             return None
 
     # TODO: remove in DM-27177

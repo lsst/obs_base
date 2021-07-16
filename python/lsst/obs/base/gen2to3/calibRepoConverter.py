@@ -130,16 +130,16 @@ class CalibRepoConverter(RepoConverter):
             fields.append("NULL AS filter")
         tables = self.mapper.mappings[datasetType.name].tables
         if tables is None or len(tables) == 0:
-            self.task.log.warn("Could not extract calibration ranges for %s in %s; "
-                               "no tables in Gen2 mapper.",
-                               datasetType.name, self.root, tables[0])
+            self.task.log.warning("Could not extract calibration ranges for %s in %s; "
+                                  "no tables in Gen2 mapper.",
+                                  datasetType.name, self.root, tables[0])
             return
         query = f"SELECT DISTINCT {', '.join(fields)} FROM {tables[0]} WHERE calibDate = ?;"
         try:
             results = db.execute(query, (calibDate,))
         except sqlite3.OperationalError as e:
-            self.task.log.warn("Could not extract calibration ranges for %s in %s from table %s: %r",
-                               datasetType.name, self.root, tables[0], e)
+            self.task.log.warning("Could not extract calibration ranges for %s in %s from table %s: %r",
+                                  datasetType.name, self.root, tables[0], e)
             return
         yield from results
 
@@ -288,7 +288,7 @@ class CalibRepoConverter(RepoConverter):
         for msg in sorted(info_messages):
             self.task.log.info(msg)
         for msg in sorted(warn_messages):
-            self.task.log.warn(msg)
+            self.task.log.warning(msg)
 
         # Done reading from Gen2, time to certify into Gen3.
         self.task.registry.registerCollection(self.collection, type=CollectionType.CALIBRATION)

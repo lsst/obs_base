@@ -218,8 +218,8 @@ class PathElementParser:
         for commonKey in lastDataId.keys() & newDataId.keys():
             if newDataId[commonKey] != lastDataId[commonKey]:
                 if log is not None:
-                    log.warn("Inconsistent value %s=%r when parsing %r with %r.",
-                             commonKey, newDataId[commonKey], name, lastDataId)
+                    log.warning("Inconsistent value %s=%r when parsing %r with %r.",
+                                commonKey, newDataId[commonKey], name, lastDataId)
                 return None
         newDataId.update(lastDataId)
         return newDataId

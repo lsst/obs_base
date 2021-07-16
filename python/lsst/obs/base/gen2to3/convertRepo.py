@@ -645,14 +645,14 @@ class ConvertRepoTask(Task):
             subset = ConversionSubset(instrument=self.instrument.getName(), visits=frozenset(visits))
         else:
             if self.config.relatedOnly:
-                self.log.warn("config.relatedOnly is True but all visits are being ingested; "
-                              "no filtering will be done.")
+                self.log.warning("config.relatedOnly is True but all visits are being ingested; "
+                                 "no filtering will be done.")
             subset = None
         if (not self.config.doExpandDataIds
                 and self.butler3.datastore.needs_expanded_data_ids(self.config.transfer)):
-            self.log.warn("config.doExpandDataIds=False but datastore reports that expanded data "
-                          "IDs may be needed.",
-                          self.config.transfer)
+            self.log.warning("config.doExpandDataIds=False but datastore reports that expanded data "
+                             "IDs may be needed.",
+                             self.config.transfer)
 
         # Check that at most one CalibRepo is marked as default, to fail before
         # we actually write anything.

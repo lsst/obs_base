@@ -474,7 +474,7 @@ class RepoConverter(ABC):
                                 dataId = self.task.registry.expandDataId(ref.dataId)
                                 dataset.refs[i] = ref.expanded(dataId)
                             except LookupError as err:
-                                self.task.log.warn("Skipping ingestion for '%s': %s", dataset.path, err)
+                                self.task.log.warning("Skipping ingestion for '%s': %s", dataset.path, err)
                                 # Remove skipped datasets from multi-extension
                                 # FileDatasets
                                 dataset.refs[i] = None  # We will strip off the `None`s after the loop.
@@ -500,7 +500,7 @@ class RepoConverter(ABC):
                     try:
                         run = self.getRun(datasetType.name, calibDate)
                     except LookupError:
-                        self.task.log.warn(f"No run configured for dataset type {datasetType.name}.")
+                        self.task.log.warning(f"No run configured for dataset type {datasetType.name}.")
                         continue
                     self.task.log.info("Ingesting %d dataset%s into run %s of type %s.",
                                        *_log_msg_counter(datasetsForCalibDate), run, datasetType.name)
