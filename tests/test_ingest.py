@@ -437,7 +437,7 @@ class TestRawIngestTaskPickle(unittest.TestCase):
         stream = pickle.dumps(self.task)
         copy = pickle.loads(stream)
         self.assertEqual(self.task.getFullName(), copy.getFullName())
-        self.assertEqual(self.task.log.getName(), copy.log.getName())
+        self.assertEqual(self.task.log.name, copy.log.name)
         self.assertEqual(self.task.config, copy.config)
         self.assertEqual(self.task.butler._config, copy.butler._config)
         self.assertEqual(self.task.butler.collections, copy.butler.collections)
