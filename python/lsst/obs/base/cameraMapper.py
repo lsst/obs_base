@@ -1213,7 +1213,7 @@ class CameraMapper(dafPersist.Mapper):
             exposure = exposureFromImage(item, dataId, mapper=self, logger=self.log,
                                          setVisitInfo=setVisitInfo, setFilter=filter)
         except Exception as e:
-            self.log.error("Could not turn item=%r into an exposure: %s" % (repr(item), e))
+            self.log.error("Could not turn item=%r into an exposure: %s", item, e)
             raise
 
         if mapping.level.lower() == "amp":

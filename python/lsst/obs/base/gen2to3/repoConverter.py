@@ -331,7 +331,7 @@ class RepoConverter(ABC):
         This should not perform any write operations to the Gen3 repository.
         It is guaranteed to be called before `ingest`.
         """
-        self.task.log.info(f"Preparing other dataset types from root {self.root}.")
+        self.task.log.info("Preparing other dataset types from root %s.", self.root)
         walkerInputs: List[Union[RepoWalker.Target, RepoWalker.Skip]] = []
         for datasetTypeName, mapping in self.iterMappings():
             try:

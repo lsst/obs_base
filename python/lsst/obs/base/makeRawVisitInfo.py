@@ -225,7 +225,7 @@ class MakeRawVisitInfo:
         """
         try:
             if not md.exists(key):
-                self.log.warning("Key=\"{}\" not in metadata".format(key))
+                self.log.warning('Key="%s" not in metadata', key)
                 return default
             val = md.getScalar(key)
             if self.doStripHeader:
@@ -234,7 +234,7 @@ class MakeRawVisitInfo:
         except Exception as e:
             # this should never happen, but is a last ditch attempt to avoid
             # exceptions
-            self.log.warning('Could not read key="{}" in metadata: {}'.format(key, e))
+            self.log.warning('Could not read key="%s" in metadata: %s', key, e)
         return default
 
     def popFloat(self, md, key):
@@ -257,7 +257,7 @@ class MakeRawVisitInfo:
         try:
             return float(val)
         except Exception as e:
-            self.log.warning("Could not interpret {} value {} as a float: {}".format(key, repr(val), e))
+            self.log.warning("Could not interpret %s value %r as a float: %s", key, val, e)
         return NaN
 
     def popAngle(self, md, key, units=astropy.units.deg):
@@ -285,8 +285,7 @@ class MakeRawVisitInfo:
             try:
                 return (astropy.coordinates.Angle(angleStr, unit=units).deg)*degrees
             except Exception as e:
-                self.log.warning("Could not intepret {} value {} as an angle: {}".format(key, repr(angleStr),
-                                                                                         e))
+                self.log.warning("Could not intepret %s value %r as an angle: %s", key, angleStr, e)
         return NaN*degrees
 
     def popIsoDate(self, md, key, timesys=None):
@@ -323,7 +322,7 @@ class MakeRawVisitInfo:
                 # no time zone
                 return DateTime(astropyTime.tai.isot, DateTime.TAI)
             except Exception as e:
-                self.log.warning("Could not parse {} = {} as an ISO date: {}".format(key, isoDateStr, e))
+                self.log.warning("Could not parse %s = %r as an ISO date: %s", key, isoDateStr, e)
         return BadDate
 
     def popMjdDate(self, md, key, timesys=None):
@@ -357,7 +356,7 @@ class MakeRawVisitInfo:
             # time zone
             return DateTime(astropyTime.tai.isot, DateTime.TAI)
         except Exception as e:
-            self.log.warning("Could not parse {} = {} as an MJD date: {}".format(key, mjdDate, e))
+            self.log.warning("Could not parse %s = %r as an MJD date: %s", key, mjdDate, e)
         return BadDate
 
     @staticmethod
