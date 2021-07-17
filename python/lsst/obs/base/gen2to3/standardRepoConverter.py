@@ -98,7 +98,7 @@ class StandardRepoConverter(RepoConverter):
 
     def prep(self):
         # Docstring inherited from RepoConverter.
-        self.task.log.info(f"Looking for skymaps in root {self.root}.")
+        self.task.log.info("Looking for skymaps in root %s", self.root)
         for coaddName, datasetTypeName in SKYMAP_DATASET_TYPES.items():
             if not self.task.isDatasetTypeIncluded(datasetTypeName):
                 continue
@@ -155,8 +155,8 @@ class StandardRepoConverter(RepoConverter):
                     # coaddName.
                     struct = None
                     self.task.log.debug(
-                        ("Dataset %s looks like it might need a skymap, but no %sCoadd_skyMap "
-                         "found in repo %s."),
+                        "Dataset %s looks like it might need a skymap, but no %sCoadd_skyMap "
+                        "found in repo %s.",
                         datasetTypeName, coaddName, self.root
                     )
         if struct is not None:

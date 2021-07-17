@@ -99,7 +99,7 @@ class RootRepoConverter(StandardRepoConverter):
         skyMap, name = super().findMatchingSkyMap(datasetTypeName)
         if skyMap is None and self.task.config.rootSkyMapName is not None:
             self.task.log.debug(
-                ("Assuming configured root skymap with name '%s' for dataset %s."),
+                "Assuming configured root skymap with name '%s' for dataset %s.",
                 self.task.config.rootSkyMapName, datasetTypeName
             )
             skyMap = self._rootSkyMap
@@ -108,9 +108,9 @@ class RootRepoConverter(StandardRepoConverter):
 
     def runRawIngest(self, pool=None):
         if self.task.raws is None:
-            self.task.log.info(f"Skipping raw ingest for {self.root}.")
+            self.task.log.info("Skipping raw ingest for %s.", self.root)
             return
-        self.task.log.info(f"Finding raws in root {self.root}.")
+        self.task.log.info("Finding raws in root %s.", self.root)
         if self.subset is not None:
             dataRefs = itertools.chain.from_iterable(
                 self.butler2.subset(self.task.config.rawDatasetType,
@@ -130,7 +130,7 @@ class RootRepoConverter(StandardRepoConverter):
 
     def runDefineVisits(self, pool=None):
         if self.task.defineVisits is None:
-            self.task.log.info(f"Skipping visit definition for {self.root}.")
+            self.task.log.info("Skipping visit definition for %s.", self.root)
             return
         dimensions = DimensionGraph(self.task.universe, names=["exposure"])
         exposureDataIds = set(ref.dataId.subset(dimensions) for ref in self._rawRefs)
@@ -152,7 +152,7 @@ class RootRepoConverter(StandardRepoConverter):
                     continue
                 if refCat not in self.task.config.refCats:
                     continue
-                self.task.log.info(f"Preparing ref_cat {refCat} from root {self.root}.")
+                self.task.log.info("Preparing ref_cat %s from root %s.", refCat, self.root)
                 onDiskConfig = RefCatDatasetConfig()
                 onDiskConfig.load(configFile)
                 if onDiskConfig.indexer.name != "HTM":

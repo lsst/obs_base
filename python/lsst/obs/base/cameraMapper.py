@@ -868,11 +868,11 @@ class CameraMapper(dafPersist.Mapper):
 
                 newPath = newPath[0] if newPath is not None and len(newPath) else None
                 if newPath is None:
-                    self.log.warn("Unable to locate registry at policy path (also looked in root): %s",
-                                  path)
+                    self.log.warning("Unable to locate registry at policy path (also looked in root): %s",
+                                     path)
                 path = newPath
             else:
-                self.log.warn("Unable to locate registry at policy path: %s", path)
+                self.log.warning("Unable to locate registry at policy path: %s", path)
                 path = None
 
         # Old Butler API was to indicate the registry WITH the repo folder,
@@ -1115,7 +1115,7 @@ class CameraMapper(dafPersist.Mapper):
                     self.log.debug("Assuming %r is the correct match.", newLabel)
                     return newLabel
 
-                self.log.warn("Multiple matches for filter %r with data ID %r.", storedLabel, idFilter)
+                self.log.warning("Multiple matches for filter %r with data ID %r.", storedLabel, idFilter)
                 # Can we at least add a band?
                 # Never expect multiple definitions with same physical filter.
                 bands = {d.band for d in definitions}  # None counts as separate result!
@@ -1126,7 +1126,7 @@ class CameraMapper(dafPersist.Mapper):
                     return None
             else:
                 # Unknown filter, nothing to be done.
-                self.log.warn("Cannot reconcile filter %r with data ID %r.", storedLabel, idFilter)
+                self.log.warning("Cannot reconcile filter %r with data ID %r.", storedLabel, idFilter)
                 return None
 
         # Not practical to recommend a FilterLabel without filterDefinitions
@@ -1176,7 +1176,7 @@ class CameraMapper(dafPersist.Mapper):
                     warnings.filterwarnings("ignore", category=FutureWarning)
                     item.setFilter(afwImage.Filter(idFilter))
             except pexExcept.NotFoundError:
-                self.log.warn("Filter %s not defined.  Set to UNKNOWN.", idFilter)
+                self.log.warning("Filter %s not defined.  Set to UNKNOWN.", idFilter)
 
     def _standardizeExposure(self, mapping, item, dataId, filter=True,
                              trimmed=True, setVisitInfo=True):
@@ -1213,7 +1213,7 @@ class CameraMapper(dafPersist.Mapper):
             exposure = exposureFromImage(item, dataId, mapper=self, logger=self.log,
                                          setVisitInfo=setVisitInfo, setFilter=filter)
         except Exception as e:
-            self.log.error("Could not turn item=%r into an exposure: %s" % (repr(item), e))
+            self.log.error("Could not turn item=%r into an exposure: %s", item, e)
             raise
 
         if mapping.level.lower() == "amp":
@@ -1272,14 +1272,14 @@ class CameraMapper(dafPersist.Mapper):
 
         if exposure.getInfo().getVisitInfo() is None:
             msg = "No VisitInfo; cannot access boresight information. Defaulting to metadata-based SkyWcs."
-            self.log.warn(msg)
+            self.log.warning(msg)
             return
         try:
             newSkyWcs = createInitialSkyWcs(exposure.getInfo().getVisitInfo(), exposure.getDetector())
             exposure.setWcs(newSkyWcs)
         except InitialSkyWcsError as e:
             msg = "Cannot create SkyWcs using VisitInfo and Detector, using metadata-based SkyWcs: %s"
-            self.log.warn(msg, e)
+            self.log.warning(msg, e)
             self.log.debug("Exception was: %s", traceback.TracebackException.from_exception(e))
             if e.__context__ is not None:
                 self.log.debug("Root-cause Exception was: %s",

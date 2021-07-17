@@ -252,4 +252,4 @@ class DirectoryScanner:
                     else:
                         unrecognized.append(entry.name)
             if unrecognized:
-                self.log.warn("Skipped unrecognized entries in %s: %s", path, unrecognized)
+                self.log.warning("Skipped unrecognized entries in %s: %s", path, unrecognized)
