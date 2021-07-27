@@ -23,6 +23,7 @@ __all__ = ("FitsRawFormatterBase",)
 
 from abc import abstractmethod
 from deprecated.sphinx import deprecated
+import logging
 
 from astro_metadata_translator import fix_header, ObservationInfo
 
@@ -31,11 +32,12 @@ import lsst.afw.geom
 import lsst.afw.image
 from lsst.daf.butler import FileDescriptor
 from lsst.daf.butler.core.utils import cached_getter
-import lsst.log
 
 from .formatters.fitsExposure import FitsImageFormatterBase, standardizeAmplifierParameters
 from .makeRawVisitInfoViaObsInfo import MakeRawVisitInfoViaObsInfo
 from .utils import createInitialSkyWcsFromBoresight, InitialSkyWcsError
+
+log = logging.getLogger("fitsRawFormatter")
 
 
 class FitsRawFormatterBase(FitsImageFormatterBase):
@@ -227,7 +229,6 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
 
         skyWcs = self._createSkyWcsFromMetadata()
 
-        log = lsst.log.Log.getLogger("fitsRawFormatter")
         if visitInfo is None:
             msg = "No VisitInfo; cannot access boresight information. Defaulting to metadata-based SkyWcs."
             log.warning(msg)
@@ -276,7 +277,6 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         try:
             return lsst.afw.geom.makeSkyWcs(self.metadata, strip=True)
         except TypeError as e:
-            log = lsst.log.Log.getLogger("fitsRawFormatter")
             log.warning("Cannot create a valid WCS from metadata: %s", e.args[0])
             return None
 

@@ -27,8 +27,8 @@ __all__ = ("Translator", "TranslatorFactory", "KeyHandler", "CopyKeyHandler", "C
 import itertools
 from typing import Optional, Any, Dict, Tuple, FrozenSet, Iterable, List
 from abc import ABCMeta, abstractmethod
+import logging
 
-from lsst.log import Log
 from lsst.skymap import BaseSkyMap
 
 
@@ -238,10 +238,10 @@ class TranslatorFactory:
 
     Parameters
     ----------
-    log : `lsst.log.Log`, optional
+    log : `logging.Logger`, optional
         A logger for diagnostic messages.
     """
-    def __init__(self, log: Optional[Log] = None):
+    def __init__(self, log: Optional[logging.Logger] = None):
         # The rules used to match KeyHandlers when constructing a Translator.
         self._rules: Dict[
             Optional[str],  # instrument name (or None to match any)
@@ -257,7 +257,7 @@ class TranslatorFactory:
         }
         self._addDefaultRules()
         if log is None:
-            log = Log.getLogger("obs.base.gen2to3.TranslatorFactory")
+            log = logging.getLogger("obs.base.gen2to3.TranslatorFactory")
         self.log = log
 
     def __str__(self):
@@ -489,7 +489,7 @@ class Translator:
         Name of the dataset type whose data IDs this translator handles.
     """
     def __init__(self, handlers: List[KeyHandler], skyMap: Optional[BaseSkyMap], skyMapName: Optional[str],
-                 datasetTypeName: str, log: Log):
+                 datasetTypeName: str, log: logging.Logger):
         self.handlers = handlers
         self.skyMap = skyMap
         self.skyMapName = skyMapName

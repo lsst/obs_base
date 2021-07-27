@@ -24,10 +24,9 @@ import unittest
 from astropy.time import Time
 import astropy.units as u
 
-import lsst.log
 from astro_metadata_translator import FitsTranslator, StubTranslator, ObservationInfo
 from lsst.daf.base import DateTime
-
+import lsst.afw.image
 from lsst.obs.base import MakeRawVisitInfoViaObsInfo
 
 
@@ -78,9 +77,8 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
         # Capture the warnings from StubTranslator since they are
         # confusing to people but irrelevant for the test.
         with self.assertWarns(UserWarning):
-            with lsst.log.UsePythonLogging():
-                with self.assertLogs(level="WARNING"):
-                    visitInfo = maker(self.header)
+            with self.assertLogs(level="WARNING"):
+                visitInfo = maker(self.header)
 
         self.assertAlmostEqual(visitInfo.getExposureTime(), self.exposure_time.to_value("s"))
         # TODO DM-13943: note that in this test visitInfo.getExposureId() and

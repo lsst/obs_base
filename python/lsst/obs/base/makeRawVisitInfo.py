@@ -19,20 +19,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+__all__ = ["MakeRawVisitInfo"]
+
 import math
+import logging
 import numpy as np
 
 import astropy.coordinates
 import astropy.time
 import astropy.units
 
-from lsst.log import Log
 from lsst.daf.base import DateTime
 from lsst.geom import degrees
 from lsst.afw.image import VisitInfo
-
-__all__ = ["MakeRawVisitInfo"]
-
 
 PascalPerMillibar = 100.0
 PascalPerMmHg = 133.322387415  # from Wikipedia; exact
@@ -65,16 +64,16 @@ class MakeRawVisitInfo:
 
     Parameters
     ----------
-    log : `lsst.log.Log` or None
+    log : `logging.Logger` or None
         Logger to use for messages.
-        (None to use ``Log.getLogger("MakeRawVisitInfo")``).
+        (None to use ``logging.getLogger("MakeRawVisitInfo")``).
     doStripHeader : `bool`, optional
         Strip header keywords from the metadata as they are used?
     """
 
     def __init__(self, log=None, doStripHeader=False):
         if log is None:
-            log = Log.getLogger("MakeRawVisitInfo")
+            log = logging.getLogger("MakeRawVisitInfo")
         self.log = log
         self.doStripHeader = doStripHeader
 

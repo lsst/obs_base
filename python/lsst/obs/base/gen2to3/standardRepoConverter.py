@@ -85,6 +85,7 @@ class StandardRepoConverter(RepoConverter):
     def __init__(self, **kwds):
         super().__init__(**kwds)
         # Shush noisy log messages from Gen2 Mapper classes.
+        # These are currently lsst.log loggers.
         with temporaryLogLevel("CameraMapper", Log.ERROR):
             with temporaryLogLevel("HscMapper", Log.ERROR):
                 self.butler2 = Butler2(self.root)

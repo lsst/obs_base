@@ -26,7 +26,6 @@ import shutil
 import tempfile
 import unittest
 
-import lsst.log
 import lsst.daf.butler.tests as butlerTests
 from lsst.daf.butler import DatasetType, Butler, DataCoordinate, Config
 from lsst.daf.butler.registry import ConflictingDefinitionError
@@ -156,8 +155,7 @@ datastore:
         new_run = self.outputRun + "c"
 
         with self.assertLogs(level="WARNING") as cm:
-            with lsst.log.UsePythonLogging():
-                self.task.run(files, run=new_run)
+            self.task.run(files, run=new_run)
         self.assertIn("already specified in an index file, ignoring content", cm.output[0])
 
         datasets = list(self.butler.registry.queryDatasets("raw_dict", collections=self.outputRun))
@@ -170,8 +168,7 @@ datastore:
                  os.path.join(INGESTDIR, "indexed_data", "_index.json")]
         new_run = self.outputRun + "d"
         with self.assertLogs(level="WARNING") as cm:
-            with lsst.log.UsePythonLogging():
-                self.task.run(files, run=new_run)
+            self.task.run(files, run=new_run)
         self.assertIn("already specified in an index file but overriding", cm.output[0])
 
         # Reversing the order should change the warning.
@@ -183,8 +180,7 @@ datastore:
 
         new_run = self.outputRun + "e"
         with self.assertLogs(level="WARNING") as cm:
-            with lsst.log.UsePythonLogging():
-                self.task.run(files, run=new_run)
+            self.task.run(files, run=new_run)
         self.assertIn("already specified in an index file, ignoring", cm.output[0])
 
         # Bad index file.
@@ -195,9 +191,8 @@ datastore:
         # Bad index file due to bad instrument.
         files = [os.path.join(INGESTDIR, "indexed_data", "bad_instrument", "_index.json")]
         with self.assertLogs(level="WARNING") as cm:
-            with lsst.log.UsePythonLogging():
-                with self.assertRaises(RuntimeError):
-                    self.task.run(files, run=self.outputRun)
+            with self.assertRaises(RuntimeError):
+                self.task.run(files, run=self.outputRun)
         self.assertIn("Instrument HSC for file", cm.output[0])
 
     def testBadExposure(self):

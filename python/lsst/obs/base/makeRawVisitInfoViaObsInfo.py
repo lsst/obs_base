@@ -19,6 +19,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+__all__ = ["MakeRawVisitInfoViaObsInfo"]
+
+import logging
 import warnings
 import astropy.units
 import astropy.utils.exceptions
@@ -34,14 +37,11 @@ except ImportError:
 
 from astro_metadata_translator import ObservationInfo
 
-from lsst.log import Log
 from lsst.daf.base import DateTime
 from lsst.geom import degrees, radians
 from lsst.afw.image import VisitInfo, RotType
 from lsst.afw.coord import Observatory, Weather
 from lsst.geom import SpherePoint
-
-__all__ = ["MakeRawVisitInfoViaObsInfo"]
 
 
 class MakeRawVisitInfoViaObsInfo:
@@ -58,7 +58,7 @@ class MakeRawVisitInfoViaObsInfo:
 
     Parameters
     ----------
-    log : `lsst.log.Log` or None
+    log : `logging.Logger` or None
         Logger to use for messages.
         (None to use ``Log.getLogger("MakeRawVisitInfoViaObsInfo")``).
     doStripHeader : `bool`, optional
@@ -71,7 +71,7 @@ class MakeRawVisitInfoViaObsInfo:
 
     def __init__(self, log=None, doStripHeader=False):
         if log is None:
-            log = Log.getLogger("MakeRawVisitInfoViaObsInfo")
+            log = logging.getLogger("MakeRawVisitInfoViaObsInfo")
         self.log = log
         self.doStripHeader = doStripHeader
 

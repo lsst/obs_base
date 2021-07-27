@@ -143,9 +143,8 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
         self.metadataSkyWcs = lsst.afw.geom.makeSkyWcs(self.metadata, strip=False)
         self.boresightSkyWcs = createInitialSkyWcs(self.visitInfo, CameraWrapper().camera.get(10))
 
-        # set these to `contextlib.nullcontext()` to print the log warnings
+        # set this to `contextlib.nullcontext()` to print the log warnings
         self.warnContext = self.assertLogs(level="WARNING")
-        self.logContext = lsst.log.UsePythonLogging()
 
         # Make a data ID to pass to the formatter.
         universe = lsst.daf.butler.DimensionUniverse()
@@ -169,7 +168,7 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
         """
         detector = self.formatter.getDetector(1)
         self.metadata.remove("CTYPE1")
-        with self.warnContext, self.logContext:
+        with self.warnContext:
             wcs = self.formatter.makeWcs(self.visitInfo, detector)
         self.assertNotEqual(wcs, self.metadataSkyWcs)
         self.assertEqual(wcs, self.boresightSkyWcs)
@@ -178,7 +177,7 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
         """If VisitInfo is None, log a warning and use the metadata WCS.
         """
         detector = self.formatter.getDetector(1)
-        with self.warnContext, self.logContext:
+        with self.warnContext:
             wcs = self.formatter.makeWcs(None, detector)
         self.assertEqual(wcs, self.metadataSkyWcs)
         self.assertNotEqual(wcs, self.boresightSkyWcs)
@@ -188,7 +187,7 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
         """
         detector = self.formatter.getDetector(1)
         self.metadata.remove("CTYPE1")
-        with self.warnContext, self.logContext, self.assertRaises(InitialSkyWcsError):
+        with self.warnContext, self.assertRaises(InitialSkyWcsError):
             self.formatter.makeWcs(None, detector)
 
     def test_makeWcs_fail_if_detector_is_bad(self):
