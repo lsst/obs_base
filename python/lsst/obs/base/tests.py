@@ -30,9 +30,8 @@ __all__ = (
     "make_ramp_exposure_untrimmed",
 )
 
+import logging
 import numpy as np
-
-from lsst.log import Log
 
 from lsst.afw.image import Exposure
 from lsst.afw.cameraGeom.utils import calcRawCcdBBox
@@ -40,8 +39,6 @@ from lsst.afw.cameraGeom.utils import calcRawCcdBBox
 from . import butler_tests
 from . import mapper_tests
 from . import camera_tests
-
-__all__ = ["ObsTests"]
 
 
 class ObsTests(butler_tests.ButlerGetTests, mapper_tests.MapperTests,
@@ -98,7 +95,7 @@ class ObsTests(butler_tests.ButlerGetTests, mapper_tests.MapperTests,
         self.butler = butler
         self.mapper = mapper
         self.dataIds = dataIds
-        self.log = Log.getLogger('ObsTests')
+        self.log = logging.getLogger('ObsTests')
 
     def tearDown(self):
         del self.butler

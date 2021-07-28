@@ -31,6 +31,7 @@ __all__ = ["PathElementHandler", "DirectoryScanner"]
 
 from abc import ABC, abstractmethod
 import bisect
+import logging
 import os
 from typing import (
     Callable,
@@ -41,7 +42,6 @@ from typing import (
     Tuple,
 )
 
-from lsst.log import Log
 from lsst.daf.butler import (
     DataCoordinate,
     DatasetType,
@@ -152,8 +152,8 @@ class PathElementHandler(ABC):
     directory is entered, before invoking `__call__`.
     """
 
-    log: Log
-    """A logger to use for all diagnostic messages (`lsst.log.Log`).
+    log: logging.Logger
+    """A logger to use for all diagnostic messages (`logging.Logger`).
 
     This attribute is set on a handler in `DirectoryScanner.add`; this avoids
     needing to forward one through all subclass constructors.
@@ -166,16 +166,16 @@ class DirectoryScanner:
 
     Parameters
     ----------
-    log : `Log`, optional
+    log : `logging.Logger`, optional
         Log to use to report warnings and debug information.
     progress : `Progress`, optional
         Object to use to report incremental progress.
     """
-    def __init__(self, log: Optional[Log] = None, progress: Optional[Progress] = None):
+    def __init__(self, log: Optional[logging.Logger] = None, progress: Optional[Progress] = None):
         self._files = []
         self._subdirectories = []
         if log is None:
-            log = Log.getLogger("obs.base.gen2to3.walker")
+            log = logging.getLogger("obs.base.gen2to3.walker")
         self.log = log
         self.progress = progress
 

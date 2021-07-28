@@ -26,6 +26,7 @@ from __future__ import annotations
 __all__ = ["RepoWalker"]
 
 from collections import defaultdict
+import logging
 import re
 from typing import (
     Callable,
@@ -38,7 +39,6 @@ from typing import (
     Union,
 )
 
-from lsst.log import Log
 from lsst.daf.butler import (
     DataCoordinate,
     DatasetType,
@@ -74,11 +74,11 @@ class RepoWalker:
     def __init__(self, inputs: Iterable[Union[Target, Skip]], *,
                  fileIgnoreRegEx: Optional[re.Pattern] = None,
                  dirIgnoreRegEx: Optional[re.Pattern] = None,
-                 log: Optional[Log] = None,
+                 log: Optional[logging.Logger] = None,
                  progress: Optional[Progress] = None):
         super().__init__()
         if log is None:
-            log = Log.getLogger("obs.base.gen2to3.TranslatorFactory")
+            log = logging.getLogger("obs.base.gen2to3.TranslatorFactory")
         self.log = log
         tree = BuilderTree(progress)
         allKeys: Dict[str, type] = {}

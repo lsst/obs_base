@@ -24,6 +24,7 @@
 
 import abc
 import itertools
+import logging
 import shutil
 import tempfile
 import unittest
@@ -160,8 +161,8 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
         """
 
         # Turn on logging
-        log = lsst.log.Log.getLogger("convertRepo")
-        log.setLevel(log.INFO)
+        log = logging.getLogger("convertRepo")
+        log.setLevel(logging.INFO)
         log.info("Converting %s to %s", self.gen2root, self.gen3root)
 
         convert(repo=self.gen3root,

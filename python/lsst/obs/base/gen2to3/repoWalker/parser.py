@@ -26,11 +26,10 @@ from __future__ import annotations
 __all__ = ["PathElementParser"]
 
 
+import logging
 from abc import ABC, abstractmethod
 import re
 from typing import ClassVar, Dict, Optional
-
-from lsst.log import Log
 
 
 class FormattableRegEx(ABC):
@@ -189,7 +188,7 @@ class PathElementParser:
     def __str__(self):
         return f"{type(self).__name__}({self.regex})"
 
-    def parse(self, name: str, lastDataId: dict, *, log: Optional[Log] = None) -> Optional[dict]:
+    def parse(self, name: str, lastDataId: dict, *, log: Optional[logging.Logger] = None) -> Optional[dict]:
         """Parse the path element.
 
         Parameters
@@ -199,7 +198,7 @@ class PathElementParser:
         lastDataId : `dict`
             The cumulative Gen2 data ID obtaining by calling `parse` on parsers
             for parent directories of the same path.
-        log : `Log`, optional
+        log : `logging.Logger`, optional
             Log to use to report warnings and debug information.
 
         Returns
