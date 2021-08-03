@@ -67,5 +67,9 @@ def defineVisits(repo, config_file, collections, instrument, processes=1):
     if config_file is not None:
         config.load(config_file)
     task = DefineVisitsTask(config=config, butler=butler)
-    task.run(butler.registry.queryDataIds(["exposure"], dataId={"instrument": instr.getName()}),
+
+    # Assume the dataset type is "raw" -- this is required to allow this
+    # query to filter out exposures not relevant to the specified collection.
+    task.run(butler.registry.queryDataIds(["exposure"], dataId={"instrument": instr.getName()},
+                                          collections=collections, datasets="raw"),
              collections=collections, processes=processes)
