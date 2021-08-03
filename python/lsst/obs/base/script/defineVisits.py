@@ -41,8 +41,13 @@ def defineVisits(repo, config_file, collections, instrument, processes=1):
         An expression specifying the collections to be searched (in order) when
         reading datasets, and optionally dataset type restrictions on them.
         If empty it will be passed as `None` to Butler.
-    insrument : `str`
+    instrument : `str`
         The name or fully-qualified class name of an instrument.
+
+    Notes
+    -----
+    Camera geometry is not currently found in registry but instead a default
+    camera will be used for the relevant instrument.
     """
     if not collections:
         collections = None
