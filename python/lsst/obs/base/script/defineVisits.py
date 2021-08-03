@@ -18,10 +18,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import logging
 
 from lsst.daf.butler import Butler
 from lsst.obs.base import DefineVisitsTask, DefineVisitsConfig
 from ..utils import getInstrument
+
+log = logging.getLogger("defineVisits")
 
 
 def defineVisits(repo, config_file, collections, instrument, processes=1):
@@ -59,6 +62,7 @@ def defineVisits(repo, config_file, collections, instrument, processes=1):
     if collections is None:
         # Default to the raw collection for this instrument
         collections = instr.makeDefaultRawIngestRunName()
+        log.info("Defaulting to searching for raw exposures in collection %s", collections)
 
     if config_file is not None:
         config.load(config_file)
