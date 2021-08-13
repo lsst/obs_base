@@ -18,10 +18,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import logging
 
 from lsst.daf.butler import Butler
 from lsst.obs.base import DefineVisitsTask, DefineVisitsConfig
 from ..utils import getInstrument
+
+log = logging.getLogger("defineVisits")
 
 
 def defineVisits(repo, config_file, collections, instrument, processes=1):
@@ -41,8 +44,13 @@ def defineVisits(repo, config_file, collections, instrument, processes=1):
         An expression specifying the collections to be searched (in order) when
         reading datasets, and optionally dataset type restrictions on them.
         If empty it will be passed as `None` to Butler.
-    insrument : `str`
+    instrument : `str`
         The name or fully-qualified class name of an instrument.
+
+    Notes
+    -----
+    Camera geometry is not currently found in registry but instead a default
+    camera will be used for the relevant instrument.
     """
     if not collections:
         collections = None
@@ -54,9 +62,14 @@ def defineVisits(repo, config_file, collections, instrument, processes=1):
     if collections is None:
         # Default to the raw collection for this instrument
         collections = instr.makeDefaultRawIngestRunName()
+        log.info("Defaulting to searching for raw exposures in collection %s", collections)
 
     if config_file is not None:
         config.load(config_file)
     task = DefineVisitsTask(config=config, butler=butler)
-    task.run(butler.registry.queryDataIds(["exposure"], dataId={"instrument": instr.getName()}),
+
+    # Assume the dataset type is "raw" -- this is required to allow this
+    # query to filter out exposures not relevant to the specified collection.
+    task.run(butler.registry.queryDataIds(["exposure"], dataId={"instrument": instr.getName()},
+                                          collections=collections, datasets="raw"),
              collections=collections, processes=processes)

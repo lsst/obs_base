@@ -90,7 +90,11 @@ def convert(*args, **kwargs):
 @processes_option()
 @options_file_option()
 def define_visits(*args, **kwargs):
-    """Define visits from exposures in the butler registry."""
+    """Define visits from exposures in the butler registry.
+
+    The calibration collection containing the camera geometry can not
+    be specified.
+    """
     script.defineVisits(*args, **kwargs)
 
 

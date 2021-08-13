@@ -1,0 +1,1 @@
+The ``butler define-visits`` command now correctly uses the ``--collections`` option to constrain the exposures that will be processed into visits.
