@@ -77,7 +77,7 @@ class DummyCam(Instrument):
         filename = pkg_resources.resource_filename("lsst.obs.base", "test/dummycam.yaml")
         return makeCamera(filename)
 
-    def register(self, registry):
+    def register(self, registry, update=False):
         """Insert Instrument, physical_filter, and detector entries into a
         `Registry`.
         """
@@ -85,11 +85,12 @@ class DummyCam(Instrument):
         dataId = {"instrument": self.getName(), "class_name": getFullTypeName(DummyCam),
                   "detector_max": detector_max}
         with registry.transaction():
-            registry.syncDimensionData("instrument", dataId)
-            self._registerFilters(registry)
+            registry.syncDimensionData("instrument", dataId, update=update)
+            self._registerFilters(registry, update=update)
             for d in range(detector_max):
                 registry.syncDimensionData("detector",
-                                           dict(dataId, id=d, full_name=f"RXX_S0{d}"))
+                                           dict(dataId, id=d, full_name=f"RXX_S0{d}",),
+                                           update=update)
 
     def getRawFormatter(self, dataId):
         # Docstring inherited fromt Instrument.getRawFormatter.
