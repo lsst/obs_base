@@ -121,6 +121,7 @@ def ingest_raws(*args, **kwargs):
 @click.command(short_help="Add an instrument to the repository", cls=ButlerCommand)
 @repo_argument(required=True)
 @instrument_argument(required=True, nargs=-1, help="The fully-qualified name of an Instrument subclass.")
+@click.option("--update", is_flag=True)
 def register_instrument(*args, **kwargs):
     """Add an instrument to the data repository.
     """

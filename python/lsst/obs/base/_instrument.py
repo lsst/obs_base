@@ -179,9 +179,30 @@ class Instrument(metaclass=ABCMeta):
         raise NotImplementedError()
 
     @abstractmethod
-    def register(self, registry):
+    def register(self, registry, *, update=False):
         """Insert instrument, physical_filter, and detector entries into a
         `Registry`.
+
+        Parameters
+        ----------
+        registry : `lsst.daf.butler.Registry`
+            Registry client for the data repository to modify.
+        update : `bool`, optional
+            If `True` (`False` is default), update existing records if they
+            differ from the new ones.
+
+        Raises
+        ------
+        lsst.daf.butler.registry.ConflictingDefinitionError
+            Raised if any existing record has the same key but a different
+            definition as one being registered.
+
+        Notes
+        -----
+        New detectors and physical filters can always be added by calling this
+        method multiple times, as long as no existing records have changed (if
+        existing records have changed, ``update=True`` must be used).  Old
+        records can never be removed by this method.
 
         Implementations should guarantee that registration is atomic (the
         registry should not be modified if any error occurs) and idempotent at
@@ -194,11 +215,6 @@ class Instrument(metaclass=ABCMeta):
                 registry.syncDimensionData("detector", ...)
                 self.registerFilters(registry)
 
-        Raises
-        ------
-        lsst.daf.butler.registry.ConflictingDefinitionError
-            Raised if any existing record has the same key but a different
-            definition as one being registered.
         """
         raise NotImplementedError()
 
@@ -287,7 +303,7 @@ class Instrument(metaclass=ABCMeta):
             except Exception:
                 pass
 
-    def _registerFilters(self, registry):
+    def _registerFilters(self, registry, update=False):
         """Register the physical and abstract filter Dimension relationships.
         This should be called in the `register` implementation, within
         a transaction context manager block.
@@ -296,6 +312,9 @@ class Instrument(metaclass=ABCMeta):
         ----------
         registry : `lsst.daf.butler.core.Registry`
             The registry to add dimensions to.
+        update : `bool`, optional
+            If `True` (`False` is default), update existing records if they
+            differ from the new ones.
         """
         for filter in self.filterDefinitions:
             # fix for undefined abstract filters causing trouble in the
@@ -309,7 +328,8 @@ class Instrument(metaclass=ABCMeta):
                                        {"instrument": self.getName(),
                                         "name": filter.physical_filter,
                                         "band": band
-                                        })
+                                        },
+                                       update=update)
 
     @abstractmethod
     def getRawFormatter(self, dataId):
