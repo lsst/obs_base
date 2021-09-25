@@ -23,7 +23,7 @@ from lsst.daf.butler import Butler
 from ..utils import getInstrument
 
 
-def registerInstrument(repo, instrument, update):
+def registerInstrument(repo, instrument, update=False):
     """Add an instrument to the data repository.
 
     Parameters
