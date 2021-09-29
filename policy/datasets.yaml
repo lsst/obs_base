@@ -113,6 +113,13 @@ deepCoaddId:
     storage: ignored
     python: lsst.daf.base.PropertySet
     template: ignored
+deepCoadd_band:
+    description: >
+      The generic band associated with "filter" when needed but using Gen2.
+    persistable: ignored
+    storage: ignored
+    python: builtins.str
+    template: ignored
 mergeCoaddMeasurements_config:
     persistable: Config
     storage: ConfigStorage
