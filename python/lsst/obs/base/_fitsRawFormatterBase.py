@@ -30,8 +30,8 @@ from astro_metadata_translator import fix_header, ObservationInfo
 import lsst.afw.fits
 import lsst.afw.geom
 import lsst.afw.image
+from lsst.utils.classes import cached_getter
 from lsst.daf.butler import FileDescriptor
-from lsst.daf.butler.core.utils import cached_getter
 
 from .formatters.fitsExposure import FitsImageFormatterBase, standardizeAmplifierParameters
 from .makeRawVisitInfoViaObsInfo import MakeRawVisitInfoViaObsInfo
