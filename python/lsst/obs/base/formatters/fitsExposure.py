@@ -32,7 +32,7 @@ import warnings
 
 from lsst.daf.base import PropertySet
 from lsst.daf.butler import Formatter
-from lsst.daf.butler.core.utils import cached_getter
+from lsst.utils.classes import cached_getter
 from lsst.afw.cameraGeom import AmplifierGeometryComparison, AmplifierIsolator
 from lsst.afw.image import ExposureFitsReader, ImageFitsReader, MaskFitsReader, MaskedImageFitsReader
 from lsst.afw.image import ExposureInfo, FilterLabel

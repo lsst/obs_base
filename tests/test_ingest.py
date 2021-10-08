@@ -29,7 +29,7 @@ import unittest
 import lsst.daf.butler.tests as butlerTests
 from lsst.daf.butler import DatasetType, Butler, DataCoordinate, Config
 from lsst.daf.butler.registry import ConflictingDefinitionError
-from lsst.daf.butler.core.utils import getFullTypeName
+from lsst.utils.introspection import get_full_type_name
 
 from lsst.obs.base.ingest_tests import IngestTestBase
 from lsst.obs.base.instrument_tests import DummyCam
@@ -55,7 +55,7 @@ class RawIngestTestCase(IngestTestBase, unittest.TestCase):
     """Test ingest using JSON sidecar files."""
 
     ingestDatasetTypeName = "raw_dict"
-    rawIngestTask = getFullTypeName(DummyCamRawIngestTask)
+    rawIngestTask = get_full_type_name(DummyCamRawIngestTask)
     curatedCalibrationDatasetTypes = ()
     ingestDir = TESTDIR
     instrumentClassName = "lsst.obs.base.instrument_tests.DummyCam"

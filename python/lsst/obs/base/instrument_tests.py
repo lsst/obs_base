@@ -35,7 +35,7 @@ from lsst.obs.base.gen2to3 import TranslatorFactory
 from lsst.obs.base.yamlCamera import makeCamera
 from lsst.daf.butler import Registry
 from lsst.daf.butler import RegistryConfig
-from lsst.daf.butler.core.utils import getFullTypeName
+from lsst.utils.introspection import get_full_type_name
 from lsst.daf.butler.formatters.yaml import YamlFormatter
 
 from .utils import createInitialSkyWcsFromBoresight
@@ -82,7 +82,7 @@ class DummyCam(Instrument):
         `Registry`.
         """
         detector_max = 2
-        dataId = {"instrument": self.getName(), "class_name": getFullTypeName(DummyCam),
+        dataId = {"instrument": self.getName(), "class_name": get_full_type_name(DummyCam),
                   "detector_max": detector_max}
         with registry.transaction():
             registry.syncDimensionData("instrument", dataId, update=update)
