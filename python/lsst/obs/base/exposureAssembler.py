@@ -37,7 +37,7 @@ class ExposureAssembler(StorageClassDelegate):
     EXPOSURE_COMPONENTS = set(("image", "variance", "mask", "wcs", "psf"))
     EXPOSURE_INFO_COMPONENTS = set(("apCorrMap", "coaddInputs", "photoCalib", "metadata",
                                     "filterLabel", "transmissionCurve", "visitInfo",
-                                    "detector", "validPolygon", "summaryStats"))
+                                    "detector", "validPolygon", "summaryStats", "id"))
     EXPOSURE_READ_COMPONENTS = {"bbox", "dimensions", "xy0", "filter"}
 
     COMPONENT_MAP = {"bbox": "BBox", "xy0": "XY0"}
@@ -236,6 +236,9 @@ class ExposureAssembler(StorageClassDelegate):
         info = exposure.getInfo()
         if "visitInfo" in components:
             info.setVisitInfo(components.pop("visitInfo"))
+        # Override ID set in visitInfo, if necessary
+        if "id" in components:
+            info.id = components.pop("id")
         info.setApCorrMap(components.pop("apCorrMap", None))
         info.setCoaddInputs(components.pop("coaddInputs", None))
         info.setMetadata(components.pop("metadata", None))
@@ -290,6 +293,7 @@ class ExposureAssembler(StorageClassDelegate):
             "dimensions": imageComponents,
             "xy0": imageComponents,
             "filter": ["filterLabel"],
+            "id": ["metadata"],
         }
         forwarder = forwarderMap.get(readComponent)
         if forwarder is not None:

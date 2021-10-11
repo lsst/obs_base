@@ -516,6 +516,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         # Other components have hard-coded method names, but don't take
         # parameters.
         standardComponents = {
+            'id': 'readExposureId',
             'metadata': 'readMetadata',
             'wcs': 'readWcs',
             'coaddInputs': 'readCoaddInputs',
