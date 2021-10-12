@@ -175,7 +175,7 @@ class DirectoryScanner:
         self._files = []
         self._subdirectories = []
         if log is None:
-            log = logging.getLogger("obs.base.gen2to3.walker")
+            log = logging.getLogger("lsst.obs.base.gen2to3.repoWalker")
         self.log = log
         self.progress = progress
 

@@ -95,7 +95,7 @@ class ObsTests(butler_tests.ButlerGetTests, mapper_tests.MapperTests,
         self.butler = butler
         self.mapper = mapper
         self.dataIds = dataIds
-        self.log = logging.getLogger('ObsTests')
+        self.log = logging.getLogger(__name__)
 
     def tearDown(self):
         del self.butler
