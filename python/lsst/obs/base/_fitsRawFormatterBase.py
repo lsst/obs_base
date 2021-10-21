@@ -397,6 +397,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             have a detector attached.
         """
         info = exposure.getInfo()
+        info.id = self.observationInfo.detector_exposure_id
         info.setFilterLabel(self.makeFilterLabel())
         info.setVisitInfo(self.makeVisitInfo())
         info.setWcs(self.makeWcs(info.getVisitInfo(), info.getDetector()))

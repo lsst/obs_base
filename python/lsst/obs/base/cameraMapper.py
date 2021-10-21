@@ -1495,6 +1495,14 @@ def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo
     else:  # Image
         exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image))
 
+    # set exposure ID if we can
+    if not exposure.info.hasId() and mapper is not None:
+        try:
+            exposureId = mapper._computeCcdExposureId(dataId)
+            exposure.info.id = exposureId
+        except NotImplementedError:
+            logger.warning("Could not set exposure ID; mapper does not support it.")
+
     if metadata is not None:
         # set filter if we can
         if setFilter and mapper is not None and exposure.getFilterLabel() is None:
