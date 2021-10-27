@@ -810,7 +810,7 @@ class CameraMapper(dafPersist.Mapper):
         """Standardize a raw dataset by converting it to an Exposure instead
         of an Image"""
         return self._standardizeExposure(self.exposures['raw'], item, dataId,
-                                         trimmed=False, setVisitInfo=True)
+                                         trimmed=False, setVisitInfo=True, setExposureId=True)
 
     def map_skypolicy(self, dataId):
         """Map a sky policy."""
@@ -1179,7 +1179,7 @@ class CameraMapper(dafPersist.Mapper):
                 self.log.warning("Filter %s not defined.  Set to UNKNOWN.", idFilter)
 
     def _standardizeExposure(self, mapping, item, dataId, filter=True,
-                             trimmed=True, setVisitInfo=True):
+                             trimmed=True, setVisitInfo=True, setExposureId=False):
         """Default standardization function for images.
 
         This sets the Detector from the camera geometry
@@ -1203,6 +1203,8 @@ class CameraMapper(dafPersist.Mapper):
             Should detector be marked as trimmed?
         setVisitInfo : `bool`
             Should Exposure have its VisitInfo filled out from the metadata?
+        setExposureId : `bool`
+            Should Exposure have its exposure ID filled out from the data ID?
 
         Returns
         -------
@@ -1211,7 +1213,8 @@ class CameraMapper(dafPersist.Mapper):
         """
         try:
             exposure = exposureFromImage(item, dataId, mapper=self, logger=self.log,
-                                         setVisitInfo=setVisitInfo, setFilter=filter)
+                                         setVisitInfo=setVisitInfo, setFilter=filter,
+                                         setExposureId=setExposureId)
         except Exception as e:
             self.log.error("Could not turn item=%r into an exposure: %s", item, e)
             raise
@@ -1443,7 +1446,8 @@ class CameraMapper(dafPersist.Mapper):
             self._writeRecipes[storageType] = validationMenu[storageType](recipes[storageType])
 
 
-def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo=True, setFilter=False):
+def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo=True, setFilter=False,
+                      setExposureId=False):
     """Generate an Exposure from an image-like object
 
     If the image is a DecoratedImage then also set its metadata
@@ -1470,6 +1474,9 @@ def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo
         result. Converts non-``FilterLabel`` information provided in ``image``.
         Ignored if ``image`` is an `~lsst.afw.image.Exposure` with existing
         filter information.
+    setExposureId : `bool`, optional
+        If `True`, create and set an exposure ID from ``dataID``. Ignored if
+        ``image`` is an `~lsst.afw.image.Exposure` with an existing ID.
 
     Returns
     -------
@@ -1496,7 +1503,7 @@ def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo
         exposure = afwImage.makeExposure(afwImage.makeMaskedImage(image))
 
     # set exposure ID if we can
-    if not exposure.info.hasId() and mapper is not None:
+    if setExposureId and not exposure.info.hasId() and mapper is not None:
         try:
             exposureId = mapper._computeCcdExposureId(dataId)
             exposure.info.id = exposureId
