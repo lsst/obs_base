@@ -293,7 +293,6 @@ class ExposureAssembler(StorageClassDelegate):
             "dimensions": imageComponents,
             "xy0": imageComponents,
             "filter": ["filterLabel"],
-            "id": ["metadata"],
         }
         forwarder = forwarderMap.get(readComponent)
         if forwarder is not None:
