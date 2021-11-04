@@ -27,7 +27,7 @@ from ..utils import getInstrument
 log = logging.getLogger("defineVisits")
 
 
-def defineVisits(repo, config_file, collections, instrument, processes=1):
+def defineVisits(repo, config_file, collections, instrument, processes=1, raw_name="raw"):
     """Implements the command line interface `butler define-visits` subcommand,
     should only be called by command line tools and unit test code that tests
     this function.
@@ -46,6 +46,8 @@ def defineVisits(repo, config_file, collections, instrument, processes=1):
         If empty it will be passed as `None` to Butler.
     instrument : `str`
         The name or fully-qualified class name of an instrument.
+    raw_name : `str`, optional
+        Name of the raw dataset type name.  Defaults to 'raw'.
 
     Notes
     -----
@@ -71,5 +73,5 @@ def defineVisits(repo, config_file, collections, instrument, processes=1):
     # Assume the dataset type is "raw" -- this is required to allow this
     # query to filter out exposures not relevant to the specified collection.
     task.run(butler.registry.queryDataIds(["exposure"], dataId={"instrument": instr.getName()},
-                                          collections=collections, datasets="raw"),
+                                          collections=collections, datasets=raw_name),
              collections=collections, processes=processes)
