@@ -236,7 +236,9 @@ class ExposureAssembler(StorageClassDelegate):
         info = exposure.getInfo()
         if "visitInfo" in components:
             info.setVisitInfo(components.pop("visitInfo"))
-        # Override ID set in visitInfo, if necessary
+        # Until DM-32138, "visitInfo" and "id" can both set the exposure ID.
+        # While they should always be consistent unless a component is
+        # corrupted, handle "id" second to ensure it takes precedence.
         if "id" in components:
             info.id = components.pop("id")
         info.setApCorrMap(components.pop("apCorrMap", None))
