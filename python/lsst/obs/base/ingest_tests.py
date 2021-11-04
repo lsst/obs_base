@@ -421,7 +421,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         # folder are generally considered protected and should not be used
         # as public api.
         script.defineVisits(self.root, config_file=None, collections=self.outputRun,
-                            instrument=self.instrumentName)
+                            instrument=self.instrumentName, raw_name=self.ingestDatasetTypeName)
 
         # Test that we got the visits we expected.
         butler = Butler(self.root, run=self.outputRun)
