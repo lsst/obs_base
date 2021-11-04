@@ -75,7 +75,9 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
         })
         length = len(md)
         visitInfo = self.makeRawVisitInfo(md=md, exposureId=exposureId)
-        self.assertEqual(visitInfo.getExposureId(), exposureId)
+        with self.assertWarns(FutureWarning):
+            # TODO: tested for backward-compatibility; remove on DM-32138
+            self.assertEqual(visitInfo.getExposureId(), exposureId)
         self.assertEqual(md.nameCount(), length)  # No stripping
         self.assertEqual(visitInfo.getExposureTime(), exposureTime)
         self.assertEqual(visitInfo.getDate(), date)
