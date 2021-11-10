@@ -81,7 +81,9 @@ datastore:
 
 # Components present in the test file
 COMPONENTS = {"wcs", "image", "mask", "coaddInputs", "psf", "visitInfo", "variance", "metadata", "photoCalib",
-              "filterLabel", "validPolygon", "transmissionCurve", "detector", "apCorrMap", "summaryStats"}
+              "filterLabel", "validPolygon", "transmissionCurve", "detector", "apCorrMap", "summaryStats",
+              "id",
+              }
 READ_COMPONENTS = {"bbox", "xy0", "dimensions", "filter"}
 
 
@@ -286,6 +288,8 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
             elif compName == "filter":
                 self.assertEqual(component.getCanonicalName(), reference.getCanonicalName())
             elif compName == "filterLabel":
+                self.assertEqual(component, reference)
+            elif compName == "id":
                 self.assertEqual(component, reference)
             elif compName == "visitInfo":
                 self.assertEqual(component, reference,
