@@ -60,7 +60,8 @@ class MakeRawVisitInfoViaObsInfo:
     ----------
     log : `logging.Logger` or None
         Logger to use for messages.
-        (None to use ``Log.getLogger("MakeRawVisitInfoViaObsInfo")``).
+        (None to use
+        ``Log.getLogger("lsst.obs.base.makeRawVisitInfoViaObsInfo")``).
     doStripHeader : `bool`, optional
         Strip header keywords from the metadata as they are used?
     """
@@ -71,7 +72,7 @@ class MakeRawVisitInfoViaObsInfo:
 
     def __init__(self, log=None, doStripHeader=False):
         if log is None:
-            log = logging.getLogger("MakeRawVisitInfoViaObsInfo")
+            log = logging.getLogger(__name__)
         self.log = log
         self.doStripHeader = doStripHeader
 

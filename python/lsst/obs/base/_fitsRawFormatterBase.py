@@ -37,7 +37,7 @@ from .formatters.fitsExposure import FitsImageFormatterBase, standardizeAmplifie
 from .makeRawVisitInfoViaObsInfo import MakeRawVisitInfoViaObsInfo
 from .utils import createInitialSkyWcsFromBoresight, InitialSkyWcsError
 
-log = logging.getLogger("fitsRawFormatter")
+log = logging.getLogger(__name__)
 
 
 class FitsRawFormatterBase(FitsImageFormatterBase):

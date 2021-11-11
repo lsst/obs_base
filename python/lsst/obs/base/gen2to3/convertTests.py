@@ -161,7 +161,7 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
         """
 
         # Turn on logging
-        log = logging.getLogger("convertRepo")
+        log = logging.getLogger(__name__)
         log.setLevel(logging.INFO)
         log.info("Converting %s to %s", self.gen2root, self.gen3root)
 

@@ -24,7 +24,7 @@ from lsst.daf.butler import Butler
 from lsst.obs.base import DefineVisitsTask, DefineVisitsConfig
 from ..utils import getInstrument
 
-log = logging.getLogger("defineVisits")
+log = logging.getLogger("lsst.obs.base.defineVisits")
 
 
 def defineVisits(repo, config_file, collections, instrument, processes=1, raw_name="raw"):

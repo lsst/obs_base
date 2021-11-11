@@ -196,7 +196,7 @@ class CameraMapper(dafPersist.Mapper):
 
         dafPersist.Mapper.__init__(self)
 
-        self.log = lsstLog.Log.getLogger("CameraMapper")
+        self.log = lsstLog.Log.getLogger("lsst.CameraMapper")
 
         if root:
             self.root = root
@@ -1527,7 +1527,7 @@ def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo
         if setVisitInfo and exposure.getInfo().getVisitInfo() is None:
             if mapper is None:
                 if not logger:
-                    logger = lsstLog.Log.getLogger("CameraMapper")
+                    logger = lsstLog.Log.getLogger("lsst.CameraMapper")
                 logger.warn("I can only set the VisitInfo if you provide a mapper")
             else:
                 exposureId = mapper._computeCcdExposureId(dataId)

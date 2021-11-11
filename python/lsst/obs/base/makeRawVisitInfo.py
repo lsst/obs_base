@@ -66,14 +66,14 @@ class MakeRawVisitInfo:
     ----------
     log : `logging.Logger` or None
         Logger to use for messages.
-        (None to use ``logging.getLogger("MakeRawVisitInfo")``).
+        (None to use ``logging.getLogger("lsst.obs.base.makeRawVisitInfo")``).
     doStripHeader : `bool`, optional
         Strip header keywords from the metadata as they are used?
     """
 
     def __init__(self, log=None, doStripHeader=False):
         if log is None:
-            log = logging.getLogger("MakeRawVisitInfo")
+            log = logging.getLogger(__name__)
         self.log = log
         self.doStripHeader = doStripHeader
 

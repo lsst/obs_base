@@ -257,7 +257,7 @@ class TranslatorFactory:
         }
         self._addDefaultRules()
         if log is None:
-            log = logging.getLogger("obs.base.gen2to3.TranslatorFactory")
+            log = logging.getLogger(__name__)
         self.log = log
 
     def __str__(self):

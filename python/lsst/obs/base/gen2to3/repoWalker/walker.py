@@ -78,7 +78,7 @@ class RepoWalker:
                  progress: Optional[Progress] = None):
         super().__init__()
         if log is None:
-            log = logging.getLogger("obs.base.gen2to3.TranslatorFactory")
+            log = logging.getLogger("lsst.obs.base.gen2to3.repoWalker")
         self.log = log
         tree = BuilderTree(progress)
         allKeys: Dict[str, type] = {}
