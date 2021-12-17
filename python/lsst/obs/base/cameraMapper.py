@@ -30,7 +30,7 @@ from deprecated.sphinx import deprecated
 from astro_metadata_translator import fix_header
 from lsst.utils import doImport
 import lsst.daf.persistence as dafPersist
-from . import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping
+from .mapping import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping
 import lsst.daf.base as dafBase
 import lsst.afw.geom as afwGeom
 import lsst.afw.image as afwImage

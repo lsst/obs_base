@@ -24,7 +24,7 @@ __all__ = ('InitialSkyWcsError', 'createInitialSkyWcs', 'createInitialSkyWcsFrom
 import re
 import lsst.geom as geom
 
-from . import Instrument
+from ._instrument import Instrument
 from lsst.afw.cameraGeom import PIXELS, FIELD_ANGLE
 from lsst.afw.image import RotType
 from lsst.afw.geom.skyWcs import makeSkyWcs
