@@ -34,7 +34,7 @@ from .mapping import ImageMapping, ExposureMapping, CalibrationMapping, DatasetM
 import lsst.daf.base as dafBase
 import lsst.afw.geom as afwGeom
 import lsst.afw.image as afwImage
-import lsst.afw.table as afwTable
+from lsst.afw.table import Schema
 from lsst.afw.fits import readMetadata
 import lsst.afw.cameraGeom as afwCameraGeom
 import lsst.log as lsstLog
@@ -568,8 +568,8 @@ class CameraMapper(dafPersist.Mapper):
                         # Schema of catalog
                         if not datasetType.endswith("_schema") and datasetType + "_schema" not in datasets:
                             setMethods("schema", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                       afwTable.Schema.readFits(os.path.join(location.getStorage().root,
-                                                                             location.getLocations()[0])))
+                                       Schema.readFits(os.path.join(location.getStorage().root,
+                                                                    location.getLocations()[0])))
 
     def _computeCcdExposureId(self, dataId):
         """Compute the 64-bit (long) identifier for a CCD exposure.
