@@ -23,13 +23,12 @@
 subcommand plugins that are provided by this package."""
 
 import click
-
 from lsst.utils import doImport
+
 from .. import cmd
 
 
 class ButlerCmdDocGen(click.MultiCommand):
-
     def list_commands(self, ctx):
         """List the click commands provided by this package.
 

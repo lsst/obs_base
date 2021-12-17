@@ -21,12 +21,11 @@
 
 import unittest
 
-from astropy.time import Time
 import astropy.units as u
-
-from astro_metadata_translator import FitsTranslator, StubTranslator, ObservationInfo
-from lsst.daf.base import DateTime
 import lsst.afw.image
+from astro_metadata_translator import FitsTranslator, ObservationInfo, StubTranslator
+from astropy.time import Time
+from lsst.daf.base import DateTime
 from lsst.obs.base import MakeRawVisitInfoViaObsInfo
 
 
@@ -48,10 +47,9 @@ class MakeTestableVisitInfo(MakeRawVisitInfoViaObsInfo):
 
 
 class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
-
     def setUp(self):
         # Reference values
-        self.exposure_time = 6.2*u.s
+        self.exposure_time = 6.2 * u.s
         self.exposure_id = 54321
         self.datetime_begin = Time("2001-01-02T03:04:05.123456789", format="isot", scale="utc")
         self.datetime_begin.precision = 9

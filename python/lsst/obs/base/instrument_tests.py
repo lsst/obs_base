@@ -27,16 +27,15 @@ to get a functional test of an Instrument.
 
 import abc
 import dataclasses
-import pkg_resources
 from typing import Set
 
-from lsst.obs.base import Instrument, FilterDefinitionCollection, FilterDefinition
+import pkg_resources
+from lsst.daf.butler import Registry, RegistryConfig
+from lsst.daf.butler.formatters.yaml import YamlFormatter
+from lsst.obs.base import FilterDefinition, FilterDefinitionCollection, Instrument
 from lsst.obs.base.gen2to3 import TranslatorFactory
 from lsst.obs.base.yamlCamera import makeCamera
-from lsst.daf.butler import Registry
-from lsst.daf.butler import RegistryConfig
 from lsst.utils.introspection import get_full_type_name
-from lsst.daf.butler.formatters.yaml import YamlFormatter
 
 from .utils import createInitialSkyWcsFromBoresight
 
@@ -82,15 +81,24 @@ class DummyCam(Instrument):
         `Registry`.
         """
         detector_max = 2
-        dataId = {"instrument": self.getName(), "class_name": get_full_type_name(DummyCam),
-                  "detector_max": detector_max}
+        dataId = {
+            "instrument": self.getName(),
+            "class_name": get_full_type_name(DummyCam),
+            "detector_max": detector_max,
+        }
         with registry.transaction():
             registry.syncDimensionData("instrument", dataId, update=update)
             self._registerFilters(registry, update=update)
             for d in range(detector_max):
-                registry.syncDimensionData("detector",
-                                           dict(dataId, id=d, full_name=f"RXX_S0{d}",),
-                                           update=update)
+                registry.syncDimensionData(
+                    "detector",
+                    dict(
+                        dataId,
+                        id=d,
+                        full_name=f"RXX_S0{d}",
+                    ),
+                    update=update,
+                )
 
     def getRawFormatter(self, dataId):
         # Docstring inherited fromt Instrument.getRawFormatter.
@@ -108,8 +116,7 @@ class DummyCam(Instrument):
 
 @dataclasses.dataclass
 class InstrumentTestData:
-    """Values to test against in subclasses of `InstrumentTests`.
-    """
+    """Values to test against in subclasses of `InstrumentTests`."""
 
     name: str
     """The name of the Camera this instrument describes."""
@@ -141,16 +148,14 @@ class InstrumentTests(metaclass=abc.ABCMeta):
         self.assertEqual(self.instrument.getName(), self.data.name)
 
     def test_getCamera(self):
-        """Test that getCamera() returns a reasonable Camera definition.
-        """
+        """Test that getCamera() returns a reasonable Camera definition."""
         camera = self.instrument.getCamera()
         self.assertEqual(camera.getName(), self.instrument.getName())
         self.assertEqual(len(camera), self.data.nDetectors)
         self.assertEqual(next(iter(camera)).getName(), self.data.firstDetectorName)
 
     def test_register(self):
-        """Test that register() sets appropriate Dimensions.
-        """
+        """Test that register() sets appropriate Dimensions."""
         registryConfig = RegistryConfig()
         registryConfig["db"] = "sqlite://"
         registry = Registry.createFromConfig(registryConfig)
@@ -170,7 +175,7 @@ class InstrumentTests(metaclass=abc.ABCMeta):
         detectorNames = {dataId.records["detector"].full_name for dataId in detectorDataIds}
         self.assertIn(self.data.firstDetectorName, detectorNames)
         physicalFilterDataIds = registry.queryDataIds(["physical_filter"]).toSequence()
-        filterNames = {dataId['physical_filter'] for dataId in physicalFilterDataIds}
+        filterNames = {dataId["physical_filter"] for dataId in physicalFilterDataIds}
         self.assertGreaterEqual(filterNames, self.data.physical_filters)
 
         # Check that the instrument class can be retrieved.

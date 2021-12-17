@@ -19,17 +19,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ('InitialSkyWcsError', 'createInitialSkyWcs', 'createInitialSkyWcsFromBoresight', 'bboxFromIraf')
+__all__ = ("InitialSkyWcsError", "createInitialSkyWcs", "createInitialSkyWcsFromBoresight", "bboxFromIraf")
 
 import re
+
 import lsst.geom as geom
+import lsst.pex.exceptions
+from lsst.afw.cameraGeom import FIELD_ANGLE, PIXELS
+from lsst.afw.geom.skyWcs import makeSkyWcs
+from lsst.afw.image import RotType
+from lsst.utils import doImport
 
 from ._instrument import Instrument
-from lsst.afw.cameraGeom import PIXELS, FIELD_ANGLE
-from lsst.afw.image import RotType
-from lsst.afw.geom.skyWcs import makeSkyWcs
-import lsst.pex.exceptions
-from lsst.utils import doImport
 
 
 class InitialSkyWcsError(Exception):
@@ -38,6 +39,7 @@ class InitialSkyWcsError(Exception):
 
     Typically used as a chained exception from a lower level exception.
     """
+
     pass
 
 
@@ -69,8 +71,10 @@ def createInitialSkyWcs(visitInfo, detector, flipX=False):
         lower-level exception if available.
     """
     if visitInfo.getRotType() != RotType.SKY:
-        msg = (f"Cannot create SkyWcs from camera geometry: rotator angle defined using "
-               f"RotType={visitInfo.getRotType()} instead of SKY.")
+        msg = (
+            f"Cannot create SkyWcs from camera geometry: rotator angle defined using "
+            f"RotType={visitInfo.getRotType()} instead of SKY."
+        )
         raise InitialSkyWcsError(msg)
     orientation = visitInfo.getBoresightRotAngle()
     boresight = visitInfo.getBoresightRaDec()
@@ -106,8 +110,9 @@ def createInitialSkyWcsFromBoresight(boresight, orientation, detector, flipX=Fal
         lower-level exception if available.
     """
     try:
-        pixelsToFieldAngle = detector.getTransform(detector.makeCameraSys(PIXELS),
-                                                   detector.makeCameraSys(FIELD_ANGLE))
+        pixelsToFieldAngle = detector.getTransform(
+            detector.makeCameraSys(PIXELS), detector.makeCameraSys(FIELD_ANGLE)
+        )
     except lsst.pex.exceptions.InvalidParameterError as e:
         raise InitialSkyWcsError("Cannot compute PIXELS to FIELD_ANGLE Transform.") from e
     return makeSkyWcs(pixelsToFieldAngle, orientation, flipX, boresight)
@@ -122,7 +127,7 @@ def bboxFromIraf(irafBBoxStr):
 
     mat = re.search(r"^\[([-\d]+):([-\d]+),([-\d]+):([-\d]+)\]$", irafBBoxStr)
     if not mat:
-        raise RuntimeError("Unable to parse IRAF-style bbox \"%s\"" % irafBBoxStr)
+        raise RuntimeError('Unable to parse IRAF-style bbox "%s"' % irafBBoxStr)
     x0, x1, y0, y1 = [int(_) for _ in mat.groups()]
 
     return geom.BoxI(geom.PointI(x0 - 1, y0 - 1), geom.PointI(x1 - 1, y1 - 1))
@@ -167,7 +172,8 @@ def getInstrument(instrumentName, registry=None, collection_prefix=None):
             instr = Instrument.fromName(instrumentName, registry, collection_prefix=collection_prefix)
         except Exception as err:
             raise RuntimeError(
-                f"Could not get instrument from name: {instrumentName}. Failed with exception: {err}")
+                f"Could not get instrument from name: {instrumentName}. Failed with exception: {err}"
+            )
     else:
         try:
             instr = doImport(instrumentName)

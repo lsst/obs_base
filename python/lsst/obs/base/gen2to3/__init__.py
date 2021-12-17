@@ -19,10 +19,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from .translators import *
-from .repoWalker import *
-from .repoConverter import *
 from .calibRepoConverter import *
-from .standardRepoConverter import *
-from .rootRepoConverter import *
 from .convertRepo import *
+from .repoConverter import *
+from .repoWalker import *
+from .rootRepoConverter import *
+from .standardRepoConverter import *
+from .translators import *

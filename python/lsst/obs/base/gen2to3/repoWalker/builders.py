@@ -28,23 +28,17 @@ from __future__ import annotations
 
 __all__ = ["BuilderSkipInput", "BuilderTargetInput", "BuilderTree"]
 
-from abc import ABC, abstractmethod
 import os
 import re
-from typing import (
-    Any,
-    Dict,
-    List,
-    Optional,
-    Tuple,
-)
+from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Optional, Tuple
 
-from lsst.daf.butler import DatasetType, DimensionUniverse, StorageClass, FormatterParameter, Progress
+from lsst.daf.butler import DatasetType, DimensionUniverse, FormatterParameter, Progress, StorageClass
+
 from ..translators import TranslatorFactory
+from .handlers import IgnoreHandler, SkipHandler, SubdirectoryHandler, TargetFileHandler
 from .parser import PathElementParser
-from .scanner import PathElementHandler, DirectoryScanner
-from .handlers import (IgnoreHandler, SubdirectoryHandler, SkipHandler,
-                       TargetFileHandler)
+from .scanner import DirectoryScanner, PathElementHandler
 
 
 class BuilderNode(ABC):
@@ -71,9 +65,15 @@ class BuilderNode(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def build(self, parser: PathElementParser, allKeys: Dict[str, type], cumulativeKeys: Dict[str, type], *,
-              fileIgnoreRegEx: Optional[re.Pattern], dirIgnoreRegEx: Optional[re.Pattern]
-              ) -> PathElementHandler:
+    def build(
+        self,
+        parser: PathElementParser,
+        allKeys: Dict[str, type],
+        cumulativeKeys: Dict[str, type],
+        *,
+        fileIgnoreRegEx: Optional[re.Pattern],
+        dirIgnoreRegEx: Optional[re.Pattern],
+    ) -> PathElementHandler:
         """Transform this node in the build tree into a corresponding
         `PathElementHandler`, recursing to any children.
 
@@ -114,6 +114,7 @@ class BuilderInput(BuilderNode):
     keys : `dict` [`str`, `type`]
         A mapping from Gen2 data ID key to the type of its value.
     """
+
     def __init__(self, template: str, keys: Dict[str, type]):
         self.template = template
         self.keys = keys
@@ -156,15 +157,23 @@ class BuilderSkipInput(BuilderInput):
         If `True` (default), this handler should be run on files.  Otherwise it
         should be run on directories.
     """
-    def __init__(self, template: str, keys: Dict[str, type], message: Optional[str] = None, *,
-                 isForFiles: bool = True):
+
+    def __init__(
+        self, template: str, keys: Dict[str, type], message: Optional[str] = None, *, isForFiles: bool = True
+    ):
         super().__init__(template=template, keys=keys)
         self._message = message
         self._isForFiles = isForFiles
 
-    def build(self, parser: PathElementParser, allKeys: Dict[str, type], cumulativeKeys: Dict[str, type], *,
-              fileIgnoreRegEx: Optional[re.Pattern], dirIgnoreRegEx: Optional[re.Pattern]
-              ) -> PathElementHandler:
+    def build(
+        self,
+        parser: PathElementParser,
+        allKeys: Dict[str, type],
+        cumulativeKeys: Dict[str, type],
+        *,
+        fileIgnoreRegEx: Optional[re.Pattern],
+        dirIgnoreRegEx: Optional[re.Pattern],
+    ) -> PathElementHandler:
         # Docstring inherited from BuilderNode.
         return SkipHandler(parser=parser, isForFiles=self._isForFiles, message=self._message)
 
@@ -202,30 +211,53 @@ class BuilderTargetInput(BuilderInput):
         Additional keyword arguments are passed to `Translator.makeMatching`,
         in along with ``datasetTypeName`` and ``keys``.
     """
-    def __init__(self, *, datasetTypeName: str, template: str, keys: Dict[str, type],
-                 storageClass: StorageClass, universe: DimensionUniverse,
-                 formatter: FormatterParameter, translatorFactory: TranslatorFactory,
-                 targetHandler: Optional[PathElementHandler] = None,
-                 **kwargs: Any):
+
+    def __init__(
+        self,
+        *,
+        datasetTypeName: str,
+        template: str,
+        keys: Dict[str, type],
+        storageClass: StorageClass,
+        universe: DimensionUniverse,
+        formatter: FormatterParameter,
+        translatorFactory: TranslatorFactory,
+        targetHandler: Optional[PathElementHandler] = None,
+        **kwargs: Any,
+    ):
         # strip off [%HDU] identifiers from e.g. DECAM Community Pipeline
         # products
-        template = template.split('[%(')[0]
+        template = template.split("[%(")[0]
         super().__init__(template=template, keys=keys)
         self._translator = translatorFactory.makeMatching(datasetTypeName, keys, **kwargs)
-        self.datasetType = DatasetType(datasetTypeName, dimensions=self._translator.dimensionNames,
-                                       storageClass=storageClass, universe=universe,
-                                       isCalibration=("calibDate" in keys))
+        self.datasetType = DatasetType(
+            datasetTypeName,
+            dimensions=self._translator.dimensionNames,
+            storageClass=storageClass,
+            universe=universe,
+            isCalibration=("calibDate" in keys),
+        )
         self._formatter = formatter
         if targetHandler is None:
             targetHandler = TargetFileHandler
         self._handler = targetHandler
 
-    def build(self, parser: PathElementParser, allKeys: Dict[str, type], cumulativeKeys: Dict[str, type], *,
-              fileIgnoreRegEx: Optional[re.Pattern], dirIgnoreRegEx: Optional[re.Pattern]
-              ) -> PathElementHandler:
+    def build(
+        self,
+        parser: PathElementParser,
+        allKeys: Dict[str, type],
+        cumulativeKeys: Dict[str, type],
+        *,
+        fileIgnoreRegEx: Optional[re.Pattern],
+        dirIgnoreRegEx: Optional[re.Pattern],
+    ) -> PathElementHandler:
         # Docstring inherited from BuilderNode.
-        return self._handler(parser=parser, translator=self._translator, datasetType=self.datasetType,
-                             formatter=self._formatter)
+        return self._handler(
+            parser=parser,
+            translator=self._translator,
+            datasetType=self.datasetType,
+            formatter=self._formatter,
+        )
 
     def prune(self) -> Tuple[BuilderNode, List[str], bool]:
         # Docstring inherited from BuilderNode.
@@ -255,9 +287,15 @@ class BuilderPrunedTree(BuilderNode):
     def __init__(self, messages: List[str]):
         self._messages = messages
 
-    def build(self, parser: PathElementParser, allKeys: Dict[str, type], cumulativeKeys: Dict[str, type], *,
-              fileIgnoreRegEx: Optional[re.Pattern], dirIgnoreRegEx: Optional[re.Pattern]
-              ) -> PathElementHandler:
+    def build(
+        self,
+        parser: PathElementParser,
+        allKeys: Dict[str, type],
+        cumulativeKeys: Dict[str, type],
+        *,
+        fileIgnoreRegEx: Optional[re.Pattern],
+        dirIgnoreRegEx: Optional[re.Pattern],
+    ) -> PathElementHandler:
         # Docstring inherited from BuilderNode.
         message = "; ".join(self._messages) if self._messages else None
         return SkipHandler(parser=parser, isForFiles=False, message=message)
@@ -271,6 +309,7 @@ class BuilderDuplicateInputs(BuilderNode):
     """A `BuilderNode` that represents a collection of `BuilderInput` instances
     that all have the same template.
     """
+
     def __init__(self, old: BuilderInput, new: BuilderInput):
         self._children = []
         if isinstance(old, BuilderDuplicateInputs):
@@ -280,9 +319,15 @@ class BuilderDuplicateInputs(BuilderNode):
         self._children.append(new)
         self._messages = []  # populated in prune()
 
-    def build(self, parser: PathElementParser, allKeys: Dict[str, type], cumulativeKeys: Dict[str, type], *,
-              fileIgnoreRegEx: Optional[re.Pattern], dirIgnoreRegEx: Optional[re.Pattern]
-              ) -> PathElementHandler:
+    def build(
+        self,
+        parser: PathElementParser,
+        allKeys: Dict[str, type],
+        cumulativeKeys: Dict[str, type],
+        *,
+        fileIgnoreRegEx: Optional[re.Pattern],
+        dirIgnoreRegEx: Optional[re.Pattern],
+    ) -> PathElementHandler:
         # Docstring inherited from BuilderNode.
         message = "; ".join(self._messages) if self._messages else None
         return SkipHandler(parser=parser, isForFiles=False, message=message)
@@ -333,6 +378,7 @@ class BuilderTree(BuilderNode):
     progress : `Progress`, optional
         Object to use to report incremental progress.
     """
+
     def __init__(self, progress: Optional[Progress] = None):
         self._children = {}  # Maps template path element to BuilderNode
         self.progress = progress
@@ -368,8 +414,15 @@ class BuilderTree(BuilderNode):
             child = self._children.setdefault(element, BuilderTree(progress))
             child.insert(nextLevel, leaf)
 
-    def fill(self, scanner: DirectoryScanner, allKeys: Dict[str, type], previousKeys: Dict[str, type], *,
-             fileIgnoreRegEx: Optional[re.Pattern], dirIgnoreRegEx: Optional[re.Pattern]):
+    def fill(
+        self,
+        scanner: DirectoryScanner,
+        allKeys: Dict[str, type],
+        previousKeys: Dict[str, type],
+        *,
+        fileIgnoreRegEx: Optional[re.Pattern],
+        dirIgnoreRegEx: Optional[re.Pattern],
+    ):
         """Fill a `DirectoryScanner` instance by recursively building all
         child nodes.
 
@@ -400,8 +453,15 @@ class BuilderTree(BuilderNode):
             parser = PathElementParser(template, allKeys, previousKeys=previousKeys)
             cumulativeKeys = previousKeys.copy()
             cumulativeKeys.update(parser.keys)
-            scanner.add(child.build(parser, allKeys, cumulativeKeys, fileIgnoreRegEx=fileIgnoreRegEx,
-                                    dirIgnoreRegEx=dirIgnoreRegEx))
+            scanner.add(
+                child.build(
+                    parser,
+                    allKeys,
+                    cumulativeKeys,
+                    fileIgnoreRegEx=fileIgnoreRegEx,
+                    dirIgnoreRegEx=dirIgnoreRegEx,
+                )
+            )
 
     def prune(self) -> Tuple[BuilderNode, List[str], bool]:
         # Docstring inherited from BuilderNode.
@@ -421,11 +481,22 @@ class BuilderTree(BuilderNode):
         else:
             return self, [], False
 
-    def build(self, parser: PathElementParser, allKeys: Dict[str, type], cumulativeKeys: Dict[str, type], *,
-              fileIgnoreRegEx: Optional[re.Pattern], dirIgnoreRegEx: Optional[re.Pattern]
-              ) -> PathElementHandler:
+    def build(
+        self,
+        parser: PathElementParser,
+        allKeys: Dict[str, type],
+        cumulativeKeys: Dict[str, type],
+        *,
+        fileIgnoreRegEx: Optional[re.Pattern],
+        dirIgnoreRegEx: Optional[re.Pattern],
+    ) -> PathElementHandler:
         # Docstring inherited from BuilderNode.
         built = SubdirectoryHandler(parser, progress=self.progress)
-        self.fill(built.scanner, allKeys, cumulativeKeys, fileIgnoreRegEx=fileIgnoreRegEx,
-                  dirIgnoreRegEx=dirIgnoreRegEx)
+        self.fill(
+            built.scanner,
+            allKeys,
+            cumulativeKeys,
+            fileIgnoreRegEx=fileIgnoreRegEx,
+            dirIgnoreRegEx=dirIgnoreRegEx,
+        )
         return built

@@ -20,51 +20,55 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import click
-
-from lsst.daf.butler.cli.opt import (repo_argument,
-                                     config_option,
-                                     config_file_option,
-                                     locations_argument,
-                                     options_file_option,
-                                     processes_option,
-                                     regex_option,
-                                     run_option,
-                                     transfer_option
-                                     )
-from lsst.daf.butler.cli.utils import (
-    ButlerCommand,
-    split_commas,
-    typeStrAcceptsMultiple
+from lsst.daf.butler.cli.opt import (
+    config_file_option,
+    config_option,
+    locations_argument,
+    options_file_option,
+    processes_option,
+    regex_option,
+    repo_argument,
+    run_option,
+    transfer_option,
 )
-from ..opt import instrument_argument
-from ... import script
+from lsst.daf.butler.cli.utils import ButlerCommand, split_commas, typeStrAcceptsMultiple
 
+from ... import script
+from ..opt import instrument_argument
 
 # regular expression that can be used to find supported fits file extensions.
 fits_re = r"\.fit[s]?\b"
 
 
 @click.command(short_help="Convert a gen2 repo to gen3.", cls=ButlerCommand)
-@repo_argument(required=True,
-               help="REPO is the URI or path to the gen3 repository. Will be created if it does not already "
-               "exist")
-@click.option("--gen2root", required=True,
-              help="Root path of the gen 2 repo to be converted.")
-@click.option("--skymap-name",
-              help="Name of the new gen3 skymap (e.g. 'discrete/ci_hsc').")
-@click.option("--skymap-config",
-              help="Path to skymap config file defining the new gen3 skymap.")
-@click.option("--calibs",
-              help="Path to the gen 2 calibration repo. It can be absolute or relative to gen2root.")
-@click.option("--reruns", multiple=True, callback=split_commas, metavar=typeStrAcceptsMultiple,
-              help=("List of rerun paths to convert.  Output collection names will be "
-                    "guessed, which can fail if the Gen2 repository paths do not follow a "
-                    "recognized convention.  In this case, the command-line interface cannot "
-                    "be used."))
+@repo_argument(
+    required=True,
+    help="REPO is the URI or path to the gen3 repository. Will be created if it does not already " "exist",
+)
+@click.option("--gen2root", required=True, help="Root path of the gen 2 repo to be converted.")
+@click.option("--skymap-name", help="Name of the new gen3 skymap (e.g. 'discrete/ci_hsc').")
+@click.option("--skymap-config", help="Path to skymap config file defining the new gen3 skymap.")
+@click.option(
+    "--calibs", help="Path to the gen 2 calibration repo. It can be absolute or relative to gen2root."
+)
+@click.option(
+    "--reruns",
+    multiple=True,
+    callback=split_commas,
+    metavar=typeStrAcceptsMultiple,
+    help=(
+        "List of rerun paths to convert.  Output collection names will be "
+        "guessed, which can fail if the Gen2 repository paths do not follow a "
+        "recognized convention.  In this case, the command-line interface cannot "
+        "be used."
+    ),
+)
 @transfer_option(help="Mode to use to transfer files into the new repository.")
 @processes_option()
-@config_file_option(help="Path to a `ConvertRepoConfig` override to be included after the Instrument config "
-                    "overrides are applied.")
+@config_file_option(
+    help="Path to a `ConvertRepoConfig` override to be included after the Instrument config "
+    "overrides are applied."
+)
 @options_file_option()
 def convert(*args, **kwargs):
     """Convert one or more Butler gen 2 repositories into a gen 3 repository.
@@ -80,13 +84,16 @@ def convert(*args, **kwargs):
 @click.command(short_help="Define visits from exposures.", cls=ButlerCommand)
 @repo_argument(required=True)
 @instrument_argument(required=True)
-@config_file_option(help="Path to a pex_config override to be included after the Instrument config overrides "
-                         "are applied.")
-@click.option("--collections",
-              help="The collections to be searched (in order) when reading datasets.",
-              multiple=True,
-              callback=split_commas,
-              metavar=typeStrAcceptsMultiple)
+@config_file_option(
+    help="Path to a pex_config override to be included after the Instrument config overrides " "are applied."
+)
+@click.option(
+    "--collections",
+    help="The collections to be searched (in order) when reading datasets.",
+    multiple=True,
+    callback=split_commas,
+    metavar=typeStrAcceptsMultiple,
+)
 @processes_option()
 @options_file_option()
 def define_visits(*args, **kwargs):
@@ -100,18 +107,24 @@ def define_visits(*args, **kwargs):
 
 @click.command(short_help="Ingest raw frames.", cls=ButlerCommand)
 @repo_argument(required=True)
-@locations_argument(help="LOCATIONS specifies files to ingest and/or locations to search for files.",
-                    required=True)
-@regex_option(default=fits_re,
-              help="Regex string used to find files in directories listed in LOCATIONS. "
-                   "Searches for fits files by default.")
+@locations_argument(
+    help="LOCATIONS specifies files to ingest and/or locations to search for files.", required=True
+)
+@regex_option(
+    default=fits_re,
+    help="Regex string used to find files in directories listed in LOCATIONS. "
+    "Searches for fits files by default.",
+)
 @config_option(metavar="TEXT=TEXT", multiple=True)
 @config_file_option(type=click.Path(exists=True, writable=False, file_okay=True, dir_okay=False))
 @run_option(required=False)
 @transfer_option()
 @processes_option()
-@click.option("--ingest-task", default="lsst.obs.base.RawIngestTask", help="The fully qualified class name "
-              "of the ingest task to use.")
+@click.option(
+    "--ingest-task",
+    default="lsst.obs.base.RawIngestTask",
+    help="The fully qualified class name " "of the ingest task to use.",
+)
 @options_file_option()
 def ingest_raws(*args, **kwargs):
     """Ingest raw frames into from a directory into the butler registry"""
@@ -123,21 +136,28 @@ def ingest_raws(*args, **kwargs):
 @instrument_argument(required=True, nargs=-1, help="The fully-qualified name of an Instrument subclass.")
 @click.option("--update", is_flag=True)
 def register_instrument(*args, **kwargs):
-    """Add an instrument to the data repository.
-    """
+    """Add an instrument to the data repository."""
     script.registerInstrument(*args, **kwargs)
 
 
 @click.command(short_help="Add an instrument's curated calibrations.", cls=ButlerCommand)
 @repo_argument(required=True)
 @instrument_argument(required=True)
-@click.option("--collection", required=False,
-              help="Name of the calibration collection that associates datasets with validity ranges.")
-@click.option("--label", "labels", multiple=True,
-              help=("Extra strings to include (with automatic delimiters) in all RUN collection names, "
-                    "as well as the calibration collection name if it is not provided via --collection."))
+@click.option(
+    "--collection",
+    required=False,
+    help="Name of the calibration collection that associates datasets with validity ranges.",
+)
+@click.option(
+    "--label",
+    "labels",
+    multiple=True,
+    help=(
+        "Extra strings to include (with automatic delimiters) in all RUN collection names, "
+        "as well as the calibration collection name if it is not provided via --collection."
+    ),
+)
 @options_file_option()
 def write_curated_calibrations(*args, **kwargs):
-    """Add an instrument's curated calibrations to the data repository.
-    """
+    """Add an instrument's curated calibrations to the data repository."""
     script.writeCuratedCalibrations(*args, **kwargs)

@@ -22,29 +22,23 @@
 from __future__ import annotations
 
 import os
-import unittest
-import tempfile
 import shutil
-
+import tempfile
+import unittest
 from typing import TYPE_CHECKING
 
-import lsst.utils.tests
-
-import lsst.pex.config
-import lsst.afw.image
-from lsst.afw.image import ExposureFitsReader, LOCAL
-from lsst.afw.fits import readMetadata
-from lsst.afw.math import flipImage
 import lsst.afw.cameraGeom.testUtils  # for test asserts injected into TestCase
-from lsst.geom import Box2I, Extent2I, Point2I
+import lsst.afw.image
+import lsst.pex.config
+import lsst.utils.tests
+from lsst.afw.fits import readMetadata
+from lsst.afw.image import LOCAL, ExposureFitsReader
+from lsst.afw.math import flipImage
 from lsst.base import Packages
 from lsst.daf.base import PropertyList, PropertySet
-
-from lsst.daf.butler import Config
-from lsst.daf.butler import StorageClassFactory
-from lsst.daf.butler import DatasetType
-from lsst.daf.butler.tests import DatasetTestHelper, makeTestRepo, addDatasetType, makeTestCollection
-
+from lsst.daf.butler import Config, DatasetType, StorageClassFactory
+from lsst.daf.butler.tests import DatasetTestHelper, addDatasetType, makeTestCollection, makeTestRepo
+from lsst.geom import Box2I, Extent2I, Point2I
 from lsst.obs.base.exposureAssembler import ExposureAssembler
 from lsst.obs.base.tests import make_ramp_exposure_trimmed, make_ramp_exposure_untrimmed
 
@@ -80,21 +74,35 @@ datastore:
 """
 
 # Components present in the test file
-COMPONENTS = {"wcs", "image", "mask", "coaddInputs", "psf", "visitInfo", "variance", "metadata", "photoCalib",
-              "filterLabel", "validPolygon", "transmissionCurve", "detector", "apCorrMap", "summaryStats",
-              "id",
-              }
+COMPONENTS = {
+    "wcs",
+    "image",
+    "mask",
+    "coaddInputs",
+    "psf",
+    "visitInfo",
+    "variance",
+    "metadata",
+    "photoCalib",
+    "filterLabel",
+    "validPolygon",
+    "transmissionCurve",
+    "detector",
+    "apCorrMap",
+    "summaryStats",
+    "id",
+}
 READ_COMPONENTS = {"bbox", "xy0", "dimensions", "filter"}
 
 
 class SimpleConfig(lsst.pex.config.Config):
     """Config to use in tests for butler put/get"""
+
     i = lsst.pex.config.Field("integer test", int)
     c = lsst.pex.config.Field("string", str)
 
 
 class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
-
     @classmethod
     def setUpClass(cls):
         """Create a new butler once only."""
@@ -117,24 +125,26 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         cls.creatorButler = makeTestRepo(butlerRoot, dataIds, config=Config.fromYaml(BUTLER_CONFIG))
 
         # Create dataset types used by the tests
-        for datasetTypeName, storageClassName in (("calexp", "ExposureF"),
-                                                  ("unknown", "ExposureCompositeF"),
-                                                  ("testCatalog", "SourceCatalog"),
-                                                  ("lossless", "ExposureF"),
-                                                  ("uncompressed", "ExposureF"),
-                                                  ("lossy", "ExposureF"),
-                                                  ):
+        for datasetTypeName, storageClassName in (
+            ("calexp", "ExposureF"),
+            ("unknown", "ExposureCompositeF"),
+            ("testCatalog", "SourceCatalog"),
+            ("lossless", "ExposureF"),
+            ("uncompressed", "ExposureF"),
+            ("lossy", "ExposureF"),
+        ):
             storageClass = cls.storageClassFactory.getStorageClass(storageClassName)
             addDatasetType(cls.creatorButler, datasetTypeName, set(dataIds), storageClass)
 
         # And some dataset types that have no dimensions for easy testing
-        for datasetTypeName, storageClassName in (("ps", "PropertySet"),
-                                                  ("pl", "PropertyList"),
-                                                  ("pkg", "Packages"),
-                                                  ("config", "Config"),
-                                                  ("int_exp_trimmed", "ExposureI"),
-                                                  ("int_exp_untrimmed", "ExposureI"),
-                                                  ):
+        for datasetTypeName, storageClassName in (
+            ("ps", "PropertySet"),
+            ("pl", "PropertyList"),
+            ("pkg", "Packages"),
+            ("config", "Config"),
+            ("int_exp_trimmed", "ExposureI"),
+            ("int_exp_untrimmed", "ExposureI"),
+        ):
             storageClass = cls.storageClassFactory.getStorageClass(storageClassName)
             addDatasetType(cls.creatorButler, datasetTypeName, {}, storageClass)
 
@@ -150,8 +160,9 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         catalogPath = os.path.join(TESTDIR, "data", "source_catalog.fits")
         return lsst.afw.table.SourceCatalog.readFits(catalogPath)
 
-    def assertCatalogEqual(self, inputCatalog: lsst.afw.table.SourceCatalog,
-                           outputCatalog: lsst.afw.table.SourceCatalog) -> None:
+    def assertCatalogEqual(
+        self, inputCatalog: lsst.afw.table.SourceCatalog, outputCatalog: lsst.afw.table.SourceCatalog
+    ) -> None:
         self.assertIsInstance(outputCatalog, lsst.afw.table.SourceCatalog)
         inputTable = inputCatalog.getTable()
         inputRecord = inputCatalog[0]
@@ -159,26 +170,30 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         outputRecord = outputCatalog[0]
         self.assertEqual(inputRecord.getPsfInstFlux(), outputRecord.getPsfInstFlux())
         self.assertEqual(inputRecord.getPsfFluxFlag(), outputRecord.getPsfFluxFlag())
-        self.assertEqual(inputTable.getSchema().getAliasMap().get("slot_Centroid"),
-                         outputTable.getSchema().getAliasMap().get("slot_Centroid"))
+        self.assertEqual(
+            inputTable.getSchema().getAliasMap().get("slot_Centroid"),
+            outputTable.getSchema().getAliasMap().get("slot_Centroid"),
+        )
         self.assertEqual(inputRecord.getCentroid(), outputRecord.getCentroid())
         self.assertFloatsAlmostEqual(
-            inputRecord.getCentroidErr()[0, 0],
-            outputRecord.getCentroidErr()[0, 0], rtol=1e-6)
+            inputRecord.getCentroidErr()[0, 0], outputRecord.getCentroidErr()[0, 0], rtol=1e-6
+        )
         self.assertFloatsAlmostEqual(
-            inputRecord.getCentroidErr()[1, 1],
-            outputRecord.getCentroidErr()[1, 1], rtol=1e-6)
-        self.assertEqual(inputTable.getSchema().getAliasMap().get("slot_Shape"),
-                         outputTable.getSchema().getAliasMap().get("slot_Shape"))
+            inputRecord.getCentroidErr()[1, 1], outputRecord.getCentroidErr()[1, 1], rtol=1e-6
+        )
+        self.assertEqual(
+            inputTable.getSchema().getAliasMap().get("slot_Shape"),
+            outputTable.getSchema().getAliasMap().get("slot_Shape"),
+        )
         self.assertFloatsAlmostEqual(
-            inputRecord.getShapeErr()[0, 0],
-            outputRecord.getShapeErr()[0, 0], rtol=1e-6)
+            inputRecord.getShapeErr()[0, 0], outputRecord.getShapeErr()[0, 0], rtol=1e-6
+        )
         self.assertFloatsAlmostEqual(
-            inputRecord.getShapeErr()[1, 1],
-            outputRecord.getShapeErr()[1, 1], rtol=1e-6)
+            inputRecord.getShapeErr()[1, 1], outputRecord.getShapeErr()[1, 1], rtol=1e-6
+        )
         self.assertFloatsAlmostEqual(
-            inputRecord.getShapeErr()[2, 2],
-            outputRecord.getShapeErr()[2, 2], rtol=1e-6)
+            inputRecord.getShapeErr()[2, 2], outputRecord.getShapeErr()[2, 2], rtol=1e-6
+        )
 
     def runFundamentalTypeTest(self, datasetTypeName, entity):
         """Put and get the supplied entity and compare."""
@@ -239,8 +254,7 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         self.assertIsNone(primary)
         self.assertEqual(set(components), COMPONENTS)
         for compName, uri in components.items():
-            self.assertTrue(uri.exists(),
-                            f"Checking URI {uri} existence for component {compName}")
+            self.assertTrue(uri.exists(), f"Checking URI {uri} existence for component {compName}")
 
     def runExposureCompositePutGetTest(self, datasetTypeName: str) -> DatasetRef:
         example = os.path.join(TESTDIR, "data", "calexp.fits")
@@ -278,10 +292,10 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
             elif compName == "wcs":
                 self.assertWcsAlmostEqualOverBBox(component, reference, exposure.getBBox())
             elif compName == "coaddInputs":
-                self.assertEqual(len(component.visits), len(reference.visits),
-                                 f"cf visits {component.visits}")
-                self.assertEqual(len(component.ccds), len(reference.ccds),
-                                 f"cf CCDs {component.ccds}")
+                self.assertEqual(
+                    len(component.visits), len(reference.visits), f"cf visits {component.visits}"
+                )
+                self.assertEqual(len(component.ccds), len(reference.ccds), f"cf CCDs {component.ccds}")
             elif compName == "psf":
                 # Equality for PSF does not work
                 pass
@@ -292,8 +306,7 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
             elif compName == "id":
                 self.assertEqual(component, reference)
             elif compName == "visitInfo":
-                self.assertEqual(component, reference,
-                                 "VisitInfo comparison")
+                self.assertEqual(component, reference, "VisitInfo comparison")
             elif compName == "metadata":
                 # The component metadata has extra fields in it so cannot
                 # compare directly.
@@ -304,20 +317,18 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
                 # "spatially constant with mean: inf error: nan" entry
                 # which does not compare directly.
                 self.assertEqual(str(component), str(reference))
-                self.assertIn("spatially constant with mean: 1.99409", str(component),
-                              "Checking photoCalib")
+                self.assertIn("spatially constant with mean: 1.99409", str(component), "Checking photoCalib")
             elif compName in ("bbox", "xy0", "dimensions", "validPolygon"):
                 self.assertEqual(component, reference)
             elif compName == "apCorrMap":
                 self.assertEqual(set(component.keys()), set(reference.keys()))
             elif compName == "transmissionCurve":
-                self.assertEqual(component.getThroughputAtBounds(),
-                                 reference.getThroughputAtBounds())
+                self.assertEqual(component.getThroughputAtBounds(), reference.getThroughputAtBounds())
             elif compName == "detector":
                 c_amps = {a.getName() for a in component.getAmplifiers()}
                 r_amps = {a.getName() for a in reference.getAmplifiers()}
                 self.assertEqual(c_amps, r_amps)
-            elif compName == 'summaryStats':
+            elif compName == "summaryStats":
                 self.assertEqual(component.psfSigma, reference.psfSigma)
             else:
                 raise RuntimeError(f"Unexpected component '{compName}' encountered in test")
@@ -401,36 +412,36 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
             # First flip X only.
             amp_t1 = amp.rebuild().transform(outFlipX=True).finish()
             test_t1_trimmed = self.butler.getDirect(trimmed_ref, parameters={"amp": amp_t1})
-            self.assertImagesEqual(test_t1_trimmed.image,
-                                   flipImage(trimmed_full[amp.getBBox()].image,
-                                             flipLR=True, flipTB=False))
+            self.assertImagesEqual(
+                test_t1_trimmed.image, flipImage(trimmed_full[amp.getBBox()].image, flipLR=True, flipTB=False)
+            )
             self.assertAmplifiersEqual(test_t1_trimmed.getDetector()[0], amp_t1)
             test_t1_untrimmed = self.butler.getDirect(untrimmed_ref, parameters={"amp": amp_t1})
-            self.assertImagesEqual(test_t1_untrimmed.image,
-                                   flipImage(untrimmed_full[amp.getRawBBox()].image,
-                                             flipLR=True, flipTB=False))
+            self.assertImagesEqual(
+                test_t1_untrimmed.image,
+                flipImage(untrimmed_full[amp.getRawBBox()].image, flipLR=True, flipTB=False),
+            )
             self.assertAmplifiersEqual(test_t1_trimmed.getDetector()[0], amp_t1)
             # Flip Y only.
             amp_t2 = amp.rebuild().transform(outFlipY=True).finish()
             test_t2_trimmed = self.butler.getDirect(trimmed_ref, parameters={"amp": amp_t2})
-            self.assertImagesEqual(test_t2_trimmed.image,
-                                   flipImage(trimmed_full[amp.getBBox()].image,
-                                             flipLR=False, flipTB=True))
+            self.assertImagesEqual(
+                test_t2_trimmed.image, flipImage(trimmed_full[amp.getBBox()].image, flipLR=False, flipTB=True)
+            )
             self.assertAmplifiersEqual(test_t2_trimmed.getDetector()[0], amp_t2)
             test_t2_untrimmed = self.butler.getDirect(untrimmed_ref, parameters={"amp": amp_t2})
-            self.assertImagesEqual(test_t2_untrimmed.image,
-                                   flipImage(untrimmed_full[amp.getRawBBox()].image,
-                                             flipLR=False, flipTB=True))
+            self.assertImagesEqual(
+                test_t2_untrimmed.image,
+                flipImage(untrimmed_full[amp.getRawBBox()].image, flipLR=False, flipTB=True),
+            )
             self.assertAmplifiersEqual(test_t2_trimmed.getDetector()[0], amp_t2)
             # Add an XY offset only.
             amp_t3 = amp.rebuild().transform(outOffset=Extent2I(5, 4)).finish()
             test_t3_trimmed = self.butler.getDirect(trimmed_ref, parameters={"amp": amp_t3})
-            self.assertImagesEqual(test_t3_trimmed.image,
-                                   trimmed_full[amp.getBBox()].image)
+            self.assertImagesEqual(test_t3_trimmed.image, trimmed_full[amp.getBBox()].image)
             self.assertAmplifiersEqual(test_t3_trimmed.getDetector()[0], amp_t3)
             test_t3_untrimmed = self.butler.getDirect(untrimmed_ref, parameters={"amp": amp_t3})
-            self.assertImagesEqual(test_t3_untrimmed.image,
-                                   untrimmed_full[amp.getRawBBox()].image)
+            self.assertImagesEqual(test_t3_untrimmed.image, untrimmed_full[amp.getRawBBox()].image)
             self.assertAmplifiersEqual(test_t3_trimmed.getDetector()[0], amp_t3)
 
 

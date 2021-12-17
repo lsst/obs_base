@@ -21,10 +21,10 @@
 
 import unittest
 
+import lsst.afw.image as afwImage
 import lsst.utils.tests
 from lsst.daf.base import PropertyList
 from lsst.obs.base import exposureFromImage
-import lsst.afw.image as afwImage
 
 
 class ExposureFromImageTestCase(lsst.utils.tests.TestCase):

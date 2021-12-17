@@ -22,37 +22,28 @@ from __future__ import annotations
 
 __all__ = ["RepoConverter"]
 
-from dataclasses import dataclass
-from collections import defaultdict
-from abc import ABC, abstractmethod
 import fnmatch
 import os.path
 import re
-from typing import (
-    Dict,
-    Iterator,
-    List,
-    Mapping,
-    Optional,
-    Set,
-    Tuple,
-    Union,
-    TYPE_CHECKING,
-)
+from abc import ABC, abstractmethod
+from collections import defaultdict
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Dict, Iterator, List, Mapping, Optional, Set, Tuple, Union
 
-from lsst.utils import doImport
-from lsst.daf.butler import DataCoordinate, FileDataset, DatasetType, Progress
+from lsst.daf.butler import DataCoordinate, DatasetType, FileDataset, Progress
 from lsst.sphgeom import RangeSet, Region
-from .repoWalker import RepoWalker
-from ..ingest import _log_msg_counter
+from lsst.utils import doImport
 
+from ..ingest import _log_msg_counter
+from .repoWalker import RepoWalker
 
 if TYPE_CHECKING:
+    from lsst.daf.butler import FormatterParameter, Registry, SkyPixDimension, StorageClass
+
+    from .._instrument import Instrument
     from ..mapping import Mapping as CameraMapperMapping  # disambiguate from collections.abc.Mapping
     from .convertRepo import ConvertRepoTask
     from .scanner import PathElementHandler
-    from lsst.daf.butler import StorageClass, Registry, SkyPixDimension, FormatterParameter
-    from .._instrument import Instrument
 
 
 @dataclass
@@ -89,10 +80,9 @@ class ConversionSubset:
         tracts = set()
         self.tracts[name] = tracts
         for visit in self.visits:
-            for dataId in registry.queryDataIds(["tract"],
-                                                dataId={"skymap": name,
-                                                        "instrument": self.instrument,
-                                                        "visit": visit}):
+            for dataId in registry.queryDataIds(
+                ["tract"], dataId={"skymap": name, "instrument": self.instrument, "visit": visit}
+            ):
                 tracts.add(dataId["tract"])
 
     def addSkyPix(self, registry: Registry, dimension: SkyPixDimension):
@@ -208,8 +198,15 @@ class RepoConverter(ABC):
     ``super()`` either at the beginning or end of their own implementation.
     """
 
-    def __init__(self, *, task: ConvertRepoTask, root: str, instrument: Instrument, run: Optional[str],
-                 subset: Optional[ConversionSubset] = None):
+    def __init__(
+        self,
+        *,
+        task: ConvertRepoTask,
+        root: str,
+        instrument: Instrument,
+        run: Optional[str],
+        subset: Optional[ConversionSubset] = None,
+    ):
         self.task = task
         self.root = os.path.realpath(os.path.expanduser(root))
         self.instrument = instrument
@@ -217,8 +214,9 @@ class RepoConverter(ABC):
         self.progress = Progress("obs.base.gen2to3")
         self._run = run
         self._repoWalker = None  # Created in prep
-        self._fileDatasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]] \
-            = defaultdict(lambda: defaultdict(list))
+        self._fileDatasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]] = defaultdict(
+            lambda: defaultdict(list)
+        )
         self._fileDatasetCount = 0
 
     @abstractmethod
@@ -262,11 +260,15 @@ class RepoConverter(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def makeRepoWalkerTarget(self, datasetTypeName: str, template: str, keys: Dict[str, type],
-                             storageClass: StorageClass,
-                             formatter: FormatterParameter = None,
-                             targetHandler: Optional[PathElementHandler] = None,
-                             ) -> RepoWalker.Target:
+    def makeRepoWalkerTarget(
+        self,
+        datasetTypeName: str,
+        template: str,
+        keys: Dict[str, type],
+        storageClass: StorageClass,
+        formatter: FormatterParameter = None,
+        targetHandler: Optional[PathElementHandler] = None,
+    ) -> RepoWalker.Target:
         """Make a struct that identifies a dataset type to be extracted by
         walking the repo directory structure.
 
@@ -344,8 +346,9 @@ class RepoConverter(ABC):
             skip = False
             message = None
             storageClass = None
-            if (not self.task.isDatasetTypeIncluded(datasetTypeName)
-                    or self.isDatasetTypeSpecial(datasetTypeName)):
+            if not self.task.isDatasetTypeIncluded(datasetTypeName) or self.isDatasetTypeSpecial(
+                datasetTypeName
+            ):
                 # User indicated not to include this data, but we still want
                 # to recognize files of that type to avoid warning about them.
                 skip = True
@@ -365,7 +368,7 @@ class RepoConverter(ABC):
             for extension in extensions:
                 if skip:
                     walkerInput = RepoWalker.Skip(
-                        template=template+extension,
+                        template=template + extension,
                         keys=mapping.keys(),
                         message=message,
                     )
@@ -377,14 +380,18 @@ class RepoConverter(ABC):
                         targetHandler = doImport(targetHandler)
                     walkerInput = self.makeRepoWalkerTarget(
                         datasetTypeName=datasetTypeName,
-                        template=template+extension,
+                        template=template + extension,
                         keys=mapping.keys(),
                         storageClass=storageClass,
                         formatter=self.task.config.formatterClasses.get(datasetTypeName),
                         targetHandler=targetHandler,
                     )
-                    self.task.log.debug("Adding template to walker: %s + %s, for %s", template, extension,
-                                        walkerInput.datasetType)
+                    self.task.log.debug(
+                        "Adding template to walker: %s + %s, for %s",
+                        template,
+                        extension,
+                        walkerInput.datasetType,
+                    )
                 walkerInputs.append(walkerInput)
 
         for dirPath in self.getSpecialDirectories():
@@ -403,9 +410,12 @@ class RepoConverter(ABC):
             fileIgnoreRegEx = re.compile("|".join(fileIgnoreRegExTerms))
         else:
             fileIgnoreRegEx = None
-        self._repoWalker = RepoWalker(walkerInputs, fileIgnoreRegEx=fileIgnoreRegEx,
-                                      log=self.task.log.getChild("repoWalker"),
-                                      progress=self.progress)
+        self._repoWalker = RepoWalker(
+            walkerInputs,
+            fileIgnoreRegEx=fileIgnoreRegEx,
+            log=self.task.log.getChild("repoWalker"),
+            progress=self.progress,
+        )
 
     def iterDatasets(self) -> Iterator[FileDataset]:
         """Iterate over datasets in the repository that should be ingested into
@@ -436,8 +446,7 @@ class RepoConverter(ABC):
             self._fileDatasets[dataset.refs[0].datasetType][None].append(dataset)
         self.task.log.info("Finding datasets from files in repo %s.", self.root)
         datasetsByTypeAndCalibDate = self._repoWalker.walk(
-            self.root,
-            predicate=(self.subset.isRelated if self.subset is not None else None)
+            self.root, predicate=(self.subset.isRelated if self.subset is not None else None)
         )
         for datasetType, datasetsByCalibDate in datasetsByTypeAndCalibDate.items():
             for calibDate, datasets in datasetsByCalibDate.items():
@@ -454,18 +463,23 @@ class RepoConverter(ABC):
         guaranteed to be called between `findDatasets` and `ingest`.
         """
         import itertools
+
         with self.progress.bar(desc="Expanding data IDs", total=self._fileDatasetCount) as progressBar:
             for datasetType, datasetsByCalibDate in self._fileDatasets.items():
                 for calibDate, datasetsForCalibDate in datasetsByCalibDate.items():
                     if calibDate is not None:
-                        self.task.log.info("Expanding data IDs for %d dataset%s of type %s at calibDate %s.",
-                                           *_log_msg_counter(datasetsForCalibDate),
-                                           datasetType.name,
-                                           calibDate)
+                        self.task.log.info(
+                            "Expanding data IDs for %d dataset%s of type %s at calibDate %s.",
+                            *_log_msg_counter(datasetsForCalibDate),
+                            datasetType.name,
+                            calibDate,
+                        )
                     else:
-                        self.task.log.info("Expanding data IDs for %d non-calibration dataset%s of type %s.",
-                                           *_log_msg_counter(datasetsForCalibDate),
-                                           datasetType.name)
+                        self.task.log.info(
+                            "Expanding data IDs for %d non-calibration dataset%s of type %s.",
+                            *_log_msg_counter(datasetsForCalibDate),
+                            datasetType.name,
+                        )
                     expanded = []
                     for dataset in datasetsForCalibDate:
                         for i, ref in enumerate(dataset.refs):
@@ -492,8 +506,9 @@ class RepoConverter(ABC):
 
         This method is guaranteed to be called after `expandDataIds`.
         """
-        with self.progress.bar(desc="Ingesting converted datasets",
-                               total=self._fileDatasetCount) as progressBar:
+        with self.progress.bar(
+            desc="Ingesting converted datasets", total=self._fileDatasetCount
+        ) as progressBar:
             for datasetType, datasetsByCalibDate in self._fileDatasets.items():
                 self.task.registry.registerDatasetType(datasetType)
                 for calibDate, datasetsForCalibDate in datasetsByCalibDate.items():
@@ -502,12 +517,17 @@ class RepoConverter(ABC):
                     except LookupError:
                         self.task.log.warning(f"No run configured for dataset type {datasetType.name}.")
                         continue
-                    self.task.log.info("Ingesting %d dataset%s into run %s of type %s.",
-                                       *_log_msg_counter(datasetsForCalibDate), run, datasetType.name)
+                    self.task.log.info(
+                        "Ingesting %d dataset%s into run %s of type %s.",
+                        *_log_msg_counter(datasetsForCalibDate),
+                        run,
+                        datasetType.name,
+                    )
                     try:
                         self.task.registry.registerRun(run)
-                        self.task.butler3.ingest(*datasetsForCalibDate, transfer=self.task.config.transfer,
-                                                 run=run)
+                        self.task.butler3.ingest(
+                            *datasetsForCalibDate, transfer=self.task.config.transfer, run=run
+                        )
                         progressBar.update(len(datasetsForCalibDate))
                     except LookupError as err:
                         raise LookupError(
@@ -522,8 +542,9 @@ class RepoConverter(ABC):
         """
         self._finish(self._fileDatasets, self._fileDatasetCount)
 
-    def _finish(self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]],
-                count: int) -> None:
+    def _finish(
+        self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]], count: int
+    ) -> None:
         """Subclass implementation hook for `_finish`.
 
         The default implementation does nothing.  This is generally the best
@@ -562,8 +583,9 @@ class RepoConverter(ABC):
         assert calibDate is None, "Method must be overridden if calibDate is allowed to be not None"
         return self._run
 
-    def _guessStorageClass(self, datasetTypeName: str, mapping: CameraMapperMapping
-                           ) -> Optional[StorageClass]:
+    def _guessStorageClass(
+        self, datasetTypeName: str, mapping: CameraMapperMapping
+    ) -> Optional[StorageClass]:
         """Infer the Gen3 `StorageClass` from a dataset from a combination of
         configuration and Gen2 dataset type information.
 

@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-__all__ = ("PackagesFormatter", )
+__all__ = ("PackagesFormatter",)
 
 import os.path
 
@@ -30,6 +30,7 @@ class PackagesFormatter(FileFormatter):
     """Interface for reading and writing objects that support the standard
     afw I/O readFits/writeFits methods.
     """
+
     supportedWriteParameters = frozenset({"format"})
     supportedExtensions = frozenset({".yaml", ".pickle", ".pkl"})
 

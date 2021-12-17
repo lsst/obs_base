@@ -26,7 +26,7 @@ __all__ = ["BaseMapper"]
 
 
 class BaseMapper(CameraMapper):
-    packageName = 'base'
+    packageName = "base"
 
     # Mapper policy whose only dataset comes from the base mapper class
     policy = {
@@ -35,12 +35,13 @@ class BaseMapper(CameraMapper):
         "datasets": {},
         "exposures": {},
         "calibrations": {},
-        "images": {}
+        "images": {},
     }
 
     def __init__(self, root):
-        CameraMapper.__init__(self, policy=dafPersist.Policy(BaseMapper.policy),
-                              repositoryDir=root, root=root)
+        CameraMapper.__init__(
+            self, policy=dafPersist.Policy(BaseMapper.policy), repositoryDir=root, root=root
+        )
 
     @classmethod
     def getPackageDir(cls):

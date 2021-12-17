@@ -25,19 +25,20 @@
 __all__ = ("IngestTestBase",)
 
 import abc
-import tempfile
-import unittest
 import os
 import shutil
+import tempfile
+import unittest
 
 import lsst.afw.cameraGeom
+import lsst.obs.base
 from lsst.daf.butler import Butler, ButlerURI
 from lsst.daf.butler.cli.butler import cli as butlerCli
 from lsst.daf.butler.cli.utils import LogCliRunner
-import lsst.obs.base
 from lsst.utils import doImport
-from .utils import getInstrument
+
 from . import script
+from .utils import getInstrument
 
 
 class IngestTestBase(metaclass=abc.ABCMeta):
@@ -253,10 +254,20 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         if file is None:
             file = self.file
         runner = LogCliRunner()
-        result = runner.invoke(butlerCli, ["ingest-raws", self.root, file,
-                                           "--output-run", self.outputRun,
-                                           "--transfer", transfer,
-                                           "--ingest-task", self.rawIngestTask])
+        result = runner.invoke(
+            butlerCli,
+            [
+                "ingest-raws",
+                self.root,
+                file,
+                "--output-run",
+                self.outputRun,
+                "--transfer",
+                transfer,
+                "--ingest-task",
+                self.rawIngestTask,
+            ],
+        )
         self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
 
     @classmethod
@@ -308,8 +319,9 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             # on this filesystem to be turned into a nonzero exit code, which
             # then trips the test assertion.
         except (AssertionError, PermissionError) as err:
-            raise unittest.SkipTest("Skipping hard-link test because input data"
-                                    " is on a different filesystem.") from err
+            raise unittest.SkipTest(
+                "Skipping hard-link test because input data" " is on a different filesystem."
+            ) from err
         self.verifyIngest()
 
     def testInPlace(self):
@@ -358,8 +370,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         self.assertEqual(uri.relative_to(butler.datastore.root), pathInStore)
 
     def testFailOnConflict(self):
-        """Re-ingesting the same data into the repository should fail.
-        """
+        """Re-ingesting the same data into the repository should fail."""
         self._ingestRaws(transfer="symlink")
         with self.assertRaises(Exception):
             self._ingestRaws(transfer="symlink")
@@ -420,8 +431,13 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         # line interface "define-visits" subcommand. Functions in the script
         # folder are generally considered protected and should not be used
         # as public api.
-        script.defineVisits(self.root, config_file=None, collections=self.outputRun,
-                            instrument=self.instrumentName, raw_name=self.ingestDatasetTypeName)
+        script.defineVisits(
+            self.root,
+            config_file=None,
+            collections=self.outputRun,
+            instrument=self.instrumentName,
+            raw_name=self.ingestDatasetTypeName,
+        )
 
         # Test that we got the visits we expected.
         butler = Butler(self.root, run=self.outputRun)
@@ -431,14 +447,16 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         camera = instr.getCamera()
         for foundVisit, (expectedVisit, expectedExposures) in zip(visits, self.visits.items()):
             # Test that this visit is associated with the expected exposures.
-            foundExposures = butler.registry.queryDataIds(["exposure"], dataId=expectedVisit
-                                                          ).expanded().toSet()
+            foundExposures = (
+                butler.registry.queryDataIds(["exposure"], dataId=expectedVisit).expanded().toSet()
+            )
             self.assertCountEqual(foundExposures, expectedExposures)
             # Test that we have a visit region, and that it contains all of the
             # detector+visit regions.
             self.assertIsNotNone(foundVisit.region)
-            detectorVisitDataIds = butler.registry.queryDataIds(["visit", "detector"], dataId=expectedVisit
-                                                                ).expanded().toSet()
+            detectorVisitDataIds = (
+                butler.registry.queryDataIds(["visit", "detector"], dataId=expectedVisit).expanded().toSet()
+            )
             self.assertEqual(len(detectorVisitDataIds), len(camera))
             for dataId in detectorVisitDataIds:
                 self.assertTrue(foundVisit.region.contains(dataId.region))

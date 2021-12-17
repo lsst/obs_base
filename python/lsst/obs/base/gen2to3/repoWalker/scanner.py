@@ -29,25 +29,13 @@ from __future__ import annotations
 
 __all__ = ["PathElementHandler", "DirectoryScanner"]
 
-from abc import ABC, abstractmethod
 import bisect
 import logging
 import os
-from typing import (
-    Callable,
-    Iterator,
-    List,
-    Mapping,
-    Optional,
-    Tuple,
-)
+from abc import ABC, abstractmethod
+from typing import Callable, Iterator, List, Mapping, Optional, Tuple
 
-from lsst.daf.butler import (
-    DataCoordinate,
-    DatasetType,
-    FileDataset,
-    Progress,
-)
+from lsst.daf.butler import DataCoordinate, DatasetType, FileDataset, Progress
 
 
 class PathElementHandler(ABC):
@@ -57,6 +45,7 @@ class PathElementHandler(ABC):
     Handlers are added to a `DirectoryScanner` instance, which then calls them
     until one succeeds when it processes each element in a directory.
     """
+
     def __init__(self):
         self.lastDataId2 = {}
 
@@ -74,9 +63,14 @@ class PathElementHandler(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def __call__(self, path: str, name: str,
-                 datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]], *,
-                 predicate: Callable[[DataCoordinate], bool]) -> bool:
+    def __call__(
+        self,
+        path: str,
+        name: str,
+        datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]],
+        *,
+        predicate: Callable[[DataCoordinate], bool],
+    ) -> bool:
         """Apply the handler to a file path.
 
         Parameters
@@ -112,8 +106,9 @@ class PathElementHandler(ABC):
         """
         raise NotImplementedError()
 
-    def translate(self, dataId2: dict, *, partial: bool = False
-                  ) -> Tuple[Optional[DataCoordinate], Optional[str]]:
+    def translate(
+        self, dataId2: dict, *, partial: bool = False
+    ) -> Tuple[Optional[DataCoordinate], Optional[str]]:
         """Translate the given data ID from Gen2 to Gen3.
 
         The default implementation returns `None`.  Subclasses that are able
@@ -171,6 +166,7 @@ class DirectoryScanner:
     progress : `Progress`, optional
         Object to use to report incremental progress.
     """
+
     def __init__(self, log: Optional[logging.Logger] = None, progress: Optional[Progress] = None):
         self._files = []
         self._subdirectories = []
@@ -196,13 +192,17 @@ class DirectoryScanner:
             bisect.insort(self._subdirectories, handler)
 
     def __iter__(self) -> Iterator[PathElementHandler]:
-        """Iterate over all handlers.
-        """
+        """Iterate over all handlers."""
         yield from self._files
         yield from self._subdirectories
 
-    def scan(self, path: str, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]], *,
-             predicate: Callable[[DataCoordinate], bool]):
+    def scan(
+        self,
+        path: str,
+        datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]],
+        *,
+        predicate: Callable[[DataCoordinate], bool],
+    ):
         """Process a directory.
 
         Parameters

@@ -21,11 +21,11 @@
 
 import os
 import shutil
-import unittest
 import tempfile
+import unittest
 
-import lsst.utils.tests
 import lsst.daf.persistence as dafPersist
+import lsst.utils.tests
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
 
@@ -36,16 +36,16 @@ class TestFindParentMapperV1Butler(unittest.TestCase):
     """
 
     def setUp(self):
-        self.testDir = tempfile.mkdtemp(dir=ROOT, prefix='TestFindParentMapperV1Butler-')
-        self.parentRepoDir = os.path.join(self.testDir, 'parentRepo')
+        self.testDir = tempfile.mkdtemp(dir=ROOT, prefix="TestFindParentMapperV1Butler-")
+        self.parentRepoDir = os.path.join(self.testDir, "parentRepo")
         os.makedirs(self.parentRepoDir)
 
         # note: do not put a _mapper file in the parent here, it will be added
         # later when needed.
 
-        self.childRepoDir = os.path.join(self.testDir, 'childRepo')
+        self.childRepoDir = os.path.join(self.testDir, "childRepo")
         os.makedirs(self.childRepoDir)
-        os.symlink(self.parentRepoDir, os.path.join(self.childRepoDir, '_parent'))
+        os.symlink(self.parentRepoDir, os.path.join(self.childRepoDir, "_parent"))
 
     def tearDown(self):
         if os.path.exists(self.testDir):
@@ -54,8 +54,8 @@ class TestFindParentMapperV1Butler(unittest.TestCase):
     def test(self):
         # put the mapper file in the parent repo, and see if the child repo can
         # find it via the _parent symlink.
-        with open(os.path.join(self.parentRepoDir, '_mapper'), 'w') as f:
-            f.write('lsst.obs.base.test.CompositeMapper')
+        with open(os.path.join(self.parentRepoDir, "_mapper"), "w") as f:
+            f.write("lsst.obs.base.test.CompositeMapper")
 
         # this should not raise an error, no error indicates that the mapper
         # can not be found.

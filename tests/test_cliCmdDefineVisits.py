@@ -34,8 +34,7 @@ class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
 
     @staticmethod
     def defaultExpected():
-        return dict(config_file=None,
-                    collections=())
+        return dict(config_file=None, collections=())
 
     @staticmethod
     def command():
@@ -43,27 +42,39 @@ class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
 
     def test_repoBasic(self):
         """Test the most basic required arguments."""
-        self.run_test(["define-visits", "here", "a.b.c"],
-                      self.makeExpected(repo="here",
-                                        processes=1,
-                                        instrument="a.b.c"))
+        self.run_test(
+            ["define-visits", "here", "a.b.c"],
+            self.makeExpected(repo="here", processes=1, instrument="a.b.c"),
+        )
 
     def test_all(self):
         """Test all the arguments."""
-        self.run_test(["define-visits", "here", "a.b.c",
-                       "--collections", "foo/bar,baz",
-                       "--config-file", "/path/to/config",
-                       "--processes", 2,
-                       "--collections", "boz"],
-                      self.makeExpected(repo="here",
-                                        instrument="a.b.c",
-                                        config_file="/path/to/config",
-                                        processes=2,
-                                        # The list of collections must be in
-                                        # exactly the same order as it is
-                                        # passed in the list of arguments to
-                                        # run_test.
-                                        collections=("foo/bar", "baz", "boz")))
+        self.run_test(
+            [
+                "define-visits",
+                "here",
+                "a.b.c",
+                "--collections",
+                "foo/bar,baz",
+                "--config-file",
+                "/path/to/config",
+                "--processes",
+                2,
+                "--collections",
+                "boz",
+            ],
+            self.makeExpected(
+                repo="here",
+                instrument="a.b.c",
+                config_file="/path/to/config",
+                processes=2,
+                # The list of collections must be in
+                # exactly the same order as it is
+                # passed in the list of arguments to
+                # run_test.
+                collections=("foo/bar", "baz", "boz"),
+            ),
+        )
 
     def test_missing(self):
         """test a missing argument"""

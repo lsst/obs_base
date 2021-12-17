@@ -23,29 +23,22 @@ from __future__ import annotations
 
 __all__ = ("Instrument", "makeExposureRecordFromObsInfo", "loadCamera")
 
+import datetime
 import os.path
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
-import datetime
-from typing import Any, Optional, Set, Sequence, Tuple, TYPE_CHECKING, Union
 from functools import lru_cache
+from typing import TYPE_CHECKING, Any, Optional, Sequence, Set, Tuple, Union
 
 import astropy.time
-
 from lsst.afw.cameraGeom import Camera
-from lsst.daf.butler import (
-    Butler,
-    CollectionType,
-    DataCoordinate,
-    DataId,
-    DatasetType,
-    Timespan,
-)
-from lsst.utils import getPackageDir, doImport
+from lsst.daf.butler import Butler, CollectionType, DataCoordinate, DataId, DatasetType, Timespan
+from lsst.utils import doImport, getPackageDir
 
 if TYPE_CHECKING:
-    from .gen2to3 import TranslatorFactory
     from lsst.daf.butler import Registry
+
+    from .gen2to3 import TranslatorFactory
 
 # To be a standard text curated calibration means that we use a
 # standard definition for the corresponding DatasetType.
@@ -324,12 +317,11 @@ class Instrument(metaclass=ABCMeta):
             else:
                 band = filter.band
 
-            registry.syncDimensionData("physical_filter",
-                                       {"instrument": self.getName(),
-                                        "name": filter.physical_filter,
-                                        "band": band
-                                        },
-                                       update=update)
+            registry.syncDimensionData(
+                "physical_filter",
+                {"instrument": self.getName(), "name": filter.physical_filter, "band": band},
+                update=update,
+            )
 
     @abstractmethod
     def getRawFormatter(self, dataId):
@@ -365,8 +357,9 @@ class Instrument(metaclass=ABCMeta):
             if os.path.exists(path):
                 config.load(path)
 
-    def writeCuratedCalibrations(self, butler: Butler, collection: Optional[str] = None,
-                                 labels: Sequence[str] = ()) -> None:
+    def writeCuratedCalibrations(
+        self, butler: Butler, collection: Optional[str] = None, labels: Sequence[str] = ()
+    ) -> None:
         """Write human-curated calibration Datasets to the given Butler with
         the appropriate validity ranges.
 
@@ -411,8 +404,9 @@ class Instrument(metaclass=ABCMeta):
         self.writeStandardTextCuratedCalibrations(butler, collection, labels=labels)
         self.writeAdditionalCuratedCalibrations(butler, collection, labels=labels)
 
-    def writeAdditionalCuratedCalibrations(self, butler: Butler, collection: Optional[str] = None,
-                                           labels: Sequence[str] = ()) -> None:
+    def writeAdditionalCuratedCalibrations(
+        self, butler: Butler, collection: Optional[str] = None, labels: Sequence[str] = ()
+    ) -> None:
         """Write additional curated calibrations that might be instrument
         specific and are not part of the standard set.
 
@@ -445,8 +439,9 @@ class Instrument(metaclass=ABCMeta):
         """
         return
 
-    def writeCameraGeom(self, butler: Butler, collection: Optional[str] = None,
-                        labels: Sequence[str] = ()) -> None:
+    def writeCameraGeom(
+        self, butler: Butler, collection: Optional[str] = None, labels: Sequence[str] = ()
+    ) -> None:
         """Write the default camera geometry to the butler repository and
         associate it with the appropriate validity range in a calibration
         collection.
@@ -481,15 +476,17 @@ class Instrument(metaclass=ABCMeta):
         butler.registry.registerCollection(collection, type=CollectionType.CALIBRATION)
         run = self.makeUnboundedCalibrationRunName(*labels)
         butler.registry.registerRun(run)
-        datasetType = DatasetType("camera", ("instrument",), "Camera", isCalibration=True,
-                                  universe=butler.registry.dimensions)
+        datasetType = DatasetType(
+            "camera", ("instrument",), "Camera", isCalibration=True, universe=butler.registry.dimensions
+        )
         butler.registry.registerDatasetType(datasetType)
         camera = self.getCamera()
         ref = butler.put(camera, datasetType, {"instrument": self.getName()}, run=run)
         butler.registry.certify(collection, [ref], Timespan(begin=None, end=None))
 
-    def writeStandardTextCuratedCalibrations(self, butler: Butler, collection: Optional[str] = None,
-                                             labels: Sequence[str] = ()) -> None:
+    def writeStandardTextCuratedCalibrations(
+        self, butler: Butler, collection: Optional[str] = None, labels: Sequence[str] = ()
+    ) -> None:
         """Write the set of standardized curated text calibrations to
         the repository.
 
@@ -525,15 +522,17 @@ class Instrument(metaclass=ABCMeta):
         for datasetTypeName in self.standardCuratedDatasetTypes:
             # We need to define the dataset types.
             if datasetTypeName not in StandardCuratedCalibrationDatasetTypes:
-                raise ValueError(f"DatasetType {datasetTypeName} not in understood list"
-                                 f" [{'.'.join(StandardCuratedCalibrationDatasetTypes)}]")
+                raise ValueError(
+                    f"DatasetType {datasetTypeName} not in understood list"
+                    f" [{'.'.join(StandardCuratedCalibrationDatasetTypes)}]"
+                )
             definition = StandardCuratedCalibrationDatasetTypes[datasetTypeName]
-            datasetType = DatasetType(datasetTypeName,
-                                      universe=butler.registry.dimensions,
-                                      isCalibration=True,
-                                      **definition)
-            self._writeSpecificCuratedCalibrationDatasets(butler, datasetType, collection, runs=runs,
-                                                          labels=labels)
+            datasetType = DatasetType(
+                datasetTypeName, universe=butler.registry.dimensions, isCalibration=True, **definition
+            )
+            self._writeSpecificCuratedCalibrationDatasets(
+                butler, datasetType, collection, runs=runs, labels=labels
+            )
 
     @classmethod
     def _getSpecificCuratedCalibrationPath(cls, datasetTypeName):
@@ -555,16 +554,16 @@ class Instrument(metaclass=ABCMeta):
             # if there is no data package then there can't be datasets
             return None
 
-        calibPath = os.path.join(cls.getObsDataPackageDir(), cls.policyName,
-                                 datasetTypeName)
+        calibPath = os.path.join(cls.getObsDataPackageDir(), cls.policyName, datasetTypeName)
 
         if os.path.exists(calibPath):
             return calibPath
 
         return None
 
-    def _writeSpecificCuratedCalibrationDatasets(self, butler: Butler, datasetType: DatasetType,
-                                                 collection: str, runs: Set[str], labels: Sequence[str]):
+    def _writeSpecificCuratedCalibrationDatasets(
+        self, butler: Butler, datasetType: DatasetType, collection: str, runs: Set[str], labels: Sequence[str]
+    ):
         """Write standardized curated calibration datasets for this specific
         dataset type from an obs data package.
 
@@ -622,7 +621,7 @@ class Instrument(metaclass=ABCMeta):
             times += [None]
             for calib, beginTime, endTime in zip(calibs, times[:-1], times[1:]):
                 md = calib.getMetadata()
-                run = self.makeCuratedCalibrationRunName(md['CALIBDATE'], *labels)
+                run = self.makeCuratedCalibrationRunName(md["CALIBDATE"], *labels)
                 if run not in runs:
                     butler.registry.registerRun(run)
                     runs.add(run)

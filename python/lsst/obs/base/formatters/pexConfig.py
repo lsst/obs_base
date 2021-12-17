@@ -21,23 +21,18 @@
 
 from __future__ import annotations
 
-__all__ = ("PexConfigFormatter", )
+__all__ = ("PexConfigFormatter",)
 
 import os.path
+from typing import Any, Optional, Type
 
-from typing import (
-    Any,
-    Optional,
-    Type,
-)
-
-from lsst.pex.config import Config
 from lsst.daf.butler.formatters.file import FileFormatter
+from lsst.pex.config import Config
 
 
 class PexConfigFormatter(FileFormatter):
-    """Interface for reading and writing pex.config.Config objects from disk.
-    """
+    """Interface for reading and writing pex.config.Config objects from disk."""
+
     extension = ".py"
 
     def _readFile(self, path: str, pytype: Optional[Type[Any]] = None) -> Any:

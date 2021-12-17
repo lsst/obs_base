@@ -22,6 +22,7 @@
 import logging
 
 from lsst.daf.butler import Butler
+
 from ..utils import getInstrument
 
 log = logging.getLogger(__name__)

@@ -20,14 +20,14 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import abc
-import os
+import collections
 import inspect
+import os
 
 import lsst.afw.geom
-import lsst.utils.tests
-import lsst.daf.persistence
 import lsst.afw.image
-import collections
+import lsst.daf.persistence
+import lsst.utils.tests
 
 __all__ = ["MapperTests"]
 
@@ -40,22 +40,23 @@ class MapperTests(metaclass=abc.ABCMeta):
         * Call setUp_mapper() to fill in required parameters.
     """
 
-    def setUp_mapper(self,
-                     output=None,
-                     path_to_raw=None,
-                     keys=None,
-                     query_format=None,
-                     queryMetadata=None,
-                     metadata_output_path=None,
-                     map_python_type=None,
-                     map_python_std_type=None,
-                     map_cpp_type=None,
-                     map_storage_name=None,
-                     raw_filename=None,
-                     default_level=None,
-                     raw_levels=None,
-                     test_config_metadata=True,
-                     ):
+    def setUp_mapper(
+        self,
+        output=None,
+        path_to_raw=None,
+        keys=None,
+        query_format=None,
+        queryMetadata=None,
+        metadata_output_path=None,
+        map_python_type=None,
+        map_python_std_type=None,
+        map_cpp_type=None,
+        map_storage_name=None,
+        raw_filename=None,
+        default_level=None,
+        raw_levels=None,
+        test_config_metadata=True,
+    ):
         """
         Set up the necessary variables for mapper tests.
 
@@ -96,42 +97,44 @@ class MapperTests(metaclass=abc.ABCMeta):
             Test persisted config and metadata?  These tests may not be
             appropriate for test stand data. Defaults to True.
         """
-        fields = ['output',
-                  'path_to_raw',
-                  'keys',
-                  'query_format',
-                  'queryMetadata',
-                  'metadata_output_path',
-                  'map_python_type',
-                  'map_python_std_type',
-                  'map_cpp_type',
-                  'map_storage_name',
-                  'raw_filename',
-                  'default_level',
-                  'raw_levels',
-                  'test_config_metadata',
-                  ]
+        fields = [
+            "output",
+            "path_to_raw",
+            "keys",
+            "query_format",
+            "queryMetadata",
+            "metadata_output_path",
+            "map_python_type",
+            "map_python_std_type",
+            "map_cpp_type",
+            "map_storage_name",
+            "raw_filename",
+            "default_level",
+            "raw_levels",
+            "test_config_metadata",
+        ]
         MapperData = collections.namedtuple("MapperData", fields)
-        self.mapper_data = MapperData(output=output,
-                                      path_to_raw=path_to_raw,
-                                      keys=keys,
-                                      query_format=query_format,
-                                      queryMetadata=queryMetadata,
-                                      metadata_output_path=metadata_output_path,
-                                      map_python_type=map_python_type,
-                                      map_python_std_type=map_python_std_type,
-                                      map_cpp_type=map_cpp_type,
-                                      map_storage_name=map_storage_name,
-                                      raw_filename=raw_filename,
-                                      default_level=default_level,
-                                      raw_levels=raw_levels,
-                                      test_config_metadata=test_config_metadata,
-                                      )
+        self.mapper_data = MapperData(
+            output=output,
+            path_to_raw=path_to_raw,
+            keys=keys,
+            query_format=query_format,
+            queryMetadata=queryMetadata,
+            metadata_output_path=metadata_output_path,
+            map_python_type=map_python_type,
+            map_python_std_type=map_python_std_type,
+            map_cpp_type=map_cpp_type,
+            map_storage_name=map_storage_name,
+            raw_filename=raw_filename,
+            default_level=default_level,
+            raw_levels=raw_levels,
+            test_config_metadata=test_config_metadata,
+        )
 
     def test_map_config_data(self):
         if not self.mapper_data.test_config_metadata:
-            self.skipTest('Skipping %s as requested' % (inspect.currentframe().f_code.co_name))
-        dataId = self.dataIds['raw']
+            self.skipTest("Skipping %s as requested" % (inspect.currentframe().f_code.co_name))
+        dataId = self.dataIds["raw"]
         butlerLocation = self.mapper.map("processCcd_config_filename", dataId)
         self.assertEqual(butlerLocation.getPythonType(), "lsst.pipe.tasks.processCcd.ProcessCcdConfig")
         self.assertEqual(butlerLocation.getCppType(), "Config")
@@ -140,35 +143,37 @@ class MapperTests(metaclass=abc.ABCMeta):
         self.assertEqual(self.mapper.root, butlerLocation.getStorage().root)
         self.assertEqual(butlerLocation.getLocations(), [processCcd_path])
         for k, v in dataId.items():
-            self.assertEqual(butlerLocation.getAdditionalData().getScalar(k), v,
-                             msg="Failed for key={}".format(k))
+            self.assertEqual(
+                butlerLocation.getAdditionalData().getScalar(k), v, msg="Failed for key={}".format(k)
+            )
 
     def test_map_metadata_data(self):
         if not self.mapper_data.test_config_metadata:
-            self.skipTest('Skipping %s as requested' % (inspect.currentframe().f_code.co_name))
-        dataId = self.dataIds['raw']
+            self.skipTest("Skipping %s as requested" % (inspect.currentframe().f_code.co_name))
+        dataId = self.dataIds["raw"]
         butlerLocation = self.mapper.map_processCcd_metadata(dataId)
         self.assertEqual(butlerLocation.getPythonType(), "lsst.daf.base.PropertySet")
         self.assertEqual(butlerLocation.getCppType(), "PropertySet")
         self.assertEqual(butlerLocation.getStorageName(), "YamlStorage")
         self.assertEqual(butlerLocation.getLocations(), [self.mapper_data.metadata_output_path])
         for k, v in dataId.items():
-            self.assertEqual(butlerLocation.getAdditionalData().getScalar(k), v,
-                             msg="Failed for key={}".format(k))
+            self.assertEqual(
+                butlerLocation.getAdditionalData().getScalar(k), v, msg="Failed for key={}".format(k)
+            )
 
     def test_keys(self):
         self.assertEqual(set(self.mapper.keys()), self.mapper_data.keys)
 
     def test_get_dataset_types(self):
         if not self.mapper_data.test_config_metadata:
-            self.skipTest('Skipping %s as requested' % (inspect.currentframe().f_code.co_name))
-        someKeys = set(['raw', 'processCcd_config', 'processCcd_metadata'])
+            self.skipTest("Skipping %s as requested" % (inspect.currentframe().f_code.co_name))
+        someKeys = set(["raw", "processCcd_config", "processCcd_metadata"])
         self.assertTrue(set(self.mapper.getDatasetTypes()).issuperset(someKeys))
 
     def test_get_keys_raw(self):
         for level, expect in self.mapper_data.raw_levels:
             result = self.mapper.getKeys("raw", level)
-            self.assertEqual(set(result), expect, msg='Failed for level={}'.format(level))
+            self.assertEqual(set(result), expect, msg="Failed for level={}".format(level))
 
     def test_get_default_level(self):
         self.assertEqual(self.mapper.getDefaultLevel(), self.mapper_data.default_level)
@@ -182,19 +187,22 @@ class MapperTests(metaclass=abc.ABCMeta):
         fileName = os.path.basename(locationList[0])
         self.assertEqual(fileName, self.mapper_data.raw_filename)
         for k, v in dataId.items():
-            self.assertEqual(butlerLocation.getAdditionalData().getScalar(k), v,
-                             msg="Failed for key={}".format(k))
+            self.assertEqual(
+                butlerLocation.getAdditionalData().getScalar(k), v, msg="Failed for key={}".format(k)
+            )
 
     def test_map(self):
-        dataId = self.dataIds['raw']
+        dataId = self.dataIds["raw"]
         location = self.mapper.map_raw(dataId)
         if not isinstance(location, lsst.daf.persistence.butlerLocation.ButlerComposite):
             self._test_map(location, dataId)
         else:
-            self.log.warning("""ButlerComposite datasets are not tested for mapper functions.  Though
+            self.log.warning(
+                """ButlerComposite datasets are not tested for mapper functions.  Though
 ButlerComposites duck type as ButlerLocations in some ways, they do not
 share enough methods to be usefully tested by the same function.  Note
-there are tests of the objects in the package in which they are implemented.""")
+there are tests of the objects in the package in which they are implemented."""
+            )
         #  This should be the same as above.  Testing that both the generic
         # and specific interface work for mapping the raw.
         location = self.mapper.map("raw", dataId)
@@ -223,8 +231,8 @@ there are tests of the objects in the package in which they are implemented.""")
         self.assertEqual(self.mapper.validate(dataId), dataId)
 
     def test_validate(self):
-        self._test_validate({'visit': 1, 'filter': 'g'})
-        self._test_validate({'visit': 2, 'filter': 'r'})
-        self._test_validate({'visit': 3, 'filter': 'g', 'tract': 4})
+        self._test_validate({"visit": 1, "filter": "g"})
+        self._test_validate({"visit": 2, "filter": "r"})
+        self._test_validate({"visit": 3, "filter": "g", "tract": 4})
         # NOTE: when DM-7909 is completed, add assertRaises test here.
         # visit must be an integers

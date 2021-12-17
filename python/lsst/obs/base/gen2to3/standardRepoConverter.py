@@ -25,29 +25,28 @@ __all__ = ["StandardRepoConverter"]
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Dict, Iterator, List, Mapping, Optional, Tuple
 
+from lsst.daf.butler import DataCoordinate, DatasetRef, DatasetType, FileDataset
+from lsst.daf.persistence import Butler as Butler2
 from lsst.log import Log
 from lsst.log.utils import temporaryLogLevel
-from lsst.daf.persistence import Butler as Butler2
-from lsst.daf.butler import DatasetType, DatasetRef, DataCoordinate, FileDataset
 from lsst.skymap import BaseSkyMap
+
 from .repoConverter import RepoConverter
 from .repoWalker import RepoWalker
 
-SKYMAP_DATASET_TYPES = {
-    coaddName: f"{coaddName}Coadd_skyMap" for coaddName in ("deep", "goodSeeing", "dcr")
-}
+SKYMAP_DATASET_TYPES = {coaddName: f"{coaddName}Coadd_skyMap" for coaddName in ("deep", "goodSeeing", "dcr")}
 
 if TYPE_CHECKING:
-    from lsst.daf.butler import StorageClass, FormatterParameter
+    from lsst.daf.butler import FormatterParameter, StorageClass
+
+    from ..mapping import Mapping as CameraMapperMapping  # disambiguate from collections.abc.Mapping
     from .cameraMapper import CameraMapper
     from .repoWalker.scanner import PathElementHandler
-    from ..mapping import Mapping as CameraMapperMapping  # disambiguate from collections.abc.Mapping
 
 
 @dataclass
 class FoundSkyMap:
-    """Struct containing information about a SkyMap found in a Gen2 repository.
-    """
+    """Struct containing information about a SkyMap found in a Gen2 repository."""
 
     name: str
     """Name of the skymap used in Gen3 data IDs.
@@ -112,12 +111,17 @@ class StandardRepoConverter(RepoConverter):
                 continue
             instance = self.butler2.get(datasetTypeName)
             name = self.task.useSkyMap(instance, datasetTypeName)
-            datasetType = DatasetType(datasetTypeName, dimensions=["skymap"],
-                                      storageClass="SkyMap", universe=self.task.universe)
+            datasetType = DatasetType(
+                datasetTypeName, dimensions=["skymap"], storageClass="SkyMap", universe=self.task.universe
+            )
             dataId = DataCoordinate.standardize(skymap=name, universe=self.task.universe)
-            struct = FoundSkyMap(name=name, instance=instance, coaddName=coaddName,
-                                 ref=DatasetRef(datasetType, dataId),
-                                 filename=self.butler2.getUri(datasetTypeName))
+            struct = FoundSkyMap(
+                name=name,
+                instance=instance,
+                coaddName=coaddName,
+                ref=DatasetRef(datasetType, dataId),
+                filename=self.butler2.getUri(datasetTypeName),
+            )
             self._foundSkyMapsByCoaddName[coaddName] = struct
             self.task.log.info("Found skymap %s in %s in %s.", name, datasetTypeName, self.root)
         super().prep()
@@ -158,18 +162,24 @@ class StandardRepoConverter(RepoConverter):
                     self.task.log.debug(
                         "Dataset %s looks like it might need a skymap, but no %sCoadd_skyMap "
                         "found in repo %s.",
-                        datasetTypeName, coaddName, self.root
+                        datasetTypeName,
+                        coaddName,
+                        self.root,
                     )
         if struct is not None:
             return struct.instance, struct.name
         else:
             return None, None
 
-    def makeRepoWalkerTarget(self, datasetTypeName: str, template: str, keys: Dict[str, type],
-                             storageClass: StorageClass,
-                             formatter: FormatterParameter = None,
-                             targetHandler: Optional[PathElementHandler] = None,
-                             ) -> RepoWalker.Target:
+    def makeRepoWalkerTarget(
+        self,
+        datasetTypeName: str,
+        template: str,
+        keys: Dict[str, type],
+        storageClass: StorageClass,
+        formatter: FormatterParameter = None,
+        targetHandler: Optional[PathElementHandler] = None,
+    ) -> RepoWalker.Target:
         # Docstring inherited from RepoConverter.
         skyMap, skyMapName = self.findMatchingSkyMap(datasetTypeName)
         return RepoWalker.Target(
@@ -199,8 +209,9 @@ class StandardRepoConverter(RepoConverter):
             else:
                 run = self.task.config.runs.get(datasetTypeName)
         if run is None:
-            raise ValueError(f"No default run for repo at {self.root}, and no "
-                             f"override for dataset {datasetTypeName}.")
+            raise ValueError(
+                f"No default run for repo at {self.root}, and no " f"override for dataset {datasetTypeName}."
+            )
         if run not in self._chain:
             self._chain.append(run)
         return run
@@ -211,8 +222,9 @@ class StandardRepoConverter(RepoConverter):
         """
         return self._chain
 
-    def _finish(self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]],
-                count: int) -> None:
+    def _finish(
+        self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]], count: int
+    ) -> None:
         # Docstring inherited from RepoConverter.
         super()._finish(datasets, count)
         if self._foundSkyMapsByCoaddName:

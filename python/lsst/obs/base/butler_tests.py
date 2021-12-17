@@ -20,9 +20,9 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import abc
+import collections
 import inspect
 import unittest
-import collections
 
 __all__ = ["ButlerGetTests"]
 
@@ -34,22 +34,23 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
         * Call setUp_butler_get() to fill in required parameters.
     """
 
-    def setUp_butler_get(self,
-                         ccdExposureId_bits=None,
-                         exposureIds=None,
-                         filters=None,
-                         exptimes=None,
-                         detectorIds=None,
-                         detector_names=None,
-                         detector_serials=None,
-                         dimensions=None,
-                         sky_origin=None,
-                         raw_subsets=None,
-                         good_detectorIds=None,
-                         bad_detectorIds=None,
-                         linearizer_type=None,
-                         raw_header_wcs=None
-                         ):
+    def setUp_butler_get(
+        self,
+        ccdExposureId_bits=None,
+        exposureIds=None,
+        filters=None,
+        exptimes=None,
+        detectorIds=None,
+        detector_names=None,
+        detector_serials=None,
+        dimensions=None,
+        sky_origin=None,
+        raw_subsets=None,
+        good_detectorIds=None,
+        bad_detectorIds=None,
+        linearizer_type=None,
+        raw_header_wcs=None,
+    ):
         """
         Set up the necessary variables for butlerGet tests.
 
@@ -94,46 +95,48 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
             ``butler.get("raw_header_wcs", dataId=self.dataIds["raw"])``
         """
 
-        fields = ['ccdExposureId_bits',
-                  'exposureIds',
-                  'filters',
-                  'exptimes',
-                  'detector_names',
-                  'detectorIds',
-                  'detector_serials',
-                  'dimensions',
-                  'sky_origin',
-                  'raw_subsets',
-                  'good_detectorIds',
-                  'bad_detectorIds',
-                  'linearizer_type',
-                  'raw_header_wcs'
-                  ]
+        fields = [
+            "ccdExposureId_bits",
+            "exposureIds",
+            "filters",
+            "exptimes",
+            "detector_names",
+            "detectorIds",
+            "detector_serials",
+            "dimensions",
+            "sky_origin",
+            "raw_subsets",
+            "good_detectorIds",
+            "bad_detectorIds",
+            "linearizer_type",
+            "raw_header_wcs",
+        ]
         ButlerGet = collections.namedtuple("ButlerGetData", fields)
 
-        self.butler_get_data = ButlerGet(ccdExposureId_bits=ccdExposureId_bits,
-                                         exposureIds=exposureIds,
-                                         filters=filters,
-                                         exptimes=exptimes,
-                                         detectorIds=detectorIds,
-                                         detector_names=detector_names,
-                                         detector_serials=detector_serials,
-                                         dimensions=dimensions,
-                                         sky_origin=sky_origin,
-                                         raw_subsets=raw_subsets,
-                                         good_detectorIds=good_detectorIds,
-                                         bad_detectorIds=bad_detectorIds,
-                                         linearizer_type=linearizer_type,
-                                         raw_header_wcs=raw_header_wcs
-                                         )
+        self.butler_get_data = ButlerGet(
+            ccdExposureId_bits=ccdExposureId_bits,
+            exposureIds=exposureIds,
+            filters=filters,
+            exptimes=exptimes,
+            detectorIds=detectorIds,
+            detector_names=detector_names,
+            detector_serials=detector_serials,
+            dimensions=dimensions,
+            sky_origin=sky_origin,
+            raw_subsets=raw_subsets,
+            good_detectorIds=good_detectorIds,
+            bad_detectorIds=bad_detectorIds,
+            linearizer_type=linearizer_type,
+            raw_header_wcs=raw_header_wcs,
+        )
 
     def test_exposureId_bits(self):
-        bits = self.butler.get('ccdExposureId_bits')
+        bits = self.butler.get("ccdExposureId_bits")
         self.assertEqual(bits, self.butler_get_data.ccdExposureId_bits)
 
     def _test_exposure(self, name):
         if self.dataIds[name] is unittest.SkipTest:
-            self.skipTest('Skipping %s as requested' % (inspect.currentframe().f_code.co_name))
+            self.skipTest("Skipping %s as requested" % (inspect.currentframe().f_code.co_name))
         exp = self.butler.get(name, self.dataIds[name])
 
         exp_md = self.butler.get(name + "_md", self.dataIds[name])
@@ -153,13 +156,13 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
         else:
             filterName = "_unknown_"
         self.assertEqual(filterName, self.butler_get_data.filters[name])
-        exposureId = self.butler.get('ccdExposureId', dataId=self.dataIds[name])
+        exposureId = self.butler.get("ccdExposureId", dataId=self.dataIds[name])
         self.assertEqual(exposureId, self.butler_get_data.exposureIds[name])
         self.assertEqual(exp.getInfo().getVisitInfo().getExposureTime(), self.butler_get_data.exptimes[name])
         return exp
 
     def test_raw(self):
-        exp = self._test_exposure('raw')
+        exp = self._test_exposure("raw")
         # We only test the existence of WCS in the raw files, since it's only
         # well-defined  for raw, and other exposure types could have or not
         # have a WCS depending on various implementation details.
@@ -172,27 +175,26 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
             self.assertAlmostEqual(origin.getLatitude().asDegrees(), self.butler_get_data.sky_origin[1])
 
     def test_bias(self):
-        self._test_exposure('bias')
+        self._test_exposure("bias")
 
     def test_dark(self):
-        self._test_exposure('dark')
+        self._test_exposure("dark")
 
     def test_flat(self):
-        self._test_exposure('flat')
+        self._test_exposure("flat")
 
     def test_raw_header_wcs(self):
-        """Test that `raw_header_wcs` returns the unmodified raw image header.
-        """
+        """Test that `raw_header_wcs` returns the unmodified raw image header."""
         if self.butler_get_data.raw_header_wcs is not None:
-            wcs = self.butler.get('raw_header_wcs', self.dataIds['raw'])
+            wcs = self.butler.get("raw_header_wcs", self.dataIds["raw"])
             self.assertEqual(wcs, self.butler_get_data.raw_header_wcs)
 
-    @unittest.skip('Cannot test this, as there is a bug in the butler! DM-8097')
+    @unittest.skip("Cannot test this, as there is a bug in the butler! DM-8097")
     def test_raw_sub_bbox(self):
-        exp = self.butler.get('raw', self.dataIds['raw'], immediate=True)
+        exp = self.butler.get("raw", self.dataIds["raw"], immediate=True)
         bbox = exp.getBBox()
         bbox.grow(-1)
-        sub = self.butler.get("raw_sub", self.dataIds['raw'], bbox=bbox, immediate=True)
+        sub = self.butler.get("raw_sub", self.dataIds["raw"], bbox=bbox, immediate=True)
         self.assertEqual(sub.getImage().getBBox(), bbox)
         self.assertImagesEqual(sub, exp.Factory(exp, bbox))
 
@@ -204,7 +206,7 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
     def test_get_linearizer(self):
         """Test that we can get a linearizer for good detectorIds."""
         if self.butler_get_data.linearizer_type is unittest.SkipTest:
-            self.skipTest('Skipping %s as requested' % (inspect.currentframe().f_code.co_name))
+            self.skipTest("Skipping %s as requested" % (inspect.currentframe().f_code.co_name))
 
         camera = self.butler.get("camera")
         for detectorId in self.butler_get_data.good_detectorIds:
@@ -216,7 +218,7 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
     def test_get_linearizer_bad_detectorIds(self):
         """Do bad detectorIds raise?"""
         if self.butler_get_data.linearizer_type is unittest.SkipTest:
-            self.skipTest('Skipping %s as requested' % (inspect.currentframe().f_code.co_name))
+            self.skipTest("Skipping %s as requested" % (inspect.currentframe().f_code.co_name))
 
         for badccd in self.butler_get_data.bad_detectorIds:
             with self.assertRaises(RuntimeError):

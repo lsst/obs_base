@@ -19,14 +19,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import unittest
+import os
+import shutil
 import tempfile
-import lsst.utils.tests
+import unittest
 
 import lsst.daf.persistence as dafPersist
 import lsst.daf.persistence.test as dpTest
-import os
-import shutil
+import lsst.utils.tests
 import yaml
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
@@ -34,7 +34,7 @@ ROOT = os.path.abspath(os.path.dirname(__file__))
 
 class TestPolicyInRepo(unittest.TestCase):
     def setUp(self):
-        self.testData = tempfile.mkdtemp(dir=ROOT, prefix='TestPolicyInRepo-')
+        self.testData = tempfile.mkdtemp(dir=ROOT, prefix="TestPolicyInRepo-")
 
     def tearDown(self):
         if os.path.exists(self.testData):
@@ -48,28 +48,32 @@ class TestPolicyInRepo(unittest.TestCase):
         objA = dpTest.TestObject("abc")
         dpTest.TestObject("def")
 
-        firstRepoPath = os.path.join(self.testData, 'repo1')
-        os.path.join(self.testData, 'repo2')
+        firstRepoPath = os.path.join(self.testData, "repo1")
+        os.path.join(self.testData, "repo2")
 
-        policy = dafPersist.Policy({'camera': 'lsst.afw.cameraGeom.Camera',
-                                    'datasets': {
-                                        'basicObject1': {
-                                            'python': 'lsst.daf.persistence.test.TestObject',
-                                            'template': 'basic/id%(id)s.pickle',
-                                            'storage': 'PickleStorage'},
-                                    }
-                                    })
+        policy = dafPersist.Policy(
+            {
+                "camera": "lsst.afw.cameraGeom.Camera",
+                "datasets": {
+                    "basicObject1": {
+                        "python": "lsst.daf.persistence.test.TestObject",
+                        "template": "basic/id%(id)s.pickle",
+                        "storage": "PickleStorage",
+                    },
+                },
+            }
+        )
 
-        firstRepoPath = os.path.join(self.testData, 'repo1')
-        repoArgs = dafPersist.RepositoryArgs(root=firstRepoPath,
-                                             mapper='lsst.obs.base.test.CompositeMapper',
-                                             policy=policy)
+        firstRepoPath = os.path.join(self.testData, "repo1")
+        repoArgs = dafPersist.RepositoryArgs(
+            root=firstRepoPath, mapper="lsst.obs.base.test.CompositeMapper", policy=policy
+        )
         butler = dafPersist.Butler(outputs=repoArgs)
 
-        with open(os.path.join(firstRepoPath, 'repositoryCfg.yaml')) as f:
+        with open(os.path.join(firstRepoPath, "repositoryCfg.yaml")) as f:
             cfg = yaml.load(f, Loader=yaml.UnsafeLoader)
         self.assertEqual(cfg.policy, policy)
-        butler.put(objA, 'basicObject1', {'id': 1})
+        butler.put(objA, "basicObject1", {"id": 1})
 
         del butler
         del repoArgs
@@ -78,7 +82,7 @@ class TestPolicyInRepo(unittest.TestCase):
         # repositoryCfg.
         repoArgs = dafPersist.RepositoryArgs(root=firstRepoPath)
         butler = dafPersist.Butler(inputs=repoArgs)
-        reloadedObjA = butler.get('basicObject1', {'id': 1})
+        reloadedObjA = butler.get("basicObject1", {"id": 1})
         self.assertEqual(reloadedObjA, objA)
 
 

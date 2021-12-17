@@ -19,16 +19,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from .version import *
-
-from .filters import *
-from .mapping import *
+from ._fitsRawFormatterBase import *
 from ._instrument import *
 from .cameraMapper import *
+from .defineVisits import *
 from .exposureIdInfo import *
+from .filters import *
+from .ingest import *
 from .makeRawVisitInfo import *
 from .makeRawVisitInfoViaObsInfo import *
-from ._fitsRawFormatterBase import *
+from .mapping import *
 from .utils import *
-from .ingest import *
-from .defineVisits import *
+from .version import *

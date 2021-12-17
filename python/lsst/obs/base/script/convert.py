@@ -23,13 +23,13 @@
 `lsst.obs.base.ConvertRepoConfig` for most of the config options.
 """
 
-from lsst.daf.persistence import Butler as Butler2
 import lsst.daf.butler
-from lsst.log import Log
 import lsst.utils
+from lsst.daf.persistence import Butler as Butler2
+from lsst.log import Log
 from lsst.log.utils import temporaryLogLevel
 
-from ..gen2to3 import CalibRepo, ConvertRepoTask, ConvertRepoSkyMapConfig, Rerun
+from ..gen2to3 import CalibRepo, ConvertRepoSkyMapConfig, ConvertRepoTask, Rerun
 
 
 def convert(repo, gen2root, skymap_name, skymap_config, calibs, reruns, config_file, transfer, processes=1):

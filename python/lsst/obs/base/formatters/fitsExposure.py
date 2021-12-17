@@ -27,17 +27,24 @@ __all__ = (
     "standardizeAmplifierParameters",
 )
 
-from abc import abstractmethod
 import warnings
+from abc import abstractmethod
 
+from lsst.afw.cameraGeom import AmplifierGeometryComparison, AmplifierIsolator
+from lsst.afw.image import (
+    ExposureFitsReader,
+    ExposureInfo,
+    FilterLabel,
+    ImageFitsReader,
+    MaskedImageFitsReader,
+    MaskFitsReader,
+)
+
+# Needed for ApCorrMap to resolve properly
+from lsst.afw.math import BoundedField  # noqa: F401
 from lsst.daf.base import PropertySet
 from lsst.daf.butler import Formatter
 from lsst.utils.classes import cached_getter
-from lsst.afw.cameraGeom import AmplifierGeometryComparison, AmplifierIsolator
-from lsst.afw.image import ExposureFitsReader, ImageFitsReader, MaskFitsReader, MaskedImageFitsReader
-from lsst.afw.image import ExposureInfo, FilterLabel
-# Needed for ApCorrMap to resolve properly
-from lsst.afw.math import BoundedField  # noqa: F401
 
 
 class FitsImageFormatterBase(Formatter):
@@ -83,9 +90,12 @@ class FitsImageFormatterBase(Formatter):
             if component is not None:
                 return self.readComponent(component)
             else:
-                raise ValueError("Storage class inconsistency ({} vs {}) but no"
-                                 " component requested".format(self.fileDescriptor.readStorageClass.name,
-                                                               self.fileDescriptor.storageClass.name))
+                raise ValueError(
+                    "Storage class inconsistency ({} vs {}) but no"
+                    " component requested".format(
+                        self.fileDescriptor.readStorageClass.name, self.fileDescriptor.storageClass.name
+                    )
+                )
         return self.readFull()
 
     @abstractmethod
@@ -213,6 +223,7 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
             variance: *default
 
     """
+
     supportedWriteParameters = frozenset({"recipe"})
     ReaderClass: type  # must be set by concrete subclasses
 
@@ -294,7 +305,7 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
         recipe = self.writeRecipes[recipeName]
 
         # Set the seed based on dataId
-        seed = hash(tuple(self.dataId.items())) % 2**31
+        seed = hash(tuple(self.dataId.items())) % 2 ** 31
         for plane in ("image", "mask", "variance"):
             if plane in recipe and "scaling" in recipe[plane]:
                 scaling = recipe[plane]["scaling"]
@@ -357,20 +368,19 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
             if unrecognized:
                 raise RuntimeError(
                     f"Unrecognized entries when parsing image compression recipe {description}: "
-                    f"{unrecognized}")
+                    f"{unrecognized}"
+                )
 
         validated = {}
         for name in recipes:
             checkUnrecognized(recipes[name], ["image", "mask", "variance"], name)
             validated[name] = {}
             for plane in ("image", "mask", "variance"):
-                checkUnrecognized(recipes[name][plane], ["compression", "scaling"],
-                                  f"{name}->{plane}")
+                checkUnrecognized(recipes[name][plane], ["compression", "scaling"], f"{name}->{plane}")
 
                 np = {}
                 validated[name][plane] = np
-                for settings, schema in (("compression", compressionSchema),
-                                         ("scaling", scalingSchema)):
+                for settings, schema in (("compression", compressionSchema), ("scaling", scalingSchema)):
                     np[settings] = {}
                     if settings not in recipes[name][plane]:
                         for key in schema:
@@ -516,22 +526,22 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         # Other components have hard-coded method names, but don't take
         # parameters.
         standardComponents = {
-            'id': 'readExposureId',
-            'metadata': 'readMetadata',
-            'wcs': 'readWcs',
-            'coaddInputs': 'readCoaddInputs',
-            'psf': 'readPsf',
-            'photoCalib': 'readPhotoCalib',
+            "id": "readExposureId",
+            "metadata": "readMetadata",
+            "wcs": "readWcs",
+            "coaddInputs": "readCoaddInputs",
+            "psf": "readPsf",
+            "photoCalib": "readPhotoCalib",
             # TODO: deprecate in DM-27170, remove in DM-27177
-            'filter': 'readFilter',
+            "filter": "readFilter",
             # TODO: deprecate in DM-27177, remove in DM-27811
-            'filterLabel': 'readFilterLabel',
-            'validPolygon': 'readValidPolygon',
-            'apCorrMap': 'readApCorrMap',
-            'visitInfo': 'readVisitInfo',
-            'transmissionCurve': 'readTransmissionCurve',
-            'detector': 'readDetector',
-            'exposureInfo': 'readExposureInfo',
+            "filterLabel": "readFilterLabel",
+            "validPolygon": "readValidPolygon",
+            "apCorrMap": "readApCorrMap",
+            "visitInfo": "readVisitInfo",
+            "transmissionCurve": "readTransmissionCurve",
+            "detector": "readDetector",
+            "exposureInfo": "readExposureInfo",
         }
         if (methodName := standardComponents.get(component)) is not None:
             result = getattr(self.reader, methodName)()
@@ -607,12 +617,15 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         if "physical_filter" in self.dataId.graph.dimensions.names:
             physical_filter = self.dataId.get("physical_filter")
             # Same check as above for band, but for physical_filter.
-            if (physical_filter is None and not self.dataId.hasFull()
-                    and "physical_filter" in self.dataId.graph.implied.names):
+            if (
+                physical_filter is None
+                and not self.dataId.hasFull()
+                and "physical_filter" in self.dataId.graph.implied.names
+            ):
                 missing.append("physical_filter")
         if should_be_standardized is None:
             version = self.reader.readSerializationVersion()
-            should_be_standardized = (version >= 2)
+            should_be_standardized = version >= 2
         if missing:
             # Data ID identifies a filter but the actual filter label values
             # haven't been fetched from the database; we have no choice but
@@ -620,9 +633,11 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
             # Warn if that's more likely than not to be bad, because the file
             # predates filter standardization.
             if not should_be_standardized:
-                warnings.warn(f"Data ID {self.dataId} is missing (implied) value(s) for {missing}; "
-                              "the correctness of this Exposure's FilterLabel cannot be guaranteed. "
-                              "Call Registry.expandDataId before Butler.get to avoid this.")
+                warnings.warn(
+                    f"Data ID {self.dataId} is missing (implied) value(s) for {missing}; "
+                    "the correctness of this Exposure's FilterLabel cannot be guaranteed. "
+                    "Call Registry.expandDataId before Butler.get to avoid this."
+                )
             return file_filter_label
         if band is None and physical_filter is None:
             data_id_filter_label = None
@@ -633,7 +648,9 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
             # FilterLabel doesn't agree with the data ID: this indicates a bug
             # in whatever code produced the Exposure (though it may be one that
             # has been fixed since the file was written).
-            warnings.warn(f"Reading {self.fileDescriptor.location} with data ID {self.dataId}: "
-                          f"filter label mismatch (file is {file_filter_label}, data ID is "
-                          f"{data_id_filter_label}).  This is probably a bug in the code that produced it.")
+            warnings.warn(
+                f"Reading {self.fileDescriptor.location} with data ID {self.dataId}: "
+                f"filter label mismatch (file is {file_filter_label}, data ID is "
+                f"{data_id_filter_label}).  This is probably a bug in the code that produced it."
+            )
         return data_id_filter_label

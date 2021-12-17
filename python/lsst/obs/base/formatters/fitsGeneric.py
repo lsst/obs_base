@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-__all__ = ("FitsGenericFormatter", )
+__all__ = ("FitsGenericFormatter",)
 
 import os.path
 
@@ -30,6 +30,7 @@ class FitsGenericFormatter(FileFormatter):
     """Interface for reading and writing objects that support the standard
     afw I/O readFits/writeFits methods.
     """
+
     supportedExtensions = frozenset({".fits", ".fits.gz", ".fits.fz", ".fz", ".fit"})
     extension = ".fits"
 

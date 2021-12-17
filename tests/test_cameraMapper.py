@@ -21,20 +21,18 @@
 
 import gc
 import os
+import shutil
 import sqlite3
-import unittest
 import tempfile
+import unittest
 
-import numpy as np
-
-import lsst.utils.tests
-import lsst.geom as geom
 import lsst.afw.image as afwImage
 import lsst.afw.table as afwTable
 import lsst.daf.persistence as dafPersist
+import lsst.geom as geom
 import lsst.obs.base
-import shutil
-
+import lsst.utils.tests
+import numpy as np
 from lsst.obs.base.test import BaseMapper
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
@@ -50,10 +48,12 @@ class MinCam(lsst.obs.base.Instrument):
         return lsst.obs.base.FilterDefinitionCollection(
             lsst.obs.base.FilterDefinition(physical_filter="u.MP9301", band="u", lambdaEff=374),
             lsst.obs.base.FilterDefinition(physical_filter="g.MP9401", band="g", lambdaEff=487),
-            lsst.obs.base.FilterDefinition(physical_filter="r.MP9601", band="r", alias={"old-r"},
-                                           lambdaEff=628),
-            lsst.obs.base.FilterDefinition(physical_filter="i.MP9701", band="i", alias={"old-i"},
-                                           lambdaEff=778),
+            lsst.obs.base.FilterDefinition(
+                physical_filter="r.MP9601", band="r", alias={"old-r"}, lambdaEff=628
+            ),
+            lsst.obs.base.FilterDefinition(
+                physical_filter="i.MP9701", band="i", alias={"old-i"}, lambdaEff=778
+            ),
             lsst.obs.base.FilterDefinition(physical_filter="z.MP9801", band="z", lambdaEff=1170),
             # afw_name is so special-cased that only a real example will work
             lsst.obs.base.FilterDefinition(physical_filter="HSC-I2", band="i", afw_name="i2", lambdaEff=623),
@@ -77,7 +77,7 @@ class MinCam(lsst.obs.base.Instrument):
 
 
 class MinMapper1(lsst.obs.base.CameraMapper):
-    packageName = 'larry'
+    packageName = "larry"
 
     def __init__(self, **kwargs):
         policy = dafPersist.Policy(os.path.join(ROOT, "MinMapper1.yaml"))
@@ -98,15 +98,16 @@ class MinMapper1(lsst.obs.base.CameraMapper):
 
 
 class MinMapper2(lsst.obs.base.CameraMapper):
-    packageName = 'moe'
+    packageName = "moe"
     _gen3instrument = MinCam
 
     # CalibRoot in policy
     # needCalibRegistry
     def __init__(self, **kwargs):
         policy = dafPersist.Policy(os.path.join(ROOT, "MinMapper2.yaml"))
-        lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=ROOT,
-                                            registry="cfhtls.sqlite3", **kwargs)
+        lsst.obs.base.CameraMapper.__init__(
+            self, policy=policy, repositoryDir=ROOT, registry="cfhtls.sqlite3", **kwargs
+        )
         return
 
     def _transformId(self, dataId):
@@ -130,7 +131,6 @@ class MinMapper2(lsst.obs.base.CameraMapper):
 
 # does not assign packageName
 class MinMapper3(lsst.obs.base.CameraMapper):
-
     def __init__(self, **kwargs):
         policy = dafPersist.Policy(os.path.join(ROOT, "MinMapper1.yaml"))
         lsst.obs.base.CameraMapper.__init__(self, policy=policy, repositoryDir=ROOT, root=ROOT)
@@ -148,20 +148,21 @@ def checkCompression(testCase, additionalData):
     the seed is non-zero (zero causes lsst.afw.math.Random to fail).
     """
     for plane in ("image", "mask", "variance"):
-        for entry in ("compression.algorithm",
-                      "compression.columns",
-                      "compression.rows",
-                      "compression.quantizeLevel",
-                      "scaling.algorithm",
-                      "scaling.bitpix",
-                      "scaling.maskPlanes",
-                      "scaling.seed",
-                      "scaling.quantizeLevel",
-                      "scaling.quantizePad",
-                      "scaling.fuzz",
-                      "scaling.bscale",
-                      "scaling.bzero",
-                      ):
+        for entry in (
+            "compression.algorithm",
+            "compression.columns",
+            "compression.rows",
+            "compression.quantizeLevel",
+            "scaling.algorithm",
+            "scaling.bitpix",
+            "scaling.maskPlanes",
+            "scaling.seed",
+            "scaling.quantizeLevel",
+            "scaling.quantizePad",
+            "scaling.fuzz",
+            "scaling.bscale",
+            "scaling.bzero",
+        ):
             additionalData.getScalar(plane + "." + entry)
         testCase.assertNotEqual(additionalData.getScalar(plane + ".scaling.seed"), 0)
 
@@ -178,8 +179,14 @@ class Mapper1TestCase(unittest.TestCase):
     def testGetDatasetTypes(self):
         expectedTypes = BaseMapper(ROOT).getDatasetTypes()
         #   Add the expected additional types to what the base class provides
-        expectedTypes.extend(["x", "x_filename",
-                              "badSourceHist", "badSourceHist_filename", ])
+        expectedTypes.extend(
+            [
+                "x",
+                "x_filename",
+                "badSourceHist",
+                "badSourceHist_filename",
+            ]
+        )
         self.assertEqual(set(self.mapper.getDatasetTypes()), set(expectedTypes))
 
     def testMap(self):
@@ -191,8 +198,7 @@ class Mapper1TestCase(unittest.TestCase):
         expectedLocations = ["foo-1,1.pickle"]
         self.assertEqual(loc.getStorage().root, expectedRoot)
         self.assertEqual(loc.getLocations(), expectedLocations)
-        self.assertEqual(loc.getAdditionalData().toString(),
-                         "sensor = \"1,1\"\n")
+        self.assertEqual(loc.getAdditionalData().toString(), 'sensor = "1,1"\n')
 
     def testQueryMetadata(self):
         self.assertEqual(self.mapper.queryMetadata("x", ["sensor"], None), [("1,1",)])
@@ -229,24 +235,61 @@ class Mapper2TestCase(unittest.TestCase):
         mapper = MinMapper2(root=ROOT)
         expectedTypes = BaseMapper(ROOT).getDatasetTypes()
         #   Add the expected additional types to what the base class provides
-        expectedTypes.extend(["flat", "flat_md", "flat_filename", "flat_sub",
-                              "raw", "raw_md", "raw_filename", "raw_sub",
-                              "some", "some_filename", "some_md", "some_sub",
-                              "someCatalog", "someCatalog_md", "someCatalog_filename",
-                              "someCatalog_len", "someCatalog_schema",
-                              "forced_src", "forced_src_md", "forced_src_filename",
-                              "forced_src_len", "forced_src_schema",
-                              "other_sub", "other_filename", "other_md", "other",
-                              "someGz", "someGz_filename", "someFz", "someFz_filename", "someGz_md",
-                              "someFz_sub", "someFz_md", "someGz_sub",
-                              "someGz_bbox", "someFz_bbox", "some_bbox", "other_bbox",
-                              "someExp", "someExp_filename", "someExp_md", "someExp_sub",
-                              "someExp_bbox", "someExp_filterLabel", "someExp_photoCalib",
-                              "someExp_visitInfo", "someExp_detector", "someExp_filter",
-                              "someExp_header_wcs", "someExp_wcs",
-                              ])
-        self.assertEqual(set(mapper.getDatasetTypes()),
-                         set(expectedTypes))
+        expectedTypes.extend(
+            [
+                "flat",
+                "flat_md",
+                "flat_filename",
+                "flat_sub",
+                "raw",
+                "raw_md",
+                "raw_filename",
+                "raw_sub",
+                "some",
+                "some_filename",
+                "some_md",
+                "some_sub",
+                "someCatalog",
+                "someCatalog_md",
+                "someCatalog_filename",
+                "someCatalog_len",
+                "someCatalog_schema",
+                "forced_src",
+                "forced_src_md",
+                "forced_src_filename",
+                "forced_src_len",
+                "forced_src_schema",
+                "other_sub",
+                "other_filename",
+                "other_md",
+                "other",
+                "someGz",
+                "someGz_filename",
+                "someFz",
+                "someFz_filename",
+                "someGz_md",
+                "someFz_sub",
+                "someFz_md",
+                "someGz_sub",
+                "someGz_bbox",
+                "someFz_bbox",
+                "some_bbox",
+                "other_bbox",
+                "someExp",
+                "someExp_filename",
+                "someExp_md",
+                "someExp_sub",
+                "someExp_bbox",
+                "someExp_filterLabel",
+                "someExp_photoCalib",
+                "someExp_visitInfo",
+                "someExp_detector",
+                "someExp_filter",
+                "someExp_header_wcs",
+                "someExp_wcs",
+            ]
+        )
+        self.assertEqual(set(mapper.getDatasetTypes()), set(expectedTypes))
 
     def testMap(self):
         mapper = MinMapper2(root=ROOT)
@@ -260,8 +303,7 @@ class Mapper2TestCase(unittest.TestCase):
         checkCompression(self, loc.getAdditionalData())
 
     def testSubMap(self):
-        bbox = geom.BoxI(geom.Point2I(200, 100),
-                         geom.Extent2I(300, 400))
+        bbox = geom.BoxI(geom.Point2I(200, 100), geom.Extent2I(300, 400))
         mapper = MinMapper2(root=ROOT)
         loc = mapper.map("raw_sub", {"ccd": 13, "bbox": bbox}, write=True)
         self.assertEqual(loc.getPythonType(), "lsst.afw.image.ExposureU")
@@ -329,8 +371,7 @@ class Mapper2TestCase(unittest.TestCase):
 
         self.assertEqual(butler.get("some_bbox", ccd=35), image.getBBox())
 
-        bbox = geom.BoxI(geom.Point2I(200, 100),
-                         geom.Extent2I(300, 400))
+        bbox = geom.BoxI(geom.Point2I(200, 100), geom.Extent2I(300, 400))
         image = butler.get("some_sub", ccd=35, bbox=bbox, imageOrigin="LOCAL", immediate=True)
         self.assertEqual(image.getHeight(), 400)
         self.assertEqual(image.getWidth(), 300)
@@ -367,8 +408,7 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(image.getFilter().getName(), "r")
         self.assertEqual(image.getFilterLabel().bandLabel, "r")
 
-        bbox = geom.BoxI(geom.Point2I(200, 100),
-                         geom.Extent2I(300, 400))
+        bbox = geom.BoxI(geom.Point2I(200, 100), geom.Extent2I(300, 400))
         image = butler.get("someGz_sub", ccd=35, bbox=bbox, imageOrigin="LOCAL", immediate=True)
         self.assertEqual(image.getHeight(), 400)
         self.assertEqual(image.getWidth(), 300)
@@ -386,8 +426,7 @@ class Mapper2TestCase(unittest.TestCase):
         self.assertEqual(image.getFilter().getName(), "r")
         self.assertEqual(image.getFilterLabel().bandLabel, "r")
 
-        bbox = geom.BoxI(geom.Point2I(200, 100),
-                         geom.Extent2I(300, 400))
+        bbox = geom.BoxI(geom.Point2I(200, 100), geom.Extent2I(300, 400))
         image = butler.get("someFz_sub", ccd=35, bbox=bbox, imageOrigin="LOCAL", immediate=True)
         self.assertEqual(image.getHeight(), 400)
         self.assertEqual(image.getWidth(), 300)
@@ -395,20 +434,25 @@ class Mapper2TestCase(unittest.TestCase):
     def testButlerQueryMetadata(self):
         mapper = MinMapper2(root=ROOT)
         butler = dafPersist.ButlerFactory(mapper=mapper).create()
-        kwargs = {"ccd": 35, "filter": "r", "visit": 787731,
-                  "taiObs": "2005-04-02T09:24:49.933440000"}
+        kwargs = {"ccd": 35, "filter": "r", "visit": 787731, "taiObs": "2005-04-02T09:24:49.933440000"}
         self.assertEqual(butler.queryMetadata("other", "visit", **kwargs), [787731])
-        self.assertEqual(butler.queryMetadata("other", "visit",
-                                              visit=kwargs["visit"], ccd=kwargs["ccd"],
-                                              taiObs=kwargs["taiObs"], filter=kwargs["filter"]),
-                         [787731])
+        self.assertEqual(
+            butler.queryMetadata(
+                "other",
+                "visit",
+                visit=kwargs["visit"],
+                ccd=kwargs["ccd"],
+                taiObs=kwargs["taiObs"],
+                filter=kwargs["filter"],
+            ),
+            [787731],
+        )
         # now test we get no matches if ccd is out of range
         self.assertEqual(butler.queryMetadata("raw", "ccd", ccd=36, filter="r", visit=787731), [])
 
     def testQueryMetadata(self):
         mapper = MinMapper2(root=ROOT)
-        self.assertEqual(mapper.queryMetadata("raw", ["ccd"], None),
-                         [(x,) for x in range(36) if x != 3])
+        self.assertEqual(mapper.queryMetadata("raw", ["ccd"], None), [(x,) for x in range(36) if x != 3])
 
     def testStandardize(self):
         mapper = MinMapper2(root=ROOT)
@@ -419,20 +463,28 @@ class Mapper2TestCase(unittest.TestCase):
         # tuples are (input, desired output)
         testLabels = [
             (None, None),
-            (afwImage.FilterLabel(band="i", physical="i.MP9701"),
-             afwImage.FilterLabel(band="i", physical="i.MP9701")),
+            (
+                afwImage.FilterLabel(band="i", physical="i.MP9701"),
+                afwImage.FilterLabel(band="i", physical="i.MP9701"),
+            ),
             (afwImage.FilterLabel(band="i"), afwImage.FilterLabel(band="i", physical="i.MP9701")),
-            (afwImage.FilterLabel(physical="i.MP9701"),
-             afwImage.FilterLabel(band="i", physical="i.MP9701")),
-            (afwImage.FilterLabel(band="i", physical="old-i"),
-             afwImage.FilterLabel(band="i", physical="i.MP9701")),
-            (afwImage.FilterLabel(physical="old-i"),
-             afwImage.FilterLabel(band="i", physical="i.MP9701")),
+            (afwImage.FilterLabel(physical="i.MP9701"), afwImage.FilterLabel(band="i", physical="i.MP9701")),
+            (
+                afwImage.FilterLabel(band="i", physical="old-i"),
+                afwImage.FilterLabel(band="i", physical="i.MP9701"),
+            ),
+            (afwImage.FilterLabel(physical="old-i"), afwImage.FilterLabel(band="i", physical="i.MP9701")),
             (afwImage.FilterLabel(physical="i2"), afwImage.FilterLabel(band="i", physical="HSC-I2")),
         ]
-        testIds = [{"visit": 12345, "ccd": 42, "filter": f} for f in {
-            "i", "i.MP9701", "old-i", "i2",
-        }]
+        testIds = [
+            {"visit": 12345, "ccd": 42, "filter": f}
+            for f in {
+                "i",
+                "i.MP9701",
+                "old-i",
+                "i2",
+            }
+        ]
         testData = []
         # Resolve special combinations where the expected output is different
         for input, corrected in testLabels:
@@ -458,7 +510,7 @@ class Mapper2TestCase(unittest.TestCase):
         for label, dataId, corrected in testData:
             exposure = afwImage.ExposureF()
             exposure.setFilterLabel(label)
-            mapper._setFilter(mapper.exposures['raw'], exposure, dataId)
+            mapper._setFilter(mapper.exposures["raw"], exposure, dataId)
             self.assertEqual(exposure.getFilterLabel(), corrected, msg=f"Started from {label} and {dataId}")
 
     def testStandardizeFiltersFilterNoDefs(self):
@@ -471,9 +523,15 @@ class Mapper2TestCase(unittest.TestCase):
             afwImage.FilterLabel(physical="old-i"),
             afwImage.FilterLabel(physical="i2"),
         ]
-        testIds = [{"visit": 12345, "ccd": 42, "filter": f} for f in {
-            "i", "i.MP9701", "old-i", "i2",
-        }]
+        testIds = [
+            {"visit": 12345, "ccd": 42, "filter": f}
+            for f in {
+                "i",
+                "i.MP9701",
+                "old-i",
+                "i2",
+            }
+        ]
         testData = []
         # Resolve special combinations where the expected output is different
         for input in testLabels:
@@ -481,8 +539,7 @@ class Mapper2TestCase(unittest.TestCase):
                 if input is None:
                     # Can still get some filter info out of the Filter registry
                     if dataId["filter"] == "i2":
-                        data = (input, dataId,
-                                afwImage.FilterLabel(band="i", physical="HSC-I2"))
+                        data = (input, dataId, afwImage.FilterLabel(band="i", physical="HSC-I2"))
                     else:
                         # Data ID maps to filter(s) with aliases; can't
                         # unambiguously determine physical filter.
@@ -495,7 +552,7 @@ class Mapper2TestCase(unittest.TestCase):
         for label, dataId, corrected in testData:
             exposure = afwImage.ExposureF()
             exposure.setFilterLabel(label)
-            mapper._setFilter(mapper.exposures['raw'], exposure, dataId)
+            mapper._setFilter(mapper.exposures["raw"], exposure, dataId)
             self.assertEqual(exposure.getFilterLabel(), corrected, msg=f"Started from {label} and {dataId}")
 
     def testCalib(self):
@@ -521,23 +578,29 @@ class Mapper2TestCase(unittest.TestCase):
     @unittest.expectedFailure
     def testParentSearch(self):
         mapper = MinMapper2(root=ROOT)
-        paths = mapper.parentSearch(os.path.join(ROOT, 'testParentSearch'),
-                                    os.path.join(ROOT, os.path.join('testParentSearch', 'bar.fits')))
-        self.assertEqual(paths, [os.path.join(ROOT, os.path.join('testParentSearch', 'bar.fits'))])
-        paths = mapper.parentSearch(os.path.join(ROOT, 'testParentSearch'),
-                                    os.path.join(ROOT,
-                                                 os.path.join('testParentSearch', 'bar.fits[1]')))
-        self.assertEqual(paths, [os.path.join(ROOT, os.path.join('testParentSearch', 'bar.fits[1]'))])
+        paths = mapper.parentSearch(
+            os.path.join(ROOT, "testParentSearch"),
+            os.path.join(ROOT, os.path.join("testParentSearch", "bar.fits")),
+        )
+        self.assertEqual(paths, [os.path.join(ROOT, os.path.join("testParentSearch", "bar.fits"))])
+        paths = mapper.parentSearch(
+            os.path.join(ROOT, "testParentSearch"),
+            os.path.join(ROOT, os.path.join("testParentSearch", "bar.fits[1]")),
+        )
+        self.assertEqual(paths, [os.path.join(ROOT, os.path.join("testParentSearch", "bar.fits[1]"))])
 
-        paths = mapper.parentSearch(os.path.join(ROOT, 'testParentSearch'),
-                                    os.path.join(ROOT, os.path.join('testParentSearch', 'baz.fits')))
-        self.assertEqual(paths, [os.path.join(ROOT,
-                                              os.path.join('testParentSearch', '_parent', 'baz.fits'))])
-        paths = mapper.parentSearch(os.path.join(ROOT, 'testParentSearch'),
-                                    os.path.join(ROOT,
-                                                 os.path.join('testParentSearch', 'baz.fits[1]')))
-        self.assertEqual(paths, [os.path.join(ROOT,
-                                              os.path.join('testParentSearch', '_parent', 'baz.fits[1]'))])
+        paths = mapper.parentSearch(
+            os.path.join(ROOT, "testParentSearch"),
+            os.path.join(ROOT, os.path.join("testParentSearch", "baz.fits")),
+        )
+        self.assertEqual(paths, [os.path.join(ROOT, os.path.join("testParentSearch", "_parent", "baz.fits"))])
+        paths = mapper.parentSearch(
+            os.path.join(ROOT, "testParentSearch"),
+            os.path.join(ROOT, os.path.join("testParentSearch", "baz.fits[1]")),
+        )
+        self.assertEqual(
+            paths, [os.path.join(ROOT, os.path.join("testParentSearch", "_parent", "baz.fits[1]"))]
+        )
 
     def testSkymapLookups(self):
         """Test that metadata lookups don't try to get skymap data ID values
@@ -568,7 +631,6 @@ class Mapper3TestCase(unittest.TestCase):
 
 
 class ParentRegistryTestCase(unittest.TestCase):
-
     @staticmethod
     def _createRegistry(path):
         cmd = """CREATE TABLE x(
@@ -590,10 +652,10 @@ class ParentRegistryTestCase(unittest.TestCase):
 
     def setUp(self):
         self.ROOT = tempfile.mkdtemp(dir=ROOT, prefix="ParentRegistryTestCase-")
-        self.repoARoot = os.path.join(self.ROOT, 'a')
+        self.repoARoot = os.path.join(self.ROOT, "a")
         args = dafPersist.RepositoryArgs(root=self.repoARoot, mapper=MinMapper1)
         butler = dafPersist.Butler(outputs=args)
-        self._createRegistry(os.path.join(self.repoARoot, 'registry.sqlite3'))
+        self._createRegistry(os.path.join(self.repoARoot, "registry.sqlite3"))
         del butler
 
     def tearDown(self):
@@ -611,7 +673,7 @@ class ParentRegistryTestCase(unittest.TestCase):
         """Verify that when the child repo does not have a registry it is
         assigned the registry from the parent.
         """
-        repoBRoot = os.path.join(self.ROOT, 'b')
+        repoBRoot = os.path.join(self.ROOT, "b")
         butler = dafPersist.Butler(inputs=self.repoARoot, outputs=repoBRoot)
         # This way of getting the registry from the mapping is obviously going
         # way into private members and the python lambda implementation code.
@@ -622,7 +684,7 @@ class ParentRegistryTestCase(unittest.TestCase):
         registryB = butler._repos.outputs()[0].repo._mapper.registry
         self.assertEqual(id(registryA), id(registryB))
 
-        self._createRegistry(os.path.join(repoBRoot, 'registry.sqlite3'))
+        self._createRegistry(os.path.join(repoBRoot, "registry.sqlite3"))
         butler = dafPersist.Butler(inputs=self.repoARoot, outputs=repoBRoot)
         # see above; don't copy this way of getting the registry.
         registryA = butler._repos.inputs()[0].repo._mapper.registry
@@ -631,66 +693,63 @@ class ParentRegistryTestCase(unittest.TestCase):
 
 
 class MissingPolicyKeyTestCase(unittest.TestCase):
-
     def testGetRaises(self):
-        butler = dafPersist.Butler(inputs={'root': ROOT, 'mapper': MinMapper1})
+        butler = dafPersist.Butler(inputs={"root": ROOT, "mapper": MinMapper1})
         # MinMapper1 does not specify a template for the raw dataset type so
         # trying to use it for get should raise
         with self.assertRaises(RuntimeError) as contextManager:
-            butler.get('raw')
+            butler.get("raw")
         # This test demonstrates and verifies that simple use of the incomplete
         # dataset type returns a helpful (I hope) error message.
         self.assertEqual(
             str(contextManager.exception),
-            'Template is not defined for the raw dataset type, '
-            'it must be set before it can be used.')
+            "Template is not defined for the raw dataset type, " "it must be set before it can be used.",
+        )
         with self.assertRaises(RuntimeError) as contextManager:
-            butler.queryMetadata('raw', 'unused', {})
+            butler.queryMetadata("raw", "unused", {})
 
     def testQueryMetadataRaises(self):
-        butler = dafPersist.Butler(inputs={'root': ROOT, 'mapper': MinMapper1})
+        butler = dafPersist.Butler(inputs={"root": ROOT, "mapper": MinMapper1})
         # MinMapper1 does not specify a template for the raw dataset type so
         # trying to use it for queryMetadata should raise
         with self.assertRaises(RuntimeError) as contextManager:
-            butler.queryMetadata('raw', 'unused', {})
+            butler.queryMetadata("raw", "unused", {})
         # This test demonstrates and verifies that simple use of the incomplete
         # dataset type returns a helpful (I hope) error message.
         self.assertEqual(
             str(contextManager.exception),
-            'Template is not defined for the raw dataset type, '
-            'it must be set before it can be used.')
+            "Template is not defined for the raw dataset type, " "it must be set before it can be used.",
+        )
 
     def testFilenameRaises(self):
-        butler = dafPersist.Butler(inputs={'root': ROOT, 'mapper': MinMapper1})
+        butler = dafPersist.Butler(inputs={"root": ROOT, "mapper": MinMapper1})
         # MinMapper1 does not specify a template for the raw dataset type so
         # trying to use it for <datasetType>_filename should raise
         with self.assertRaises(RuntimeError) as contextManager:
-            butler.get('raw_filename')
+            butler.get("raw_filename")
         # This test demonstrates and verifies that simple use of the
         # incomplete dataset type returns a helpful (I hope) error message.
         self.assertEqual(
             str(contextManager.exception),
-            'Template is not defined for the raw dataset type, '
-            'it must be set before it can be used.')
+            "Template is not defined for the raw dataset type, " "it must be set before it can be used.",
+        )
 
     def testWcsRaises(self):
-        butler = dafPersist.Butler(inputs={'root': ROOT, 'mapper': MinMapper1})
+        butler = dafPersist.Butler(inputs={"root": ROOT, "mapper": MinMapper1})
         # MinMapper1 does not specify a template for the raw dataset type so
         # trying to use it for <datasetType>_wcs should raise
         with self.assertRaises(RuntimeError) as contextManager:
-            butler.get('raw_wcs')
+            butler.get("raw_wcs")
         # This test demonstrates and verifies that simple use of the
         # incomplete dataset type returns a helpful (I hope) error message.
         self.assertEqual(
             str(contextManager.exception),
-            'Template is not defined for the raw dataset type, '
-            'it must be set before it can be used.')
+            "Template is not defined for the raw dataset type, " "it must be set before it can be used.",
+        )
 
     def testConflictRaises(self):
         policy = dafPersist.Policy(os.path.join(ROOT, "ConflictMapper.yaml"))
-        with self.assertRaisesRegex(
-                ValueError,
-                r"Duplicate mapping policy for dataset type packages"):
+        with self.assertRaisesRegex(ValueError, r"Duplicate mapping policy for dataset type packages"):
             mapper = lsst.obs.base.CameraMapper(policy=policy, repositoryDir=ROOT, root=ROOT)  # noqa F841
 
 
@@ -698,6 +757,6 @@ class MemoryTester(lsst.utils.tests.MemoryTestCase):
     pass
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     lsst.utils.tests.init()
     unittest.main()

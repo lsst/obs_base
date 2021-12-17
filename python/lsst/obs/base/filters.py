@@ -25,14 +25,13 @@ and for use by `lsst.afw.image.Filter`, gen2 dataIds, and gen3 Dimensions.
 
 __all__ = ("FilterDefinition", "FilterDefinitionCollection")
 
-import dataclasses
 import collections.abc
+import dataclasses
 import re
 import warnings
 
-import numpy as np
-
 import lsst.afw.image.utils
+import numpy as np
 
 
 class FilterDefinitionCollection(collections.abc.Sequence):
@@ -68,7 +67,7 @@ class FilterDefinitionCollection(collections.abc.Sequence):
         return len(self._filters)
 
     def __str__(self):
-        return "FilterDefinitions(" + ', '.join(str(f) for f in self._filters) + ')'
+        return "FilterDefinitions(" + ", ".join(str(f) for f in self._filters) + ")"
 
     def defineFilters(self):
         """Define all the filters to `lsst.afw.image.Filter`.
@@ -85,7 +84,7 @@ class FilterDefinitionCollection(collections.abc.Sequence):
         if self._defined is None:
             with warnings.catch_warnings():
                 # suppress Filter warnings; we already know this is deprecated
-                warnings.simplefilter('ignore', category=FutureWarning)
+                warnings.simplefilter("ignore", category=FutureWarning)
                 self.reset()
                 for filter in self._filters:
                     filter.defineFilter()
@@ -104,7 +103,7 @@ class FilterDefinitionCollection(collections.abc.Sequence):
         """
         with warnings.catch_warnings():
             # suppress Filter warnings; we already know this is deprecated
-            warnings.simplefilter('ignore', category=FutureWarning)
+            warnings.simplefilter("ignore", category=FutureWarning)
             lsst.afw.image.utils.resetFilters()
         cls._defined = None
 
@@ -128,8 +127,12 @@ class FilterDefinitionCollection(collections.abc.Sequence):
         """
         matches = set()
         for filter in self._filters:
-            if name == filter.physical_filter or name == filter.band or name == filter.afw_name \
-                    or name in filter.alias:
+            if (
+                name == filter.physical_filter
+                or name == filter.band
+                or name == filter.afw_name
+                or name in filter.alias
+            ):
                 matches.add(filter)
         return matches
 
@@ -201,7 +204,7 @@ class FilterDefinition:
     def __post_init__(self):
         # force alias to be immutable, so that hashing works
         if not isinstance(self.alias, frozenset):
-            object.__setattr__(self, 'alias', frozenset(self.alias))
+            object.__setattr__(self, "alias", frozenset(self.alias))
 
     def __str__(self):
         txt = f"FilterDefinition(physical_filter='{self.physical_filter}', lambdaEff='{self.lambdaEff}'"
@@ -218,8 +221,7 @@ class FilterDefinition:
         return txt + ")"
 
     def defineFilter(self):
-        """Declare the filters via afw.image.Filter.
-        """
+        """Declare the filters via afw.image.Filter."""
         aliases = set(self.alias)
         name = self.physical_filter
 
@@ -246,8 +248,10 @@ class FilterDefinition:
                     break
                 i += 1
             else:
-                warnings.warn(f"Too many band aliases found for physical_filter {self.physical_filter}"
-                              f" with band {band}")
+                warnings.warn(
+                    f"Too many band aliases found for physical_filter {self.physical_filter}"
+                    f" with band {band}"
+                )
 
         if self.physical_filter == self.band and self.physical_filter in current_names:
             # We have already defined a filter like this
@@ -272,14 +276,15 @@ class FilterDefinition:
 
         with warnings.catch_warnings():
             # suppress Filter warnings; we already know this is deprecated
-            warnings.simplefilter('ignore', category=FutureWarning)
-            lsst.afw.image.utils.defineFilter(name,
-                                              lambdaEff=self.lambdaEff,
-                                              lambdaMin=self.lambdaMin,
-                                              lambdaMax=self.lambdaMax,
-                                              alias=sorted(aliases))
+            warnings.simplefilter("ignore", category=FutureWarning)
+            lsst.afw.image.utils.defineFilter(
+                name,
+                lambdaEff=self.lambdaEff,
+                lambdaMin=self.lambdaMin,
+                lambdaMax=self.lambdaMax,
+                alias=sorted(aliases),
+            )
 
     def makeFilterLabel(self):
-        """Create a complete FilterLabel for this filter.
-        """
+        """Create a complete FilterLabel for this filter."""
         return lsst.afw.image.FilterLabel(band=self.band, physical=self.physical_filter)
