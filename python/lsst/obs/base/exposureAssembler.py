@@ -272,7 +272,7 @@ class ExposureAssembler(StorageClassDelegate):
         # If we have some components left over that is a problem
         if components:
             raise ValueError(
-                "The following components were not understood:" " {}".format(list(components.keys()))
+                "The following components were not understood: {}".format(list(components.keys()))
             )
 
         return exposure

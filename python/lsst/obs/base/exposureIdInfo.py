@@ -131,7 +131,7 @@ class ExposureIdInfo:
         """
         if not isinstance(dataId, DataCoordinate) or not dataId.hasRecords():
             raise RuntimeError(
-                "A fully-expanded data ID is required; use " "Registry.expandDataId to obtain one."
+                "A fully-expanded data ID is required; use Registry.expandDataId to obtain one."
             )
         expId, expBits = dataId.pack(name, returnMaxBits=True)
         return cls(expId=expId, expBits=expBits, maxBits=maxBits)

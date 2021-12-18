@@ -230,11 +230,11 @@ class ConvertRepoSkyMapConfig(Config):
 
 class ConvertRepoConfig(Config):
     raws = ConfigurableField(
-        "Configuration for subtask responsible for ingesting raws and adding " "exposure dimension entries.",
+        "Configuration for subtask responsible for ingesting raws and adding exposure dimension entries.",
         target=RawIngestTask,
     )
     defineVisits = ConfigurableField(
-        "Configuration for the subtask responsible for defining visits from " "exposures.",
+        "Configuration for the subtask responsible for defining visits from exposures.",
         target=DefineVisitsTask,
     )
     skyMaps = ConfigDictField(
@@ -310,12 +310,12 @@ class ConvertRepoConfig(Config):
         default=True,
     )
     refCats = ListField(
-        "The names of reference catalogs (subdirectories under ref_cats) to " "be converted",
+        "The names of reference catalogs (subdirectories under ref_cats) to be converted",
         dtype=str,
         default=[],
     )
     fileIgnorePatterns = ListField(
-        "Filename globs that should be ignored instead of being treated as " "datasets.",
+        "Filename globs that should be ignored instead of being treated as datasets.",
         dtype=str,
         default=[
             "README.txt",
@@ -652,7 +652,7 @@ class ConvertRepoTask(Task):
             self.config.transfer
         ):
             self.log.warning(
-                "config.doExpandDataIds=False but datastore reports that expanded data " "IDs may be needed.",
+                "config.doExpandDataIds=False but datastore reports that expanded data IDs may be needed.",
                 self.config.transfer,
             )
 

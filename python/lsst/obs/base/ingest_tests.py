@@ -320,7 +320,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             # then trips the test assertion.
         except (AssertionError, PermissionError) as err:
             raise unittest.SkipTest(
-                "Skipping hard-link test because input data" " is on a different filesystem."
+                "Skipping hard-link test because input data is on a different filesystem."
             ) from err
         self.verifyIngest()
 

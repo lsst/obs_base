@@ -352,7 +352,7 @@ def _formatMap(ch, k, datasetType):
         return str
     else:
         raise RuntimeError(
-            "Unexpected format specifier %s" " for field %s in template for dataset %s" % (ch, k, datasetType)
+            "Unexpected format specifier %s for field %s in template for dataset %s" % (ch, k, datasetType)
         )
 
 

@@ -43,7 +43,7 @@ fits_re = r"\.fit[s]?\b"
 @click.command(short_help="Convert a gen2 repo to gen3.", cls=ButlerCommand)
 @repo_argument(
     required=True,
-    help="REPO is the URI or path to the gen3 repository. Will be created if it does not already " "exist",
+    help="REPO is the URI or path to the gen3 repository. Will be created if it does not already exist",
 )
 @click.option("--gen2root", required=True, help="Root path of the gen 2 repo to be converted.")
 @click.option("--skymap-name", help="Name of the new gen3 skymap (e.g. 'discrete/ci_hsc').")
@@ -85,7 +85,7 @@ def convert(*args, **kwargs):
 @repo_argument(required=True)
 @instrument_argument(required=True)
 @config_file_option(
-    help="Path to a pex_config override to be included after the Instrument config overrides " "are applied."
+    help="Path to a pex_config override to be included after the Instrument config overrides are applied."
 )
 @click.option(
     "--collections",
@@ -123,7 +123,7 @@ def define_visits(*args, **kwargs):
 @click.option(
     "--ingest-task",
     default="lsst.obs.base.RawIngestTask",
-    help="The fully qualified class name " "of the ingest task to use.",
+    help="The fully qualified class name of the ingest task to use.",
 )
 @options_file_option()
 def ingest_raws(*args, **kwargs):

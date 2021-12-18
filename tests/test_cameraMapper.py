@@ -703,7 +703,7 @@ class MissingPolicyKeyTestCase(unittest.TestCase):
         # dataset type returns a helpful (I hope) error message.
         self.assertEqual(
             str(contextManager.exception),
-            "Template is not defined for the raw dataset type, " "it must be set before it can be used.",
+            "Template is not defined for the raw dataset type, it must be set before it can be used.",
         )
         with self.assertRaises(RuntimeError) as contextManager:
             butler.queryMetadata("raw", "unused", {})
@@ -718,7 +718,7 @@ class MissingPolicyKeyTestCase(unittest.TestCase):
         # dataset type returns a helpful (I hope) error message.
         self.assertEqual(
             str(contextManager.exception),
-            "Template is not defined for the raw dataset type, " "it must be set before it can be used.",
+            "Template is not defined for the raw dataset type, it must be set before it can be used.",
         )
 
     def testFilenameRaises(self):
@@ -731,7 +731,7 @@ class MissingPolicyKeyTestCase(unittest.TestCase):
         # incomplete dataset type returns a helpful (I hope) error message.
         self.assertEqual(
             str(contextManager.exception),
-            "Template is not defined for the raw dataset type, " "it must be set before it can be used.",
+            "Template is not defined for the raw dataset type, it must be set before it can be used.",
         )
 
     def testWcsRaises(self):
@@ -744,7 +744,7 @@ class MissingPolicyKeyTestCase(unittest.TestCase):
         # incomplete dataset type returns a helpful (I hope) error message.
         self.assertEqual(
             str(contextManager.exception),
-            "Template is not defined for the raw dataset type, " "it must be set before it can be used.",
+            "Template is not defined for the raw dataset type, it must be set before it can be used.",
         )
 
     def testConflictRaises(self):

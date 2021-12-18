@@ -138,7 +138,7 @@ class CalibRepoConverter(RepoConverter):
         tables = self.mapper.mappings[datasetType.name].tables
         if tables is None or len(tables) == 0:
             self.task.log.warning(
-                "Could not extract calibration ranges for %s in %s; " "no tables in Gen2 mapper.",
+                "Could not extract calibration ranges for %s in %s; no tables in Gen2 mapper.",
                 datasetType.name,
                 self.root,
                 tables[0],
@@ -170,7 +170,7 @@ class CalibRepoConverter(RepoConverter):
         # missing file if it can.
         if not os.path.exists(calibFile):
             raise RuntimeError(
-                "Attempting to convert calibrations but no registry database" f" found in {self.root}"
+                f"Attempting to convert calibrations but no registry database found in {self.root}"
             )
 
         # Initially we collate timespans for each dataId + dataset type

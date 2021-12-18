@@ -1338,7 +1338,7 @@ class CameraMapper(dafPersist.Mapper):
             # See DM-14372 for why this is debug and not warn (e.g. calib
             # files without wcs metadata).
             self.log.debug(
-                "wcs set to None; missing information found in metadata to create a valid wcs:" " %s",
+                "wcs set to None; missing information found in metadata to create a valid wcs: %s",
                 e.args[0],
             )
         # ensure any WCS values stripped from the metadata are removed in the

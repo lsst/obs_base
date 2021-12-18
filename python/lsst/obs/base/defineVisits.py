@@ -622,12 +622,12 @@ def _reduceOrNone(func, iterable):
 
 class _GroupExposuresOneToOneConfig(GroupExposuresConfig):
     visitSystemId = Field(
-        doc=("Integer ID of the visit_system implemented by this grouping " "algorithm."),
+        doc="Integer ID of the visit_system implemented by this grouping algorithm.",
         dtype=int,
         default=0,
     )
     visitSystemName = Field(
-        doc=("String name of the visit_system implemented by this grouping " "algorithm."),
+        doc="String name of the visit_system implemented by this grouping algorithm.",
         dtype=str,
         default="one-to-one",
     )
@@ -658,12 +658,12 @@ class _GroupExposuresOneToOneTask(GroupExposuresTask, metaclass=ABCMeta):
 
 class _GroupExposuresByGroupMetadataConfig(GroupExposuresConfig):
     visitSystemId = Field(
-        doc=("Integer ID of the visit_system implemented by this grouping " "algorithm."),
+        doc="Integer ID of the visit_system implemented by this grouping algorithm.",
         dtype=int,
         default=1,
     )
     visitSystemName = Field(
-        doc=("String name of the visit_system implemented by this grouping " "algorithm."),
+        doc="String name of the visit_system implemented by this grouping algorithm.",
         dtype=str,
         default="by-group-metadata",
     )

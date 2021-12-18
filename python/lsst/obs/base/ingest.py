@@ -324,7 +324,7 @@ class RawIngestTask(Task):
             )
             if self.config.failFast:
                 raise RuntimeError(
-                    f"Instrument {dataId['instrument']} for" f" file {filename} not known to registry"
+                    f"Instrument {dataId['instrument']} for file {filename} not known to registry"
                 ) from e
             FormatterClass = Formatter
             # Indicate that we could not work out the instrument.
@@ -413,7 +413,7 @@ class RawIngestTask(Task):
             self._on_metadata_failure(filename, e)
             if self.config.failFast:
                 raise RuntimeError(
-                    "Problem extracting metadata for file " f"{filename}{sidecar_fail_msg}"
+                    f"Problem extracting metadata for file {filename}{sidecar_fail_msg}"
                 ) from e
         else:
             self.log.debug("Extracted metadata for file %s%s", filename, sidecar_fail_msg)
@@ -581,7 +581,7 @@ class RawIngestTask(Task):
                         self._on_metadata_failure(possible_index_file, e)
                     if self.config.failFast:
                         raise RuntimeError(
-                            f"Problem reading index file from {index_msg} " f"location {possible_index_file}"
+                            f"Problem reading index file from {index_msg} location {possible_index_file}"
                         ) from e
                     bad_index_files.add(possible_index_file)
                     continue
@@ -627,7 +627,7 @@ class RawIngestTask(Task):
                                 )
                             else:
                                 self.log.warning(
-                                    "File %s already specified in an index file, " "ignoring content from %s",
+                                    "File %s already specified in an index file, ignoring content from %s",
                                     file,
                                     possible_index_file,
                                 )
@@ -679,7 +679,7 @@ class RawIngestTask(Task):
                 self._on_metadata_failure(filename, e)
                 if self.config.failFast:
                     raise RuntimeError(
-                        f"Problem extracting metadata for file {filename} " "found in index file"
+                        f"Problem extracting metadata for file {filename} found in index file"
                     ) from e
             else:
                 instrument, formatterClass = self._determine_instrument_formatter(
@@ -817,7 +817,7 @@ class RawIngestTask(Task):
         if indexFileData:
             indexFileData, bad_index_file_data = _partition_good_bad(indexFileData)
             self.log.info(
-                "Successfully extracted metadata for %d file%s found in %d index file%s" " with %d failure%s",
+                "Successfully extracted metadata for %d file%s found in %d index file%s with %d failure%s",
                 *_log_msg_counter(indexFileData),
                 *_log_msg_counter(good_index_files),
                 *_log_msg_counter(bad_index_file_data),

@@ -210,7 +210,7 @@ class StandardRepoConverter(RepoConverter):
                 run = self.task.config.runs.get(datasetTypeName)
         if run is None:
             raise ValueError(
-                f"No default run for repo at {self.root}, and no " f"override for dataset {datasetTypeName}."
+                f"No default run for repo at {self.root}, and no override for dataset {datasetTypeName}."
             )
         if run not in self._chain:
             self._chain.append(run)
