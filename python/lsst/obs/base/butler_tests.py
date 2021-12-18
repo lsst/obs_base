@@ -184,7 +184,8 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
         self._test_exposure("flat")
 
     def test_raw_header_wcs(self):
-        """Test that `raw_header_wcs` returns the unmodified raw image header."""
+        """Test that `raw_header_wcs` returns the unmodified header of the raw
+        image."""
         if self.butler_get_data.raw_header_wcs is not None:
             wcs = self.butler.get("raw_header_wcs", self.dataIds["raw"])
             self.assertEqual(wcs, self.butler_get_data.raw_header_wcs)

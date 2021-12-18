@@ -137,7 +137,7 @@ class Mapping(object):
             )
 
     def keys(self):
-        """Return the dict of keys and value types required for this mapping."""
+        """Return the dict of keys and value types required by this mapping."""
         return self.keyDict
 
     def map(self, mapper, dataId, write=False):

@@ -46,7 +46,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class FoundSkyMap:
-    """Struct containing information about a SkyMap found in a Gen2 repository."""
+    """Struct containing information about a SkyMap in a Gen2 repository."""
 
     name: str
     """Name of the skymap used in Gen3 data IDs.

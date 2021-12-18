@@ -890,11 +890,11 @@ class CameraMapper(dafPersist.Mapper):
         """Standardize a sky policy by returning the one we use."""
         return self.skypolicy
 
-    ###############################################################################
+    ##########################################################################
     #
     # Utility functions
     #
-    ###############################################################################
+    ##########################################################################
 
     def _setupRegistry(
         self, name, description, path, policy, policyKey, storage, searchParents=True, posixIfNoSql=True

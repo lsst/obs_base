@@ -220,15 +220,16 @@ class TestGenericAssembler(unittest.TestCase):
                             "a": {"datasetType": "basicObject1"},
                             "b": {"datasetType": "basicObject2"},
                         },
-                        # note, no assembler or disassembler specified here, will
-                        # use setter names inferred by component name.
+                        # note, no assembler or disassembler specified here,
+                        # will use setter names inferred by component name.
                     },
                     # "generic assembler default constructor pair"
                     "gaDefCtorPair": {  # dataset defition that uses the default ctor
                         "python": "lsst.daf.persistence.test.TestObjectPair",
                         "composite": {
                             # note that the component names are the same as the
-                            # argument names in the TestObjectPair.__init__ func.
+                            # argument names in the TestObjectPair.__init__
+                            # func.
                             "objA": {"datasetType": "basicObject1", "getter": "get_a"},
                             "objB": {"datasetType": "basicObject2", "getter": "get_b"},
                         },
@@ -238,9 +239,9 @@ class TestGenericAssembler(unittest.TestCase):
                     "gaPairWithSetter": {
                         "python": "lsst.daf.persistence.test.TestObjectPair",
                         "composite": {
-                            # note that the component names do not match argument
-                            # names in the TestObjectPair.__init__ func or the set
-                            # functions in the python object.
+                            # note that the component names do not match
+                            # argument names in the TestObjectPair.__init__
+                            # func or the set functions in the python object.
                             "z": {"datasetType": "basicObject1", "setter": "set_a", "getter": "get_a"},
                             "x": {"datasetType": "basicObject2", "setter": "set_b", "getter": "get_b"},
                         },
