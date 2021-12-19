@@ -20,6 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from lsst.daf.butler import Butler
+
 from ..utils import getInstrument
 
 

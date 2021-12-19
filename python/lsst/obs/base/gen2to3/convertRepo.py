@@ -22,29 +22,25 @@ from __future__ import annotations
 
 __all__ = ["CalibRepo", "ConvertRepoConfig", "ConvertRepoTask", "ConvertRepoSkyMapConfig", "Rerun"]
 
-import os
 import fnmatch
+import os
 from dataclasses import dataclass
 from multiprocessing import Pool
-from typing import Iterable, Optional, List, Tuple
+from typing import Iterable, List, Optional, Tuple
 
-from lsst.daf.butler import (
-    Butler as Butler3,
-    ButlerURI,
-    CollectionType,
-    SkyPixDimension
-)
-from lsst.pex.config import Config, ConfigurableField, ConfigDictField, DictField, ListField, Field
+from lsst.daf.butler import Butler as Butler3
+from lsst.daf.butler import ButlerURI, CollectionType, SkyPixDimension
+from lsst.pex.config import Config, ConfigDictField, ConfigurableField, DictField, Field, ListField
 from lsst.pipe.base import Task
-from lsst.skymap import skyMapRegistry, BaseSkyMap
+from lsst.skymap import BaseSkyMap, skyMapRegistry
 
-from ..ingest import RawIngestTask
+from .._instrument import Instrument
 from ..defineVisits import DefineVisitsTask
+from ..ingest import RawIngestTask
+from .calibRepoConverter import CalibRepoConverter
 from .repoConverter import ConversionSubset
 from .rootRepoConverter import RootRepoConverter
-from .calibRepoConverter import CalibRepoConverter
 from .standardRepoConverter import StandardRepoConverter
-from .._instrument import Instrument
 
 
 @dataclass
@@ -76,14 +72,13 @@ def _dropPrefix(s: str, prefix: str) -> Tuple[str, bool]:
     Otherwise return ``s`` and `False`.
     """
     if s.startswith(prefix):
-        return s[len(prefix):], True
+        return s[len(prefix) :], True
     return s, False
 
 
 @dataclass
 class Rerun:
-    """Specification for a Gen2 processing-output repository to convert.
-    """
+    """Specification for a Gen2 processing-output repository to convert."""
 
     path: str
     """Absolute or relative (to the root repository) path to the Gen2
@@ -162,8 +157,7 @@ class Rerun:
 
 @dataclass
 class CalibRepo:
-    """Specification for a Gen2 calibration repository to convert.
-    """
+    """Specification for a Gen2 calibration repository to convert."""
 
     path: Optional[str]
     """Absolute or relative (to the root repository) path to the Gen2
@@ -227,6 +221,7 @@ class ConvertRepoSkyMapConfig(Config):
     "skymap" that holds it - "skyMap[name].skyMap" - but that seems
     unavoidable.
     """
+
     skyMap = skyMapRegistry.makeField(
         doc="Type and parameters for the SkyMap itself.",
         default="dodeca",
@@ -235,13 +230,11 @@ class ConvertRepoSkyMapConfig(Config):
 
 class ConvertRepoConfig(Config):
     raws = ConfigurableField(
-        "Configuration for subtask responsible for ingesting raws and adding "
-        "exposure dimension entries.",
+        "Configuration for subtask responsible for ingesting raws and adding exposure dimension entries.",
         target=RawIngestTask,
     )
     defineVisits = ConfigurableField(
-        "Configuration for the subtask responsible for defining visits from "
-        "exposures.",
+        "Configuration for the subtask responsible for defining visits from exposures.",
         target=DefineVisitsTask,
     )
     skyMaps = ConfigDictField(
@@ -250,7 +243,7 @@ class ConvertRepoConfig(Config):
         "existing skymaps found in the Gen2 repo.",
         keytype=str,
         itemtype=ConvertRepoSkyMapConfig,
-        default={}
+        default={},
     )
     rootSkyMapName = Field(
         "Name of a Gen3 skymap (an entry in ``self.skyMaps``) to assume for "
@@ -276,7 +269,7 @@ class ConvertRepoConfig(Config):
         itemtype=str,
         default={
             "brightObjectMask": "masks",
-        }
+        },
     )
     storageClasses = DictField(
         "Mapping from dataset type name or Gen2 policy entry (e.g. 'python' "
@@ -296,7 +289,7 @@ class ConvertRepoConfig(Config):
             "MultilevelParquetTable": "DataFrame",
             "ParquetTable": "DataFrame",
             "SkyWcs": "Wcs",
-        }
+        },
     )
     formatterClasses = DictField(
         "Mapping from dataset type name to formatter class. "
@@ -304,13 +297,10 @@ class ConvertRepoConfig(Config):
         " Gen3 datastore configuration.",
         keytype=str,
         itemtype=str,
-        default={}
+        default={},
     )
     targetHandlerClasses = DictField(
-        "Mapping from dataset type name to target handler class.",
-        keytype=str,
-        itemtype=str,
-        default={}
+        "Mapping from dataset type name to target handler class.", keytype=str, itemtype=str, default={}
     )
     doRegisterInstrument = Field(
         "If True (default), add dimension records for the Instrument and its "
@@ -320,18 +310,24 @@ class ConvertRepoConfig(Config):
         default=True,
     )
     refCats = ListField(
-        "The names of reference catalogs (subdirectories under ref_cats) to "
-        "be converted",
+        "The names of reference catalogs (subdirectories under ref_cats) to be converted",
         dtype=str,
-        default=[]
+        default=[],
     )
     fileIgnorePatterns = ListField(
-        "Filename globs that should be ignored instead of being treated as "
-        "datasets.",
+        "Filename globs that should be ignored instead of being treated as datasets.",
         dtype=str,
-        default=["README.txt", "*.*~*", "butler.yaml", "gen3.sqlite3",
-                 "registry.sqlite3", "calibRegistry.sqlite3", "_mapper",
-                 "_parent", "repositoryCfg.yaml"]
+        default=[
+            "README.txt",
+            "*.*~*",
+            "butler.yaml",
+            "gen3.sqlite3",
+            "registry.sqlite3",
+            "calibRegistry.sqlite3",
+            "_mapper",
+            "_parent",
+            "repositoryCfg.yaml",
+        ],
     )
     rawDatasetType = Field(
         "Gen2 dataset type to use for raw data.",
@@ -339,15 +335,13 @@ class ConvertRepoConfig(Config):
         default="raw",
     )
     datasetIncludePatterns = ListField(
-        "Glob-style patterns for dataset type names that should be converted.",
-        dtype=str,
-        default=["*"]
+        "Glob-style patterns for dataset type names that should be converted.", dtype=str, default=["*"]
     )
     datasetIgnorePatterns = ListField(
         "Glob-style patterns for dataset type names that should not be "
         "converted despite matching a pattern in datasetIncludePatterns.",
         dtype=str,
-        default=[]
+        default=[],
     )
     datasetTemplateOverrides = DictField(
         "Overrides for Gen2 filename templates, keyed by dataset type. "
@@ -391,7 +385,7 @@ class ConvertRepoConfig(Config):
         "Additional child collections to include in the umbrella collection. "
         "Ignored if doMakeUmbrellaCollection=False.",
         dtype=str,
-        default=[]
+        default=[],
     )
 
     @property
@@ -453,8 +447,9 @@ class ConvertRepoTask(Task):
 
     _DefaultName = "convertRepo"
 
-    def __init__(self, config=None, *, butler3: Butler3, instrument: Instrument, dry_run: bool = False,
-                 **kwargs):
+    def __init__(
+        self, config=None, *, butler3: Butler3, instrument: Instrument, dry_run: bool = False, **kwargs
+    ):
         config.validate()  # Not a CmdlineTask nor PipelineTask, so have to validate the config here.
         super().__init__(config, **kwargs)
         # Make self.butler3 one that doesn't have any collections associated
@@ -507,11 +502,10 @@ class ConvertRepoTask(Task):
         included : `bool`
             Whether the dataset should be included in the conversion.
         """
-        return (
-            any(fnmatch.fnmatchcase(datasetTypeName, pattern)
-                for pattern in self.config.datasetIncludePatterns)
-            and not any(fnmatch.fnmatchcase(datasetTypeName, pattern)
-                        for pattern in self.config.datasetIgnorePatterns)
+        return any(
+            fnmatch.fnmatchcase(datasetTypeName, pattern) for pattern in self.config.datasetIncludePatterns
+        ) and not any(
+            fnmatch.fnmatchcase(datasetTypeName, pattern) for pattern in self.config.datasetIgnorePatterns
         )
 
     def useSkyMap(self, skyMap: BaseSkyMap, skyMapName: str) -> str:
@@ -604,12 +598,16 @@ class ConvertRepoTask(Task):
             for dimension in self._usedSkyPix:
                 subset.addSkyPix(self.registry, dimension)
 
-    def run(self, root: str, *,
-            calibs: Optional[List[CalibRepo]] = None,
-            reruns: Optional[List[Rerun]] = None,
-            visits: Optional[Iterable[int]] = None,
-            pool: Optional[Pool] = None,
-            processes: int = 1):
+    def run(
+        self,
+        root: str,
+        *,
+        calibs: Optional[List[CalibRepo]] = None,
+        reruns: Optional[List[Rerun]] = None,
+        visits: Optional[Iterable[int]] = None,
+        pool: Optional[Pool] = None,
+        processes: int = 1,
+    ):
         """Convert a group of related data repositories.
 
         Parameters
@@ -645,14 +643,18 @@ class ConvertRepoTask(Task):
             subset = ConversionSubset(instrument=self.instrument.getName(), visits=frozenset(visits))
         else:
             if self.config.relatedOnly:
-                self.log.warning("config.relatedOnly is True but all visits are being ingested; "
-                                 "no filtering will be done.")
+                self.log.warning(
+                    "config.relatedOnly is True but all visits are being ingested; "
+                    "no filtering will be done."
+                )
             subset = None
-        if (not self.config.doExpandDataIds
-                and self.butler3.datastore.needs_expanded_data_ids(self.config.transfer)):
-            self.log.warning("config.doExpandDataIds=False but datastore reports that expanded data "
-                             "IDs may be needed.",
-                             self.config.transfer)
+        if not self.config.doExpandDataIds and self.butler3.datastore.needs_expanded_data_ids(
+            self.config.transfer
+        ):
+            self.log.warning(
+                "config.doExpandDataIds=False but datastore reports that expanded data IDs may be needed.",
+                self.config.transfer,
+            )
 
         # Check that at most one CalibRepo is marked as default, to fail before
         # we actually write anything.
@@ -672,11 +674,14 @@ class ConvertRepoTask(Task):
             if calibRoot is not None:
                 if not os.path.isabs(calibRoot):
                     calibRoot = os.path.join(rootConverter.root, calibRoot)
-                converter = CalibRepoConverter(task=self, root=calibRoot,
-                                               labels=spec.labels,
-                                               instrument=self.instrument,
-                                               mapper=rootConverter.mapper,
-                                               subset=rootConverter.subset)
+                converter = CalibRepoConverter(
+                    task=self,
+                    root=calibRoot,
+                    labels=spec.labels,
+                    instrument=self.instrument,
+                    mapper=rootConverter.mapper,
+                    subset=rootConverter.subset,
+                )
                 converters.append(converter)
             # CalibRepo entries that don't have a path are just there for
             # curated calibs and maybe to set up a collection pointer; that's
@@ -689,8 +694,13 @@ class ConvertRepoTask(Task):
             if not os.path.isabs(runRoot):
                 runRoot = os.path.join(rootConverter.root, runRoot)
             spec.guessCollectionNames(self.instrument, rootConverter.root)
-            converter = StandardRepoConverter(task=self, root=runRoot, run=spec.runName,
-                                              instrument=self.instrument, subset=rootConverter.subset)
+            converter = StandardRepoConverter(
+                task=self,
+                root=runRoot,
+                run=spec.runName,
+                instrument=self.instrument,
+                subset=rootConverter.subset,
+            )
             converters.append(converter)
             rerunConverters[spec.runName] = converter
 

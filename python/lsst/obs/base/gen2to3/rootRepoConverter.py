@@ -22,18 +22,17 @@ from __future__ import annotations
 
 __all__ = ["RootRepoConverter"]
 
+import itertools
 import os
 import re
-import itertools
-from typing import TYPE_CHECKING, Dict, Iterator, Mapping, Optional, Tuple, List
+from typing import TYPE_CHECKING, Dict, Iterator, List, Mapping, Optional, Tuple
 
+from lsst.daf.butler import CollectionType, DatasetRef, DatasetType, DimensionGraph, FileDataset
 from lsst.skymap import BaseSkyMap
-from lsst.daf.butler import CollectionType, DatasetType, DatasetRef, DimensionGraph, FileDataset
+
 from .standardRepoConverter import StandardRepoConverter
 
-SKYMAP_DATASET_TYPES = {
-    coaddName: f"{coaddName}Coadd_skyMap" for coaddName in ("deep", "goodSeeing", "dcr")
-}
+SKYMAP_DATASET_TYPES = {coaddName: f"{coaddName}Coadd_skyMap" for coaddName in ("deep", "goodSeeing", "dcr")}
 
 if TYPE_CHECKING:
     from lsst.daf.butler import SkyPixDimension
@@ -56,7 +55,7 @@ def getDataPaths(dataRefs):
     for dataRef in dataRefs:
         path = dataRef.getUri()
         # handle with FITS files with multiple HDUs (e.g. decam raw)
-        paths.add(path.split('[')[0])
+        paths.add(path.split("[")[0])
     return paths
 
 
@@ -100,7 +99,8 @@ class RootRepoConverter(StandardRepoConverter):
         if skyMap is None and self.task.config.rootSkyMapName is not None:
             self.task.log.debug(
                 "Assuming configured root skymap with name '%s' for dataset %s.",
-                self.task.config.rootSkyMapName, datasetTypeName
+                self.task.config.rootSkyMapName,
+                datasetTypeName,
             )
             skyMap = self._rootSkyMap
             name = self.task.config.rootSkyMapName
@@ -113,19 +113,23 @@ class RootRepoConverter(StandardRepoConverter):
         self.task.log.info("Finding raws in root %s.", self.root)
         if self.subset is not None:
             dataRefs = itertools.chain.from_iterable(
-                self.butler2.subset(self.task.config.rawDatasetType,
-                                    visit=visit) for visit in self.subset.visits
+                self.butler2.subset(self.task.config.rawDatasetType, visit=visit)
+                for visit in self.subset.visits
             )
         else:
             dataRefs = self.butler2.subset(self.task.config.rawDatasetType)
         dataPaths = getDataPaths(dataRefs)
         if not self.task.dry_run:
-            self.task.log.info("Ingesting raws from root %s into run %s.",
-                               self.root, self.task.raws.butler.run)
+            self.task.log.info(
+                "Ingesting raws from root %s into run %s.", self.root, self.task.raws.butler.run
+            )
             self._rawRefs.extend(self.task.raws.run(dataPaths, pool=pool))
         else:
-            self.task.log.info("[dry run] skipping ingesting raws from root %s into run %s.",
-                               self.root, self.task.raws.butler.run)
+            self.task.log.info(
+                "[dry run] skipping ingesting raws from root %s into run %s.",
+                self.root,
+                self.task.raws.butler.run,
+            )
         self._chain = [self.task.raws.butler.run]
 
     def runDefineVisits(self, pool=None):
@@ -145,6 +149,7 @@ class RootRepoConverter(StandardRepoConverter):
         # Gather information about reference catalogs.
         if self.task.isDatasetTypeIncluded("ref_cat") and len(self.task.config.refCats) != 0:
             from lsst.meas.algorithms import DatasetConfig as RefCatDatasetConfig
+
             for refCat in os.listdir(os.path.join(self.root, "ref_cats")):
                 path = os.path.join(self.root, "ref_cats", refCat)
                 configFile = os.path.join(path, "config.py")
@@ -156,14 +161,18 @@ class RootRepoConverter(StandardRepoConverter):
                 onDiskConfig = RefCatDatasetConfig()
                 onDiskConfig.load(configFile)
                 if onDiskConfig.indexer.name != "HTM":
-                    raise ValueError(f"Reference catalog '{refCat}' uses unsupported "
-                                     f"pixelization '{onDiskConfig.indexer.name}'.")
+                    raise ValueError(
+                        f"Reference catalog '{refCat}' uses unsupported "
+                        f"pixelization '{onDiskConfig.indexer.name}'."
+                    )
                 level = onDiskConfig.indexer["HTM"].depth
                 try:
                     dimension = self.task.universe[f"htm{level}"]
                 except KeyError as err:
-                    raise ValueError(f"Reference catalog {refCat} uses HTM level {level}, but no htm{level} "
-                                     f"skypix dimension is configured for this registry.") from err
+                    raise ValueError(
+                        f"Reference catalog {refCat} uses HTM level {level}, but no htm{level} "
+                        f"skypix dimension is configured for this registry."
+                    ) from err
                 self.task.useSkyPix(dimension)
                 self._refCats[refCat] = dimension
         if self.task.isDatasetTypeIncluded("brightObjectMask") and self.task.config.rootSkyMapName:
@@ -174,25 +183,33 @@ class RootRepoConverter(StandardRepoConverter):
         # Docstring inherited from RepoConverter.
         # Iterate over reference catalog files.
         for refCat, dimension in self._refCats.items():
-            datasetType = DatasetType(refCat, dimensions=[dimension], universe=self.task.universe,
-                                      storageClass="SimpleCatalog")
+            datasetType = DatasetType(
+                refCat, dimensions=[dimension], universe=self.task.universe, storageClass="SimpleCatalog"
+            )
             if self.subset is None:
                 regex = re.compile(r"(\d+)\.fits")
-                for fileName in self.progress.wrap(os.listdir(os.path.join(self.root, "ref_cats", refCat)),
-                                                   desc=f"Processing refcat {refCat}"):
+                for fileName in self.progress.wrap(
+                    os.listdir(os.path.join(self.root, "ref_cats", refCat)),
+                    desc=f"Processing refcat {refCat}",
+                ):
                     m = regex.match(fileName)
                     if m is not None:
                         htmId = int(m.group(1))
                         dataId = self.task.registry.expandDataId({dimension: htmId})
-                        yield FileDataset(path=os.path.join(self.root, "ref_cats", refCat, fileName),
-                                          refs=DatasetRef(datasetType, dataId))
+                        yield FileDataset(
+                            path=os.path.join(self.root, "ref_cats", refCat, fileName),
+                            refs=DatasetRef(datasetType, dataId),
+                        )
             else:
-                for begin, end in self.progress.wrap(self.subset.skypix[dimension],
-                                                     desc=f"Processing ranges for refcat {refCat}"):
+                for begin, end in self.progress.wrap(
+                    self.subset.skypix[dimension], desc=f"Processing ranges for refcat {refCat}"
+                ):
                     for htmId in range(begin, end):
                         dataId = self.task.registry.expandDataId({dimension: htmId})
-                        yield FileDataset(path=os.path.join(self.root, "ref_cats", refCat, f"{htmId}.fits"),
-                                          refs=DatasetRef(datasetType, dataId))
+                        yield FileDataset(
+                            path=os.path.join(self.root, "ref_cats", refCat, f"{htmId}.fits"),
+                            refs=DatasetRef(datasetType, dataId),
+                        )
         yield from super().iterDatasets()
 
     def getRun(self, datasetTypeName: str, calibDate: Optional[str] = None) -> str:
@@ -201,8 +218,9 @@ class RootRepoConverter(StandardRepoConverter):
             return self.instrument.makeRefCatCollectionName("gen2")
         return super().getRun(datasetTypeName, calibDate)
 
-    def _finish(self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]],
-                count: int) -> None:
+    def _finish(
+        self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]], count: int
+    ) -> None:
         # Docstring inherited from RepoConverter.
         super()._finish(datasets, count)
         if self._refCats:

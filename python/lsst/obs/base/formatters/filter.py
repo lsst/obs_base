@@ -23,20 +23,17 @@
 
 from __future__ import annotations
 
-__all__ = ("FilterFormatter", "FilterTranslator",)
-
-import yaml
-from lsst.afw.image import Filter
-
-from typing import (
-    Any,
-    Optional,
-    Type,
+__all__ = (
+    "FilterFormatter",
+    "FilterTranslator",
 )
 
-from lsst.afw.image import FilterLabel
-from lsst.daf.butler.formatters.file import FileFormatter
+from typing import Any, Optional, Type
+
+import yaml
+from lsst.afw.image import Filter, FilterLabel
 from lsst.daf.butler import StorageClassDelegate
+from lsst.daf.butler.formatters.file import FileFormatter
 
 
 class FilterFormatter(FileFormatter):
@@ -149,6 +146,7 @@ class FilterTranslator(StorageClassDelegate):
     """Derived-component converter for a Filter that has been stored as
     a FilterLabel.
     """
+
     # More complex than a Formatter that can read both Filter and FilterLabel,
     # but can be phased out once Filter is gone without breaking compatibility
     # with old FilterLabels.

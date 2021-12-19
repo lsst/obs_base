@@ -21,6 +21,6 @@
 
 from lsst.daf.butler.cli.utils import MWArgumentDecorator
 
-
-instrument_argument = MWArgumentDecorator("instrument",
-                                          help="The name or fully-qualified class name of an instrument.")
+instrument_argument = MWArgumentDecorator(
+    "instrument", help="The name or fully-qualified class name of an instrument."
+)

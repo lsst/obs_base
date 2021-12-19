@@ -27,9 +27,7 @@ import unittest
 
 import lsst.daf.butler as dafButler
 import lsst.daf.butler.tests as butlerTests
-
 from lsst.obs.base import DefineVisitsTask
-
 
 TESTDIR = os.path.dirname(__file__)
 
@@ -51,13 +49,11 @@ class DefineVisitsTestCase(unittest.TestCase):
 
         # Create dataset types used by the tests
         cls.storageClassFactory = dafButler.StorageClassFactory()
-        for datasetTypeName, storageClassName in (("raw", "ExposureF"),
-                                                  ):
+        for datasetTypeName, storageClassName in (("raw", "ExposureF"),):
             storageClass = cls.storageClassFactory.getStorageClass(storageClassName)
-            butlerTests.addDatasetType(cls.creatorButler,
-                                       datasetTypeName,
-                                       {"instrument", "exposure"},
-                                       storageClass)
+            butlerTests.addDatasetType(
+                cls.creatorButler, datasetTypeName, {"instrument", "exposure"}, storageClass
+            )
 
     @classmethod
     def tearDownClass(cls):

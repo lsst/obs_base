@@ -19,13 +19,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from collections import OrderedDict
 import os
 import re
+from collections import OrderedDict
+
+from lsst.afw.image import DecoratedImage, Exposure, Image, MaskedImage
 from lsst.daf.base import PropertySet
 from lsst.daf.persistence import ButlerLocation, NoResults
 from lsst.utils import doImport
-from lsst.afw.image import Exposure, MaskedImage, Image, DecoratedImage
 
 __all__ = ["Mapping", "ImageMapping", "ExposureMapping", "CalibrationMapping", "DatasetMapping"]
 
@@ -90,7 +91,7 @@ class Mapping(object):
         self.registry = registry
         self.rootStorage = rootStorage
 
-        self._template = policy['template']  # Template path
+        self._template = policy["template"]  # Template path
         # in most cases, the template can not be used if it is empty, and is
         # accessed via a property that will raise if it is used while
         # `not self._template`. In this case we *do* allow it to be empty, for
@@ -99,42 +100,44 @@ class Mapping(object):
         # little odd, but it allows this template check to be introduced
         # without a major refactor.
         if self._template:
-            self.keyDict = dict([
-                (k, _formatMap(v, k, datasetType))
-                for k, v in
-                re.findall(r'\%\((\w+)\).*?([diouxXeEfFgGcrs])', self.template)
-            ])
+            self.keyDict = dict(
+                [
+                    (k, _formatMap(v, k, datasetType))
+                    for k, v in re.findall(r"\%\((\w+)\).*?([diouxXeEfFgGcrs])", self.template)
+                ]
+            )
         else:
             self.keyDict = {}
         if provided is not None:
             for p in provided:
                 if p in self.keyDict:
                     del self.keyDict[p]
-        self.python = policy['python']  # Python type
-        self.persistable = policy['persistable']  # Persistable type
-        self.storage = policy['storage']
-        if 'level' in policy:
-            self.level = policy['level']  # Level in camera hierarchy
-        if 'tables' in policy:
-            self.tables = policy.asArray('tables')
+        self.python = policy["python"]  # Python type
+        self.persistable = policy["persistable"]  # Persistable type
+        self.storage = policy["storage"]
+        if "level" in policy:
+            self.level = policy["level"]  # Level in camera hierarchy
+        if "tables" in policy:
+            self.tables = policy.asArray("tables")
         else:
             self.tables = None
         self.range = None
         self.columns = None
-        self.obsTimeName = policy['obsTimeName'] if 'obsTimeName' in policy else None
-        self.recipe = policy['recipe'] if 'recipe' in policy else 'default'
+        self.obsTimeName = policy["obsTimeName"] if "obsTimeName" in policy else None
+        self.recipe = policy["recipe"] if "recipe" in policy else "default"
 
     @property
     def template(self):
         if self._template:  # template must not be an empty string or None
             return self._template
         else:
-            raise RuntimeError(f"Template is not defined for the {self.datasetType} dataset type, "
-                               "it must be set before it can be used.")
+            raise RuntimeError(
+                f"Template is not defined for the {self.datasetType} dataset type, "
+                "it must be set before it can be used."
+            )
 
     def keys(self):
-        """Return the dict of keys and value types required for this mapping.
-        """
+        """Return the dict of keys and value types required by this mapping."""
         return self.keyDict
 
     def map(self, mapper, dataId, write=False):
@@ -165,7 +168,7 @@ class Mapping(object):
             # If needed we can add a policy flag to allow compressed files or
             # not, and perhaps a list of  allowed extensions that may exist
             # at the end of the template.
-            for ext in (None, '.gz', '.fz'):
+            for ext in (None, ".gz", ".fz"):
                 if ext and path.endswith(ext):
                     continue  # if the path already ends with the extension
                 extPath = path + ext if ext else path
@@ -179,15 +182,24 @@ class Mapping(object):
         if hasattr(mapper, addFunc):
             addFunc = getattr(mapper, addFunc)
             additionalData = addFunc(self.datasetType, actualId)
-            assert isinstance(additionalData, PropertySet), \
-                "Bad type for returned data: %s" % (type(additionalData),)
+            assert isinstance(additionalData, PropertySet), "Bad type for returned data: %s" % (
+                type(additionalData),
+            )
         else:
             additionalData = None
 
-        return ButlerLocation(pythonType=self.python, cppType=self.persistable, storageName=self.storage,
-                              locationList=path, dataId=actualId.copy(), mapper=mapper,
-                              storage=self.rootStorage, usedDataId=usedDataId, datasetType=self.datasetType,
-                              additionalData=additionalData)
+        return ButlerLocation(
+            pythonType=self.python,
+            cppType=self.persistable,
+            storageName=self.storage,
+            locationList=path,
+            dataId=actualId.copy(),
+            mapper=mapper,
+            storage=self.rootStorage,
+            usedDataId=usedDataId,
+            datasetType=self.datasetType,
+            additionalData=additionalData,
+        )
 
     def lookup(self, properties, dataId):
         """Look up properties for in a metadata registry given a partial
@@ -241,12 +253,12 @@ class Mapping(object):
 
         fastPath = True
         for p in properties:
-            if p not in ('filter', 'expTime', 'taiObs'):
+            if p not in ("filter", "expTime", "taiObs"):
                 fastPath = False
                 break
-        if fastPath and 'visit' in dataId and "raw" in self.tables:
-            lookupDataId = {'visit': dataId['visit']}
-            result = self.registry.lookup(properties, 'raw_visit', lookupDataId, template=self.template)
+        if fastPath and "visit" in dataId and "raw" in self.tables:
+            lookupDataId = {"visit": dataId["visit"]}
+            result = self.registry.lookup(properties, "raw_visit", lookupDataId, template=self.template)
         else:
             if dataId is not None:
                 for k, v in dataId.items():
@@ -256,7 +268,7 @@ class Mapping(object):
                         continue
                     if k in skyMapKeys:
                         continue
-                    where.append((k, '?'))
+                    where.append((k, "?"))
                     values.append(v)
             lookupDataId = {k[0]: v for k, v in zip(where, values)}
             if self.range:
@@ -268,8 +280,7 @@ class Mapping(object):
         if not removed:
             return result
         # Iterate over the query results, re-inserting the skymap entries.
-        result = [tuple(v if k in removed else item[v] for k, v in substitutions.items())
-                  for item in result]
+        result = [tuple(v if k in removed else item[v] for k, v in substitutions.items()) for item in result]
         return result
 
     def have(self, properties, dataId):
@@ -312,7 +323,7 @@ class Mapping(object):
             Copy of dataset identifier with enhanced values.
         """
         newId = dataId.copy()
-        newProps = []                    # Properties we don't already have
+        newProps = []  # Properties we don't already have
         for prop in properties:
             if prop not in newId:
                 newProps.append(prop)
@@ -321,9 +332,11 @@ class Mapping(object):
 
         lookups = self.lookup(newProps, newId)
         if len(lookups) != 1:
-            raise NoResults("No unique lookup for %s from %s: %d matches" %
-                            (newProps, newId, len(lookups)),
-                            self.datasetType, dataId)
+            raise NoResults(
+                "No unique lookup for %s from %s: %d matches" % (newProps, newId, len(lookups)),
+                self.datasetType,
+                dataId,
+            )
         for i, prop in enumerate(newProps):
             newId[prop] = lookups[0][i]
         return newId
@@ -338,9 +351,9 @@ def _formatMap(ch, k, datasetType):
     elif ch in "crs":
         return str
     else:
-        raise RuntimeError("Unexpected format specifier %s"
-                           " for field %s in template for dataset %s" %
-                           (ch, k, datasetType))
+        raise RuntimeError(
+            "Unexpected format specifier %s for field %s in template for dataset %s" % (ch, k, datasetType)
+        )
 
 
 class ImageMapping(Mapping):
@@ -360,7 +373,7 @@ class ImageMapping(Mapping):
 
     def __init__(self, datasetType, policy, registry, root, **kwargs):
         Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
-        self.columns = policy.asArray('columns') if 'columns' in policy else None
+        self.columns = policy.asArray("columns") if "columns" in policy else None
 
 
 class ExposureMapping(Mapping):
@@ -380,7 +393,7 @@ class ExposureMapping(Mapping):
 
     def __init__(self, datasetType, policy, registry, root, **kwargs):
         Mapping.__init__(self, datasetType, policy, registry, root, **kwargs)
-        self.columns = policy.asArray('columns') if 'columns' in policy else None
+        self.columns = policy.asArray("columns") if "columns" in policy else None
 
     def standardize(self, mapper, item, dataId):
         return mapper._standardizeExposure(self, item, dataId)
@@ -480,8 +493,8 @@ class CalibrationMapping(Mapping):
             Values of properties.
         """
 
-# Either look up taiObs in reference and then all in calibRegistry
-# Or look up all in registry
+        # Either look up taiObs in reference and then all in calibRegistry
+        # Or look up all in registry
 
         newId = dataId.copy()
         if self.reference is not None:
@@ -509,8 +522,9 @@ class CalibrationMapping(Mapping):
             lookupDataId = dict(zip(where, values))
             lookups = self.refRegistry.lookup(columns, self.reference, lookupDataId)
             if len(lookups) != 1:
-                raise RuntimeError("No unique lookup for %s from %s: %d matches" %
-                                   (columns, dataId, len(lookups)))
+                raise RuntimeError(
+                    "No unique lookup for %s from %s: %d matches" % (columns, dataId, len(lookups))
+                )
             if columns == set(properties):
                 # Have everything we need
                 return lookups

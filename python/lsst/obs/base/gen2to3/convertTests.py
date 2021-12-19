@@ -29,14 +29,13 @@ import shutil
 import tempfile
 import unittest
 
-
 import lsst.afw.image
 import lsst.afw.table
-import lsst.daf.persistence
 import lsst.daf.butler
+import lsst.daf.persistence
 import lsst.ip.isr
-from lsst.obs.base.script import convert
 import lsst.utils.tests
+from lsst.obs.base.script import convert
 from lsst.utils import doImport
 
 
@@ -157,22 +156,23 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
         shutil.rmtree(self.gen3root, ignore_errors=True)
 
     def _run_convert(self):
-        """Convert a gen2 repo to gen3 for testing.
-        """
+        """Convert a gen2 repo to gen3 for testing."""
 
         # Turn on logging
         log = logging.getLogger(__name__)
         log.setLevel(logging.INFO)
         log.info("Converting %s to %s", self.gen2root, self.gen3root)
 
-        convert(repo=self.gen3root,
-                gen2root=self.gen2root,
-                skymap_name=self.skymapName,
-                skymap_config=self.skymapConfig,
-                config_file=self.config,
-                calibs=self.gen2calib,
-                reruns=None,
-                transfer="auto")
+        convert(
+            repo=self.gen3root,
+            gen2root=self.gen2root,
+            skymap_name=self.skymapName,
+            skymap_config=self.skymapConfig,
+            config_file=self.config,
+            calibs=self.gen2calib,
+            reruns=None,
+            transfer="auto",
+        )
 
     def check_raw(self, gen3Butler, exposure, detector):
         """Check that a raw was converted correctly.
@@ -229,8 +229,7 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
                 datasets[assoc.ref.dataId] = assoc.ref
             for dataId in calibIds:
                 standardizedDataId = lsst.daf.butler.DataCoordinate.standardize(
-                    dataId,
-                    universe=gen3Butler.registry.dimensions
+                    dataId, universe=gen3Butler.registry.dimensions
                 )
                 with self.subTest(dataId=standardizedDataId):
                     gen3Exposure = gen3Butler.getDirect(datasets[standardizedDataId])
@@ -256,8 +255,7 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
             datasets[assoc.ref.dataId] = assoc.ref
         for detector in detectors:
             dataId = lsst.daf.butler.DataCoordinate.standardize(
-                detector=detector, instrument=self.instrumentName,
-                universe=gen3Butler.registry.dimensions
+                detector=detector, instrument=self.instrumentName, universe=gen3Butler.registry.dimensions
             )
             if dataId in datasets:
                 gen3Defects = gen3Butler.getDirect(datasets[dataId])
@@ -274,8 +272,9 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
         if len(self.refcats) > 0:
             for refcat in self.refcats:
                 query = gen3Butler.registry.queryDatasets(refcat, collections=["refcats"])
-                self.assertGreater(len(list(query)), 0,
-                                   msg=f"refcat={refcat} has no entries in collection 'refcats'.")
+                self.assertGreater(
+                    len(list(query)), 0, msg=f"refcat={refcat} has no entries in collection 'refcats'."
+                )
 
     def check_collections(self, gen3Butler):
         """Test that the correct set of collections is in the gen3 repo.
@@ -289,15 +288,18 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
         # multiple RUNS and combine them into CHAINED collections as an
         # implementation detail; we only care that the high-level collections
         # exist one way or another.
-        self.assertGreaterEqual(set(gen3Butler.registry.queryCollections()), set(self.collections),
-                                f"Compare with expected collections ({self.collections})")
+        self.assertGreaterEqual(
+            set(gen3Butler.registry.queryCollections()),
+            set(self.collections),
+            f"Compare with expected collections ({self.collections})",
+        )
 
     def test_convert(self):
-        """Test that all data are converted correctly.
-        """
+        """Test that all data are converted correctly."""
         self._run_convert()
-        gen3Butler = lsst.daf.butler.Butler(self.gen3root,
-                                            collections=self.instrument.makeDefaultRawIngestRunName())
+        gen3Butler = lsst.daf.butler.Butler(
+            self.gen3root, collections=self.instrument.makeDefaultRawIngestRunName()
+        )
         self.check_collections(gen3Butler)
 
         # check every raw detector that the gen2 butler knows about

@@ -29,13 +29,15 @@ __all__ = [
     "VisitDefinitionData",
 ]
 
+import dataclasses
+import itertools
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
-import itertools
-import dataclasses
-from typing import Any, Dict, Iterable, List, Optional, Tuple
 from multiprocessing import Pool
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+import lsst.geom
+from lsst.afw.cameraGeom import FOCAL_PLANE, PIXELS
 from lsst.daf.butler import (
     Butler,
     DataCoordinate,
@@ -45,14 +47,12 @@ from lsst.daf.butler import (
     Progress,
     Timespan,
 )
-
-import lsst.geom
 from lsst.geom import Box2D
 from lsst.pex.config import Config, Field, makeRegistry, registerConfigurable
-from lsst.afw.cameraGeom import FOCAL_PLANE, PIXELS
 from lsst.pipe.base import Task
 from lsst.sphgeom import ConvexPolygon, Region, UnitVector3d
-from ._instrument import loadCamera, Instrument
+
+from ._instrument import Instrument, loadCamera
 
 
 @dataclasses.dataclass
@@ -84,8 +84,7 @@ class VisitDefinitionData:
 
 @dataclasses.dataclass
 class _VisitRecords:
-    """Struct containing the dimension records associated with a visit.
-    """
+    """Struct containing the dimension records associated with a visit."""
 
     visit: DimensionRecord
     """Record for the 'visit' dimension itself.
@@ -122,6 +121,7 @@ class GroupExposuresTask(Task, metaclass=ABCMeta):
     **kwargs
         Additional keyword arguments forwarded to the `Task` constructor.
     """
+
     def __init__(self, config: GroupExposuresConfig, **kwargs: Any):
         Task.__init__(self, config=config, **kwargs)
 
@@ -172,11 +172,13 @@ class ComputeVisitRegionsConfig(Config):
     padding = Field(
         dtype=int,
         default=250,
-        doc=("Pad raw image bounding boxes with specified number of pixels "
-             "when calculating their (conservatively large) region on the "
-             "sky.  Note that the config value for pixelMargin of the "
-             "reference object loaders in meas_algorithms should be <= "
-             "the value set here."),
+        doc=(
+            "Pad raw image bounding boxes with specified number of pixels "
+            "when calculating their (conservatively large) region on the "
+            "sky.  Note that the config value for pixelMargin of the "
+            "reference object loaders in meas_algorithms should be <= "
+            "the value set here."
+        ),
     )
 
 
@@ -197,6 +199,7 @@ class ComputeVisitRegionsTask(Task, metaclass=ABCMeta):
     **kwargs
         Additional keyword arguments forwarded to the `Task` constructor.
     """
+
     def __init__(self, config: ComputeVisitRegionsConfig, *, butler: Butler, **kwargs: Any):
         Task.__init__(self, config=config, **kwargs)
         self.butler = butler
@@ -207,8 +210,10 @@ class ComputeVisitRegionsTask(Task, metaclass=ABCMeta):
     _DefaultName = "computeVisitRegions"
 
     registry = makeRegistry(
-        doc=("Registry of algorithms for computing on-sky regions for visits "
-             "and visit+detector combinations."),
+        doc=(
+            "Registry of algorithms for computing on-sky regions for visits "
+            "and visit+detector combinations."
+        ),
         configBaseType=ComputeVisitRegionsConfig,
     )
 
@@ -237,8 +242,9 @@ class ComputeVisitRegionsTask(Task, metaclass=ABCMeta):
         return instrument
 
     @abstractmethod
-    def compute(self, visit: VisitDefinitionData, *, collections: Any = None
-                ) -> Tuple[Region, Dict[int, Region]]:
+    def compute(
+        self, visit: VisitDefinitionData, *, collections: Any = None
+    ) -> Tuple[Region, Dict[int, Region]]:
         """Compute regions for the given visit and all detectors in that visit.
 
         Parameters
@@ -272,9 +278,11 @@ class DefineVisitsConfig(Config):
         default="single-raw-wcs",
     )
     ignoreNonScienceExposures = Field(
-        doc=("If True, silently ignore input exposures that do not have "
-             "observation_type=SCIENCE.  If False, raise an exception if one "
-             "encountered."),
+        doc=(
+            "If True, silently ignore input exposures that do not have "
+            "observation_type=SCIENCE.  If False, raise an exception if one "
+            "encountered."
+        ),
         dtype=bool,
         optional=False,
         default=True,
@@ -323,6 +331,7 @@ class DefineVisitsTask(Task):
     configuration) is safe, but it may be inefficient, as most of the work must
     be done before new visits can be compared to existing visits.
     """
+
     def __init__(self, config: Optional[DefineVisitsConfig] = None, *, butler: Butler, **kwargs: Any):
         config.validate()  # Not a CmdlineTask nor PipelineTask, so have to validate the config here.
         super().__init__(config, **kwargs)
@@ -340,8 +349,9 @@ class DefineVisitsTask(Task):
 
     _DefaultName = "defineVisits"
 
-    def _buildVisitRecords(self, definition: VisitDefinitionData, *,
-                           collections: Any = None) -> _VisitRecords:
+    def _buildVisitRecords(
+        self, definition: VisitDefinitionData, *, collections: Any = None
+    ) -> _VisitRecords:
         """Build the DimensionRecords associated with a visit.
 
         Parameters
@@ -362,26 +372,31 @@ class DefineVisitsTask(Task):
             associated dimension elements.
         """
         # Compute all regions.
-        visitRegion, visitDetectorRegions = self.computeVisitRegions.compute(definition,
-                                                                             collections=collections)
+        visitRegion, visitDetectorRegions = self.computeVisitRegions.compute(
+            definition, collections=collections
+        )
         # Aggregate other exposure quantities.
         timespan = Timespan(
             begin=_reduceOrNone(min, (e.timespan.begin for e in definition.exposures)),
             end=_reduceOrNone(max, (e.timespan.end for e in definition.exposures)),
         )
         exposure_time = _reduceOrNone(sum, (e.exposure_time for e in definition.exposures))
-        physical_filter = _reduceOrNone(lambda a, b: a if a == b else None,
-                                        (e.physical_filter for e in definition.exposures))
-        target_name = _reduceOrNone(lambda a, b: a if a == b else None,
-                                    (e.target_name for e in definition.exposures))
-        science_program = _reduceOrNone(lambda a, b: a if a == b else None,
-                                        (e.science_program for e in definition.exposures))
+        physical_filter = _reduceOrNone(
+            lambda a, b: a if a == b else None, (e.physical_filter for e in definition.exposures)
+        )
+        target_name = _reduceOrNone(
+            lambda a, b: a if a == b else None, (e.target_name for e in definition.exposures)
+        )
+        science_program = _reduceOrNone(
+            lambda a, b: a if a == b else None, (e.science_program for e in definition.exposures)
+        )
 
         # observing day for a visit is defined by the earliest observation
         # of the visit
         observing_day = _reduceOrNone(min, (e.day_obs for e in definition.exposures))
-        observation_reason = _reduceOrNone(lambda a, b: a if a == b else None,
-                                           (e.observation_reason for e in definition.exposures))
+        observation_reason = _reduceOrNone(
+            lambda a, b: a if a == b else None, (e.observation_reason for e in definition.exposures)
+        )
         if observation_reason is None:
             # Be explicit about there being multiple reasons
             observation_reason = "various"
@@ -428,7 +443,7 @@ class DefineVisitsTask(Task):
                     region=detectorRegion,
                 )
                 for detectorId, detectorRegion in visitDetectorRegions.items()
-            ]
+            ],
         )
 
     def _expandExposureId(self, dataId: DataId) -> DataCoordinate:
@@ -470,11 +485,15 @@ class DefineVisitsTask(Task):
         """
         return self._buildVisitRecords(args[0], collections=args[1])
 
-    def run(self, dataIds: Iterable[DataId], *,
-            pool: Optional[Pool] = None,
-            processes: int = 1,
-            collections: Optional[str] = None,
-            update_records: bool = False):
+    def run(
+        self,
+        dataIds: Iterable[DataId],
+        *,
+        pool: Optional[Pool] = None,
+        processes: int = 1,
+        collections: Optional[str] = None,
+        update_records: bool = False,
+    ):
         """Add visit definitions to the registry for the given exposures.
 
         Parameters
@@ -525,8 +544,10 @@ class DefineVisitsTask(Task):
                 if self.config.ignoreNonScienceExposures:
                     continue
                 else:
-                    raise RuntimeError(f"Input exposure {dataId} has observation_type "
-                                       f"{record.observation_type}, not 'science'.")
+                    raise RuntimeError(
+                        f"Input exposure {dataId} has observation_type "
+                        f"{record.observation_type}, not 'science'."
+                    )
             instruments.add(dataId["instrument"])
             exposures.append(record)
         if not exposures:
@@ -537,14 +558,13 @@ class DefineVisitsTask(Task):
                 f"All data IDs passed to DefineVisitsTask.run must be "
                 f"from the same instrument; got {instruments}."
             )
-        instrument, = instruments
+        (instrument,) = instruments
         # Ensure the visit_system our grouping algorithm uses is in the
         # registry, if it wasn't already.
         visitSystemId, visitSystemName = self.groupExposures.getVisitSystem()
         self.log.info("Registering visit_system %d: %s.", visitSystemId, visitSystemName)
         self.butler.registry.syncDimensionData(
-            "visit_system",
-            {"instrument": instrument, "id": visitSystemId, "name": visitSystemName}
+            "visit_system", {"instrument": instrument, "id": visitSystemId, "name": visitSystemName}
         )
         # Group exposures into visits, delegating to subtask.
         self.log.info("Grouping %d exposure(s) into visits.", len(exposures))
@@ -553,12 +573,12 @@ class DefineVisitsTask(Task):
         # This is the only parallel step, but it _should_ be the most expensive
         # one (unless DB operations are slow).
         self.log.info("Computing regions and other metadata for %d visit(s).", len(definitions))
-        allRecords = mapFunc(self._buildVisitRecordsSingle,
-                             zip(definitions, itertools.repeat(collections)))
+        allRecords = mapFunc(self._buildVisitRecordsSingle, zip(definitions, itertools.repeat(collections)))
         # Iterate over visits and insert dimension data, one transaction per
         # visit.  If a visit already exists, we skip all other inserts.
-        for visitRecords in self.progress.wrap(allRecords, total=len(definitions),
-                                               desc="Computing regions and inserting visits"):
+        for visitRecords in self.progress.wrap(
+            allRecords, total=len(definitions), desc="Computing regions and inserting visits"
+        ):
             with self.butler.registry.transaction():
                 inserted_or_updated = self.butler.registry.syncDimensionData(
                     "visit",
@@ -573,14 +593,15 @@ class DefineVisitsTask(Task):
                         # asked to update, because we'd have to delete the old
                         # visit_definitions first and also worry about what
                         # this does to datasets that already use the visit.
-                        self.butler.registry.insertDimensionData("visit_definition",
-                                                                 *visitRecords.visit_definition)
+                        self.butler.registry.insertDimensionData(
+                            "visit_definition", *visitRecords.visit_definition
+                        )
                     # [Re]Insert visit_detector_region records for both inserts
                     # and updates, because we do allow updating to affect the
                     # region calculations.
-                    self.butler.registry.insertDimensionData("visit_detector_region",
-                                                             *visitRecords.visit_detector_region,
-                                                             replace=update_records)
+                    self.butler.registry.insertDimensionData(
+                        "visit_detector_region", *visitRecords.visit_detector_region, replace=update_records
+                    )
 
 
 def _reduceOrNone(func, iterable):
@@ -601,14 +622,12 @@ def _reduceOrNone(func, iterable):
 
 class _GroupExposuresOneToOneConfig(GroupExposuresConfig):
     visitSystemId = Field(
-        doc=("Integer ID of the visit_system implemented by this grouping "
-             "algorithm."),
+        doc="Integer ID of the visit_system implemented by this grouping algorithm.",
         dtype=int,
         default=0,
     )
     visitSystemName = Field(
-        doc=("String name of the visit_system implemented by this grouping "
-             "algorithm."),
+        doc="String name of the visit_system implemented by this grouping algorithm.",
         dtype=str,
         default="one-to-one",
     )
@@ -639,14 +658,12 @@ class _GroupExposuresOneToOneTask(GroupExposuresTask, metaclass=ABCMeta):
 
 class _GroupExposuresByGroupMetadataConfig(GroupExposuresConfig):
     visitSystemId = Field(
-        doc=("Integer ID of the visit_system implemented by this grouping "
-             "algorithm."),
+        doc="Integer ID of the visit_system implemented by this grouping algorithm.",
         dtype=int,
         default=1,
     )
     visitSystemName = Field(
-        doc=("String name of the visit_system implemented by this grouping "
-             "algorithm."),
+        doc="String name of the visit_system implemented by this grouping algorithm.",
         dtype=str,
         default="by-group-metadata",
     )
@@ -674,10 +691,12 @@ class _GroupExposuresByGroupMetadataTask(GroupExposuresTask, metaclass=ABCMeta):
         for visitName, exposuresInGroup in groups.items():
             instrument = exposuresInGroup[0].instrument
             visitId = exposuresInGroup[0].group_id
-            assert all(e.group_id == visitId for e in exposuresInGroup), \
-                "Grouping by exposure.group_name does not yield consistent group IDs"
-            yield VisitDefinitionData(instrument=instrument, id=visitId, name=visitName,
-                                      exposures=exposuresInGroup)
+            assert all(
+                e.group_id == visitId for e in exposuresInGroup
+            ), "Grouping by exposure.group_name does not yield consistent group IDs"
+            yield VisitDefinitionData(
+                instrument=instrument, id=visitId, name=visitName, exposures=exposuresInGroup
+            )
 
     def getVisitSystem(self) -> Tuple[int, str]:
         # Docstring inherited from GroupExposuresTask.
@@ -686,25 +705,31 @@ class _GroupExposuresByGroupMetadataTask(GroupExposuresTask, metaclass=ABCMeta):
 
 class _ComputeVisitRegionsFromSingleRawWcsConfig(ComputeVisitRegionsConfig):
     mergeExposures = Field(
-        doc=("If True, merge per-detector regions over all exposures in a "
-             "visit (via convex hull) instead of using the first exposure and "
-             "assuming its regions are valid for all others."),
+        doc=(
+            "If True, merge per-detector regions over all exposures in a "
+            "visit (via convex hull) instead of using the first exposure and "
+            "assuming its regions are valid for all others."
+        ),
         dtype=bool,
         default=False,
     )
     detectorId = Field(
-        doc=("Load the WCS for the detector with this ID.  If None, use an "
-             "arbitrary detector (the first found in a query of the data "
-             "repository for each exposure (or all exposures, if "
-             "mergeExposures is True)."),
+        doc=(
+            "Load the WCS for the detector with this ID.  If None, use an "
+            "arbitrary detector (the first found in a query of the data "
+            "repository for each exposure (or all exposures, if "
+            "mergeExposures is True)."
+        ),
         dtype=int,
         optional=True,
-        default=None
+        default=None,
     )
     requireVersionedCamera = Field(
-        doc=("If True, raise LookupError if version camera geometry cannot be "
-             "loaded for an exposure.  If False, use the nominal camera from "
-             "the Instrument class instead."),
+        doc=(
+            "If True, raise LookupError if version camera geometry cannot be "
+            "loaded for an exposure.  If False, use the nominal camera from "
+            "the Instrument class instead."
+        ),
         dtype=bool,
         optional=False,
         default=False,
@@ -729,8 +754,9 @@ class _ComputeVisitRegionsFromSingleRawWcsTask(ComputeVisitRegionsTask):
 
     ConfigClass = _ComputeVisitRegionsFromSingleRawWcsConfig
 
-    def computeExposureBounds(self, exposure: DimensionRecord, *, collections: Any = None
-                              ) -> Dict[int, List[UnitVector3d]]:
+    def computeExposureBounds(
+        self, exposure: DimensionRecord, *, collections: Any = None
+    ) -> Dict[int, List[UnitVector3d]]:
         """Compute the lists of unit vectors on the sphere that correspond to
         the sky positions of detector corners.
 
@@ -760,8 +786,10 @@ class _ComputeVisitRegionsFromSingleRawWcsTask(ComputeVisitRegionsTask):
         use_registry = True
         try:
             orientation = lsst.geom.Angle(exposure.sky_angle, lsst.geom.degrees)
-            radec = lsst.geom.SpherePoint(lsst.geom.Angle(exposure.tracking_ra, lsst.geom.degrees),
-                                          lsst.geom.Angle(exposure.tracking_dec, lsst.geom.degrees))
+            radec = lsst.geom.SpherePoint(
+                lsst.geom.Angle(exposure.tracking_ra, lsst.geom.degrees),
+                lsst.geom.Angle(exposure.tracking_dec, lsst.geom.degrees),
+            )
         except AttributeError:
             use_registry = False
 
@@ -780,18 +808,25 @@ class _ComputeVisitRegionsFromSingleRawWcsTask(ComputeVisitRegionsTask):
 
         else:
             if self.config.detectorId is None:
-                wcsRefsIter = self.butler.registry.queryDatasets("raw.wcs", dataId=exposure.dataId,
-                                                                 collections=collections)
+                wcsRefsIter = self.butler.registry.queryDatasets(
+                    "raw.wcs", dataId=exposure.dataId, collections=collections
+                )
                 if not wcsRefsIter:
-                    raise LookupError(f"No raw.wcs datasets found for data ID {exposure.dataId} "
-                                      f"in collections {collections}.")
+                    raise LookupError(
+                        f"No raw.wcs datasets found for data ID {exposure.dataId} "
+                        f"in collections {collections}."
+                    )
                 wcsRef = next(iter(wcsRefsIter))
                 wcsDetector = camera[wcsRef.dataId["detector"]]
                 wcs = self.butler.getDirect(wcsRef)
             else:
                 wcsDetector = camera[self.config.detectorId]
-                wcs = self.butler.get("raw.wcs", dataId=exposure.dataId, detector=self.config.detectorId,
-                                      collections=collections)
+                wcs = self.butler.get(
+                    "raw.wcs",
+                    dataId=exposure.dataId,
+                    detector=self.config.detectorId,
+                    collections=collections,
+                )
         fpToSky = wcsDetector.getTransform(FOCAL_PLANE, PIXELS).then(wcs.getTransform())
         bounds = {}
         for detector in camera:
@@ -802,8 +837,9 @@ class _ComputeVisitRegionsFromSingleRawWcsTask(ComputeVisitRegionsTask):
             ]
         return bounds
 
-    def compute(self, visit: VisitDefinitionData, *, collections: Any = None
-                ) -> Tuple[Region, Dict[int, Region]]:
+    def compute(
+        self, visit: VisitDefinitionData, *, collections: Any = None
+    ) -> Tuple[Region, Dict[int, Region]]:
         # Docstring inherited from ComputeVisitRegionsTask.
         if self.config.mergeExposures:
             detectorBounds = defaultdict(list)

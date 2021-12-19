@@ -21,8 +21,8 @@
 
 __all__ = ["ExposureIdInfo"]
 
-from lsst.daf.butler import DataCoordinate
 from lsst.afw.table import IdFactory
+from lsst.daf.butler import DataCoordinate
 
 
 class ExposureIdInfo:
@@ -131,18 +131,17 @@ class ExposureIdInfo:
         """
         if not isinstance(dataId, DataCoordinate) or not dataId.hasRecords():
             raise RuntimeError(
-                "A fully-expanded data ID is required; use "
-                "Registry.expandDataId to obtain one."
+                "A fully-expanded data ID is required; use Registry.expandDataId to obtain one."
             )
         expId, expBits = dataId.pack(name, returnMaxBits=True)
         return cls(expId=expId, expBits=expBits, maxBits=maxBits)
 
     @property
     def unusedBits(self):
-        """Maximum number of bits available for non-exposure info `(int)`.
-        """
+        """Maximum number of bits available for non-exposure info `(int)`."""
         if self.maxBits is None:
             from lsst.afw.table import IdFactory
+
             return IdFactory.computeReservedFromMaxBits(self.expBits)
         else:
             return self.maxBits - self.expBits

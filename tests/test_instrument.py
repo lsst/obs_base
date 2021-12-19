@@ -26,19 +26,17 @@ import datetime
 import unittest
 
 from lsst.obs.base import Instrument
-from lsst.obs.base.instrument_tests import InstrumentTests, InstrumentTestData, DummyCam
+from lsst.obs.base.instrument_tests import DummyCam, InstrumentTestData, InstrumentTests
 
 
 class InstrumentTestCase(InstrumentTests, unittest.TestCase):
-    """Test for Instrument.
-    """
+    """Test for Instrument."""
 
     instrument = DummyCam()
 
-    data = InstrumentTestData(name="DummyCam",
-                              nDetectors=2,
-                              firstDetectorName="RXX_S00",
-                              physical_filters={"dummy_g", "dummy_u"})
+    data = InstrumentTestData(
+        name="DummyCam", nDetectors=2, firstDetectorName="RXX_S00", physical_filters={"dummy_g", "dummy_u"}
+    )
 
     def test_getCamera(self):
         """No camera defined in DummyCam"""

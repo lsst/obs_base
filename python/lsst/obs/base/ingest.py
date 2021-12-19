@@ -24,13 +24,13 @@ __all__ = ("RawIngestTask", "RawIngestConfig", "makeTransferChoiceField")
 
 import json
 import re
-from dataclasses import dataclass, InitVar
-from typing import Callable, List, Iterator, Iterable, Tuple, Type, Optional, Any, Union
 from collections import defaultdict
+from dataclasses import InitVar, dataclass
 from multiprocessing import Pool
+from typing import Any, Callable, Iterable, Iterator, List, Optional, Tuple, Type, Union
 
-from astro_metadata_translator import ObservationInfo, merge_headers, MetadataTranslator
-from astro_metadata_translator.indexing import process_sidecar_data, process_index_data
+from astro_metadata_translator import MetadataTranslator, ObservationInfo, merge_headers
+from astro_metadata_translator.indexing import process_index_data, process_sidecar_data
 from lsst.afw.fits import readMetadata
 from lsst.daf.butler import (
     Butler,
@@ -46,12 +46,12 @@ from lsst.daf.butler import (
     Formatter,
     Progress,
 )
-from lsst.pex.config import Config, ChoiceField, Field
+from lsst.pex.config import ChoiceField, Config, Field
 from lsst.pipe.base import Task
 from lsst.utils.timer import timeMethod
 
-from ._instrument import Instrument, makeExposureRecordFromObsInfo
 from ._fitsRawFormatterBase import FitsRawFormatterBase
+from ._instrument import Instrument, makeExposureRecordFromObsInfo
 
 
 def _do_nothing(*args, **kwargs) -> None:
@@ -179,17 +179,18 @@ def makeTransferChoiceField(doc="How to transfer files (None for no transfer).",
     return ChoiceField(
         doc=doc,
         dtype=str,
-        allowed={"move": "move",
-                 "copy": "copy",
-                 "auto": "choice will depend on datastore",
-                 "direct": "use URI to ingested file directly in datastore",
-                 "link": "hard link falling back to symbolic link",
-                 "hardlink": "hard link",
-                 "symlink": "symbolic (soft) link",
-                 "relsymlink": "relative symbolic link",
-                 },
+        allowed={
+            "move": "move",
+            "copy": "copy",
+            "auto": "choice will depend on datastore",
+            "direct": "use URI to ingested file directly in datastore",
+            "link": "hard link falling back to symbolic link",
+            "hardlink": "hard link",
+            "symlink": "symbolic (soft) link",
+            "relsymlink": "relative symbolic link",
+        },
         optional=True,
-        default=default
+        default=default,
     )
 
 
@@ -201,7 +202,7 @@ class RawIngestConfig(Config):
         dtype=bool,
         default=False,
         doc="If True, stop ingest as soon as any problem is encountered with any file. "
-            "Otherwise problems files will be skipped and logged and a report issued at completion.",
+        "Otherwise problems files will be skipped and logged and a report issued at completion.",
     )
 
 
@@ -252,14 +253,23 @@ class RawIngestTask(Task):
 
     def getDatasetType(self):
         """Return the DatasetType of the datasets ingested by this Task."""
-        return DatasetType("raw", ("instrument", "detector", "exposure"), "Exposure",
-                           universe=self.butler.registry.dimensions)
+        return DatasetType(
+            "raw",
+            ("instrument", "detector", "exposure"),
+            "Exposure",
+            universe=self.butler.registry.dimensions,
+        )
 
-    def __init__(self, config: Optional[RawIngestConfig] = None, *, butler: Butler,
-                 on_success: Callable[[List[FileDataset]], Any] = _do_nothing,
-                 on_metadata_failure: Callable[[str, Exception], Any] = _do_nothing,
-                 on_ingest_failure: Callable[[RawExposureData, Exception], Any] = _do_nothing,
-                 **kwargs: Any):
+    def __init__(
+        self,
+        config: Optional[RawIngestConfig] = None,
+        *,
+        butler: Butler,
+        on_success: Callable[[List[FileDataset]], Any] = _do_nothing,
+        on_metadata_failure: Callable[[str, Exception], Any] = _do_nothing,
+        on_ingest_failure: Callable[[RawExposureData, Exception], Any] = _do_nothing,
+        **kwargs: Any,
+    ):
         config.validate()  # Not a CmdlineTask nor PipelineTask, so have to validate the config here.
         super().__init__(config, **kwargs)
         self.butler = butler
@@ -276,8 +286,13 @@ class RawIngestTask(Task):
 
     def _reduce_kwargs(self):
         # Add extra parameters to pickle.
-        return dict(**super()._reduce_kwargs(), butler=self.butler, on_success=self._on_success,
-                    on_metadata_failure=self._on_metadata_failure, on_ingest_failure=self._on_ingest_failure)
+        return dict(
+            **super()._reduce_kwargs(),
+            butler=self.butler,
+            on_success=self._on_success,
+            on_metadata_failure=self._on_metadata_failure,
+            on_ingest_failure=self._on_ingest_failure,
+        )
 
     def _determine_instrument_formatter(self, dataId, filename):
         """Determine the instrument and formatter class.
@@ -304,11 +319,13 @@ class RawIngestTask(Task):
             instrument = Instrument.fromName(dataId["instrument"], self.butler.registry)
         except LookupError as e:
             self._on_metadata_failure(filename, e)
-            self.log.warning("Instrument %s for file %s not known to registry",
-                             dataId["instrument"], filename)
+            self.log.warning(
+                "Instrument %s for file %s not known to registry", dataId["instrument"], filename
+            )
             if self.config.failFast:
-                raise RuntimeError(f"Instrument {dataId['instrument']} for"
-                                   f" file {filename} not known to registry") from e
+                raise RuntimeError(
+                    f"Instrument {dataId['instrument']} for file {filename} not known to registry"
+                ) from e
             FormatterClass = Formatter
             # Indicate that we could not work out the instrument.
             instrument = None
@@ -395,8 +412,9 @@ class RawIngestTask(Task):
             instrument = None
             self._on_metadata_failure(filename, e)
             if self.config.failFast:
-                raise RuntimeError("Problem extracting metadata for file "
-                                   f"{filename}{sidecar_fail_msg}") from e
+                raise RuntimeError(
+                    f"Problem extracting metadata for file {filename}{sidecar_fail_msg}"
+                ) from e
         else:
             self.log.debug("Extracted metadata for file %s%s", filename, sidecar_fail_msg)
             # The data model currently assumes that whilst multiple datasets
@@ -406,9 +424,9 @@ class RawIngestTask(Task):
             if instrument is None:
                 datasets = []
 
-        return RawFileData(datasets=datasets, filename=filename,
-                           FormatterClass=formatterClass,
-                           instrument=instrument)
+        return RawFileData(
+            datasets=datasets, filename=filename, FormatterClass=formatterClass, instrument=instrument
+        )
 
     def _calculate_dataset_info(self, header, filename):
         """Calculate a RawFileDatasetInfo from the supplied information.
@@ -467,18 +485,26 @@ class RawIngestTask(Task):
                 if value is None:
                     missing.append(property)
             if missing:
-                raise ValueError(f"Requested required properties are missing from file {filename}:"
-                                 f" {missing} (via JSON)")
+                raise ValueError(
+                    f"Requested required properties are missing from file {filename}:"
+                    f" {missing} (via JSON)"
+                )
 
         else:
-            obsInfo = ObservationInfo(header, pedantic=False, filename=str(filename),
-                                      required={k for k in ingest_subset if ingest_subset[k]},
-                                      subset=set(ingest_subset))
+            obsInfo = ObservationInfo(
+                header,
+                pedantic=False,
+                filename=str(filename),
+                required={k for k in ingest_subset if ingest_subset[k]},
+                subset=set(ingest_subset),
+            )
 
-        dataId = DataCoordinate.standardize(instrument=obsInfo.instrument,
-                                            exposure=obsInfo.exposure_id,
-                                            detector=obsInfo.detector_num,
-                                            universe=self.universe)
+        dataId = DataCoordinate.standardize(
+            instrument=obsInfo.instrument,
+            exposure=obsInfo.exposure_id,
+            detector=obsInfo.detector_num,
+            universe=self.universe,
+        )
         return RawFileDatasetInfo(obsInfo=obsInfo, dataId=dataId)
 
     def locateAndReadIndexFiles(self, files):
@@ -554,8 +580,9 @@ class RawIngestTask(Task):
                     if not is_implied:
                         self._on_metadata_failure(possible_index_file, e)
                     if self.config.failFast:
-                        raise RuntimeError(f"Problem reading index file from {index_msg} "
-                                           f"location {possible_index_file}") from e
+                        raise RuntimeError(
+                            f"Problem reading index file from {index_msg} location {possible_index_file}"
+                        ) from e
                     bad_index_files.add(possible_index_file)
                     continue
 
@@ -581,21 +608,29 @@ class RawIngestTask(Task):
                     # this is not true we continue. Raising an exception
                     # seems like the wrong thing to do since this is harmless.
                     if file_in_dir == index_root_file:
-                        self.log.info("Logic error found scanning directory %s. Please file ticket.",
-                                      directory)
+                        self.log.info(
+                            "Logic error found scanning directory %s. Please file ticket.", directory
+                        )
                         continue
                     if file_in_dir in index:
                         file = directory.join(file_in_dir)
                         if file in index_entries:
                             # ObservationInfo overrides raw metadata
-                            if isinstance(index[file_in_dir], ObservationInfo) \
-                                    and not isinstance(index_entries[file], ObservationInfo):
-                                self.log.warning("File %s already specified in an index file but overriding"
-                                                 " with ObservationInfo content from %s",
-                                                 file, possible_index_file)
+                            if isinstance(index[file_in_dir], ObservationInfo) and not isinstance(
+                                index_entries[file], ObservationInfo
+                            ):
+                                self.log.warning(
+                                    "File %s already specified in an index file but overriding"
+                                    " with ObservationInfo content from %s",
+                                    file,
+                                    possible_index_file,
+                                )
                             else:
-                                self.log.warning("File %s already specified in an index file, "
-                                                 "ignoring content from %s", file, possible_index_file)
+                                self.log.warning(
+                                    "File %s already specified in an index file, ignoring content from %s",
+                                    file,
+                                    possible_index_file,
+                                )
                                 # Do nothing in this case
                                 continue
 
@@ -637,22 +672,26 @@ class RawIngestTask(Task):
             try:
                 datasets = [self._calculate_dataset_info(metadata, filename)]
             except Exception as e:
-                self.log.debug("Problem extracting metadata for file %s found in index file: %s",
-                               filename, e)
+                self.log.debug("Problem extracting metadata for file %s found in index file: %s", filename, e)
                 datasets = []
                 formatterClass = Formatter
                 instrument = None
                 self._on_metadata_failure(filename, e)
                 if self.config.failFast:
-                    raise RuntimeError(f"Problem extracting metadata for file {filename} "
-                                       "found in index file") from e
+                    raise RuntimeError(
+                        f"Problem extracting metadata for file {filename} found in index file"
+                    ) from e
             else:
-                instrument, formatterClass = self._determine_instrument_formatter(datasets[0].dataId,
-                                                                                  filename)
+                instrument, formatterClass = self._determine_instrument_formatter(
+                    datasets[0].dataId, filename
+                )
                 if instrument is None:
                     datasets = []
-            fileData.append(RawFileData(datasets=datasets, filename=filename,
-                                        FormatterClass=formatterClass, instrument=instrument))
+            fileData.append(
+                RawFileData(
+                    datasets=datasets, filename=filename, FormatterClass=formatterClass, instrument=instrument
+                )
+            )
         return fileData
 
     def groupByExposure(self, files: Iterable[RawFileData]) -> List[RawExposureData]:
@@ -677,8 +716,10 @@ class RawIngestTask(Task):
             # Assume that the first dataset is representative for the file.
             byExposure[f.datasets[0].dataId.subset(exposureDimensions)].append(f)
 
-        return [RawExposureData(dataId=dataId, files=exposureFiles, universe=self.universe)
-                for dataId, exposureFiles in byExposure.items()]
+        return [
+            RawExposureData(dataId=dataId, files=exposureFiles, universe=self.universe)
+            for dataId, exposureFiles in byExposure.items()
+        ]
 
     def expandDataIds(self, data: RawExposureData) -> RawExposureData:
         """Expand the data IDs associated with a raw exposure.
@@ -711,7 +752,7 @@ class RawIngestTask(Task):
             # Registry may cache them so there isn't a lookup every time).
             records={
                 self.butler.registry.dimensions["exposure"]: data.record,
-            }
+            },
         )
         # Now we expand the per-file (exposure+detector) data IDs.  This time
         # we pass in the records we just retrieved from the exposure data ID
@@ -719,13 +760,13 @@ class RawIngestTask(Task):
         for file in data.files:
             for dataset in file.datasets:
                 dataset.dataId = self.butler.registry.expandDataId(
-                    dataset.dataId,
-                    records=dict(data.dataId.records)
+                    dataset.dataId, records=dict(data.dataId.records)
                 )
         return data
 
-    def prep(self, files, *, pool: Optional[Pool] = None, processes: int = 1
-             ) -> Tuple[Iterator[RawExposureData], List[str]]:
+    def prep(
+        self, files, *, pool: Optional[Pool] = None, processes: int = 1
+    ) -> Tuple[Iterator[RawExposureData], List[str]]:
         """Perform all non-database-updating ingest preprocessing steps.
 
         Parameters
@@ -775,11 +816,12 @@ class RawIngestTask(Task):
         indexFileData = self.processIndexEntries(index_entries)
         if indexFileData:
             indexFileData, bad_index_file_data = _partition_good_bad(indexFileData)
-            self.log.info("Successfully extracted metadata for %d file%s found in %d index file%s"
-                          " with %d failure%s",
-                          *_log_msg_counter(indexFileData),
-                          *_log_msg_counter(good_index_files),
-                          *_log_msg_counter(bad_index_file_data))
+            self.log.info(
+                "Successfully extracted metadata for %d file%s found in %d index file%s with %d failure%s",
+                *_log_msg_counter(indexFileData),
+                *_log_msg_counter(good_index_files),
+                *_log_msg_counter(bad_index_file_data),
+            )
 
         # Extract metadata and build per-detector regions.
         # This could run in a subprocess so collect all output
@@ -789,9 +831,11 @@ class RawIngestTask(Task):
         # Filter out all the failed reads and store them for later
         # reporting.
         fileData, bad_files = _partition_good_bad(fileData)
-        self.log.info("Successfully extracted metadata from %d file%s with %d failure%s",
-                      *_log_msg_counter(fileData),
-                      *_log_msg_counter(bad_files))
+        self.log.info(
+            "Successfully extracted metadata from %d file%s with %d failure%s",
+            *_log_msg_counter(fileData),
+            *_log_msg_counter(bad_files),
+        )
 
         # Combine with data from index files.
         fileData.extend(indexFileData)
@@ -859,7 +903,8 @@ class RawIngestTask(Task):
         """
         if skip_existing_exposures:
             existing = {
-                ref.dataId for ref in self.butler.registry.queryDatasets(
+                ref.dataId
+                for ref in self.butler.registry.queryDatasets(
                     self.datasetType,
                     collections=[run],
                     dataId=exposure.dataId,
@@ -869,11 +914,7 @@ class RawIngestTask(Task):
             existing = set()
         datasets = []
         for file in exposure.files:
-            refs = [
-                DatasetRef(self.datasetType, d.dataId)
-                for d in file.datasets
-                if d.dataId not in existing
-            ]
+            refs = [DatasetRef(self.datasetType, d.dataId) for d in file.datasets if d.dataId not in existing]
             if refs:
                 datasets.append(
                     FileDataset(path=file.filename.abspath(), refs=refs, formatter=file.FormatterClass)
@@ -888,10 +929,16 @@ class RawIngestTask(Task):
         self.butler.ingest(*datasets, transfer=self.config.transfer, run=run, idGenerationMode=mode)
         return datasets
 
-    def ingestFiles(self, files, *, pool: Optional[Pool] = None, processes: int = 1,
-                    run: Optional[str] = None,
-                    skip_existing_exposures: bool = False,
-                    update_exposure_records: bool = False):
+    def ingestFiles(
+        self,
+        files,
+        *,
+        pool: Optional[Pool] = None,
+        processes: int = 1,
+        run: Optional[str] = None,
+        skip_existing_exposures: bool = False,
+        update_exposure_records: bool = False,
+    ):
         """Ingest files into a Butler data repository.
 
         This creates any new exposure or visit Dimension entries needed to
@@ -956,9 +1003,12 @@ class RawIngestTask(Task):
         n_ingests_failed = 0
         for exposure in self.progress.wrap(exposureData, desc="Ingesting raw exposures"):
 
-            self.log.debug("Attempting to ingest %d file%s from exposure %s:%s",
-                           *_log_msg_counter(exposure.files),
-                           exposure.record.instrument, exposure.record.obs_id)
+            self.log.debug(
+                "Attempting to ingest %d file%s from exposure %s:%s",
+                *_log_msg_counter(exposure.files),
+                exposure.record.instrument,
+                exposure.record.obs_id,
+            )
 
             try:
                 inserted_or_updated = self.butler.registry.syncDimensionData(
@@ -969,8 +1019,12 @@ class RawIngestTask(Task):
             except Exception as e:
                 self._on_ingest_failure(exposure, e)
                 n_exposures_failed += 1
-                self.log.warning("Exposure %s:%s could not be registered: %s",
-                                 exposure.record.instrument, exposure.record.obs_id, e)
+                self.log.warning(
+                    "Exposure %s:%s could not be registered: %s",
+                    exposure.record.instrument,
+                    exposure.record.obs_id,
+                    e,
+                )
                 if self.config.failFast:
                     raise e
                 continue
@@ -982,7 +1036,7 @@ class RawIngestTask(Task):
                     "Exposure %s:%s was already present, but columns %s were updated.",
                     exposure.record.instrument,
                     exposure.record.obs_id,
-                    str(list(inserted_or_updated.keys()))
+                    str(list(inserted_or_updated.keys())),
                 )
 
             # Override default run if nothing specified explicitly.
@@ -1016,15 +1070,25 @@ class RawIngestTask(Task):
 
             # Success for this exposure.
             n_exposures += 1
-            self.log.info("Exposure %s:%s ingested successfully",
-                          exposure.record.instrument, exposure.record.obs_id)
+            self.log.info(
+                "Exposure %s:%s ingested successfully", exposure.record.instrument, exposure.record.obs_id
+            )
 
         return refs, bad_files, n_exposures, n_exposures_failed, n_ingests_failed
 
     @timeMethod
-    def run(self, files, *, pool: Optional[Pool] = None, processes: int = 1, run: Optional[str] = None,
-            file_filter: Union[str, re.Pattern] = r"\.fit[s]?\b", group_files: bool = True,
-            skip_existing_exposures: bool = False, update_exposure_records: bool = False):
+    def run(
+        self,
+        files,
+        *,
+        pool: Optional[Pool] = None,
+        processes: int = 1,
+        run: Optional[str] = None,
+        file_filter: Union[str, re.Pattern] = r"\.fit[s]?\b",
+        group_files: bool = True,
+        skip_existing_exposures: bool = False,
+        update_exposure_records: bool = False,
+    ):
         """Ingest files into a Butler data repository.
 
         This creates any new exposure or visit Dimension entries needed to
@@ -1125,11 +1189,13 @@ class RawIngestTask(Task):
             for f in bad_files:
                 self.log.warning("- %s", f)
 
-        self.log.info("Successfully processed data from %d exposure%s with %d failure%s from exposure"
-                      " registration and %d failure%s from file ingest.",
-                      *_log_msg_counter(n_exposures),
-                      *_log_msg_counter(n_exposures_failed),
-                      *_log_msg_counter(n_ingests_failed))
+        self.log.info(
+            "Successfully processed data from %d exposure%s with %d failure%s from exposure"
+            " registration and %d failure%s from file ingest.",
+            *_log_msg_counter(n_exposures),
+            *_log_msg_counter(n_exposures_failed),
+            *_log_msg_counter(n_ingests_failed),
+        )
         if n_exposures_failed > 0 or n_ingests_failed > 0:
             had_failure = True
         self.log.info("Ingested %d distinct Butler dataset%s", *_log_msg_counter(refs))

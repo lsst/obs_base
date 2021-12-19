@@ -21,59 +21,57 @@
 
 import unittest
 
-from astropy.coordinates import Angle
 import astropy.units as u
-
-import lsst.utils.tests
-
-from astro_metadata_translator import FitsTranslator, StubTranslator
-from astro_metadata_translator.translators.helpers import tracking_from_degree_headers
-from lsst.afw.cameraGeom import makeUpdatedDetector
-from lsst.afw.cameraGeom.testUtils import CameraWrapper, DetectorWrapper
 import lsst.afw.geom
 import lsst.afw.math
 import lsst.daf.base
 import lsst.daf.butler
 import lsst.geom
+import lsst.utils.tests
+from astro_metadata_translator import FitsTranslator, StubTranslator
+from astro_metadata_translator.translators.helpers import tracking_from_degree_headers
+from astropy.coordinates import Angle
+from lsst.afw.cameraGeom import makeUpdatedDetector
+from lsst.afw.cameraGeom.testUtils import CameraWrapper, DetectorWrapper
 from lsst.obs.base import (
     FilterDefinition,
     FilterDefinitionCollection,
     FitsRawFormatterBase,
     MakeRawVisitInfoViaObsInfo,
 )
-from lsst.obs.base.utils import createInitialSkyWcs, InitialSkyWcsError
 from lsst.obs.base.tests import make_ramp_exposure_untrimmed
+from lsst.obs.base.utils import InitialSkyWcsError, createInitialSkyWcs
 
 
 class SimpleTestingTranslator(FitsTranslator, StubTranslator):
-    _const_map = {"boresight_rotation_angle": Angle(90*u.deg),
-                  "boresight_rotation_coord": "sky",
-                  "detector_exposure_id": 12345,
-                  # The following are defined to prevent warnings about
-                  # undefined translators
-                  "dark_time": 0.0*u.s,
-                  "exposure_time": 0.0*u.s,
-                  "physical_filter": "u",
-                  "detector_num": 0,
-                  "detector_name": "0",
-                  "detector_group": "",
-                  "detector_unique_name": "0",
-                  "detector_serial": "",
-                  "observation_id": "--",
-                  "science_program": "unknown",
-                  "object": "unknown",
-                  "exposure_id": 0,
-                  "visit_id": 0,
-                  "relative_humidity": 30.0,
-                  "pressure": 0.0*u.MPa,
-                  "temperature": 273*u.K,
-                  "altaz_begin": None,
-                  }
-    _trivial_map = {"boresight_airmass": "AIRMASS",
-                    "observation_type": "OBSTYPE"}
+    _const_map = {
+        "boresight_rotation_angle": Angle(90 * u.deg),
+        "boresight_rotation_coord": "sky",
+        "detector_exposure_id": 12345,
+        # The following are defined to prevent warnings about
+        # undefined translators
+        "dark_time": 0.0 * u.s,
+        "exposure_time": 0.0 * u.s,
+        "physical_filter": "u",
+        "detector_num": 0,
+        "detector_name": "0",
+        "detector_group": "",
+        "detector_unique_name": "0",
+        "detector_serial": "",
+        "observation_id": "--",
+        "science_program": "unknown",
+        "object": "unknown",
+        "exposure_id": 0,
+        "visit_id": 0,
+        "relative_humidity": 30.0,
+        "pressure": 0.0 * u.MPa,
+        "temperature": 273 * u.K,
+        "altaz_begin": None,
+    }
+    _trivial_map = {"boresight_airmass": "AIRMASS", "observation_type": "OBSTYPE"}
 
     def to_tracking_radec(self):
-        radecsys = ("RADESYS", )
+        radecsys = ("RADESYS",)
         radecpairs = (("RA", "DEC"),)
         return tracking_from_degree_headers(self, radecsys, radecpairs, unit=(u.deg, u.deg))
 
@@ -83,8 +81,9 @@ class MakeTestingRawVisitInfo(MakeRawVisitInfoViaObsInfo):
 
 
 class SimpleFitsRawFormatter(FitsRawFormatterBase):
-    filterDefinitions = FilterDefinitionCollection(FilterDefinition(physical_filter="u", band="u",
-                                                                    lambdaEff=300.0))
+    filterDefinitions = FilterDefinitionCollection(
+        FilterDefinition(physical_filter="u", band="u", lambdaEff=300.0)
+    )
 
     @property
     def translatorClass(self):
@@ -109,7 +108,7 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
         # The FITS WCS and VisitInfo coordinates in this header are
         # intentionally different, to make comparisons between them more
         # obvious.
-        self.boresight = lsst.geom.SpherePoint(10., 20., lsst.geom.degrees)
+        self.boresight = lsst.geom.SpherePoint(10.0, 20.0, lsst.geom.degrees)
         self.header = {
             "TELESCOP": "TEST",
             "INSTRUME": "UNKNOWN",
@@ -131,7 +130,7 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
             "CD1_1": 1e-5,
             "CD1_2": 0,
             "CD2_2": 1e-5,
-            "CD2_1": 0
+            "CD2_1": 0,
         }
         # make a property list of the above, for use by the formatter.
         self.metadata = lsst.daf.base.PropertyList()
@@ -148,8 +147,9 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
 
         # Make a data ID to pass to the formatter.
         universe = lsst.daf.butler.DimensionUniverse()
-        dataId = lsst.daf.butler.DataCoordinate.standardize(instrument="Cam1", exposure=2, detector=10,
-                                                            physical_filter="u", band="u", universe=universe)
+        dataId = lsst.daf.butler.DataCoordinate.standardize(
+            instrument="Cam1", exposure=2, detector=10, physical_filter="u", band="u", universe=universe
+        )
 
         # We have no file in these tests, so make an empty descriptor.
         fileDescriptor = lsst.daf.butler.FileDescriptor(None, None)
@@ -164,8 +164,7 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
         self.assertEqual(wcs, self.boresightSkyWcs)
 
     def test_makeWcs_warn_if_metadata_is_bad(self):
-        """If the metadata is bad, log a warning and use the VisitInfo WCS.
-        """
+        """If the metadata is bad, log a warning and use the VisitInfo WCS."""
         detector = self.formatter.getDetector(1)
         self.metadata.remove("CTYPE1")
         with self.warnContext:
@@ -174,8 +173,7 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
         self.assertEqual(wcs, self.boresightSkyWcs)
 
     def test_makeWcs_warn_if_visitInfo_is_None(self):
-        """If VisitInfo is None, log a warning and use the metadata WCS.
-        """
+        """If VisitInfo is None, log a warning and use the metadata WCS."""
         detector = self.formatter.getDetector(1)
         with self.warnContext:
             wcs = self.formatter.makeWcs(None, detector)
@@ -183,16 +181,14 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
         self.assertNotEqual(wcs, self.boresightSkyWcs)
 
     def test_makeWcs_fail_if_visitInfo_is_None(self):
-        """If VisitInfo is None and metadata failed, raise an exception.
-        """
+        """If VisitInfo is None and metadata failed, raise an exception."""
         detector = self.formatter.getDetector(1)
         self.metadata.remove("CTYPE1")
         with self.warnContext, self.assertRaises(InitialSkyWcsError):
             self.formatter.makeWcs(None, detector)
 
     def test_makeWcs_fail_if_detector_is_bad(self):
-        """If Detector is broken, raise an exception.
-        """
+        """If Detector is broken, raise an exception."""
         # This detector doesn't know about FIELD_ANGLE, so can't be used to
         # make a SkyWcs.
         detector = DetectorWrapper().detector
@@ -200,8 +196,7 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
             self.formatter.makeWcs(self.visitInfo, detector)
 
     def test_amp_parameter(self):
-        """Test loading subimages with the 'amp' parameter.
-        """
+        """Test loading subimages with the 'amp' parameter."""
         with lsst.utils.tests.getTempFilePath(".fits") as tmpFile:
             # Get a detector; this must be the same one that's baked into the
             # simple formatter at the top of this file, so that's how we get
@@ -251,6 +246,6 @@ def setup_module(module):
     lsst.utils.tests.init()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     lsst.utils.tests.init()
     unittest.main()

@@ -24,7 +24,7 @@ import collections
 import math
 
 import lsst.geom
-from lsst.afw.cameraGeom import FOCAL_PLANE, FIELD_ANGLE
+from lsst.afw.cameraGeom import FIELD_ANGLE, FOCAL_PLANE
 
 __all__ = ["CameraTests"]
 
@@ -36,12 +36,13 @@ class CameraTests(metaclass=abc.ABCMeta):
         * Call setUp_camera() to fill in required parameters.
     """
 
-    def setUp_camera(self,
-                     camera_name=None,
-                     n_detectors=None,
-                     first_detector_name=None,
-                     plate_scale=None,
-                     ):
+    def setUp_camera(
+        self,
+        camera_name=None,
+        n_detectors=None,
+        first_detector_name=None,
+        plate_scale=None,
+    ):
         """Set up the necessary variables for camera tests.
 
         Parameters
@@ -56,22 +57,24 @@ class CameraTests(metaclass=abc.ABCMeta):
         plate_scale : `lsst.geom.Angle`
             plate scale at center of focal plane, as angle-on-sky/mm
         """
-        fields = ['camera_name',
-                  'n_detectors',
-                  'first_detector_name',
-                  'plate_scale',
-                  ]
+        fields = [
+            "camera_name",
+            "n_detectors",
+            "first_detector_name",
+            "plate_scale",
+        ]
         CameraData = collections.namedtuple("CameraData", fields)
-        self.camera_data = CameraData(camera_name=camera_name,
-                                      n_detectors=n_detectors,
-                                      first_detector_name=first_detector_name,
-                                      plate_scale=plate_scale,
-                                      )
+        self.camera_data = CameraData(
+            camera_name=camera_name,
+            n_detectors=n_detectors,
+            first_detector_name=first_detector_name,
+            plate_scale=plate_scale,
+        )
 
     def test_iterable(self):
         """Simplest camera test: can we get a Camera instance, and does
         iterating return Detectors?"""
-        camera = self.butler.get('camera', immediate=True)
+        camera = self.butler.get("camera", immediate=True)
         self.assertIsInstance(camera, lsst.afw.cameraGeom.Camera)
         for detector in camera:
             msg = "Failed for detector={}".format(detector)
@@ -79,7 +82,7 @@ class CameraTests(metaclass=abc.ABCMeta):
 
     def test_camera_butler(self):
         """Check that the butler returns the right type of camera."""
-        camera = self.butler.get('camera', immediate=True)
+        camera = self.butler.get("camera", immediate=True)
         self.assertEqual(camera.getName(), self.camera_data.camera_name)
         self.assertEqual(len(camera), self.camera_data.n_detectors)
         self.assertEqual(next(iter(camera)).getName(), self.camera_data.first_detector_name)
@@ -92,21 +95,24 @@ class CameraTests(metaclass=abc.ABCMeta):
         """
         plate_scale = self.camera_data.plate_scale
         self.assertIsNotNone(plate_scale)
-        camera = self.butler.get('camera', immediate=True)
+        camera = self.butler.get("camera", immediate=True)
         focalPlaneToFieldAngle = camera.getTransformMap().getTransform(FOCAL_PLANE, FIELD_ANGLE)
         focalPlaneRadiusMm = 0.001  # an offset small enough to be in the linear regime
         for offsetAngleRad in (0.0, 0.65, 1.3):  # direction of offset; a few arbitrary angles
             cosAng = math.cos(offsetAngleRad)
             sinAng = math.sin(offsetAngleRad)
             fieldAngleRadians = focalPlaneToFieldAngle.applyForward(
-                lsst.geom.Point2D(cosAng * focalPlaneRadiusMm, sinAng * focalPlaneRadiusMm))
+                lsst.geom.Point2D(cosAng * focalPlaneRadiusMm, sinAng * focalPlaneRadiusMm)
+            )
             fieldAngleRadius = math.hypot(*fieldAngleRadians) * lsst.geom.radians
             measuredScale1 = fieldAngleRadius / focalPlaneRadiusMm
             self.assertAnglesAlmostEqual(measuredScale1, plate_scale)
 
             focalPlanePos = focalPlaneToFieldAngle.applyInverse(
-                lsst.geom.Point2D(fieldAngleRadius.asRadians() * cosAng,
-                                  fieldAngleRadius.asRadians() * sinAng))
+                lsst.geom.Point2D(
+                    fieldAngleRadius.asRadians() * cosAng, fieldAngleRadius.asRadians() * sinAng
+                )
+            )
             focalPlaneRadiusMm2 = math.hypot(*focalPlanePos)
             measureScale2 = fieldAngleRadius / focalPlaneRadiusMm2
             self.assertAnglesAlmostEqual(measureScale2, plate_scale)

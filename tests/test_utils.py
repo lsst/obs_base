@@ -21,10 +21,9 @@
 
 import unittest
 
-import lsst.utils.tests
-
 import lsst.geom as geom
 import lsst.obs.base as obsBase
+import lsst.utils.tests
 
 
 class BboxFromIrafTestCase(lsst.utils.tests.TestCase):
@@ -33,7 +32,7 @@ class BboxFromIrafTestCase(lsst.utils.tests.TestCase):
     def testValid(self):
         test_data = {
             "[1:1084,1:1024]": geom.BoxI(geom.PointI(0, 0), geom.PointI(1083, 1023)),
-            "[0:0,0:0]": geom.BoxI(geom.PointI(-1, -1), geom.PointI(-1, -1))
+            "[0:0,0:0]": geom.BoxI(geom.PointI(-1, -1), geom.PointI(-1, -1)),
         }
         for val, result in test_data.items():
             self.assertEqual(obsBase.bboxFromIraf(val), result)
@@ -42,7 +41,7 @@ class BboxFromIrafTestCase(lsst.utils.tests.TestCase):
         test_data = {
             "1:1084,1:1024": RuntimeError,
             "(1:1084,1:1024)": RuntimeError,
-            ("1:1084", "1:1024"): TypeError
+            ("1:1084", "1:1024"): TypeError,
         }
         for val, err in test_data.items():
             self.assertRaises(err, obsBase.bboxFromIraf, val)
@@ -56,6 +55,6 @@ def setup_module(module):
     lsst.utils.tests.init()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     lsst.utils.tests.init()
     unittest.main()

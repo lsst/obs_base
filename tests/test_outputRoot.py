@@ -19,16 +19,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import unittest
-import tempfile
-import shutil
-import pickle
 import os
+import pickle
+import shutil
+import tempfile
+import unittest
 
-import lsst.utils.tests
-import lsst.geom as geom
 import lsst.daf.persistence as dafPersist
+import lsst.geom as geom
 import lsst.obs.base
+import lsst.utils.tests
 
 # Define paths used for testing
 ROOT = os.path.abspath(os.path.dirname(__file__))
@@ -39,7 +39,7 @@ def setup_module(module):
 
 
 class MinMapper1(lsst.obs.base.CameraMapper):
-    packageName = 'larry'
+    packageName = "larry"
 
     def __init__(self, **kwargs):
         policy = dafPersist.Policy(os.path.join(ROOT, "MinMapper1.yaml"))
@@ -71,8 +71,8 @@ class OutputRootTestCase(unittest.TestCase):
         later. The directory path is returned.
         A '-' is appended to the prefix if not there."""
         dprefix = prefix
-        if not dprefix.endswith('-'):
-            dprefix = dprefix + '-'
+        if not dprefix.endswith("-"):
+            dprefix = dprefix + "-"
         tempDir = tempfile.mkdtemp(dir=ROOT, prefix=dprefix)
         self.tempDirs[prefix] = tempDir
         return tempDir
@@ -82,18 +82,15 @@ class OutputRootTestCase(unittest.TestCase):
         there is a parent relationship from the output repo to the input repo.
         """
         testOutput = self.mkdtemp("testOutput")
-        butler = dafPersist.Butler(inputs={'root': ROOT, 'mapper': MinMapper1},
-                                   outputs=testOutput)
+        butler = dafPersist.Butler(inputs={"root": ROOT, "mapper": MinMapper1}, outputs=testOutput)
         self.assertTrue(butler)
         self.assertTrue(os.path.exists(testOutput))
         self.assertTrue(os.path.isdir(testOutput))
         self.assertTrue(os.path.exists(os.path.join(testOutput, "repositoryCfg.yaml")))
         cfg = dafPersist.PosixStorage.getRepositoryCfg(testOutput)
-        expectedCfg = dafPersist.RepositoryCfg(root=ROOT,
-                                               mapper=MinMapper1,
-                                               mapperArgs=None,
-                                               parents=None,
-                                               policy=None)
+        expectedCfg = dafPersist.RepositoryCfg(
+            root=ROOT, mapper=MinMapper1, mapperArgs=None, parents=None, policy=None
+        )
         self.assertEqual(len(cfg.parents), 1)
         self.assertEqual(cfg.parents[0], expectedCfg)
 
@@ -104,21 +101,21 @@ class OutputRootTestCase(unittest.TestCase):
         found in the first output location.
         """
         testOutput = self.mkdtemp("testOutput")
-        butler = dafPersist.Butler(inputs={'root': ROOT, 'mapper': MinMapper1}, outputs=testOutput)
+        butler = dafPersist.Butler(inputs={"root": ROOT, "mapper": MinMapper1}, outputs=testOutput)
         mapper1 = butler._repos.inputs()[0].repo._mapper
         loc = mapper1.map("x", dict(sensor="1,1"), write=True)
         self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
         self.assertEqual(loc.getCppType(), "BoxI")
         self.assertEqual(loc.getStorageName(), "PickleStorage")
         self.assertEqual(loc.getLocations(), ["foo-1,1.pickle"])
-        self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
+        self.assertEqual(loc.getAdditionalData().toString(), 'sensor = "1,1"\n')
         box = geom.BoxI(geom.PointI(0, 1), geom.PointI(2, 3))
         butler.put(box, "x", sensor="1,1")
         self.assertTrue(os.path.exists(os.path.join(testOutput, loc.getLocations()[0])))
         del butler
 
         testOutput2 = self.mkdtemp("testOutput2")
-        butler = dafPersist.Butler(inputs={'root': testOutput, 'mapper': MinMapper1}, outputs=testOutput2)
+        butler = dafPersist.Butler(inputs={"root": testOutput, "mapper": MinMapper1}, outputs=testOutput2)
         mapper2 = butler._repos.inputs()[0].repo._mapper
         loc = mapper2.map("x", dict(sensor="1,1"))
         self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
@@ -126,7 +123,7 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(loc.getStorageName(), "PickleStorage")
         self.assertEqual(loc.getLocations(), ["foo-1,1.pickle"])
         self.assertEqual(loc.getStorage().root, testOutput)
-        self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
+        self.assertEqual(loc.getAdditionalData().toString(), 'sensor = "1,1"\n')
 
     def testParentTrailingSlash2527(self):
         """Just like testParentNormal, but put a trailing slash on the root
@@ -138,9 +135,8 @@ class OutputRootTestCase(unittest.TestCase):
         found in the first output location."""
         # todo these shouldn't be commented out, I think the test wants the
         # trailing slash.
-        testOutput = self.mkdtemp("testOutput") + '/'
-        butler = dafPersist.Butler(inputs={'root': ROOT + '/', 'mapper': MinMapper1},
-                                   outputs=testOutput)
+        testOutput = self.mkdtemp("testOutput") + "/"
+        butler = dafPersist.Butler(inputs={"root": ROOT + "/", "mapper": MinMapper1}, outputs=testOutput)
         mapper1 = butler._repos.inputs()[0].repo._mapper
         loc = mapper1.map("x", dict(sensor="1,1"), write=True)
         self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
@@ -148,25 +144,23 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertEqual(loc.getStorageName(), "PickleStorage")
         self.assertEqual(loc.getLocations(), ["foo-1,1.pickle"])
         self.assertEqual(loc.getStorage().root, ROOT)
-        self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
+        self.assertEqual(loc.getAdditionalData().toString(), 'sensor = "1,1"\n')
         box = geom.BoxI(geom.PointI(0, 1), geom.PointI(2, 3))
         butler.put(box, "x", sensor="1,1")
         self.assertTrue(os.path.exists(os.path.join(testOutput, loc.getLocations()[0])))
         del butler
         del mapper1
 
-        testOutput2 = self.mkdtemp("testOutput2") + '/'
-        butler = dafPersist.Butler(inputs={'root': testOutput, 'mapper': MinMapper1},
-                                   outputs=testOutput2)
+        testOutput2 = self.mkdtemp("testOutput2") + "/"
+        butler = dafPersist.Butler(inputs={"root": testOutput, "mapper": MinMapper1}, outputs=testOutput2)
         mapper2 = butler._repos.inputs()[0].repo._mapper
         loc = mapper2.map("x", dict(sensor="1,1"))
         self.assertEqual(loc.getPythonType(), "lsst.afw.geom.BoxI")
         self.assertEqual(loc.getCppType(), "BoxI")
         self.assertEqual(loc.getStorageName(), "PickleStorage")
         self.assertEqual(loc.getLocations(), ["foo-1,1.pickle"])
-        self.assertEqual(os.path.normpath(loc.getStorage().root),
-                         os.path.normpath(testOutput))
-        self.assertEqual(loc.getAdditionalData().toString(), "sensor = \"1,1\"\n")
+        self.assertEqual(os.path.normpath(loc.getStorage().root), os.path.normpath(testOutput))
+        self.assertEqual(loc.getAdditionalData().toString(), 'sensor = "1,1"\n')
 
     def testReuseOutputRoot(self):
         """Set up an output repositoriy and verify its parent relationship to
@@ -176,22 +170,18 @@ class OutputRootTestCase(unittest.TestCase):
         and verify the parent relationships.
         """
         testOutput = self.mkdtemp("testOutput")
-        butler = dafPersist.Butler(inputs={'root': ROOT, 'mapper': MinMapper1},
-                                   outputs=testOutput)
+        butler = dafPersist.Butler(inputs={"root": ROOT, "mapper": MinMapper1}, outputs=testOutput)
         self.assertTrue(os.path.exists(testOutput))
         self.assertTrue(os.path.isdir(testOutput))
         cfg = dafPersist.Storage().getRepositoryCfg(testOutput)
-        expectedCfg = dafPersist.RepositoryCfg(root=ROOT,
-                                               mapper=MinMapper1,
-                                               mapperArgs=None,
-                                               parents=None,
-                                               policy=None)
+        expectedCfg = dafPersist.RepositoryCfg(
+            root=ROOT, mapper=MinMapper1, mapperArgs=None, parents=None, policy=None
+        )
         self.assertEqual(cfg.parents, [expectedCfg])
         del butler
 
         testOutput2 = self.mkdtemp("testOutput2")
-        butler = dafPersist.Butler(inputs={'root': testOutput, 'mapper': MinMapper1},
-                                   outputs=testOutput2)
+        butler = dafPersist.Butler(inputs={"root": testOutput, "mapper": MinMapper1}, outputs=testOutput2)
         self.assertTrue(os.path.exists(testOutput2))
         self.assertTrue(os.path.isdir(testOutput2))
         cfg = dafPersist.Storage().getRepositoryCfg(testOutput2)
@@ -204,10 +194,10 @@ class OutputRootTestCase(unittest.TestCase):
         second instantiation should raise an exception.
         """
         testInput1 = self.mkdtemp("testInput1")
-        butler = dafPersist.Butler(outputs={'root': testInput1, 'mapper': MinMapper1})
+        butler = dafPersist.Butler(outputs={"root": testInput1, "mapper": MinMapper1})
         del butler
         testInput2 = self.mkdtemp("testInput2")
-        butler = dafPersist.Butler(outputs={'root': testInput2, 'mapper': MinMapper1})
+        butler = dafPersist.Butler(outputs={"root": testInput2, "mapper": MinMapper1})
         del butler
         testOutput = self.mkdtemp("testOutput")
         butler = dafPersist.Butler(inputs=testInput1, outputs=testOutput)
@@ -221,9 +211,9 @@ class OutputRootTestCase(unittest.TestCase):
     def testBackup(self):
         testOutput = self.mkdtemp("testOutput")
         mapper1 = MinMapper1(outputRoot=testOutput)
-        butler1 = dafPersist.Butler(outputs=dafPersist.RepositoryArgs(mode='w',
-                                                                      root=testOutput,
-                                                                      mapper=mapper1))
+        butler1 = dafPersist.Butler(
+            outputs=dafPersist.RepositoryArgs(mode="w", root=testOutput, mapper=mapper1)
+        )
         b1 = geom.Box2I(geom.Point2I(3, 4), geom.Point2I(7, 6))
         butler1.put(b1, "x")
         self.assertTrue(os.path.exists(os.path.join(testOutput, "foo-1,1.pickle")))
@@ -238,10 +228,7 @@ class OutputRootTestCase(unittest.TestCase):
             # MinMapper is a little unconventional in that it takes its root
             # and output root as separate arguments, meaning that in effect
             # it's a mapper for 2 different repositories
-            outputs=dafPersist.RepositoryArgs(
-                mode='rw',
-                root=testOutput2,
-                mapper=mapper2),
+            outputs=dafPersist.RepositoryArgs(mode="rw", root=testOutput2, mapper=mapper2),
         )
         b3 = geom.Box2I(b2)
         b3.grow(1)
@@ -250,13 +237,13 @@ class OutputRootTestCase(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(testOutput2, "foo-1,1.pickle")))
         self.assertTrue(os.path.exists(os.path.join(testOutput2, "foo-1,1.pickle~1")))
         self.assertTrue(os.path.exists(os.path.join(testOutput2, "foo-1,1.pickle~2")))
-        with open(os.path.join(testOutput2, "foo-1,1.pickle~2"), 'rb') as f:
+        with open(os.path.join(testOutput2, "foo-1,1.pickle~2"), "rb") as f:
             b1Check = pickle.load(f)
             self.assertEqual(b1Check, b1)
-        with open(os.path.join(testOutput2, "foo-1,1.pickle~1"), 'rb') as f:
+        with open(os.path.join(testOutput2, "foo-1,1.pickle~1"), "rb") as f:
             b2Check = pickle.load(f)
             self.assertEqual(b2Check, b2)
-        with open(os.path.join(testOutput2, "foo-1,1.pickle"), 'rb') as f:
+        with open(os.path.join(testOutput2, "foo-1,1.pickle"), "rb") as f:
             b3Check = pickle.load(f)
             self.assertEqual(b3Check, b3)
 
@@ -265,6 +252,6 @@ class MemoryTester(lsst.utils.tests.MemoryTestCase):
     pass
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     lsst.utils.tests.init()
     unittest.main()

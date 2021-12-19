@@ -31,18 +31,15 @@ __all__ = (
 )
 
 import logging
+
 import numpy as np
-
-from lsst.afw.image import Exposure
 from lsst.afw.cameraGeom.utils import calcRawCcdBBox
+from lsst.afw.image import Exposure
 
-from . import butler_tests
-from . import mapper_tests
-from . import camera_tests
+from . import butler_tests, camera_tests, mapper_tests
 
 
-class ObsTests(butler_tests.ButlerGetTests, mapper_tests.MapperTests,
-               camera_tests.CameraTests):
+class ObsTests(butler_tests.ButlerGetTests, mapper_tests.MapperTests, camera_tests.CameraTests):
     """Aggregator class for all of the obs_* test classes.
 
     Inherit from this class, then lsst.utils.tests.TestCase, in that order.

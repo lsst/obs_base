@@ -24,20 +24,18 @@ import unittest
 
 import astropy.coordinates
 import astropy.units
-
-import lsst.utils.tests
 import lsst.pex.exceptions
+import lsst.utils.tests
 from lsst.daf.base import DateTime, PropertySet
-from lsst.obs.base import MakeRawVisitInfo
 from lsst.geom import degrees
+from lsst.obs.base import MakeRawVisitInfo
 
 
 class SimpleMakeRawVisitInfo(MakeRawVisitInfo):
-
     def getDateAvg(self, md, exposureTime):
         """Return date at the middle of the exposure"""
         dateObs = self.popIsoDate(md, "DATE-OBS")
-        return self.offsetDate(dateObs, 0.5*exposureTime)
+        return self.offsetDate(dateObs, 0.5 * exposureTime)
 
 
 def getMetadata(keyValDict):
@@ -63,16 +61,18 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
         exposureTime = 6.2  # arbitrary value in seconds
         date = DateTime("2001-01-02T03:04:05.123456789", DateTime.TAI)
         dateNsec = date.nsecs(DateTime.TAI)
-        startDate = DateTime(dateNsec - int(exposureTime*1e9/2), DateTime.TAI)
+        startDate = DateTime(dateNsec - int(exposureTime * 1e9 / 2), DateTime.TAI)
 
         exposureId = 54321  # an arbitrary value
-        md = getMetadata({
-            "DATE-OBS": startDate.toString(DateTime.UTC),
-            "TIMESYS": "UTC",
-            "EXPTIME": exposureTime,
-            "EXTRA1": "an abitrary key and value",
-            "EXTRA2": 5,
-        })
+        md = getMetadata(
+            {
+                "DATE-OBS": startDate.toString(DateTime.UTC),
+                "TIMESYS": "UTC",
+                "EXPTIME": exposureTime,
+                "EXTRA1": "an abitrary key and value",
+                "EXTRA2": 5,
+            }
+        )
         length = len(md)
         visitInfo = self.makeRawVisitInfo(md=md, exposureId=exposureId)
         with self.assertWarns(FutureWarning):
@@ -87,11 +87,13 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
         self.assertEqual(md.nameCount(), 3)  # TIMESYS and two EXTRAn keywords
 
         # try TIMESYS=TAI
-        md = getMetadata({
-            "DATE-OBS": startDate.toString(DateTime.TAI),
-            "TIMESYS": "TAI",
-            "EXPTIME": exposureTime,
-        })
+        md = getMetadata(
+            {
+                "DATE-OBS": startDate.toString(DateTime.TAI),
+                "TIMESYS": "TAI",
+                "EXPTIME": exposureTime,
+            }
+        )
         length = len(md)
         visitInfo = self.makeRawVisitInfo(md=md, exposureId=exposureId)
         self.assertEqual(md.nameCount(), length)
@@ -99,10 +101,12 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
         self.assertEqual(visitInfo.getDate(), date)
 
         # try omitting TIMESYS, which defaults to UTC
-        md = getMetadata({
-            "DATE-OBS": startDate.toString(DateTime.UTC),
-            "EXPTIME": exposureTime,
-        })
+        md = getMetadata(
+            {
+                "DATE-OBS": startDate.toString(DateTime.UTC),
+                "EXPTIME": exposureTime,
+            }
+        )
         length = len(md)
         visitInfo = self.makeRawVisitInfo(md=md, exposureId=exposureId)
         self.assertEqual(md.nameCount(), length)
@@ -110,9 +114,11 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
         self.assertEqual(visitInfo.getDate(), date)
 
         # omit DATE-OBS; date should be default-constructed
-        md = getMetadata({
-            "EXPTIME": exposureTime,
-        })
+        md = getMetadata(
+            {
+                "EXPTIME": exposureTime,
+            }
+        )
         length = len(md)
         visitInfo = self.makeRawVisitInfo(md=md, exposureId=exposureId)
         self.assertEqual(md.nameCount(), length)
@@ -121,9 +127,11 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
 
         # omit EXPTIME; date should be start date, not avg date, and
         # exposureTime should be nan
-        md = getMetadata({
-            "DATE-OBS": startDate.toString(DateTime.UTC),
-        })
+        md = getMetadata(
+            {
+                "DATE-OBS": startDate.toString(DateTime.UTC),
+            }
+        )
         length = len(md)
         visitInfo = self.makeRawVisitInfo(md=md, exposureId=exposureId)
         self.assertEqual(md.nameCount(), length)
@@ -131,10 +139,12 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
         self.assertEqual(visitInfo.getDate(), startDate)
 
     def testPopItem(self):
-        md = getMetadata({
-            "TIMESYS": "UTC",
-            "OTHER": 5,
-        })
+        md = getMetadata(
+            {
+                "TIMESYS": "UTC",
+                "OTHER": 5,
+            }
+        )
         names = set(md.names())
 
         timesys = self.makeRawVisitInfo.popItem(md, "TIMESYS")
@@ -204,7 +214,7 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
             desAngleDeg = astropy.coordinates.Angle(desValue, unit=units).deg
             md = getMetadata(dataDict)
             angle = self.makeRawVisitInfo.popAngle(md, key, units=units)
-            self.assertAnglesAlmostEqual(angle, desAngleDeg*degrees)
+            self.assertAnglesAlmostEqual(angle, desAngleDeg * degrees)
 
         badAngle = self.makeRawVisitInfo.popAngle(md, "STR")
         self.assertTrue(math.isnan(badAngle.asDegrees()))
@@ -289,13 +299,13 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
             self.assertEqual(missingDate, DateTime())
 
     def testEraFromLstAndLongitude(self):
-        LST = 90*degrees
-        Longitude = 50*degrees
+        LST = 90 * degrees
+        Longitude = 50 * degrees
         era = self.makeRawVisitInfo.eraFromLstAndLongitude(LST, Longitude)
-        self.assertAnglesAlmostEqual(era, LST-Longitude)
+        self.assertAnglesAlmostEqual(era, LST - Longitude)
 
     def testEraFromLstAndLongitude_float_vs_Angle_fails(self):
-        val1 = 90*degrees
+        val1 = 90 * degrees
         val2 = 50.0
         with self.assertRaises(TypeError):
             self.makeRawVisitInfo.eraFromLstAndLongitude(val1, val2)
@@ -304,10 +314,10 @@ class VisitInfoTestCase(lsst.utils.tests.TestCase):
 
     def testAltitudeFromZenithDistance(self):
         for zdDeg in (0, 35.6, 89.999, 90.0):
-            desAltDeg = 90-zdDeg
+            desAltDeg = 90 - zdDeg
             self.assertAnglesAlmostEqual(
-                desAltDeg*degrees,
-                self.makeRawVisitInfo.altitudeFromZenithDistance(zdDeg*degrees),
+                desAltDeg * degrees,
+                self.makeRawVisitInfo.altitudeFromZenithDistance(zdDeg * degrees),
             )
 
     def testCentigradeFromKelvin(self):

@@ -21,13 +21,20 @@
 
 from __future__ import annotations
 
-__all__ = ("Translator", "TranslatorFactory", "KeyHandler", "CopyKeyHandler", "ConstantKeyHandler",
-           "BandToPhysicalFilterKeyHandler", "PhysicalFilterToBandKeyHandler")
+__all__ = (
+    "Translator",
+    "TranslatorFactory",
+    "KeyHandler",
+    "CopyKeyHandler",
+    "ConstantKeyHandler",
+    "BandToPhysicalFilterKeyHandler",
+    "PhysicalFilterToBandKeyHandler",
+)
 
 import itertools
-from typing import Optional, Any, Dict, Tuple, FrozenSet, Iterable, List
-from abc import ABCMeta, abstractmethod
 import logging
+from abc import ABCMeta, abstractmethod
+from typing import Any, Dict, FrozenSet, Iterable, List, Optional, Tuple
 
 from lsst.skymap import BaseSkyMap
 
@@ -42,6 +49,7 @@ class KeyHandler(metaclass=ABCMeta):
         Name of the Gen3 dimension (data ID key) populated by
         this handler (e.g. "visit" or "band").
     """
+
     def __init__(self, dimension: str):
         self.dimension = dimension
 
@@ -50,9 +58,14 @@ class KeyHandler(metaclass=ABCMeta):
     def __repr__(self):
         return f"{type(self).__name__}({self.dimension}, ...)"
 
-    def translate(self, gen2id: dict, gen3id: dict,
-                  skyMap: Optional[BaseSkyMap], skyMapName: Optional[str],
-                  datasetTypeName: str):
+    def translate(
+        self,
+        gen2id: dict,
+        gen3id: dict,
+        skyMap: Optional[BaseSkyMap],
+        skyMapName: Optional[str],
+        datasetTypeName: str,
+    ):
         """Update a Gen3 data ID dict with a single key-value pair from a Gen2
         data ID.
 
@@ -74,12 +87,14 @@ class KeyHandler(metaclass=ABCMeta):
         datasetTypeName: `str`
             Name of the dataset type.
         """
-        gen3id[self.dimension] = self.extract(gen2id, skyMap=skyMap, skyMapName=skyMapName,
-                                              datasetTypeName=datasetTypeName)
+        gen3id[self.dimension] = self.extract(
+            gen2id, skyMap=skyMap, skyMapName=skyMapName, datasetTypeName=datasetTypeName
+        )
 
     @abstractmethod
-    def extract(self, gen2id: dict, skyMap: Optional[BaseSkyMap], skyMapName: Optional[str],
-                datasetTypeName: str) -> Any:
+    def extract(
+        self, gen2id: dict, skyMap: Optional[BaseSkyMap], skyMapName: Optional[str], datasetTypeName: str
+    ) -> Any:
         """Extract a Gen3 data ID value from a Gen2 data ID.
 
         Parameters
@@ -109,14 +124,16 @@ class ConstantKeyHandler(KeyHandler):
     value : `object`
         Data ID value.
     """
+
     def __init__(self, dimension: str, value: Any):
         super().__init__(dimension)
         self.value = value
 
     __slots__ = ("value",)
 
-    def extract(self, gen2id: dict, skyMap: Optional[BaseSkyMap], skyMapName: Optional[str],
-                datasetTypeName: str) -> Any:
+    def extract(
+        self, gen2id: dict, skyMap: Optional[BaseSkyMap], skyMapName: Optional[str], datasetTypeName: str
+    ) -> Any:
         # Docstring inherited from KeyHandler.extract.
         return self.value
 
@@ -132,8 +149,8 @@ class CopyKeyHandler(KeyHandler):
         If not `None`, the type that values for this key must be an
         instance of.
     """
-    def __init__(self, dimension: str, gen2key: Optional[str] = None,
-                 dtype: Optional[type] = None):
+
+    def __init__(self, dimension: str, gen2key: Optional[str] = None, dtype: Optional[type] = None):
         super().__init__(dimension)
         self.gen2key = gen2key if gen2key is not None else dimension
         self.dtype = dtype
@@ -143,8 +160,9 @@ class CopyKeyHandler(KeyHandler):
     def __str__(self):
         return f"{type(self).__name__}({self.gen2key}, {self.dtype})"
 
-    def extract(self, gen2id: dict, skyMap: Optional[BaseSkyMap], skyMapName: Optional[str],
-                datasetTypeName: str) -> Any:
+    def extract(
+        self, gen2id: dict, skyMap: Optional[BaseSkyMap], skyMapName: Optional[str], datasetTypeName: str
+    ) -> Any:
         # Docstring inherited from KeyHandler.extract.
         r = gen2id[self.gen2key]
         if self.dtype is not None:
@@ -159,15 +177,16 @@ class CopyKeyHandler(KeyHandler):
 
 
 class PatchKeyHandler(KeyHandler):
-    """A KeyHandler for skymap patches.
-    """
+    """A KeyHandler for skymap patches."""
+
     def __init__(self):
         super().__init__("patch")
 
     __slots__ = ()
 
-    def extract(self, gen2id: dict, skyMap: Optional[BaseSkyMap], skyMapName: Optional[str],
-                datasetTypeName: str) -> Any:
+    def extract(
+        self, gen2id: dict, skyMap: Optional[BaseSkyMap], skyMapName: Optional[str], datasetTypeName: str
+    ) -> Any:
         # Docstring inherited from KeyHandler.extract.
         tract = gen2id["tract"]
         tractInfo = skyMap[tract]
@@ -178,13 +197,15 @@ class PatchKeyHandler(KeyHandler):
 
 class SkyMapKeyHandler(KeyHandler):
     """A KeyHandler for skymaps."""
+
     def __init__(self):
         super().__init__("skymap")
 
     __slots__ = ()
 
-    def extract(self, gen2id: dict, skyMap: Optional[BaseSkyMap], skyMapName: Optional[str],
-                datasetTypeName: str) -> Any:
+    def extract(
+        self, gen2id: dict, skyMap: Optional[BaseSkyMap], skyMapName: Optional[str], datasetTypeName: str
+    ) -> Any:
         # Docstring inherited from KeyHandler.extract.
         return skyMapName
 
@@ -202,8 +223,7 @@ class PhysicalFilterToBandKeyHandler(KeyHandler):
 
     def __init__(self, filterDefinitions):
         super().__init__("band")
-        self._map = {d.physical_filter: d.band for d in filterDefinitions
-                     if d.physical_filter is not None}
+        self._map = {d.physical_filter: d.band for d in filterDefinitions if d.physical_filter is not None}
 
     def extract(self, gen2id, *args, **kwargs):
         physical = gen2id["filter"]
@@ -223,8 +243,7 @@ class BandToPhysicalFilterKeyHandler(KeyHandler):
 
     def __init__(self, filterDefinitions):
         super().__init__("physical_filter")
-        self._map = {d.band: d.physical_filter for d in filterDefinitions
-                     if d.band is not None}
+        self._map = {d.band: d.physical_filter for d in filterDefinitions if d.band is not None}
 
     def extract(self, gen2id, *args, **kwargs):
         abstract = gen2id["filter"]
@@ -241,6 +260,7 @@ class TranslatorFactory:
     log : `logging.Logger`, optional
         A logger for diagnostic messages.
     """
+
     def __init__(self, log: Optional[logging.Logger] = None):
         # The rules used to match KeyHandlers when constructing a Translator.
         self._rules: Dict[
@@ -248,13 +268,9 @@ class TranslatorFactory:
             Dict[
                 Optional[str],  # dataset type name (or None to match any)
                 # gen2keys, handler, consume
-                List[Tuple[FrozenSet[str], KeyHandler, bool]]
-            ]
-        ] = {
-            None: {
-                None: []
-            }
-        }
+                List[Tuple[FrozenSet[str], KeyHandler, bool]],
+            ],
+        ] = {None: {None: []}}
         self._addDefaultRules()
         if log is None:
             log = logging.getLogger(__name__)
@@ -274,9 +290,14 @@ class TranslatorFactory:
                     lines.append(f"   {gen2keys}{consumed}: {handler}")
         return "\n".join(lines)
 
-    def addRule(self, handler: KeyHandler, instrument: Optional[str] = None,
-                datasetTypeName: Optional[str] = None, gen2keys: Iterable[str] = (),
-                consume: bool = True):
+    def addRule(
+        self,
+        handler: KeyHandler,
+        instrument: Optional[str] = None,
+        datasetTypeName: Optional[str] = None,
+        gen2keys: Iterable[str] = (),
+        consume: bool = True,
+    ):
         """Add a KeyHandler and an associated matching rule.
 
         Parameters
@@ -338,9 +359,7 @@ class TranslatorFactory:
         # same criteria otherwise.  That will override this one, because
         # instrument-specific rules match first, and that rule will consume
         # the Gen2 "filter" key before this rule has a chance to fire.
-        self.addRule(CopyKeyHandler("band", "filter"),
-                     gen2keys=("filter", "tract"),
-                     consume=("filter",))
+        self.addRule(CopyKeyHandler("band", "filter"), gen2keys=("filter", "tract"), consume=("filter",))
 
         # Copy Gen2 "tract" to Gen3 "tract".
         self.addRule(CopyKeyHandler("tract", dtype=int), gen2keys=("tract",))
@@ -355,10 +374,13 @@ class TranslatorFactory:
         # that it's time to make this a priority.
         self.addRule(CopyKeyHandler("htm7", gen2key="pixel_id", dtype=int), gen2keys=("pixel_id",))
 
-    def addGenericInstrumentRules(self, instrumentName: str,
-                                  calibFilterType: str = "physical_filter",
-                                  detectorKey: str = "ccd",
-                                  exposureKey: str = "visit"):
+    def addGenericInstrumentRules(
+        self,
+        instrumentName: str,
+        calibFilterType: str = "physical_filter",
+        detectorKey: str = "ccd",
+        exposureKey: str = "visit",
+    ):
         """Add translation rules that depend on some properties of the
         instrument but are otherwise generic.
 
@@ -378,48 +400,93 @@ class TranslatorFactory:
         # Add instrument to Gen3 data ID if Gen2 contains exposureKey,
         # detectorKey, "visit", or "calibDate".  (Multiple rules may match, so
         # we'll actually set instrument in the same dict more than once).
-        self.addRule(ConstantKeyHandler("instrument", instrumentName),
-                     instrument=instrumentName, gen2keys=(exposureKey,), consume=False)
-        self.addRule(ConstantKeyHandler("instrument", instrumentName),
-                     instrument=instrumentName, gen2keys=(detectorKey,), consume=False)
-        self.addRule(ConstantKeyHandler("instrument", instrumentName),
-                     instrument=instrumentName, gen2keys=("calibDate",), consume=False)
-        self.addRule(ConstantKeyHandler("instrument", instrumentName),
-                     instrument=instrumentName, gen2keys=("visit",), consume=False)
+        self.addRule(
+            ConstantKeyHandler("instrument", instrumentName),
+            instrument=instrumentName,
+            gen2keys=(exposureKey,),
+            consume=False,
+        )
+        self.addRule(
+            ConstantKeyHandler("instrument", instrumentName),
+            instrument=instrumentName,
+            gen2keys=(detectorKey,),
+            consume=False,
+        )
+        self.addRule(
+            ConstantKeyHandler("instrument", instrumentName),
+            instrument=instrumentName,
+            gen2keys=("calibDate",),
+            consume=False,
+        )
+        self.addRule(
+            ConstantKeyHandler("instrument", instrumentName),
+            instrument=instrumentName,
+            gen2keys=("visit",),
+            consume=False,
+        )
 
         # Copy Gen2 exposureKey to Gen3 'exposure' for raw only.  Also consume
         # filter, since that's implied by 'exposure' in Gen3.
-        self.addRule(CopyKeyHandler("exposure", exposureKey),
-                     instrument=instrumentName, datasetTypeName="raw", gen2keys=(exposureKey,),
-                     consume=(exposureKey, "filter"))
+        self.addRule(
+            CopyKeyHandler("exposure", exposureKey),
+            instrument=instrumentName,
+            datasetTypeName="raw",
+            gen2keys=(exposureKey,),
+            consume=(exposureKey, "filter"),
+        )
 
         # Copy Gen2 'visit' to Gen3 'visit' otherwise.  Also consume filter.
-        self.addRule(CopyKeyHandler("visit"), instrument=instrumentName, gen2keys=("visit",),
-                     consume=("visit", "filter"))
+        self.addRule(
+            CopyKeyHandler("visit"),
+            instrument=instrumentName,
+            gen2keys=("visit",),
+            consume=("visit", "filter"),
+        )
 
         # Copy Gen2 'ccd' to Gen3 'detector;
-        self.addRule(CopyKeyHandler("detector", detectorKey),
-                     instrument=instrumentName,
-                     gen2keys=(detectorKey,))
+        self.addRule(
+            CopyKeyHandler("detector", detectorKey), instrument=instrumentName, gen2keys=(detectorKey,)
+        )
 
         # Add instrument for transmission curve datasets (transmission_sensor
         # is already handled by the above rules).
-        self.addRule(ConstantKeyHandler("instrument", instrumentName),
-                     instrument=instrumentName, datasetTypeName="transmission_optics")
-        self.addRule(ConstantKeyHandler("instrument", instrumentName),
-                     instrument=instrumentName, datasetTypeName="transmission_atmosphere")
-        self.addRule(ConstantKeyHandler("instrument", instrumentName),
-                     instrument=instrumentName, datasetTypeName="transmission_filter")
-        self.addRule(CopyKeyHandler("physical_filter", "filter"),
-                     instrument=instrumentName, datasetTypeName="transmission_filter")
+        self.addRule(
+            ConstantKeyHandler("instrument", instrumentName),
+            instrument=instrumentName,
+            datasetTypeName="transmission_optics",
+        )
+        self.addRule(
+            ConstantKeyHandler("instrument", instrumentName),
+            instrument=instrumentName,
+            datasetTypeName="transmission_atmosphere",
+        )
+        self.addRule(
+            ConstantKeyHandler("instrument", instrumentName),
+            instrument=instrumentName,
+            datasetTypeName="transmission_filter",
+        )
+        self.addRule(
+            CopyKeyHandler("physical_filter", "filter"),
+            instrument=instrumentName,
+            datasetTypeName="transmission_filter",
+        )
 
         # Add calibration mapping for filter dependent types
-        for calibType in ('flat', 'sky', 'fringe'):
-            self.addRule(CopyKeyHandler(calibFilterType, "filter"),
-                         instrument=instrumentName, datasetTypeName=calibType)
+        for calibType in ("flat", "sky", "fringe"):
+            self.addRule(
+                CopyKeyHandler(calibFilterType, "filter"),
+                instrument=instrumentName,
+                datasetTypeName=calibType,
+            )
 
-    def makeMatching(self, datasetTypeName: str, gen2keys: Dict[str, type], instrument: Optional[str] = None,
-                     skyMap: Optional[BaseSkyMap] = None, skyMapName: Optional[str] = None):
+    def makeMatching(
+        self,
+        datasetTypeName: str,
+        gen2keys: Dict[str, type],
+        instrument: Optional[str] = None,
+        skyMap: Optional[BaseSkyMap] = None,
+        skyMapName: Optional[str] = None,
+    ):
         """Construct a Translator appropriate for instances of the given
         dataset.
 
@@ -450,23 +517,33 @@ class TranslatorFactory:
             rulesForInstrument = {None: []}
         rulesForAnyInstrument = self._rules[None]
         candidateRules = itertools.chain(
-            rulesForInstrument.get(datasetTypeName, []),     # this instrument, this DatasetType
-            rulesForInstrument[None],                         # this instrument, any DatasetType
+            rulesForInstrument.get(datasetTypeName, []),  # this instrument, this DatasetType
+            rulesForInstrument[None],  # this instrument, any DatasetType
             rulesForAnyInstrument.get(datasetTypeName, []),  # any instrument, this DatasetType
-            rulesForAnyInstrument[None],                      # any instrument, any DatasetType
+            rulesForAnyInstrument[None],  # any instrument, any DatasetType
         )
         matchedHandlers = []
         targetKeys = set(gen2keys)
-        self.log.debug("Constructing data ID translator for %s with Gen2 keys %s...",
-                       datasetTypeName, gen2keys)
+        self.log.debug(
+            "Constructing data ID translator for %s with Gen2 keys %s...", datasetTypeName, gen2keys
+        )
         for ruleKeys, ruleHandlers, consume in candidateRules:
             if ruleKeys.issubset(targetKeys):
                 matchedHandlers.append(ruleHandlers)
                 targetKeys -= consume
-        self.log.debug("...matched %d handlers: %s, with %s unmatched.",
-                       len(matchedHandlers), matchedHandlers, targetKeys)
-        return Translator(matchedHandlers, skyMap=skyMap, skyMapName=skyMapName,
-                          datasetTypeName=datasetTypeName, log=self.log)
+        self.log.debug(
+            "...matched %d handlers: %s, with %s unmatched.",
+            len(matchedHandlers),
+            matchedHandlers,
+            targetKeys,
+        )
+        return Translator(
+            matchedHandlers,
+            skyMap=skyMap,
+            skyMapName=skyMapName,
+            datasetTypeName=datasetTypeName,
+            log=self.log,
+        )
 
 
 class Translator:
@@ -488,8 +565,15 @@ class Translator:
     datasetTypeName : `str`
         Name of the dataset type whose data IDs this translator handles.
     """
-    def __init__(self, handlers: List[KeyHandler], skyMap: Optional[BaseSkyMap], skyMapName: Optional[str],
-                 datasetTypeName: str, log: logging.Logger):
+
+    def __init__(
+        self,
+        handlers: List[KeyHandler],
+        skyMap: Optional[BaseSkyMap],
+        skyMapName: Optional[str],
+        datasetTypeName: str,
+        log: logging.Logger,
+    ):
         self.handlers = handlers
         self.skyMap = skyMap
         self.skyMapName = skyMapName
@@ -503,18 +587,25 @@ class Translator:
         return f"{type(self).__name__}(dtype={self.datasetTypeName}, handlers=[{hstr}])"
 
     def __call__(self, gen2id: Dict[str, Any], *, partial: bool = False) -> Tuple[dict, Optional[str]]:
-        """Return a Gen3 data ID that corresponds to the given Gen2 data ID.
-        """
+        """Return a Gen3 data ID that corresponds to the given Gen2 data ID."""
         gen3id = {}
         calibDate = gen2id.get("calibDate", None)
         for handler in self.handlers:
             try:
-                handler.translate(gen2id, gen3id, skyMap=self.skyMap, skyMapName=self.skyMapName,
-                                  datasetTypeName=self.datasetTypeName)
+                handler.translate(
+                    gen2id,
+                    gen3id,
+                    skyMap=self.skyMap,
+                    skyMapName=self.skyMapName,
+                    datasetTypeName=self.datasetTypeName,
+                )
             except KeyError:
                 if partial:
-                    self.log.debug("Failed to translate %s from %s (this may not be an error).",
-                                   handler.dimension, gen2id)
+                    self.log.debug(
+                        "Failed to translate %s from %s (this may not be an error).",
+                        handler.dimension,
+                        gen2id,
+                    )
                     continue
                 else:
                     raise

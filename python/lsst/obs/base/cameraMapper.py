@@ -25,25 +25,25 @@ import re
 import traceback
 import warnings
 import weakref
-from deprecated.sphinx import deprecated
 
-from astro_metadata_translator import fix_header
-from lsst.utils import doImport
-import lsst.daf.persistence as dafPersist
-from . import ImageMapping, ExposureMapping, CalibrationMapping, DatasetMapping
-import lsst.daf.base as dafBase
+import lsst.afw.cameraGeom as afwCameraGeom
 import lsst.afw.geom as afwGeom
 import lsst.afw.image as afwImage
-import lsst.afw.table as afwTable
-from lsst.afw.fits import readMetadata
-import lsst.afw.cameraGeom as afwCameraGeom
+import lsst.daf.base as dafBase
+import lsst.daf.persistence as dafPersist
 import lsst.log as lsstLog
 import lsst.pex.exceptions as pexExcept
+from astro_metadata_translator import fix_header
+from deprecated.sphinx import deprecated
+from lsst.afw.fits import readMetadata
+from lsst.afw.table import Schema
+from lsst.utils import doImport, getPackageDir
+
+from ._instrument import Instrument
 from .exposureIdInfo import ExposureIdInfo
 from .makeRawVisitInfo import MakeRawVisitInfo
-from .utils import createInitialSkyWcs, InitialSkyWcsError
-from lsst.utils import getPackageDir
-from ._instrument import Instrument
+from .mapping import CalibrationMapping, DatasetMapping, ExposureMapping, ImageMapping
+from .utils import InitialSkyWcsError, createInitialSkyWcs
 
 __all__ = ["CameraMapper", "exposureFromImage"]
 
@@ -174,6 +174,7 @@ class CameraMapper(dafPersist.Mapper):
         The configuration information for the repository this mapper is
         being used with.
     """
+
     packageName = None
 
     # a class or subclass of MakeRawVisitInfo, a functor that makes an
@@ -190,9 +191,18 @@ class CameraMapper(dafPersist.Mapper):
     # Can be a class or a string with the full name of the class
     _gen3instrument = None
 
-    def __init__(self, policy, repositoryDir,
-                 root=None, registry=None, calibRoot=None, calibRegistry=None,
-                 provided=None, parentRegistry=None, repositoryCfg=None):
+    def __init__(
+        self,
+        policy,
+        repositoryDir,
+        root=None,
+        registry=None,
+        calibRoot=None,
+        calibRegistry=None,
+        provided=None,
+        parentRegistry=None,
+        repositoryCfg=None,
+    ):
 
         dafPersist.Mapper.__init__(self)
 
@@ -211,14 +221,14 @@ class CameraMapper(dafPersist.Mapper):
 
         # Levels
         self.levels = dict()
-        if 'levels' in policy:
-            levelsPolicy = policy['levels']
+        if "levels" in policy:
+            levelsPolicy = policy["levels"]
             for key in levelsPolicy.names(True):
                 self.levels[key] = set(levelsPolicy.asArray(key))
-        self.defaultLevel = policy['defaultLevel']
+        self.defaultLevel = policy["defaultLevel"]
         self.defaultSubLevels = dict()
-        if 'defaultSubLevels' in policy:
-            self.defaultSubLevels = policy['defaultSubLevels']
+        if "defaultSubLevels" in policy:
+            self.defaultSubLevels = policy["defaultSubLevels"]
 
         # Root directories
         if root is None:
@@ -235,34 +245,46 @@ class CameraMapper(dafPersist.Mapper):
         calibStorage = None
         if calibRoot is not None:
             calibRoot = dafPersist.Storage.absolutePath(root, calibRoot)
-            calibStorage = dafPersist.Storage.makeFromURI(uri=calibRoot,
-                                                          create=False)
+            calibStorage = dafPersist.Storage.makeFromURI(uri=calibRoot, create=False)
         else:
-            calibRoot = policy.get('calibRoot', None)
+            calibRoot = policy.get("calibRoot", None)
             if calibRoot:
-                calibStorage = dafPersist.Storage.makeFromURI(uri=calibRoot,
-                                                              create=False)
+                calibStorage = dafPersist.Storage.makeFromURI(uri=calibRoot, create=False)
         if calibStorage is None:
             calibStorage = self.rootStorage
 
         self.root = root
 
         # Registries
-        self.registry = self._setupRegistry("registry", "exposure", registry, policy, "registryPath",
-                                            self.rootStorage, searchParents=False,
-                                            posixIfNoSql=(not parentRegistry))
+        self.registry = self._setupRegistry(
+            "registry",
+            "exposure",
+            registry,
+            policy,
+            "registryPath",
+            self.rootStorage,
+            searchParents=False,
+            posixIfNoSql=(not parentRegistry),
+        )
         if not self.registry:
             self.registry = parentRegistry
-        needCalibRegistry = policy.get('needCalibRegistry', None)
+        needCalibRegistry = policy.get("needCalibRegistry", None)
         if needCalibRegistry:
             if calibStorage:
-                self.calibRegistry = self._setupRegistry("calibRegistry", "calib", calibRegistry, policy,
-                                                         "calibRegistryPath", calibStorage,
-                                                         posixIfNoSql=False)  # NB never use posix for calibs
+                self.calibRegistry = self._setupRegistry(
+                    "calibRegistry",
+                    "calib",
+                    calibRegistry,
+                    policy,
+                    "calibRegistryPath",
+                    calibStorage,
+                    posixIfNoSql=False,
+                )  # NB never use posix for calibs
             else:
                 raise RuntimeError(
                     "'needCalibRegistry' is true in Policy, but was unable to locate a repo at "
-                    f"calibRoot ivar:{calibRoot} or policy['calibRoot']:{policy.get('calibRoot', None)}")
+                    f"calibRoot ivar:{calibRoot} or policy['calibRoot']:{policy.get('calibRoot', None)}"
+                )
         else:
             self.calibRegistry = None
 
@@ -282,7 +304,7 @@ class CameraMapper(dafPersist.Mapper):
         # verify that the class variable packageName is set before attempting
         # to instantiate an instance
         if self.packageName is None:
-            raise ValueError('class variable packageName must not be None')
+            raise ValueError("class variable packageName must not be None")
 
         self.makeRawVisitInfo = self.MakeRawVisitInfoClass(log=self.log)
 
@@ -320,12 +342,15 @@ class CameraMapper(dafPersist.Mapper):
             Keys provided by the mapper
         """
         # Sub-dictionaries (for exposure/calibration/dataset types)
-        imgMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
-            "obs_base", "ImageMappingDefaults.yaml", "policy"))
-        expMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
-            "obs_base", "ExposureMappingDefaults.yaml", "policy"))
-        calMappingPolicy = dafPersist.Policy(dafPersist.Policy.defaultPolicyFile(
-            "obs_base", "CalibrationMappingDefaults.yaml", "policy"))
+        imgMappingPolicy = dafPersist.Policy(
+            dafPersist.Policy.defaultPolicyFile("obs_base", "ImageMappingDefaults.yaml", "policy")
+        )
+        expMappingPolicy = dafPersist.Policy(
+            dafPersist.Policy.defaultPolicyFile("obs_base", "ExposureMappingDefaults.yaml", "policy")
+        )
+        calMappingPolicy = dafPersist.Policy(
+            dafPersist.Policy.defaultPolicyFile("obs_base", "CalibrationMappingDefaults.yaml", "policy")
+        )
         dsMappingPolicy = dafPersist.Policy()
 
         # Mappings
@@ -333,7 +358,7 @@ class CameraMapper(dafPersist.Mapper):
             ("images", imgMappingPolicy, ImageMapping),
             ("exposures", expMappingPolicy, ExposureMapping),
             ("calibrations", calMappingPolicy, CalibrationMapping),
-            ("datasets", dsMappingPolicy, DatasetMapping)
+            ("datasets", dsMappingPolicy, DatasetMapping),
         )
         self.mappings = dict()
         for name, defPolicy, cls in mappingList:
@@ -351,34 +376,48 @@ class CameraMapper(dafPersist.Mapper):
                     subPolicy = datasets[datasetType]
                     subPolicy.merge(defPolicy)
 
-                    if not hasattr(self, "map_" + datasetType) and 'composite' in subPolicy:
-                        def compositeClosure(dataId, write=False, mapper=None, mapping=None,
-                                             subPolicy=subPolicy):
-                            components = subPolicy.get('composite')
-                            assembler = subPolicy['assembler'] if 'assembler' in subPolicy else None
-                            disassembler = subPolicy['disassembler'] if 'disassembler' in subPolicy else None
-                            python = subPolicy['python']
-                            butlerComposite = dafPersist.ButlerComposite(assembler=assembler,
-                                                                         disassembler=disassembler,
-                                                                         python=python,
-                                                                         dataId=dataId,
-                                                                         mapper=self)
+                    if not hasattr(self, "map_" + datasetType) and "composite" in subPolicy:
+
+                        def compositeClosure(
+                            dataId, write=False, mapper=None, mapping=None, subPolicy=subPolicy
+                        ):
+                            components = subPolicy.get("composite")
+                            assembler = subPolicy["assembler"] if "assembler" in subPolicy else None
+                            disassembler = subPolicy["disassembler"] if "disassembler" in subPolicy else None
+                            python = subPolicy["python"]
+                            butlerComposite = dafPersist.ButlerComposite(
+                                assembler=assembler,
+                                disassembler=disassembler,
+                                python=python,
+                                dataId=dataId,
+                                mapper=self,
+                            )
                             for name, component in components.items():
-                                butlerComposite.add(id=name,
-                                                    datasetType=component.get('datasetType'),
-                                                    setter=component.get('setter', None),
-                                                    getter=component.get('getter', None),
-                                                    subset=component.get('subset', False),
-                                                    inputOnly=component.get('inputOnly', False))
+                                butlerComposite.add(
+                                    id=name,
+                                    datasetType=component.get("datasetType"),
+                                    setter=component.get("setter", None),
+                                    getter=component.get("getter", None),
+                                    subset=component.get("subset", False),
+                                    inputOnly=component.get("inputOnly", False),
+                                )
                             return butlerComposite
+
                         setattr(self, "map_" + datasetType, compositeClosure)
                         # for now at least, don't set up any other handling for
                         # this dataset type.
                         continue
 
                     if name == "calibrations":
-                        mapping = cls(datasetType, subPolicy, self.registry, self.calibRegistry, calibStorage,
-                                      provided=provided, dataRoot=rootStorage)
+                        mapping = cls(
+                            datasetType,
+                            subPolicy,
+                            self.registry,
+                            self.calibRegistry,
+                            calibStorage,
+                            provided=provided,
+                            dataRoot=rootStorage,
+                        )
                     else:
                         mapping = cls(datasetType, subPolicy, self.registry, rootStorage, provided=provided)
 
@@ -388,16 +427,22 @@ class CameraMapper(dafPersist.Mapper):
                     mappings[datasetType] = mapping
                     self.mappings[datasetType] = mapping
                     if not hasattr(self, "map_" + datasetType):
+
                         def mapClosure(dataId, write=False, mapper=weakref.proxy(self), mapping=mapping):
                             return mapping.map(mapper, dataId, write)
+
                         setattr(self, "map_" + datasetType, mapClosure)
                     if not hasattr(self, "query_" + datasetType):
+
                         def queryClosure(format, dataId, mapping=mapping):
                             return mapping.lookup(format, dataId)
+
                         setattr(self, "query_" + datasetType, queryClosure)
                     if hasattr(mapping, "standardize") and not hasattr(self, "std_" + datasetType):
+
                         def stdClosure(item, dataId, mapper=weakref.proxy(self), mapping=mapping):
                             return mapping.standardize(mapper, item, dataId)
+
                         setattr(self, "std_" + datasetType, stdClosure)
 
                     def setMethods(suffix, mapImpl=None, bypassImpl=None, queryImpl=None):
@@ -416,10 +461,15 @@ class CameraMapper(dafPersist.Mapper):
                             setattr(self, queryName, queryImpl or getattr(self, "query_" + datasetType))
 
                     # Filename of dataset
-                    setMethods("filename", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                               [os.path.join(location.getStorage().root, p) for p in location.getLocations()])
+                    setMethods(
+                        "filename",
+                        bypassImpl=lambda datasetType, pythonType, location, dataId: [
+                            os.path.join(location.getStorage().root, p) for p in location.getLocations()
+                        ],
+                    )
                     # Metadata from FITS file
                     if subPolicy["storage"] == "FitsStorage":  # a FITS image
+
                         def getMetadata(datasetType, pythonType, location, dataId):
                             md = readMetadata(location.getLocationsWithRoot()[0])
                             fix_header(md, translator_class=self.translatorClass)
@@ -433,6 +483,7 @@ class CameraMapper(dafPersist.Mapper):
                             setattr(self, addName, self.getImageCompressionSettings)
 
                         if name == "exposures":
+
                             def getSkyWcs(datasetType, pythonType, location, dataId):
                                 fitsReader = afwImage.ExposureFitsReader(location.getLocationsWithRoot()[0])
                                 return fitsReader.readWcs()
@@ -443,8 +494,9 @@ class CameraMapper(dafPersist.Mapper):
                                 """Create a SkyWcs from the un-modified raw
                                 FITS WCS header keys."""
                                 if datasetType[:3] != "raw":
-                                    raise dafPersist.NoResults("Can only get header WCS for raw exposures.",
-                                                               datasetType, dataId)
+                                    raise dafPersist.NoResults(
+                                        "Can only get header WCS for raw exposures.", datasetType, dataId
+                                    )
                                 return afwGeom.makeSkyWcs(readMetadata(location.getLocationsWithRoot()[0]))
 
                             setMethods("header_wcs", bypassImpl=getRawHeaderWcs)
@@ -462,8 +514,11 @@ class CameraMapper(dafPersist.Mapper):
                             setMethods("visitInfo", bypassImpl=getVisitInfo)
 
                             # TODO: remove in DM-27177
-                            @deprecated(reason="Replaced with getFilterLabel. Will be removed after v22.",
-                                        category=FutureWarning, version="v22")
+                            @deprecated(
+                                reason="Replaced with getFilterLabel. Will be removed after v22.",
+                                category=FutureWarning,
+                                version="v22",
+                            )
                             def getFilter(datasetType, pythonType, location, dataId):
                                 fitsReader = afwImage.ExposureFitsReader(location.getLocationsWithRoot()[0])
                                 return fitsReader.readFilter()
@@ -478,7 +533,7 @@ class CameraMapper(dafPersist.Mapper):
                                 # Apply standardization used by full Exposure
                                 try:
                                     # mapping is local to enclosing scope
-                                    idFilter = mapping.need(['filter'], dataId)['filter']
+                                    idFilter = mapping.need(["filter"], dataId)["filter"]
                                 except dafPersist.NoResults:
                                     idFilter = None
                                 bestFilter = self._getBestFilter(storedFilter, idFilter)
@@ -489,20 +544,21 @@ class CameraMapper(dafPersist.Mapper):
 
                             setMethods("filterLabel", bypassImpl=getFilterLabel)
 
-                            setMethods("detector",
-                                       mapImpl=lambda dataId, write=False:
-                                           dafPersist.ButlerLocation(
-                                               pythonType="lsst.afw.cameraGeom.CameraConfig",
-                                               cppType="Config",
-                                               storageName="Internal",
-                                               locationList="ignored",
-                                               dataId=dataId,
-                                               mapper=self,
-                                               storage=None,
-                                           ),
-                                       bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                           self.camera[self._extractDetectorName(dataId)]
-                                       )
+                            setMethods(
+                                "detector",
+                                mapImpl=lambda dataId, write=False: dafPersist.ButlerLocation(
+                                    pythonType="lsst.afw.cameraGeom.CameraConfig",
+                                    cppType="Config",
+                                    storageName="Internal",
+                                    locationList="ignored",
+                                    dataId=dataId,
+                                    mapper=self,
+                                    storage=None,
+                                ),
+                                bypassImpl=lambda datasetType, pythonType, location, dataId: self.camera[
+                                    self._extractDetectorName(dataId)
+                                ],
+                            )
 
                             def getBBox(datasetType, pythonType, location, dataId):
                                 md = readMetadata(location.getLocationsWithRoot()[0], hdu=1)
@@ -512,17 +568,20 @@ class CameraMapper(dafPersist.Mapper):
                             setMethods("bbox", bypassImpl=getBBox)
 
                         elif name == "images":
+
                             def getBBox(datasetType, pythonType, location, dataId):
                                 md = readMetadata(location.getLocationsWithRoot()[0])
                                 fix_header(md, translator_class=self.translatorClass)
                                 return afwImage.bboxFromMetadata(md)
+
                             setMethods("bbox", bypassImpl=getBBox)
 
                     if subPolicy["storage"] == "FitsCatalogStorage":  # a FITS catalog
 
                         def getMetadata(datasetType, pythonType, location, dataId):
-                            md = readMetadata(os.path.join(location.getStorage().root,
-                                              location.getLocations()[0]), hdu=1)
+                            md = readMetadata(
+                                os.path.join(location.getStorage().root, location.getLocations()[0]), hdu=1
+                            )
                             fix_header(md, translator_class=self.translatorClass)
                             return md
 
@@ -530,36 +589,38 @@ class CameraMapper(dafPersist.Mapper):
 
                     # Sub-images
                     if subPolicy["storage"] == "FitsStorage":
+
                         def mapSubClosure(dataId, write=False, mapper=weakref.proxy(self), mapping=mapping):
                             subId = dataId.copy()
-                            del subId['bbox']
+                            del subId["bbox"]
                             loc = mapping.map(mapper, subId, write)
-                            bbox = dataId['bbox']
+                            bbox = dataId["bbox"]
                             llcX = bbox.getMinX()
                             llcY = bbox.getMinY()
                             width = bbox.getWidth()
                             height = bbox.getHeight()
-                            loc.additionalData.set('llcX', llcX)
-                            loc.additionalData.set('llcY', llcY)
-                            loc.additionalData.set('width', width)
-                            loc.additionalData.set('height', height)
-                            if 'imageOrigin' in dataId:
-                                loc.additionalData.set('imageOrigin',
-                                                       dataId['imageOrigin'])
+                            loc.additionalData.set("llcX", llcX)
+                            loc.additionalData.set("llcY", llcY)
+                            loc.additionalData.set("width", width)
+                            loc.additionalData.set("height", height)
+                            if "imageOrigin" in dataId:
+                                loc.additionalData.set("imageOrigin", dataId["imageOrigin"])
                             return loc
 
                         def querySubClosure(key, format, dataId, mapping=mapping):
                             subId = dataId.copy()
-                            del subId['bbox']
+                            del subId["bbox"]
                             return mapping.lookup(format, subId)
+
                         setMethods("sub", mapImpl=mapSubClosure, queryImpl=querySubClosure)
 
                     if subPolicy["storage"] == "FitsCatalogStorage":
                         # Length of catalog
 
                         def getLen(datasetType, pythonType, location, dataId):
-                            md = readMetadata(os.path.join(location.getStorage().root,
-                                              location.getLocations()[0]), hdu=1)
+                            md = readMetadata(
+                                os.path.join(location.getStorage().root, location.getLocations()[0]), hdu=1
+                            )
                             fix_header(md, translator_class=self.translatorClass)
                             return md["NAXIS2"]
 
@@ -567,9 +628,12 @@ class CameraMapper(dafPersist.Mapper):
 
                         # Schema of catalog
                         if not datasetType.endswith("_schema") and datasetType + "_schema" not in datasets:
-                            setMethods("schema", bypassImpl=lambda datasetType, pythonType, location, dataId:
-                                       afwTable.Schema.readFits(os.path.join(location.getStorage().root,
-                                                                             location.getLocations()[0])))
+                            setMethods(
+                                "schema",
+                                bypassImpl=lambda datasetType, pythonType, location, dataId: Schema.readFits(
+                                    os.path.join(location.getStorage().root, location.getLocations()[0])
+                                ),
+                            )
 
     def _computeCcdExposureId(self, dataId):
         """Compute the 64-bit (long) identifier for a CCD exposure.
@@ -692,7 +756,7 @@ class CameraMapper(dafPersist.Mapper):
 
         # not sure if this is how we want to do this. what if None was
         # intended?
-        if level == '':
+        if level == "":
             level = self.getDefaultLevel()
 
         if datasetType is None:
@@ -718,18 +782,18 @@ class CameraMapper(dafPersist.Mapper):
     def getCameraName(cls):
         """Return the name of the camera that this CameraMapper is for."""
         className = str(cls)
-        className = className[className.find('.'):-1]
-        m = re.search(r'(\w+)Mapper', className)
+        className = className[className.find(".") : -1]
+        m = re.search(r"(\w+)Mapper", className)
         if m is None:
             m = re.search(r"class '[\w.]*?(\w+)'", className)
         name = m.group(1)
-        return name[:1].lower() + name[1:] if name else ''
+        return name[:1].lower() + name[1:] if name else ""
 
     @classmethod
     def getPackageName(cls):
         """Return the name of the package containing this CameraMapper."""
         if cls.packageName is None:
-            raise ValueError('class variable packageName must not be None')
+            raise ValueError("class variable packageName must not be None")
         return cls.packageName
 
     @classmethod
@@ -742,14 +806,18 @@ class CameraMapper(dafPersist.Mapper):
             A `~lsst.obs.base.Instrument` class.
         """
         if cls._gen3instrument is None:
-            raise NotImplementedError("Please provide a specific implementation for your instrument"
-                                      " to enable conversion of this gen2 repository to gen3")
+            raise NotImplementedError(
+                "Please provide a specific implementation for your instrument"
+                " to enable conversion of this gen2 repository to gen3"
+            )
         if isinstance(cls._gen3instrument, str):
             # Given a string to convert to an instrument class
             cls._gen3instrument = doImport(cls._gen3instrument)
         if not issubclass(cls._gen3instrument, Instrument):
-            raise ValueError(f"Mapper {cls} has declared a gen3 instrument class of {cls._gen3instrument}"
-                             " but that is not an lsst.obs.base.Instrument")
+            raise ValueError(
+                f"Mapper {cls} has declared a gen3 instrument class of {cls._gen3instrument}"
+                " but that is not an lsst.obs.base.Instrument"
+            )
         return cls._gen3instrument
 
     @classmethod
@@ -769,12 +837,11 @@ class CameraMapper(dafPersist.Mapper):
             locationList=self.cameraDataLocation or "ignored",
             dataId=actualId,
             mapper=self,
-            storage=self.rootStorage
+            storage=self.rootStorage,
         )
 
     def bypass_camera(self, datasetType, pythonType, butlerLocation, dataId):
-        """Return the (preloaded) camera object.
-        """
+        """Return the (preloaded) camera object."""
         if self.camera is None:
             raise RuntimeError("No camera dataset available.")
         return self.camera
@@ -787,7 +854,7 @@ class CameraMapper(dafPersist.Mapper):
             locationList="ignored",
             dataId=dataId,
             mapper=self,
-            storage=self.rootStorage
+            storage=self.rootStorage,
         )
 
     def bypass_expIdInfo(self, datasetType, pythonType, location, dataId):
@@ -809,27 +876,29 @@ class CameraMapper(dafPersist.Mapper):
     def std_raw(self, item, dataId):
         """Standardize a raw dataset by converting it to an Exposure instead
         of an Image"""
-        return self._standardizeExposure(self.exposures['raw'], item, dataId,
-                                         trimmed=False, setVisitInfo=True, setExposureId=True)
+        return self._standardizeExposure(
+            self.exposures["raw"], item, dataId, trimmed=False, setVisitInfo=True, setExposureId=True
+        )
 
     def map_skypolicy(self, dataId):
         """Map a sky policy."""
-        return dafPersist.ButlerLocation("lsst.pex.policy.Policy", "Policy",
-                                         "Internal", None, None, self,
-                                         storage=self.rootStorage)
+        return dafPersist.ButlerLocation(
+            "lsst.pex.policy.Policy", "Policy", "Internal", None, None, self, storage=self.rootStorage
+        )
 
     def std_skypolicy(self, item, dataId):
         """Standardize a sky policy by returning the one we use."""
         return self.skypolicy
 
-###############################################################################
-#
-# Utility functions
-#
-###############################################################################
+    ##########################################################################
+    #
+    # Utility functions
+    #
+    ##########################################################################
 
-    def _setupRegistry(self, name, description, path, policy, policyKey, storage, searchParents=True,
-                       posixIfNoSql=True):
+    def _setupRegistry(
+        self, name, description, path, policy, policyKey, storage, searchParents=True, posixIfNoSql=True
+    ):
         """Set up a registry (usually SQLite3), trying a number of possible
         paths.
 
@@ -868,8 +937,9 @@ class CameraMapper(dafPersist.Mapper):
 
                 newPath = newPath[0] if newPath is not None and len(newPath) else None
                 if newPath is None:
-                    self.log.warning("Unable to locate registry at policy path (also looked in root): %s",
-                                     path)
+                    self.log.warning(
+                        "Unable to locate registry at policy path (also looked in root): %s", path
+                    )
                 path = newPath
             else:
                 self.log.warning("Unable to locate registry at policy path: %s", path)
@@ -882,7 +952,7 @@ class CameraMapper(dafPersist.Mapper):
         try:
             root = storage.root
             if path and (path.startswith(root)):
-                path = path[len(root + '/'):]
+                path = path[len(root + "/") :]
         except AttributeError:
             pass
 
@@ -1100,8 +1170,9 @@ class CameraMapper(dafPersist.Mapper):
 
         if filterDefinitions is not None:
             definitions = self._resolveFilters(filterDefinitions, idFilter, storedLabel)
-            self.log.debug("Matching filters for id=%r and label=%r are %s.",
-                           idFilter, storedLabel, definitions)
+            self.log.debug(
+                "Matching filters for id=%r and label=%r are %s.", idFilter, storedLabel, definitions
+            )
             if len(definitions) == 1:
                 newLabel = list(definitions)[0].makeFilterLabel()
                 return newLabel
@@ -1150,13 +1221,17 @@ class CameraMapper(dafPersist.Mapper):
         dataId : `dict`
             Dataset identifier.
         """
-        if not (isinstance(item, afwImage.ExposureU) or isinstance(item, afwImage.ExposureI)
-                or isinstance(item, afwImage.ExposureF) or isinstance(item, afwImage.ExposureD)):
+        if not (
+            isinstance(item, afwImage.ExposureU)
+            or isinstance(item, afwImage.ExposureI)
+            or isinstance(item, afwImage.ExposureF)
+            or isinstance(item, afwImage.ExposureD)
+        ):
             return
 
         itemFilter = item.getFilterLabel()  # may be None
         try:
-            idFilter = mapping.need(['filter'], dataId)['filter']
+            idFilter = mapping.need(["filter"], dataId)["filter"]
         except dafPersist.NoResults:
             idFilter = None
 
@@ -1178,8 +1253,9 @@ class CameraMapper(dafPersist.Mapper):
             except pexExcept.NotFoundError:
                 self.log.warning("Filter %s not defined.  Set to UNKNOWN.", idFilter)
 
-    def _standardizeExposure(self, mapping, item, dataId, filter=True,
-                             trimmed=True, setVisitInfo=True, setExposureId=False):
+    def _standardizeExposure(
+        self, mapping, item, dataId, filter=True, trimmed=True, setVisitInfo=True, setExposureId=False
+    ):
         """Default standardization function for images.
 
         This sets the Detector from the camera geometry
@@ -1212,9 +1288,15 @@ class CameraMapper(dafPersist.Mapper):
             The standardized Exposure.
         """
         try:
-            exposure = exposureFromImage(item, dataId, mapper=self, logger=self.log,
-                                         setVisitInfo=setVisitInfo, setFilter=filter,
-                                         setExposureId=setExposureId)
+            exposure = exposureFromImage(
+                item,
+                dataId,
+                mapper=self,
+                logger=self.log,
+                setVisitInfo=setVisitInfo,
+                setFilter=filter,
+                setExposureId=setExposureId,
+            )
         except Exception as e:
             self.log.error("Could not turn item=%r into an exposure: %s", item, e)
             raise
@@ -1227,8 +1309,11 @@ class CameraMapper(dafPersist.Mapper):
         # We can only create a WCS if it doesn't already have one and
         # we have either a VisitInfo or exposure metadata.
         # Do not calculate a WCS if this is an amplifier exposure
-        if mapping.level.lower() != "amp" and exposure.getWcs() is None and \
-           (exposure.getInfo().getVisitInfo() is not None or exposure.getMetadata().toDict()):
+        if (
+            mapping.level.lower() != "amp"
+            and exposure.getWcs() is None
+            and (exposure.getInfo().getVisitInfo() is not None or exposure.getMetadata().toDict())
+        ):
             self._createInitialSkyWcs(exposure)
 
         if filter:
@@ -1252,8 +1337,10 @@ class CameraMapper(dafPersist.Mapper):
         except pexExcept.TypeError as e:
             # See DM-14372 for why this is debug and not warn (e.g. calib
             # files without wcs metadata).
-            self.log.debug("wcs set to None; missing information found in metadata to create a valid wcs:"
-                           " %s", e.args[0])
+            self.log.debug(
+                "wcs set to None; missing information found in metadata to create a valid wcs: %s",
+                e.args[0],
+            )
         # ensure any WCS values stripped from the metadata are removed in the
         # exposure
         exposure.setMetadata(metadata)
@@ -1285,8 +1372,9 @@ class CameraMapper(dafPersist.Mapper):
             self.log.warning(msg, e)
             self.log.debug("Exception was: %s", traceback.TracebackException.from_exception(e))
             if e.__context__ is not None:
-                self.log.debug("Root-cause Exception was: %s",
-                               traceback.TracebackException.from_exception(e.__context__))
+                self.log.debug(
+                    "Root-cause Exception was: %s", traceback.TracebackException.from_exception(e.__context__)
+                )
 
     def _makeCamera(self, policy, repositoryDir):
         """Make a camera (instance of lsst.afw.cameraGeom.Camera) describing
@@ -1311,11 +1399,10 @@ class CameraMapper(dafPersist.Mapper):
             Policy repository for the subclassing module (obtained with
             getRepositoryPath() on the per-camera default dictionary).
         """
-        if 'camera' not in policy:
+        if "camera" not in policy:
             raise RuntimeError("Cannot find 'camera' in policy; cannot construct a camera")
-        cameraDataSubdir = policy['camera']
-        self.cameraDataLocation = os.path.normpath(
-            os.path.join(repositoryDir, cameraDataSubdir, "camera.py"))
+        cameraDataSubdir = policy["camera"]
+        self.cameraDataLocation = os.path.normpath(os.path.join(repositoryDir, cameraDataSubdir, "camera.py"))
         cameraConfig = afwCameraGeom.CameraConfig()
         cameraConfig.load(self.cameraDataLocation)
         ampInfoPath = os.path.dirname(self.cameraDataLocation)
@@ -1323,7 +1410,7 @@ class CameraMapper(dafPersist.Mapper):
             cameraConfig=cameraConfig,
             ampInfoPath=ampInfoPath,
             shortNameFunc=self.getShortCcdName,
-            pupilFactoryClass=self.PupilFactoryClass
+            pupilFactoryClass=self.PupilFactoryClass,
         )
 
     def getRegistry(self):
@@ -1360,10 +1447,12 @@ class CameraMapper(dafPersist.Mapper):
         if storageType not in self._writeRecipes:
             return dafBase.PropertySet()
         if recipeName not in self._writeRecipes[storageType]:
-            raise RuntimeError("Unrecognized write recipe for datasetType %s (storage type %s): %s" %
-                               (datasetType, storageType, recipeName))
+            raise RuntimeError(
+                "Unrecognized write recipe for datasetType %s (storage type %s): %s"
+                % (datasetType, storageType, recipeName)
+            )
         recipe = self._writeRecipes[storageType][recipeName].deepCopy()
-        seed = hash(tuple(dataId.items())) % 2**31
+        seed = hash(tuple(dataId.items())) % 2 ** 31
         for plane in ("image", "mask", "variance"):
             if recipe.exists(plane + ".scaling.seed") and recipe.getScalar(plane + ".scaling.seed") == 0:
                 recipe.set(plane + ".scaling.seed", seed)
@@ -1427,27 +1516,33 @@ class CameraMapper(dafPersist.Mapper):
         recipesFile = os.path.join(getPackageDir("obs_base"), "policy", "writeRecipes.yaml")
         recipes = dafPersist.Policy(recipesFile)
         supplementsFile = os.path.join(self.getPackageDir(), "policy", "writeRecipes.yaml")
-        validationMenu = {'FitsStorage': validateRecipeFitsStorage, }
+        validationMenu = {
+            "FitsStorage": validateRecipeFitsStorage,
+        }
         if os.path.exists(supplementsFile) and supplementsFile != recipesFile:
             supplements = dafPersist.Policy(supplementsFile)
             # Don't allow overrides, only supplements
             for entry in validationMenu:
                 intersection = set(recipes[entry].names()).intersection(set(supplements.names()))
                 if intersection:
-                    raise RuntimeError("Recipes provided in %s section %s may not override those in %s: %s" %
-                                       (supplementsFile, entry, recipesFile, intersection))
+                    raise RuntimeError(
+                        "Recipes provided in %s section %s may not override those in %s: %s"
+                        % (supplementsFile, entry, recipesFile, intersection)
+                    )
             recipes.update(supplements)
 
         self._writeRecipes = {}
         for storageType in recipes.names(True):
             if "default" not in recipes[storageType]:
-                raise RuntimeError("No 'default' recipe defined for storage type %s in %s" %
-                                   (storageType, recipesFile))
+                raise RuntimeError(
+                    "No 'default' recipe defined for storage type %s in %s" % (storageType, recipesFile)
+                )
             self._writeRecipes[storageType] = validationMenu[storageType](recipes[storageType])
 
 
-def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo=True, setFilter=False,
-                      setExposureId=False):
+def exposureFromImage(
+    image, dataId=None, mapper=None, logger=None, setVisitInfo=True, setFilter=False, setExposureId=False
+):
     """Generate an Exposure from an image-like object
 
     If the image is a DecoratedImage then also set its metadata
@@ -1514,9 +1609,9 @@ def exposureFromImage(image, dataId=None, mapper=None, logger=None, setVisitInfo
         # set filter if we can
         if setFilter and mapper is not None and exposure.getFilterLabel() is None:
             # Translate whatever was in the metadata
-            if 'FILTER' in metadata:
-                oldFilter = metadata['FILTER']
-                idFilter = dataId['filter'] if 'filter' in dataId else None
+            if "FILTER" in metadata:
+                oldFilter = metadata["FILTER"]
+                idFilter = dataId["filter"] if "filter" in dataId else None
                 # oldFilter may not be physical, but _getBestFilter always goes
                 # through the FilterDefinitions instead of returning
                 # unvalidated input.
@@ -1585,8 +1680,9 @@ def validateRecipeFitsStorage(recipes):
         unrecognized = set(entry.keys()) - set(allowed)
         if unrecognized:
             raise RuntimeError(
-                "Unrecognized entries when parsing image compression recipe %s: %s" %
-                (description, unrecognized))
+                "Unrecognized entries when parsing image compression recipe %s: %s"
+                % (description, unrecognized)
+            )
 
     validated = {}
     for name in recipes.names(True):
@@ -1594,11 +1690,9 @@ def validateRecipeFitsStorage(recipes):
         rr = dafBase.PropertySet()
         validated[name] = rr
         for plane in ("image", "mask", "variance"):
-            checkUnrecognized(recipes[name][plane], ["compression", "scaling"],
-                              name + "->" + plane)
+            checkUnrecognized(recipes[name][plane], ["compression", "scaling"], name + "->" + plane)
 
-            for settings, schema in (("compression", compressionSchema),
-                                     ("scaling", scalingSchema)):
+            for settings, schema in (("compression", compressionSchema), ("scaling", scalingSchema)):
                 prefix = plane + "." + settings
                 if settings not in recipes[name][plane]:
                     for key in schema:

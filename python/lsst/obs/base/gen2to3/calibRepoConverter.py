@@ -22,23 +22,24 @@ from __future__ import annotations
 
 __all__ = ["CalibRepoConverter"]
 
-from collections import defaultdict
 import os
 import sqlite3
-from typing import TYPE_CHECKING, Dict, Iterator, List, Mapping, Sequence, Tuple, Optional
+from collections import defaultdict
+from typing import TYPE_CHECKING, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 
 import astropy.time
 import astropy.units as u
-
 from lsst.daf.butler import CollectionType, DataCoordinate, FileDataset, Timespan
+
 from .repoConverter import RepoConverter
 from .repoWalker import RepoWalker
 
 if TYPE_CHECKING:
-    from lsst.daf.butler import DatasetType, StorageClass, FormatterParameter
-    from .repoWalker.scanner import PathElementHandler
+    from lsst.daf.butler import DatasetType, FormatterParameter, StorageClass
+
     from ..cameraMapper import CameraMapper
     from ..mapping import Mapping as CameraMapperMapping  # disambiguate from collections.abc.Mapping
+    from .repoWalker.scanner import PathElementHandler
 
 
 class CalibRepoConverter(RepoConverter):
@@ -74,10 +75,15 @@ class CalibRepoConverter(RepoConverter):
         # Docstring inherited from RepoConverter.
         yield from self.mapper.calibrations.items()
 
-    def makeRepoWalkerTarget(self, datasetTypeName: str, template: str, keys: Dict[str, type],
-                             storageClass: StorageClass, formatter: FormatterParameter = None,
-                             targetHandler: Optional[PathElementHandler] = None,
-                             ) -> RepoWalker.Target:
+    def makeRepoWalkerTarget(
+        self,
+        datasetTypeName: str,
+        template: str,
+        keys: Dict[str, type],
+        storageClass: StorageClass,
+        formatter: FormatterParameter = None,
+        targetHandler: Optional[PathElementHandler] = None,
+    ) -> RepoWalker.Target:
         # Docstring inherited from RepoConverter.
         target = RepoWalker.Target(
             datasetTypeName=datasetTypeName,
@@ -93,8 +99,9 @@ class CalibRepoConverter(RepoConverter):
         self._datasetTypes.add(target.datasetType)
         return target
 
-    def _queryGen2CalibRegistry(self, db: sqlite3.Connection, datasetType: DatasetType, calibDate: str
-                                ) -> Iterator[sqlite3.Row]:
+    def _queryGen2CalibRegistry(
+        self, db: sqlite3.Connection, datasetType: DatasetType, calibDate: str
+    ) -> Iterator[sqlite3.Row]:
         """Query the Gen2 calibration registry for the validity ranges and
         optionally detectors and filters associated with the given dataset type
         and ``calibDate``.
@@ -130,21 +137,30 @@ class CalibRepoConverter(RepoConverter):
             fields.append("NULL AS filter")
         tables = self.mapper.mappings[datasetType.name].tables
         if tables is None or len(tables) == 0:
-            self.task.log.warning("Could not extract calibration ranges for %s in %s; "
-                                  "no tables in Gen2 mapper.",
-                                  datasetType.name, self.root, tables[0])
+            self.task.log.warning(
+                "Could not extract calibration ranges for %s in %s; no tables in Gen2 mapper.",
+                datasetType.name,
+                self.root,
+                tables[0],
+            )
             return
         query = f"SELECT DISTINCT {', '.join(fields)} FROM {tables[0]} WHERE calibDate = ?;"
         try:
             results = db.execute(query, (calibDate,))
         except sqlite3.OperationalError as e:
-            self.task.log.warning("Could not extract calibration ranges for %s in %s from table %s: %r",
-                                  datasetType.name, self.root, tables[0], e)
+            self.task.log.warning(
+                "Could not extract calibration ranges for %s in %s from table %s: %r",
+                datasetType.name,
+                self.root,
+                tables[0],
+                e,
+            )
             return
         yield from results
 
-    def _finish(self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]],
-                count: int) -> None:
+    def _finish(
+        self, datasets: Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]], count: int
+    ) -> None:
         # Docstring inherited from RepoConverter.
         # Read Gen2 calibration repository and extract validity ranges for
         # all datasetType + calibDate combinations we ingested.
@@ -153,8 +169,9 @@ class CalibRepoConverter(RepoConverter):
         # We check explicitly because sqlite will try to create the
         # missing file if it can.
         if not os.path.exists(calibFile):
-            raise RuntimeError("Attempting to convert calibrations but no registry database"
-                               f" found in {self.root}")
+            raise RuntimeError(
+                f"Attempting to convert calibrations but no registry database found in {self.root}"
+            )
 
         # Initially we collate timespans for each dataId + dataset type
         # combination. This allows us to check for small gaps or overlaps
@@ -174,13 +191,13 @@ class CalibRepoConverter(RepoConverter):
                 if "physical_filter" in datasetType.dimensions.names:
                     gen2keys["filter"] = str
                 translator = self.instrument.makeDataIdTranslatorFactory().makeMatching(
-                    datasetType.name,
-                    gen2keys,
-                    instrument=self.instrument.getName()
+                    datasetType.name, gen2keys, instrument=self.instrument.getName()
                 )
                 for calibDate, datasetsForCalibDate in datasetsByCalibDate.items():
-                    assert calibDate is not None, ("datasetType.isCalibration() is set by "
-                                                   "the presence of calibDate in the Gen2 template")
+                    assert calibDate is not None, (
+                        "datasetType.isCalibration() is set by "
+                        "the presence of calibDate in the Gen2 template"
+                    )
                     # Build a mapping that lets us find DatasetRefs by data ID,
                     # for this DatasetType and calibDate.  We know there is
                     # only one ref for each data ID (given DatasetType and
@@ -224,7 +241,9 @@ class CalibRepoConverter(RepoConverter):
                             # that case there may be a _lot_ of these messages.
                             self.task.log.debug(
                                 "Gen2 calibration registry entry has no dataset: %s for calibDate=%s, %s.",
-                                datasetType.name, calibDate, dataId
+                                datasetType.name,
+                                calibDate,
+                                dataId,
                             )
                     progressBar.update(len(datasetsForCalibDate))
 
@@ -261,18 +280,20 @@ class CalibRepoConverter(RepoConverter):
                         info_messages.add(msg)
                     else:
                         # Overlap of timespans
-                        msg = f"Calibration validity overlap of {abs(delta).to(u.s)} removed for period " \
+                        msg = (
+                            f"Calibration validity overlap of {abs(delta).to(u.s)} removed for period "
                             f"{timespan.begin} to {timespan_prev.end}"
+                        )
                         warn_messages.add(msg)
 
-                    self.task.log.debug("Correcting validity range for %s with end %s",
-                                        ref_prev, timespan_prev.end)
+                    self.task.log.debug(
+                        "Correcting validity range for %s with end %s", ref_prev, timespan_prev.end
+                    )
 
                     # Assume this gap is down to convention in gen2.
                     # We have to adjust the previous timespan to fit
                     # since we always trust validStart.
-                    timespan_prev = Timespan(begin=timespan_prev.begin,
-                                             end=timespan.begin)
+                    timespan_prev = Timespan(begin=timespan_prev.begin, end=timespan.begin)
                 # Store the previous timespan and ref since it has now
                 # been verified
                 refsByTimespan[timespan_prev].append(ref_prev)

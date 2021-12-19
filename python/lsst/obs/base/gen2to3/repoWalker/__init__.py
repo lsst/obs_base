@@ -22,13 +22,14 @@
 
 __all__ = (
     "RepoWalker",  # The only public interface to the functionality in this
-                   # package.
+    # package.
 )
+
+from .builders import *
+from .handlers import *
+from .parser import *
+from .scanner import *
 
 # Other classes should appear in the docs, because maintainers will want to
 # understand them, but don't need to be exported to the next level.
 from .walker import *
-from .parser import *
-from .scanner import *
-from .handlers import *
-from .builders import *

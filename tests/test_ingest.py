@@ -27,14 +27,12 @@ import tempfile
 import unittest
 
 import lsst.daf.butler.tests as butlerTests
-from lsst.daf.butler import DatasetType, Butler, DataCoordinate, Config
+from lsst.daf.butler import Butler, Config, DataCoordinate, DatasetType
 from lsst.daf.butler.registry import ConflictingDefinitionError
-from lsst.utils.introspection import get_full_type_name
-
+from lsst.obs.base import RawIngestTask
 from lsst.obs.base.ingest_tests import IngestTestBase
 from lsst.obs.base.instrument_tests import DummyCam
-from lsst.obs.base import RawIngestTask
-
+from lsst.utils.introspection import get_full_type_name
 
 TESTDIR = os.path.abspath(os.path.dirname(__file__))
 INGESTDIR = os.path.join(TESTDIR, "data", "ingest")
@@ -45,10 +43,13 @@ class DummyCamRawIngestTask(RawIngestTask):
     a non-Exposure."""
 
     def getDatasetType(self):
-        """Return the DatasetType of the datasets ingested by this Task.
-        """
-        return DatasetType("raw_dict", ("instrument", "detector", "exposure"), "StructuredDataDict",
-                           universe=self.butler.registry.dimensions)
+        """Return the DatasetType of the datasets ingested by this Task."""
+        return DatasetType(
+            "raw_dict",
+            ("instrument", "detector", "exposure"),
+            "StructuredDataDict",
+            universe=self.butler.registry.dimensions,
+        )
 
 
 class RawIngestTestCase(IngestTestBase, unittest.TestCase):
@@ -67,14 +68,10 @@ class RawIngestTestCase(IngestTestBase, unittest.TestCase):
         butler = Butler(self.root, collections=[self.outputRun])
         return {
             DataCoordinate.standardize(
-                instrument="DummyCam",
-                visit=100,
-                universe=butler.registry.dimensions
+                instrument="DummyCam", visit=100, universe=butler.registry.dimensions
             ): [
                 DataCoordinate.standardize(
-                    instrument="DummyCam",
-                    exposure=100,
-                    universe=butler.registry.dimensions
+                    instrument="DummyCam", exposure=100, universe=butler.registry.dimensions
                 )
             ]
         }
@@ -86,6 +83,7 @@ class RawIngestTestCase(IngestTestBase, unittest.TestCase):
 
 class RawIngestImpliedIndexTestCase(RawIngestTestCase):
     """Test ingest using JSON index files."""
+
     file = os.path.join(INGESTDIR, "indexed_data", "dataset_1.yaml")
 
 
@@ -127,8 +125,7 @@ datastore:
         self.assertEqual(len(datasets), 1)
 
         # Now parallelized.
-        files = [self.good_file,
-                 os.path.join(INGESTDIR, "sidecar_data", "dataset_1.yaml")]
+        files = [self.good_file, os.path.join(INGESTDIR, "sidecar_data", "dataset_1.yaml")]
         self.task.run(files, processes=2, run=self.outputRun)
         datasets = list(self.butler.registry.queryDatasets("raw_dict", collections=self.outputRun))
         self.assertEqual(len(datasets), 2)
@@ -150,8 +147,10 @@ datastore:
 
         # Now with two index files that point to the same files.
         # Look for the warning from duplication.
-        files = [os.path.join(INGESTDIR, "indexed_data", "_index.json"),
-                 os.path.join(INGESTDIR, "indexed_data", "translated_subdir", "_index.json")]
+        files = [
+            os.path.join(INGESTDIR, "indexed_data", "_index.json"),
+            os.path.join(INGESTDIR, "indexed_data", "translated_subdir", "_index.json"),
+        ]
         new_run = self.outputRun + "c"
 
         with self.assertLogs(level="WARNING") as cm:
@@ -164,8 +163,10 @@ datastore:
         # Again with an index file of metadata and one of translated.
         # Translated should win.
         # Put the metadata one first to test that order is preserved.
-        files = [os.path.join(INGESTDIR, "indexed_data", "metadata_subdir", "_index.json"),
-                 os.path.join(INGESTDIR, "indexed_data", "_index.json")]
+        files = [
+            os.path.join(INGESTDIR, "indexed_data", "metadata_subdir", "_index.json"),
+            os.path.join(INGESTDIR, "indexed_data", "_index.json"),
+        ]
         new_run = self.outputRun + "d"
         with self.assertLogs(level="WARNING") as cm:
             self.task.run(files, run=new_run)
@@ -175,8 +176,10 @@ datastore:
         # Again with an index file of metadata and one of translated.
         # Translated should win.
         # Put the metadata one first to test that order is preserved.
-        files = [os.path.join(INGESTDIR, "indexed_data", "_index.json"),
-                 os.path.join(INGESTDIR, "indexed_data", "metadata_subdir", "_index.json")]
+        files = [
+            os.path.join(INGESTDIR, "indexed_data", "_index.json"),
+            os.path.join(INGESTDIR, "indexed_data", "metadata_subdir", "_index.json"),
+        ]
 
         new_run = self.outputRun + "e"
         with self.assertLogs(level="WARNING") as cm:
@@ -296,10 +299,13 @@ datastore:
 
         # Need our own task instance
         config = RawIngestTask.ConfigClass()
-        self.task = DummyCamRawIngestTask(config=config, butler=self.butler,
-                                          on_metadata_failure=on_metadata_failure,
-                                          on_success=on_success,
-                                          on_ingest_failure=on_ingest_failure)
+        self.task = DummyCamRawIngestTask(
+            config=config,
+            butler=self.butler,
+            on_metadata_failure=on_metadata_failure,
+            on_success=on_success,
+            on_ingest_failure=on_ingest_failure,
+        )
 
         files = [self.good_file, self.bad_metadata_file, self.bad_instrument_file]
 
@@ -370,7 +376,7 @@ datastore:
         """
         config = RawIngestTask.ConfigClass(failFast=True)
         task = DummyCamRawIngestTask(config=config, butler=self.butler)
-        with open(os.path.join(INGESTDIR, "sidecar_data", "dataset_1.json"), 'r') as file:
+        with open(os.path.join(INGESTDIR, "sidecar_data", "dataset_1.json"), "r") as file:
             metadata = json.load(file)
         # Modify unique identifiers to avoid clashes with ingests from
         # other test methods in this test case, because those share a a
@@ -391,19 +397,22 @@ datastore:
             with open(sidecar_filename, "w") as sidecar_file:
                 json.dump(metadata, sidecar_file)
             task.run([raw_filename], run=self.outputRun)
-            (record1,) = set(self.butler.registry.queryDimensionRecords("exposure", instrument="DummyCam",
-                                                                        exposure=500))
+            (record1,) = set(
+                self.butler.registry.queryDimensionRecords("exposure", instrument="DummyCam", exposure=500)
+            )
             self.assertEqual(record1.exposure_time, metadata["exposure_time"])
             # Modify some metadata and repeat the process to update the
             # exposure.
             metadata["exposure_time"] *= 2.0
             with open(sidecar_filename, "w") as sidecar_file:
                 json.dump(metadata, sidecar_file)
-            task.run([raw_filename], run=self.outputRun, skip_existing_exposures=True,
-                     update_exposure_records=True)
-            (record2,) = set(self.butler.registry.queryDimensionRecords("exposure", instrument="DummyCam",
-                                                                        exposure=500))
-            self.assertEqual(record2.exposure_time, record1.exposure_time*2)
+            task.run(
+                [raw_filename], run=self.outputRun, skip_existing_exposures=True, update_exposure_records=True
+            )
+            (record2,) = set(
+                self.butler.registry.queryDimensionRecords("exposure", instrument="DummyCam", exposure=500)
+            )
+            self.assertEqual(record2.exposure_time, record1.exposure_time * 2)
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
 

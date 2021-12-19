@@ -23,6 +23,7 @@ __all__ = ["MakeRawVisitInfoViaObsInfo"]
 
 import logging
 import warnings
+
 import astropy.units
 import astropy.utils.exceptions
 from astropy.utils import iers
@@ -30,18 +31,18 @@ from astropy.utils import iers
 # Prefer the standard pyerfa over the Astropy version
 try:
     import erfa
+
     ErfaWarning = erfa.ErfaWarning
 except ImportError:
     import astropy._erfa as erfa
+
     ErfaWarning = None
 
 from astro_metadata_translator import ObservationInfo
-
-from lsst.daf.base import DateTime
-from lsst.geom import degrees, radians
-from lsst.afw.image import VisitInfo, RotType
 from lsst.afw.coord import Observatory, Weather
-from lsst.geom import SpherePoint
+from lsst.afw.image import RotType, VisitInfo
+from lsst.daf.base import DateTime
+from lsst.geom import SpherePoint, degrees, radians
 
 
 class MakeRawVisitInfoViaObsInfo:
@@ -136,7 +137,7 @@ class MakeRawVisitInfoViaObsInfo:
         # VisitInfo uses the middle of the observation for the date
         if obsInfo.datetime_begin is not None and obsInfo.datetime_end is not None:
             tdelta = obsInfo.datetime_end - obsInfo.datetime_begin
-            middle = obsInfo.datetime_begin + 0.5*tdelta
+            middle = obsInfo.datetime_begin + 0.5 * tdelta
 
             # DateTime uses nanosecond resolution, regardless of the resolution
             # of the original date
@@ -172,18 +173,16 @@ class MakeRawVisitInfoViaObsInfo:
         # Coordinates
         if obsInfo.tracking_radec is not None:
             icrs = obsInfo.tracking_radec.transform_to("icrs")
-            argDict["boresightRaDec"] = SpherePoint(icrs.ra.degree,
-                                                    icrs.dec.degree, units=degrees)
+            argDict["boresightRaDec"] = SpherePoint(icrs.ra.degree, icrs.dec.degree, units=degrees)
 
         altaz = obsInfo.altaz_begin
         if altaz is not None:
-            argDict["boresightAzAlt"] = SpherePoint(altaz.az.degree,
-                                                    altaz.alt.degree, units=degrees)
+            argDict["boresightAzAlt"] = SpherePoint(altaz.az.degree, altaz.alt.degree, units=degrees)
 
         argDict["boresightAirmass"] = obsInfo.boresight_airmass
 
         if obsInfo.boresight_rotation_angle is not None:
-            argDict["boresightRotAngle"] = obsInfo.boresight_rotation_angle.degree*degrees
+            argDict["boresightRotAngle"] = obsInfo.boresight_rotation_angle.degree * degrees
 
         if obsInfo.boresight_rotation_coord is not None:
             rotType = RotType.UNKNOWN
@@ -205,9 +204,11 @@ class MakeRawVisitInfoViaObsInfo:
 
         if obsInfo.location is not None:
             geolocation = obsInfo.location.to_geodetic()
-            argDict["observatory"] = Observatory(geolocation.lon.degree*degrees,
-                                                 geolocation.lat.degree*degrees,
-                                                 geolocation.height.to_value("m"))
+            argDict["observatory"] = Observatory(
+                geolocation.lon.degree * degrees,
+                geolocation.lat.degree * degrees,
+                geolocation.height.to_value("m"),
+            )
 
         for key in list(argDict.keys()):  # use a copy because we may delete items
             if argDict[key] is None:

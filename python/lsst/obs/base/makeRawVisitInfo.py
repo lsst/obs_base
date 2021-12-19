@@ -21,21 +21,20 @@
 
 __all__ = ["MakeRawVisitInfo"]
 
-import math
 import logging
-import numpy as np
+import math
 
 import astropy.coordinates
 import astropy.time
 import astropy.units
-
+import numpy as np
+from lsst.afw.image import VisitInfo
 from lsst.daf.base import DateTime
 from lsst.geom import degrees
-from lsst.afw.image import VisitInfo
 
 PascalPerMillibar = 100.0
 PascalPerMmHg = 133.322387415  # from Wikipedia; exact
-PascalPerTorr = 101325.0/760.0  # from Wikipedia; exact
+PascalPerTorr = 101325.0 / 760.0  # from Wikipedia; exact
 KelvinMinusCentigrade = 273.15  # from Wikipedia; exact
 
 # have these read at need, to avoid unexpected errors later
@@ -198,7 +197,7 @@ class MakeRawVisitInfo:
             self.log.warning("offsetSec is invalid; cannot offset date")
             return date
         dateNSec = date.nsecs(DateTime.TAI)
-        return DateTime(dateNSec + int(offsetSec*1.0e9), DateTime.TAI)
+        return DateTime(dateNSec + int(offsetSec * 1.0e9), DateTime.TAI)
 
     def popItem(self, md, key, default=None):
         """Return an item of metadata.
@@ -282,10 +281,10 @@ class MakeRawVisitInfo:
         angleStr = self.popItem(md, key, default=None)
         if angleStr is not None:
             try:
-                return (astropy.coordinates.Angle(angleStr, unit=units).deg)*degrees
+                return (astropy.coordinates.Angle(angleStr, unit=units).deg) * degrees
             except Exception as e:
                 self.log.warning("Could not intepret %s value %r as an angle: %s", key, angleStr, e)
-        return NaN*degrees
+        return NaN * degrees
 
     def popIsoDate(self, md, key, timesys=None):
         """Pop a FITS ISO date as an lsst.daf.base.DateTime
@@ -373,7 +372,7 @@ class MakeRawVisitInfo:
     @staticmethod
     def altitudeFromZenithDistance(zd):
         """Convert zenith distance to altitude (lsst.afw.geom.Angle)"""
-        return 90*degrees - zd
+        return 90 * degrees - zd
 
     @staticmethod
     def centigradeFromKelvin(tempK):
@@ -382,9 +381,8 @@ class MakeRawVisitInfo:
 
     @staticmethod
     def pascalFromMBar(mbar):
-        """Convert pressure from millibars to Pascals
-        """
-        return mbar*PascalPerMillibar
+        """Convert pressure from millibars to Pascals"""
+        return mbar * PascalPerMillibar
 
     @staticmethod
     def pascalFromMmHg(mmHg):
@@ -397,13 +395,12 @@ class MakeRawVisitInfo:
         https://github.com/astropy/astropy/issues/5350#issuecomment-248612824):
         astropy.units.cds.mmHg.to(astropy.units.pascal, mmHg)
         """
-        return mmHg*PascalPerMmHg
+        return mmHg * PascalPerMmHg
 
     @staticmethod
     def pascalFromTorr(torr):
-        """Convert pressure from torr to Pascals
-        """
-        return torr*PascalPerTorr
+        """Convert pressure from torr to Pascals"""
+        return torr * PascalPerTorr
 
     @staticmethod
     def defaultMetadata(value, defaultValue, minimum=None, maximum=None):

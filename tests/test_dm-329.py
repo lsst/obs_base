@@ -19,28 +19,25 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import unittest
 import os
+import unittest
 
-import lsst.utils.tests
 import lsst.afw.image
 import lsst.daf.persistence as dafPersist
 import lsst.obs.base
-
+import lsst.utils.tests
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
 
 
 class MinMapper2(lsst.obs.base.CameraMapper):
-    packageName = 'larry'
+    packageName = "larry"
 
     def __init__(self):
-        policy = dafPersist.Policy(os.path.join(ROOT, 'MinMapper2.yaml'))
-        lsst.obs.base.CameraMapper.__init__(self,
-                                            policy=policy,
-                                            repositoryDir=ROOT,
-                                            root=ROOT,
-                                            registry=os.path.join(ROOT, 'cfhtls.sqlite3'))
+        policy = dafPersist.Policy(os.path.join(ROOT, "MinMapper2.yaml"))
+        lsst.obs.base.CameraMapper.__init__(
+            self, policy=policy, repositoryDir=ROOT, root=ROOT, registry=os.path.join(ROOT, "cfhtls.sqlite3")
+        )
         return
 
     def _transformId(self, dataId):
@@ -55,7 +52,6 @@ class MinMapper2(lsst.obs.base.CameraMapper):
 
 
 class DM329TestCase(unittest.TestCase):
-
     def testHdu(self):
         mapper = MinMapper2()
         butler = dafPersist.ButlerFactory(mapper=mapper).create()
@@ -73,9 +69,10 @@ class DM329TestCase(unittest.TestCase):
             self.assertIsInstance(image, lsst.afw.image.ImageF)
             self.assertEqual(image.getHeight(), 2024)
             self.assertEqual(image.getWidth(), 2248)
-            self.assertEqual(image[200, 25, lsst.afw.image.LOCAL], (0.0, 20.0, 0.0)[i-1])
-            self.assertAlmostEqual(image[200, 26, lsst.afw.image.LOCAL], (1.20544, 0.0, 5.82185)[i-1],
-                                   places=5)
+            self.assertEqual(image[200, 25, lsst.afw.image.LOCAL], (0.0, 20.0, 0.0)[i - 1])
+            self.assertAlmostEqual(
+                image[200, 26, lsst.afw.image.LOCAL], (1.20544, 0.0, 5.82185)[i - 1], places=5
+            )
 
 
 class MemoryTester(lsst.utils.tests.MemoryTestCase):

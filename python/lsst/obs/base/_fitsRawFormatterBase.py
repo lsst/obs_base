@@ -21,21 +21,20 @@
 
 __all__ = ("FitsRawFormatterBase",)
 
-from abc import abstractmethod
-from deprecated.sphinx import deprecated
 import logging
-
-from astro_metadata_translator import fix_header, ObservationInfo
+from abc import abstractmethod
 
 import lsst.afw.fits
 import lsst.afw.geom
 import lsst.afw.image
-from lsst.utils.classes import cached_getter
+from astro_metadata_translator import ObservationInfo, fix_header
+from deprecated.sphinx import deprecated
 from lsst.daf.butler import FileDescriptor
+from lsst.utils.classes import cached_getter
 
 from .formatters.fitsExposure import FitsImageFormatterBase, standardizeAmplifierParameters
 from .makeRawVisitInfoViaObsInfo import MakeRawVisitInfoViaObsInfo
-from .utils import createInitialSkyWcsFromBoresight, InitialSkyWcsError
+from .utils import InitialSkyWcsError, createInitialSkyWcsFromBoresight
 
 log = logging.getLogger(__name__)
 
@@ -110,8 +109,10 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         # Docstring inherited.
         parameters = super().checked_parameters
         if "bbox" in parameters:
-            raise TypeError("Raw formatters do not support reading arbitrary subimages, as some "
-                            "implementations may be assembled on-the-fly.")
+            raise TypeError(
+                "Raw formatters do not support reading arbitrary subimages, as some "
+                "implementations may be assembled on-the-fly."
+            )
         return parameters
 
     def readImage(self):
@@ -167,8 +168,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         return md
 
     def stripMetadata(self):
-        """Remove metadata entries that are parsed into components.
-        """
+        """Remove metadata entries that are parsed into components."""
         self._createSkyWcsFromMetadata()
 
     def makeVisitInfo(self):
@@ -233,13 +233,15 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             msg = "No VisitInfo; cannot access boresight information. Defaulting to metadata-based SkyWcs."
             log.warning(msg)
             if skyWcs is None:
-                raise InitialSkyWcsError("Failed to create both metadata and boresight-based SkyWcs."
-                                         "See warnings in log messages for details.")
+                raise InitialSkyWcsError(
+                    "Failed to create both metadata and boresight-based SkyWcs."
+                    "See warnings in log messages for details."
+                )
             return skyWcs
 
-        return self.makeRawSkyWcsFromBoresight(visitInfo.getBoresightRaDec(),
-                                               visitInfo.getBoresightRotAngle(),
-                                               detector)
+        return self.makeRawSkyWcsFromBoresight(
+            visitInfo.getBoresightRaDec(), visitInfo.getBoresightRotAngle(), detector
+        )
 
     @classmethod
     def makeRawSkyWcsFromBoresight(cls, boresight, orientation, detector):
@@ -281,8 +283,11 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             return None
 
     # TODO: remove in DM-27177
-    @deprecated(reason="Replaced with makeFilterLabel. Will be removed after v22.",
-                version="v22", category=FutureWarning)
+    @deprecated(
+        reason="Replaced with makeFilterLabel. Will be removed after v22.",
+        version="v22",
+        category=FutureWarning,
+    )
     def makeFilter(self):
         """Construct a Filter from metadata.
 
@@ -382,8 +387,9 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         if self._observationInfo is None:
             location = self.fileDescriptor.location
             path = location.path if location is not None else None
-            self._observationInfo = ObservationInfo(self.metadata, translator_class=self.translatorClass,
-                                                    filename=path)
+            self._observationInfo = ObservationInfo(
+                self.metadata, translator_class=self.translatorClass, filename=path
+            )
         return self._observationInfo
 
     def attachComponentsFromMetadata(self, exposure):

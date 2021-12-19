@@ -24,8 +24,17 @@ from lsst.pipe.base.configOverrides import ConfigOverrides
 from lsst.utils import doImport
 
 
-def ingestRaws(repo, locations, regex, output_run, config=None, config_file=None, transfer="auto",
-               processes=1, ingest_task="lsst.obs.base.RawIngestTask"):
+def ingestRaws(
+    repo,
+    locations,
+    regex,
+    output_run,
+    config=None,
+    config_file=None,
+    transfer="auto",
+    processes=1,
+    ingest_task="lsst.obs.base.RawIngestTask",
+):
     """Ingests raw frames into the butler registry
 
     Parameters

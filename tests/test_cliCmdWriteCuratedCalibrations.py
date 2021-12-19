@@ -42,19 +42,15 @@ class WriteCuratedCalibrationsTest(CliCmdTestBase, unittest.TestCase):
 
     def test_repoBasic(self):
         """Test the most basic required arguments."""
-        self.run_test(["write-curated-calibrations", "here", "a.b.c",
-                       "--collection", "foo"],
-                      self.makeExpected(repo="here",
-                                        instrument="a.b.c",
-                                        collection="foo",
-                                        labels=()))
+        self.run_test(
+            ["write-curated-calibrations", "here", "a.b.c", "--collection", "foo"],
+            self.makeExpected(repo="here", instrument="a.b.c", collection="foo", labels=()),
+        )
 
     def test_missing(self):
         """test a missing argument"""
         self.run_missing(["write-curated-calibrations"], "Missing argument ['\"]REPO['\"]")
-        self.run_missing(
-            ["write-curated-calibrations", "here"], "Missing argument ['\"]INSTRUMENT['\"]"
-        )
+        self.run_missing(["write-curated-calibrations", "here"], "Missing argument ['\"]INSTRUMENT['\"]")
 
 
 if __name__ == "__main__":

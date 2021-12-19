@@ -26,23 +26,22 @@ lsst.log, and only uses it if it has been setup by another package."""
 
 import unittest
 
+import lsst.log
 from lsst.daf.butler.cli.cliLog import CliLog
 from lsst.daf.butler.tests import CliLogTestBase
-import lsst.log
 
 
-class CliLogTestCase(CliLogTestBase,
-                     unittest.TestCase):
+class CliLogTestCase(CliLogTestBase, unittest.TestCase):
     """Test log initialization, reset, and setting log levels on python
     `logging` and `lsst.log`.
 
     This test also runs in daf_butler but will not test `lsst.log` in CI
     because daf_butler does not directly depend on that package."""
+
     pass
 
 
 class ConvertLsstLogLevelTestCase(unittest.TestCase):
-
     def test_convertToLsstLogLevel(self):
         """Test that the log levels accepted by the log_level_option are
         translated to lsst.log levels correctly."""

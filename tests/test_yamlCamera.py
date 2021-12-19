@@ -19,9 +19,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import pkg_resources
 import unittest
 
+import pkg_resources
 from lsst.obs.base.yamlCamera import makeCamera
 
 

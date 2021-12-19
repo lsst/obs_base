@@ -21,7 +21,8 @@
 import logging
 
 from lsst.daf.butler import Butler
-from lsst.obs.base import DefineVisitsTask, DefineVisitsConfig
+from lsst.obs.base import DefineVisitsConfig, DefineVisitsTask
+
 from ..utils import getInstrument
 
 log = logging.getLogger("lsst.obs.base.defineVisits")
@@ -72,6 +73,10 @@ def defineVisits(repo, config_file, collections, instrument, processes=1, raw_na
 
     # Assume the dataset type is "raw" -- this is required to allow this
     # query to filter out exposures not relevant to the specified collection.
-    task.run(butler.registry.queryDataIds(["exposure"], dataId={"instrument": instr.getName()},
-                                          collections=collections, datasets=raw_name),
-             collections=collections, processes=processes)
+    task.run(
+        butler.registry.queryDataIds(
+            ["exposure"], dataId={"instrument": instr.getName()}, collections=collections, datasets=raw_name
+        ),
+        collections=collections,
+        processes=processes,
+    )

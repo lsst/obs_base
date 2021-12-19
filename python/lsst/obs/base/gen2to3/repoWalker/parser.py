@@ -27,8 +27,8 @@ __all__ = ["PathElementParser"]
 
 
 import logging
-from abc import ABC, abstractmethod
 import re
+from abc import ABC, abstractmethod
 from typing import ClassVar, Dict, Optional
 
 
@@ -63,6 +63,7 @@ class FixedRegEx(FormattableRegEx):
     regex : `re.Pattern`
         The fixed regular expression to return.
     """
+
     def __init__(self, regex: re.Pattern):
         self.regex = regex
 
@@ -80,25 +81,23 @@ class SubstitutableRegEx:
     """An implementation of `FormattableRegEx` formed from a concatenation of
     actual regular terms and %-style format strings.
     """
+
     def __init__(self):
         self._terms = []
 
     __slots__ = ("_terms",)
 
     def addRegexTerm(self, regex: str):
-        """Add a regular expression term.
-        """
+        """Add a regular expression term."""
         self._terms.append((regex, False))
 
     def addSubstitutionTerm(self, template: str):
-        """Add a %-style format template term.
-        """
+        """Add a %-style format template term."""
         self._terms.append((template, True))
 
     def format(self, dataId: dict) -> re.Pattern:
         # Docstring inherited from FormattableRegEx.
-        return re.compile("".join(re.escape(s % dataId) if isSub else s
-                                  for s, isSub in self._terms))
+        return re.compile("".join(re.escape(s % dataId) if isSub else s for s, isSub in self._terms))
 
     def simplify(self) -> FormattableRegEx:
         """Return a possibly-simplified version of this object.
@@ -130,8 +129,10 @@ class PathElementParser:
         template.  Values for these keys must be provided via the
         ``lastDataId`` argument when calling `parse`.
     """
-    def __init__(self, template: str, allKeys: Dict[str, type], *,
-                 previousKeys: Optional[Dict[str, type]] = None):
+
+    def __init__(
+        self, template: str, allKeys: Dict[str, type], *, previousKeys: Optional[Dict[str, type]] = None
+    ):
         self.template = template
         self.keys = {}
         # For each template path element, we iterate over each %-tagged
@@ -141,7 +142,7 @@ class PathElementParser:
         for match in self.TEMPLATE_RE.finditer(self.template):
             # Copy the (escaped) regular string between the last substitution
             # and this one, escaping it appropriately.
-            self.regex.addRegexTerm(re.escape(self.template[last:match.start()]))
+            self.regex.addRegexTerm(re.escape(self.template[last : match.start()]))
             # Pull out the data ID key from the name used in the
             # substitution string.  Use that and the substition
             # type to come up with the pattern to use in the regex.
@@ -217,8 +218,13 @@ class PathElementParser:
         for commonKey in lastDataId.keys() & newDataId.keys():
             if newDataId[commonKey] != lastDataId[commonKey]:
                 if log is not None:
-                    log.warning("Inconsistent value %s=%r when parsing %r with %r.",
-                                commonKey, newDataId[commonKey], name, lastDataId)
+                    log.warning(
+                        "Inconsistent value %s=%r when parsing %r with %r.",
+                        commonKey,
+                        newDataId[commonKey],
+                        name,
+                        lastDataId,
+                    )
                 return None
         newDataId.update(lastDataId)
         return newDataId

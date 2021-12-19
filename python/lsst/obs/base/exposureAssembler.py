@@ -26,7 +26,6 @@ import logging
 # Need to enable PSFs to be instantiated
 import lsst.afw.detection  # noqa: F401
 from lsst.afw.image import makeExposure, makeMaskedImage
-
 from lsst.daf.butler import StorageClassDelegate
 
 log = logging.getLogger(__name__)
@@ -35,9 +34,21 @@ log = logging.getLogger(__name__)
 class ExposureAssembler(StorageClassDelegate):
 
     EXPOSURE_COMPONENTS = set(("image", "variance", "mask", "wcs", "psf"))
-    EXPOSURE_INFO_COMPONENTS = set(("apCorrMap", "coaddInputs", "photoCalib", "metadata",
-                                    "filterLabel", "transmissionCurve", "visitInfo",
-                                    "detector", "validPolygon", "summaryStats", "id"))
+    EXPOSURE_INFO_COMPONENTS = set(
+        (
+            "apCorrMap",
+            "coaddInputs",
+            "photoCalib",
+            "metadata",
+            "filterLabel",
+            "transmissionCurve",
+            "visitInfo",
+            "detector",
+            "validPolygon",
+            "summaryStats",
+            "id",
+        )
+    )
     EXPOSURE_READ_COMPONENTS = {"bbox", "dimensions", "xy0", "filter"}
 
     COMPONENT_MAP = {"bbox": "BBox", "xy0": "XY0"}
@@ -101,8 +112,9 @@ class ExposureAssembler(StorageClassDelegate):
                 composite = composite.getInfo()
             return super().getComponent(composite, self.COMPONENT_MAP.get(componentName, componentName))
         else:
-            raise AttributeError("Do not know how to retrieve component {} from {}".format(componentName,
-                                                                                           type(composite)))
+            raise AttributeError(
+                "Do not know how to retrieve component {} from {}".format(componentName, type(composite))
+            )
 
     def getValidComponents(self, composite):
         """Extract all non-None components from a composite.
@@ -161,8 +173,10 @@ class ExposureAssembler(StorageClassDelegate):
         included in the returned components.
         """
         if not self.storageClass.validateInstance(composite):
-            raise TypeError("Unexpected type mismatch between parent and StorageClass"
-                            " ({} != {})".format(type(composite), self.storageClass.pytype))
+            raise TypeError(
+                "Unexpected type mismatch between parent and StorageClass"
+                " ({} != {})".format(type(composite), self.storageClass.pytype)
+            )
 
         # Only look for components that are defined by the StorageClass
         components = {}
@@ -171,13 +185,14 @@ class ExposureAssembler(StorageClassDelegate):
         fromExposure = super().disassemble(composite, subset=expItems)
         components.update(fromExposure)
 
-        fromExposureInfo = super().disassemble(composite,
-                                               subset=expInfoItems, override=composite.getInfo())
+        fromExposureInfo = super().disassemble(composite, subset=expInfoItems, override=composite.getInfo())
         components.update(fromExposureInfo)
 
         if "psf" in components and not components["psf"].component.isPersistable():
-            log.warning("PSF of type %s is not persistable and has been ignored.",
-                        type(components["psf"].component).__name__)
+            log.warning(
+                "PSF of type %s is not persistable and has been ignored.",
+                type(components["psf"].component).__name__,
+            )
             del components["psf"]
 
         return components
@@ -221,8 +236,10 @@ class ExposureAssembler(StorageClassDelegate):
             exposure = makeExposure(maskedImage, wcs=wcs)
 
             if not isinstance(exposure, pytype):
-                raise RuntimeError("Unexpected type created in assembly;"
-                                   " was {} expected {}".format(type(exposure), pytype))
+                raise RuntimeError(
+                    "Unexpected type created in assembly;"
+                    " was {} expected {}".format(type(exposure), pytype)
+                )
 
         else:
             exposure = pytype()
@@ -254,8 +271,9 @@ class ExposureAssembler(StorageClassDelegate):
 
         # If we have some components left over that is a problem
         if components:
-            raise ValueError("The following components were not understood:"
-                             " {}".format(list(components.keys())))
+            raise ValueError(
+                "The following components were not understood: {}".format(list(components.keys()))
+            )
 
         return exposure
 

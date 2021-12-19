@@ -34,13 +34,15 @@ class ConvertTestCase(CliCmdTestBase, unittest.TestCase):
 
     @staticmethod
     def defaultExpected():
-        return dict(skymap_name=None,
-                    skymap_config=None,
-                    calibs=None,
-                    reruns=(),
-                    transfer="auto",
-                    processes=1,
-                    config_file=None)
+        return dict(
+            skymap_name=None,
+            skymap_config=None,
+            calibs=None,
+            reruns=(),
+            transfer="auto",
+            processes=1,
+            config_file=None,
+        )
 
     @staticmethod
     def command():
@@ -48,32 +50,47 @@ class ConvertTestCase(CliCmdTestBase, unittest.TestCase):
 
     def test_repoInstrGen2root(self):
         """Test the most basic required arguments."""
-        self.run_test(["convert", "here",
-                       "--gen2root", "from"],
-                      self.makeExpected(repo="here",
-                                        gen2root="from"))
+        self.run_test(
+            ["convert", "here", "--gen2root", "from"], self.makeExpected(repo="here", gen2root="from")
+        )
 
     def test_all(self):
         """Test all the arguments."""
-        self.run_test(["convert", "here",
-                       "--gen2root", "from",
-                       "--skymap-name", "sky",
-                       "--skymap-config", "/path/to/config",
-                       "--calibs", "path/to/calib/repo",
-                       "--reruns", "one,two",
-                       "--reruns", "three",
-                       "--transfer", "symlink",
-                       "--processes", 1,
-                       "--config-file", "/path/to/config"],
-                      self.makeExpected(repo="here",
-                                        gen2root="from",
-                                        skymap_name="sky",
-                                        skymap_config="/path/to/config",
-                                        calibs="path/to/calib/repo",
-                                        reruns=("one", "two", "three"),
-                                        transfer="symlink",
-                                        processes=1,
-                                        config_file="/path/to/config"))
+        self.run_test(
+            [
+                "convert",
+                "here",
+                "--gen2root",
+                "from",
+                "--skymap-name",
+                "sky",
+                "--skymap-config",
+                "/path/to/config",
+                "--calibs",
+                "path/to/calib/repo",
+                "--reruns",
+                "one,two",
+                "--reruns",
+                "three",
+                "--transfer",
+                "symlink",
+                "--processes",
+                1,
+                "--config-file",
+                "/path/to/config",
+            ],
+            self.makeExpected(
+                repo="here",
+                gen2root="from",
+                skymap_name="sky",
+                skymap_config="/path/to/config",
+                calibs="path/to/calib/repo",
+                reruns=("one", "two", "three"),
+                transfer="symlink",
+                processes=1,
+                config_file="/path/to/config",
+            ),
+        )
 
     def test_missing(self):
         """test a missing argument"""

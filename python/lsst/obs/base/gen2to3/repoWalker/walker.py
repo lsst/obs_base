@@ -25,27 +25,14 @@ from __future__ import annotations
 
 __all__ = ["RepoWalker"]
 
-from collections import defaultdict
 import logging
 import re
-from typing import (
-    Callable,
-    ClassVar,
-    Dict,
-    Iterable,
-    List,
-    Mapping,
-    Optional,
-    Union,
-)
+from collections import defaultdict
+from typing import Callable, ClassVar, Dict, Iterable, List, Mapping, Optional, Union
 
-from lsst.daf.butler import (
-    DataCoordinate,
-    DatasetType,
-    FileDataset,
-    Progress,
-)
-from .builders import BuilderTargetInput, BuilderSkipInput, BuilderTree
+from lsst.daf.butler import DataCoordinate, DatasetType, FileDataset, Progress
+
+from .builders import BuilderSkipInput, BuilderTargetInput, BuilderTree
 from .scanner import DirectoryScanner
 
 
@@ -71,11 +58,16 @@ class RepoWalker:
     progress : `Progress`, optional
         Object to use to report incremental progress.
     """
-    def __init__(self, inputs: Iterable[Union[Target, Skip]], *,
-                 fileIgnoreRegEx: Optional[re.Pattern] = None,
-                 dirIgnoreRegEx: Optional[re.Pattern] = None,
-                 log: Optional[logging.Logger] = None,
-                 progress: Optional[Progress] = None):
+
+    def __init__(
+        self,
+        inputs: Iterable[Union[Target, Skip]],
+        *,
+        fileIgnoreRegEx: Optional[re.Pattern] = None,
+        dirIgnoreRegEx: Optional[re.Pattern] = None,
+        log: Optional[logging.Logger] = None,
+        progress: Optional[Progress] = None,
+    ):
         super().__init__()
         if log is None:
             log = logging.getLogger("lsst.obs.base.gen2to3.repoWalker")
@@ -86,13 +78,16 @@ class RepoWalker:
             tree.insert(0, leaf)
             for key, dtype in leaf.keys.items():
                 if allKeys.setdefault(key, dtype) != dtype:
-                    raise ValueError(f"Multiple types for key '{key}': {dtype} "
-                                     f"(from {leaf.template}) vs. {allKeys[key]}.")
+                    raise ValueError(
+                        f"Multiple types for key '{key}': {dtype} "
+                        f"(from {leaf.template}) vs. {allKeys[key]}."
+                    )
         tree, messages, pruned = tree.prune()
         if not pruned:
             self._scanner = DirectoryScanner(log=self.log)
-            tree.fill(self._scanner, allKeys, {}, fileIgnoreRegEx=fileIgnoreRegEx,
-                      dirIgnoreRegEx=dirIgnoreRegEx)
+            tree.fill(
+                self._scanner, allKeys, {}, fileIgnoreRegEx=fileIgnoreRegEx, dirIgnoreRegEx=dirIgnoreRegEx
+            )
         else:
             # Nothing to do; just remember this for later to avoid disturbing
             # higher-level code with the fact that walk() will be a no-op.
@@ -108,8 +103,9 @@ class RepoWalker:
     explicitly skipped.
     """
 
-    def walk(self, root: str, *, predicate: Optional[Callable[[DataCoordinate], bool]]
-             ) -> Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]]:
+    def walk(
+        self, root: str, *, predicate: Optional[Callable[[DataCoordinate], bool]]
+    ) -> Mapping[DatasetType, Mapping[Optional[str], List[FileDataset]]]:
         """Walk a Gen2 repository root to extract Gen3 `FileDataset` instances
         from it.
 
@@ -132,8 +128,10 @@ class RepoWalker:
             (otherwise).  Nested dict values are lists of `FileDataset`.
         """
         if predicate is None:
+
             def predicate(dataId: DataCoordinate) -> bool:
                 return True
+
         datasets = defaultdict(lambda: defaultdict(list))
         if self._scanner is not None:
             self._scanner.scan(root, datasets, predicate=predicate)
