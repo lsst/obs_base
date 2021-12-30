@@ -32,9 +32,10 @@ import unittest
 
 import lsst.afw.cameraGeom
 import lsst.obs.base
-from lsst.daf.butler import Butler, ButlerURI
+from lsst.daf.butler import Butler
 from lsst.daf.butler.cli.butler import cli as butlerCli
 from lsst.daf.butler.cli.utils import LogCliRunner
+from lsst.resources import ResourcePath
 from lsst.utils import doImport
 
 from . import script
@@ -298,7 +299,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         self._ingestRaws(transfer="direct")
 
         # Check that it really did have a URI outside of datastore.
-        srcUri = ButlerURI(self.file, forceAbsolute=True)
+        srcUri = ResourcePath(self.file, forceAbsolute=True)
         butler = Butler(self.root, run=self.outputRun)
         datasets = list(butler.registry.queryDatasets(self.ingestDatasetTypeName, collections=self.outputRun))
         datastoreUri = butler.getURI(datasets[0])
@@ -335,7 +336,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         # In that scenario the file name being used for ingest can not
         # be modified and must have the same name as found in the index
         # file itself.
-        source_file_uri = ButlerURI(self.file)
+        source_file_uri = ResourcePath(self.file)
         index_file = source_file_uri.dirname().join("_index.json")
         pathInStore = source_file_uri.basename()
         if index_file.exists():
@@ -351,9 +352,9 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
         # If there is a sidecar file it needs to be linked in as well
         # since ingest code does not follow symlinks.
-        sidecar_uri = ButlerURI(source_file_uri).updatedExtension(".json")
+        sidecar_uri = ResourcePath(source_file_uri).updatedExtension(".json")
         if sidecar_uri.exists():
-            newSidecar = ButlerURI(newPath).updatedExtension(".json")
+            newSidecar = ResourcePath(newPath).updatedExtension(".json")
             os.symlink(sidecar_uri.ospath, newSidecar.ospath)
 
         # Run ingest with auto mode since that should automatically determine

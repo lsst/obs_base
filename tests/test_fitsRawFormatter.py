@@ -27,6 +27,7 @@ import lsst.afw.math
 import lsst.daf.base
 import lsst.daf.butler
 import lsst.geom
+import lsst.resources
 import lsst.utils.tests
 from astro_metadata_translator import FitsTranslator, StubTranslator
 from astro_metadata_translator.translators.helpers import tracking_from_degree_headers
@@ -215,7 +216,7 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
                             # and has the right parameters.
                             formatter = SimpleFitsRawFormatter(
                                 lsst.daf.butler.FileDescriptor(
-                                    lsst.daf.butler.Location(None, path=lsst.daf.butler.ButlerURI(tmpFile)),
+                                    lsst.daf.butler.Location(None, path=lsst.resources.ResourcePath(tmpFile)),
                                     lsst.daf.butler.StorageClassFactory().getStorageClass("ExposureI"),
                                     parameters=parameters,
                                 ),
