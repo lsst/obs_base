@@ -34,7 +34,6 @@ from astro_metadata_translator.indexing import process_index_data, process_sidec
 from lsst.afw.fits import readMetadata
 from lsst.daf.butler import (
     Butler,
-    ButlerURI,
     CollectionType,
     DataCoordinate,
     DatasetIdGenEnum,
@@ -48,6 +47,7 @@ from lsst.daf.butler import (
 )
 from lsst.pex.config import ChoiceField, Config, Field
 from lsst.pipe.base import Task
+from lsst.resources import ResourcePath
 from lsst.utils.timer import timeMethod
 
 from ._fitsRawFormatterBase import FitsRawFormatterBase
@@ -117,7 +117,7 @@ class RawFileData:
     (`list` of `RawFileDatasetInfo`)
     """
 
-    filename: ButlerURI
+    filename: ResourcePath
     """URI of the file this information was extracted from (`str`).
 
     This is the path prior to ingest, not the path after ingest.
@@ -301,7 +301,7 @@ class RawIngestTask(Task):
         ----------
         dataId : `lsst.daf.butler.DataCoordinate`
             The dataId associated with this dataset.
-        filename : `ButlerURI`
+        filename : `lsst.resources.ResourcePath`
             URI of file used for error reporting.
 
         Returns
@@ -333,12 +333,12 @@ class RawIngestTask(Task):
             FormatterClass = instrument.getRawFormatter(dataId)
         return instrument, FormatterClass
 
-    def extractMetadata(self, filename: ButlerURI) -> RawFileData:
+    def extractMetadata(self, filename: ResourcePath) -> RawFileData:
         """Extract and process metadata from a single raw file.
 
         Parameters
         ----------
-        filename : `ButlerURI`
+        filename : `lsst.resources.ResourcePath`
             URI to the file.
 
         Returns
@@ -435,7 +435,7 @@ class RawIngestTask(Task):
         ----------
         header : Mapping or `astro_metadata_translator.ObservationInfo`
             Header from the dataset or previously-translated content.
-        filename : `ButlerURI`
+        filename : `lsst.resources.ResourcePath`
             Filename to use for error messages.
 
         Returns
@@ -516,7 +516,7 @@ class RawIngestTask(Task):
 
         Parameters
         ----------
-        files : iterable over `ButlerURI`
+        files : iterable over `lsst.resources.ResourcePath`
             URIs to the files to be ingested.
 
         Returns
@@ -949,7 +949,7 @@ class RawIngestTask(Task):
 
         Parameters
         ----------
-        files : iterable over `ButlerURI`
+        files : iterable over `lsst.resources.ResourcePath`
             URIs to the files to be ingested.
         pool : `multiprocessing.Pool`, optional
             If not `None`, a process pool with which to parallelize some
@@ -1099,7 +1099,7 @@ class RawIngestTask(Task):
 
         Parameters
         ----------
-        files : iterable over `ButlerURI`, `str` or path-like objects
+        files : iterable `lsst.resources.ResourcePath`, `str` or path-like
             Paths to the files to be ingested.  Can refer to directories.
             Will be made absolute if they are not already.
         pool : `multiprocessing.Pool`, optional
@@ -1157,7 +1157,7 @@ class RawIngestTask(Task):
         n_exposures_failed = 0
         n_ingests_failed = 0
         if group_files:
-            for group in ButlerURI.findFileResources(files, file_filter, group_files):
+            for group in ResourcePath.findFileResources(files, file_filter, group_files):
                 new_refs, bad, n_exp, n_exp_fail, n_ingest_fail = self.ingestFiles(
                     group,
                     pool=pool,
@@ -1173,7 +1173,7 @@ class RawIngestTask(Task):
                 n_ingests_failed += n_ingest_fail
         else:
             refs, bad_files, n_exposures, n_exposures_failed, n_ingests_failed = self.ingestFiles(
-                ButlerURI.findFileResources(files, file_filter, group_files),
+                ResourcePath.findFileResources(files, file_filter, group_files),
                 pool=pool,
                 processes=processes,
                 run=run,

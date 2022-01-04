@@ -8,6 +8,7 @@ setupRequired(geom)
 setupRequired(daf_butler)
 setupRequired(pipe_base)
 setupOptional(skymap)
+setupRequired(resources)
 
 envPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
 envPrepend(PATH, ${PRODUCT_DIR}/bin)

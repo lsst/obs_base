@@ -29,9 +29,10 @@ from multiprocessing import Pool
 from typing import Iterable, List, Optional, Tuple
 
 from lsst.daf.butler import Butler as Butler3
-from lsst.daf.butler import ButlerURI, CollectionType, SkyPixDimension
+from lsst.daf.butler import CollectionType, SkyPixDimension
 from lsst.pex.config import Config, ConfigDictField, ConfigurableField, DictField, Field, ListField
 from lsst.pipe.base import Task
+from lsst.resources import ResourcePath
 from lsst.skymap import BaseSkyMap, skyMapRegistry
 
 from .._instrument import Instrument
@@ -134,8 +135,8 @@ class Rerun:
             return
         if self.chainName is None:
             if os.path.isabs(self.path):
-                rerunURI = ButlerURI(self.path)
-                rootURI = ButlerURI(root)
+                rerunURI = ResourcePath(self.path)
+                rootURI = ResourcePath(root)
                 chainName = rerunURI.relative_to(rootURI)
                 if chainName is None:
                     raise ValueError(
