@@ -49,6 +49,7 @@ class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
             processes=1,
             regex=fits_re,
             transfer="auto",
+            track_file_attrs=True,
         )
 
     @staticmethod
