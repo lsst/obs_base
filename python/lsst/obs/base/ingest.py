@@ -870,6 +870,7 @@ class RawIngestTask(Task):
         *,
         run: Optional[str] = None,
         skip_existing_exposures: bool = False,
+        track_file_attrs: bool = True,
     ) -> List[FileDataset]:
         """Ingest all raw files in one exposure.
 
@@ -894,6 +895,10 @@ class RawIngestTask(Task):
             processes may still attempt to ingest the same raw and conflict,
             causing a failure that prevents other raws from the same exposure
             from being ingested.
+        track_file_attrs : `bool`, optional
+            Control whether file attributes such as the size or checksum should
+            be tracked by the datastore. Whether this parameter is honored
+            depends on the specific datastore implentation.
 
         Returns
         -------
@@ -926,7 +931,13 @@ class RawIngestTask(Task):
             mode = DatasetIdGenEnum.DATAID_TYPE_RUN
         else:
             mode = DatasetIdGenEnum.UNIQUE
-        self.butler.ingest(*datasets, transfer=self.config.transfer, run=run, idGenerationMode=mode)
+        self.butler.ingest(
+            *datasets,
+            transfer=self.config.transfer,
+            run=run,
+            idGenerationMode=mode,
+            record_validation_info=track_file_attrs,
+        )
         return datasets
 
     def ingestFiles(
@@ -938,6 +949,7 @@ class RawIngestTask(Task):
         run: Optional[str] = None,
         skip_existing_exposures: bool = False,
         update_exposure_records: bool = False,
+        track_file_attrs: bool = True,
     ):
         """Ingest files into a Butler data repository.
 
@@ -977,6 +989,10 @@ class RawIngestTask(Task):
             AN ADVANCED OPTION THAT SHOULD ONLY BE USED TO FIX METADATA THAT IS
             KNOWN TO BE BAD.  This should usually be combined with
             ``skip_existing_exposures=True``.
+        track_file_attrs : `bool`, optional
+            Control whether file attributes such as the size or checksum should
+            be tracked by the datastore. Whether this parameter is honored
+            depends on the specific datastore implentation.
 
         Returns
         -------
@@ -1053,6 +1069,7 @@ class RawIngestTask(Task):
                     exposure,
                     run=this_run,
                     skip_existing_exposures=skip_existing_exposures,
+                    track_file_attrs=track_file_attrs,
                 )
             except Exception as e:
                 self._on_ingest_failure(exposure, e)
@@ -1088,6 +1105,7 @@ class RawIngestTask(Task):
         group_files: bool = True,
         skip_existing_exposures: bool = False,
         update_exposure_records: bool = False,
+        track_file_attrs: bool = True,
     ):
         """Ingest files into a Butler data repository.
 
@@ -1135,6 +1153,10 @@ class RawIngestTask(Task):
             AN ADVANCED OPTION THAT SHOULD ONLY BE USED TO FIX METADATA THAT IS
             KNOWN TO BE BAD.  This should usually be combined with
             ``skip_existing_exposures=True``.
+        track_file_attrs : `bool`, optional
+            Control whether file attributes such as the size or checksum should
+            be tracked by the datastore. Whether this parameter is honored
+            depends on the specific datastore implentation.
 
         Returns
         -------
@@ -1165,6 +1187,7 @@ class RawIngestTask(Task):
                     run=run,
                     skip_existing_exposures=skip_existing_exposures,
                     update_exposure_records=update_exposure_records,
+                    track_file_attrs=track_file_attrs,
                 )
                 refs.extend(new_refs)
                 bad_files.extend(bad)
