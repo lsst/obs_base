@@ -32,17 +32,17 @@ class PackagesFormatter(FileFormatter):
     """
 
     supportedWriteParameters = frozenset({"format"})
-    supportedExtensions = frozenset({".yaml", ".pickle", ".pkl"})
+    supportedExtensions = frozenset({".yaml", ".pickle", ".pkl", ".json"})
 
     @property
     def extension(self) -> str:
         # Default to YAML but allow configuration via write parameter
         format = self.writeParameters.get("format", "yaml")
-        if format == "yaml":
-            return ".yaml"
-        elif format == "pickle":
-            return ".pickle"
-        raise RuntimeError(f"Requested file format '{format}' is not supported for Packages")
+        format_map = {"yaml": ".yaml", "pickle": ".pickle", "json": ".json"}
+        ext = format_map.get(format)
+        if ext is None:
+            raise RuntimeError(f"Requested file format '{format}' is not supported for Packages")
+        return ext
 
     def _readFile(self, path, pytype):
         """Read a file from the path in FITS format.
@@ -84,7 +84,12 @@ class PackagesFormatter(FileFormatter):
         # The format can not come from the formatter configuration
         # because the current configuration has no connection to how
         # the data were stored.
-        format = "yaml" if serializedDataset.startswith(b"!<lsst.") else "pickle"
+        if serializedDataset.startswith(b"!<lsst."):
+            format = "yaml"
+        elif serializedDataset.startswith(b'{"'):
+            format = "json"
+        else:
+            format = "pickle"
         return pytype.fromBytes(serializedDataset, format)
 
     def _writeFile(self, inMemoryDataset):
@@ -120,5 +125,6 @@ class PackagesFormatter(FileFormatter):
         Exception
             The object could not be serialized.
         """
-        format = "yaml" if self.extension == ".yaml" else "pickle"
+        format_map = {".yaml": "yaml", ".pickle": "pickle", ".pkl": "pickle", ".json": "json"}
+        format = format_map.get(self.extension, "yaml")
         return inMemoryDataset.toBytes(format)
