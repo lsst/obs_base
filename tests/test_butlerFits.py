@@ -203,7 +203,7 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
 
         # Break the contact by ensuring that we are writing YAML
         uri = self.butler.getURI(ref)
-        self.assertTrue(uri.path.endswith(".yaml"), f"Check extension of {uri}")
+        self.assertEqual(uri.getExtension(), ".yaml", f"Check extension of {uri}")
 
     def testFundamentalTypes(self) -> None:
         """Ensure that some fundamental stack types round trip."""
