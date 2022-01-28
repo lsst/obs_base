@@ -84,7 +84,7 @@ class PackagesFormatter(FileFormatter):
         # The format can not come from the formatter configuration
         # because the current configuration has no connection to how
         # the data were stored.
-        format = "yaml" if serializedDataset.startswith(b"!<lsst.base.Packages>") else "pickle"
+        format = "yaml" if serializedDataset.startswith(b"!<lsst.") else "pickle"
         return pytype.fromBytes(serializedDataset, format)
 
     def _writeFile(self, inMemoryDataset):
