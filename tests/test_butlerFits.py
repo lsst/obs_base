@@ -34,13 +34,13 @@ import lsst.utils.tests
 from lsst.afw.fits import readMetadata
 from lsst.afw.image import LOCAL, ExposureFitsReader
 from lsst.afw.math import flipImage
-from lsst.base import Packages
 from lsst.daf.base import PropertyList, PropertySet
 from lsst.daf.butler import Config, DatasetType, StorageClassFactory
 from lsst.daf.butler.tests import DatasetTestHelper, addDatasetType, makeTestCollection, makeTestRepo
 from lsst.geom import Box2I, Extent2I, Point2I
 from lsst.obs.base.exposureAssembler import ExposureAssembler
 from lsst.obs.base.tests import make_ramp_exposure_trimmed, make_ramp_exposure_untrimmed
+from lsst.utils.packages import Packages
 
 if TYPE_CHECKING:
     from lsst.daf.butler import DatasetRef
