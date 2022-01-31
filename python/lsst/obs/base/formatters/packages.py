@@ -38,9 +38,8 @@ class PackagesFormatter(FileFormatter):
     def extension(self) -> str:
         # Default to YAML but allow configuration via write parameter
         format = self.writeParameters.get("format", "yaml")
-        format_map = {"yaml": ".yaml", "pickle": ".pickle", "json": ".json"}
-        ext = format_map.get(format)
-        if ext is None:
+        ext = "." + format
+        if ext not in self.supportedExtensions:
             raise RuntimeError(f"Requested file format '{format}' is not supported for Packages")
         return ext
 
@@ -125,6 +124,5 @@ class PackagesFormatter(FileFormatter):
         Exception
             The object could not be serialized.
         """
-        format_map = {".yaml": "yaml", ".pickle": "pickle", ".pkl": "pickle", ".json": "json"}
-        format = format_map.get(self.extension, "yaml")
+        format = self.extension.lstrip(".")
         return inMemoryDataset.toBytes(format)
