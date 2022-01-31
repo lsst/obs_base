@@ -1452,7 +1452,7 @@ class CameraMapper(dafPersist.Mapper):
                 % (datasetType, storageType, recipeName)
             )
         recipe = self._writeRecipes[storageType][recipeName].deepCopy()
-        seed = hash(tuple(dataId.items())) % 2 ** 31
+        seed = hash(tuple(dataId.items())) % 2**31
         for plane in ("image", "mask", "variance"):
             if recipe.exists(plane + ".scaling.seed") and recipe.getScalar(plane + ".scaling.seed") == 0:
                 recipe.set(plane + ".scaling.seed", seed)

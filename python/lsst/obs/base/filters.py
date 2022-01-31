@@ -232,7 +232,7 @@ class FilterDefinition:
         if band is not None:
             # Special case code that uses afw_name to override the band.
             # This was generally used as a workaround.
-            if self.afw_name is not None and (mat := re.match(fr"{band}(\d)+$", self.afw_name)):
+            if self.afw_name is not None and (mat := re.match(rf"{band}(\d)+$", self.afw_name)):
                 i = int(mat.group(1))
             else:
                 i = 0

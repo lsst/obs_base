@@ -305,7 +305,7 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
         recipe = self.writeRecipes[recipeName]
 
         # Set the seed based on dataId
-        seed = hash(tuple(self.dataId.items())) % 2 ** 31
+        seed = hash(tuple(self.dataId.items())) % 2**31
         for plane in ("image", "mask", "variance"):
             if plane in recipe and "scaling" in recipe[plane]:
                 scaling = recipe[plane]["scaling"]
