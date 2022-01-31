@@ -27,8 +27,12 @@ from lsst.daf.butler.formatters.file import FileFormatter
 
 
 class PackagesFormatter(FileFormatter):
-    """Interface for reading and writing objects that support the standard
-    afw I/O readFits/writeFits methods.
+    """Interface for reading and writing `~lsst.utils.packages.Packages`.
+
+    This formatter supports write parameters:
+
+    * ``format``: The file format to use to write the package data. Allowed
+      options are ``yaml``, ``json``, and ``pickle``.
     """
 
     supportedWriteParameters = frozenset({"format"})
