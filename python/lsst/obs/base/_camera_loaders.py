@@ -33,6 +33,7 @@ from typing import Any, Iterable, Optional, Union
 
 from lsst.afw.cameraGeom import Camera, CameraBuilder, Detector, DetectorBuilder
 from lsst.daf.butler import Butler, DataId, DatasetRef, DatasetType
+from lsst.pipe.base import ButlerQuantumContext
 
 
 class CameraBuilderUpdater(ABC):
@@ -400,3 +401,97 @@ class CameraLoader:
     def finish(self) -> Camera:
         """Finish updating and return the updated `Camera`."""
         return self.builder.finish()
+
+
+def load_detector_for_quantum(
+    arg: Union[str, int, DatasetRef, Detector, DetectorBuilder],
+    /,
+    butlerQC: ButlerQuantumContext,
+    camera: Union[DatasetRef, Camera, CameraBuilder, None] = None,
+    **kwargs: Union[bool, DatasetRef, DetectorBuilderUpdater],
+) -> Detector:
+    """A variant of `Instrument.load_detector` for use inside
+    `PipelineTask.runQuantum`.
+
+    Parameters
+    ----------
+    arg : `str`, `int`, `DatasetRef`, `Detector`, `DetectorBuilder`
+        If a `DatasetRef`, `Detector`, or `DetectorBuilder`, an object that
+        can be used or loaded to provide the detector directly (``camera``
+        will be ignored).
+        If an `int` or `str`, a detector identifier to use with ``camera``.
+    butlerQC : `ButlerQuantumContext`
+        Butler client proxy to read from.
+    camera : `DatasetRef`, `Camera`, `CameraBuilder`, optional
+        Used to obtain a `Camera` or `CameraBuilder` as a way to get a
+        `DetectorBuilder`.  If a `Camera` is given, the detector is
+        extracted and then a `Detector.rebuild` is called, instead of
+        rebuilding the full camera.  Required (unlike
+        `Instrument.load_detector`) if the first argument is a `str` or `int`.
+    **kwargs
+        Named updates to apply to the detector.  Keys are typically those in
+        `Instrument.detector_calibrations`, but are only used here in error
+        messages.  Values are one of the following:
+
+        - `False`: do not update this dataset (same as not passing a key).
+        - `DatasetRef`: load with `ButlerQuantumContext.get` (must be a
+          resolved reference).
+        - `DetectorBuilderUpdater`: just apply this calibration directly.
+
+    Returns
+    -------
+    detector : `Detector`
+        The loaded detector object.
+
+    Notes
+    -----
+    This function only applies the updates given as keyword arguments, while
+    the `Instrument.load_detector` method attempts to apply all updates
+    potentially used by that instrument.
+    """
+    # Implementing this by delegating to DetectorLoader is tricky because
+    # ButlerQuantumContext doesn't expose its underlying butler.  Hopefully we
+    # can resolve this while the rest of the RFC is worked out.
+    raise NotImplementedError("TODO")
+
+
+def load_camera_for_quantum(
+    butlerQC: ButlerQuantumContext,
+    camera: Union[DatasetRef, Camera, CameraBuilder],
+    **kwargs: Union[
+        bool, DatasetRef, CameraBuilderUpdater, Iterable[DatasetRef], Iterable[DetectorBuilderUpdater]
+    ],
+) -> Camera:
+    """
+    Parameters
+    ----------
+    butler : `Butler`
+        Butler client to read from.  If not initialized with the desired
+        collection search path, the ``collections`` argument must be
+        provided.
+    camera : `DatasetRef`, `Camera`, `CameraBuilder`, optional
+        A `CameraBuilder`, a `Camera` to rebuild into one, or a butler
+        reference that can be used to load a `Camera`.
+    **kwargs
+        Named updates to apply to the camera or its detectors, depending on
+        whether the key is in `Instrument.detector_calibrations` or
+        `Instrument.camera_calibrations` (for the instrument identified by
+        ``butlerQC.quantum.dataId``):
+
+        - `False`: do not use this calibration (same as no key).
+        - `DatasetRef`: a `CameraBuilderUpdater` dataset to load and apply.
+        - `CameraBuilderUpdater`: a full-camera update to apply directly.
+        - `Iterable` [ `DatasetRef` ]: per-detector `DetectorBuilderUpdater`
+          datasets to load and apply.
+        - `Iterable` [ `DetectorBuilderUpdater` ]: per-detector updates to
+          apply directly.
+
+    Returns
+    -------
+    camera : `Camera`
+        The updated camera.
+    """
+    # Implementing this by delegating to DetectorLoader is tricky because
+    # ButlerQuantumContext doesn't expose its underlying butler.  Hopefully we
+    # can resolve this while the rest of the RFC is worked out.
+    raise NotImplementedError("TODO")
