@@ -736,7 +736,7 @@ class ConvertRepoTask(Task):
 
         # Define visits (also does nothing if we weren't configurd to convert
         # the 'raw' dataset type).
-        rootConverter.runDefineVisits(pool=pool)
+        rootConverter.runDefineVisits()
 
         # Insert dimensions that are potentially shared by all Gen2
         # repositories (and are hence managed directly by the Task, rather

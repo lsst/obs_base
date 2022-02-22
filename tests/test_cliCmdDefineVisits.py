@@ -44,7 +44,7 @@ class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
         """Test the most basic required arguments."""
         self.run_test(
             ["define-visits", "here", "a.b.c"],
-            self.makeExpected(repo="here", processes=1, instrument="a.b.c"),
+            self.makeExpected(repo="here", instrument="a.b.c"),
         )
 
     def test_all(self):
@@ -58,8 +58,6 @@ class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
                 "foo/bar,baz",
                 "--config-file",
                 "/path/to/config",
-                "--processes",
-                2,
                 "--collections",
                 "boz",
             ],
@@ -67,7 +65,6 @@ class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
                 repo="here",
                 instrument="a.b.c",
                 config_file="/path/to/config",
-                processes=2,
                 # The list of collections must be in
                 # exactly the same order as it is
                 # passed in the list of arguments to

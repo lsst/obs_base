@@ -94,7 +94,6 @@ def convert(*args, **kwargs):
     callback=split_commas,
     metavar=typeStrAcceptsMultiple,
 )
-@processes_option()
 @options_file_option()
 def define_visits(*args, **kwargs):
     """Define visits from exposures in the butler registry.

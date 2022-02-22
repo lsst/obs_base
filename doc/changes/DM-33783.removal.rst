@@ -1,0 +1,2 @@
+Remove the ``processes`` and ``pool`` arguments and the ``--processes`` command-line argument from `DefineVisitsTask.run` and ``butler define-visits`` (respectively).
+These were already broken for ``processes > 1``, and internal parallelization here is no longer useful now that this task just does database I/O, not raw metadata reads.

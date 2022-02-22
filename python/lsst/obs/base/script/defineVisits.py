@@ -28,7 +28,7 @@ from ..utils import getInstrument
 log = logging.getLogger("lsst.obs.base.defineVisits")
 
 
-def defineVisits(repo, config_file, collections, instrument, processes=1, raw_name="raw"):
+def defineVisits(repo, config_file, collections, instrument, raw_name="raw"):
     """Implements the command line interface `butler define-visits` subcommand,
     should only be called by command line tools and unit test code that tests
     this function.
@@ -78,5 +78,4 @@ def defineVisits(repo, config_file, collections, instrument, processes=1, raw_na
             ["exposure"], dataId={"instrument": instr.getName()}, collections=collections, datasets=raw_name
         ),
         collections=collections,
-        processes=processes,
     )
