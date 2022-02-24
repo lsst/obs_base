@@ -30,23 +30,13 @@ __all__ = [
 ]
 
 import dataclasses
-import itertools
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
-from multiprocessing import Pool
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import lsst.geom
 from lsst.afw.cameraGeom import FOCAL_PLANE, PIXELS
-from lsst.daf.butler import (
-    Butler,
-    DataCoordinate,
-    DataId,
-    DimensionGraph,
-    DimensionRecord,
-    Progress,
-    Timespan,
-)
+from lsst.daf.butler import Butler, DataId, DimensionGraph, DimensionRecord, Progress, Timespan
 from lsst.geom import Box2D
 from lsst.pex.config import Config, Field, makeRegistry, registerConfigurable
 from lsst.pipe.base import Task
@@ -446,51 +436,10 @@ class DefineVisitsTask(Task):
             ],
         )
 
-    def _expandExposureId(self, dataId: DataId) -> DataCoordinate:
-        """Return the expanded version of an exposure ID.
-
-        A private method to allow ID expansion in a pool without resorting
-        to local callables.
-
-        Parameters
-        ----------
-        dataId : `dict` or `DataCoordinate`
-            Exposure-level data ID.
-
-        Returns
-        -------
-        expanded : `DataCoordinate`
-            A data ID that includes full metadata for all exposure dimensions.
-        """
-        dimensions = DimensionGraph(self.universe, names=["exposure"])
-        return self.butler.registry.expandDataId(dataId, graph=dimensions)
-
-    def _buildVisitRecordsSingle(self, args) -> _VisitRecords:
-        """Build the DimensionRecords associated with a visit and collection.
-
-        A wrapper for `_buildVisitRecords` to allow it to be run as part of
-        a pool without resorting to local callables.
-
-        Parameters
-        ----------
-        args : `tuple` [`VisitDefinition`, any]
-            A tuple consisting of the ``definition`` and ``collections``
-            arguments to `_buildVisitRecords`, in that order.
-
-        Results
-        -------
-        records : `_VisitRecords`
-            Struct containing DimensionRecords for the visit, including
-            associated dimension elements.
-        """
-        return self._buildVisitRecords(args[0], collections=args[1])
-
     def run(
         self,
         dataIds: Iterable[DataId],
         *,
-        pool: Optional[Pool] = None,
-        processes: int = 1,
         collections: Optional[str] = None,
         update_records: bool = False,
     ):
@@ -501,11 +450,6 @@ class DefineVisitsTask(Task):
         dataIds : `Iterable` [ `dict` or `DataCoordinate` ]
             Exposure-level data IDs.  These must all correspond to the same
             instrument, and are expected to be on-sky science exposures.
-        pool : `multiprocessing.Pool`, optional
-            If not `None`, a process pool with which to parallelize some
-            operations.
-        processes : `int`, optional
-            The number of processes to use.  Ignored if ``pool`` is not `None`.
         collections : Any, optional
             Collections to be searched for raws and camera geometry, overriding
             ``self.butler.collections``.
@@ -525,13 +469,10 @@ class DefineVisitsTask(Task):
             Raised if a visit ID conflict is detected and the existing visit
             differs from the new one.
         """
-        # Set up multiprocessing, if desired.
-        if pool is None and processes > 1:
-            pool = Pool(processes)
-        mapFunc = map if pool is None else pool.imap_unordered
         # Normalize, expand, and deduplicate data IDs.
         self.log.info("Preprocessing data IDs.")
-        dataIds = set(mapFunc(self._expandExposureId, dataIds))
+        dimensions = DimensionGraph(self.universe, names=["exposure"])
+        dataIds = {self.butler.registry.expandDataId(d, graph=dimensions) for d in dataIds}
         if not dataIds:
             raise RuntimeError("No exposures given.")
         # Extract exposure DimensionRecords, check that there's only one
@@ -569,16 +510,14 @@ class DefineVisitsTask(Task):
         # Group exposures into visits, delegating to subtask.
         self.log.info("Grouping %d exposure(s) into visits.", len(exposures))
         definitions = list(self.groupExposures.group(exposures))
-        # Compute regions and build DimensionRecords for each visit.
-        # This is the only parallel step, but it _should_ be the most expensive
-        # one (unless DB operations are slow).
+        # Iterate over visits, compute regions, and insert dimension data, one
+        # transaction per visit.  If a visit already exists, we skip all other
+        # inserts.
         self.log.info("Computing regions and other metadata for %d visit(s).", len(definitions))
-        allRecords = mapFunc(self._buildVisitRecordsSingle, zip(definitions, itertools.repeat(collections)))
-        # Iterate over visits and insert dimension data, one transaction per
-        # visit.  If a visit already exists, we skip all other inserts.
-        for visitRecords in self.progress.wrap(
-            allRecords, total=len(definitions), desc="Computing regions and inserting visits"
+        for visitDefinition in self.progress.wrap(
+            definitions, total=len(definitions), desc="Computing regions and inserting visits"
         ):
+            visitRecords = self._buildVisitRecords(visitDefinition, collections=collections)
             with self.butler.registry.transaction():
                 inserted_or_updated = self.butler.registry.syncDimensionData(
                     "visit",

@@ -132,7 +132,7 @@ class RootRepoConverter(StandardRepoConverter):
             )
         self._chain = [self.task.raws.butler.run]
 
-    def runDefineVisits(self, pool=None):
+    def runDefineVisits(self):
         if self.task.defineVisits is None:
             self.task.log.info("Skipping visit definition for %s.", self.root)
             return
@@ -140,7 +140,7 @@ class RootRepoConverter(StandardRepoConverter):
         exposureDataIds = set(ref.dataId.subset(dimensions) for ref in self._rawRefs)
         if not self.task.dry_run:
             self.task.log.info("Defining visits from exposures.")
-            self.task.defineVisits.run(exposureDataIds, pool=pool)
+            self.task.defineVisits.run(exposureDataIds)
         else:
             self.task.log.info("[dry run] Skipping defining visits from exposures.")
 
