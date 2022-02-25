@@ -23,6 +23,7 @@ __all__ = ["MakeRawVisitInfoViaObsInfo"]
 
 import logging
 import warnings
+from typing import ClassVar, Optional
 
 import astropy.units
 import astropy.utils.exceptions
@@ -38,7 +39,7 @@ except ImportError:
 
     ErfaWarning = None
 
-from astro_metadata_translator import ObservationInfo
+from astro_metadata_translator import MetadataTranslator, ObservationInfo
 from lsst.afw.coord import Observatory, Weather
 from lsst.afw.image import RotType, VisitInfo
 from lsst.daf.base import DateTime
@@ -67,7 +68,7 @@ class MakeRawVisitInfoViaObsInfo:
         Strip header keywords from the metadata as they are used?
     """
 
-    metadataTranslator = None
+    metadataTranslator: ClassVar[Optional[MetadataTranslator]] = None
     """Header translator to use to construct VisitInfo, defaulting to
     automatic determination."""
 

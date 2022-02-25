@@ -29,6 +29,7 @@ __all__ = (
 
 import warnings
 from abc import abstractmethod
+from typing import AbstractSet, ClassVar
 
 from lsst.afw.cameraGeom import AmplifierGeometryComparison, AmplifierIsolator
 from lsst.afw.image import (
@@ -62,12 +63,14 @@ class FitsImageFormatterBase(Formatter):
     """
 
     extension = ".fits"
-    supportedExtensions = frozenset({".fits", ".fits.gz", ".fits.fz", ".fz", ".fit"})
+    supportedExtensions: ClassVar[AbstractSet[str]] = frozenset(
+        {".fits", ".fits.gz", ".fits.fz", ".fz", ".fit"}
+    )
 
-    unsupportedParameters = {}
+    unsupportedParameters: ClassVar[AbstractSet[str]] = frozenset()
     """Support all parameters."""
 
-    @property
+    @property  # type: ignore
     @cached_getter
     def checked_parameters(self):
         """The parameters passed by the butler user, after checking them
@@ -227,7 +230,7 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
     supportedWriteParameters = frozenset({"recipe"})
     ReaderClass: type  # must be set by concrete subclasses
 
-    @property
+    @property  # type: ignore
     @cached_getter
     def reader(self):
         """The reader object that backs this formatter's read operations.

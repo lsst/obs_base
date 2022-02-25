@@ -27,7 +27,7 @@ to get a functional test of an Instrument.
 
 import abc
 import dataclasses
-from typing import Set
+from typing import ClassVar, Optional, Set
 
 import pkg_resources
 from lsst.daf.butler import Registry, RegistryConfig
@@ -138,10 +138,10 @@ class InstrumentTests(metaclass=abc.ABCMeta):
     ``data`` and ``instrument``.
     """
 
-    data = None
+    data: ClassVar[Optional[InstrumentTestData]] = None
     """`InstrumentTestData` containing the values to test against."""
 
-    instrument = None
+    instrument: ClassVar[Optional[Instrument]] = None
     """The `~lsst.obs.base.Instrument` to be tested."""
 
     def test_name(self):
