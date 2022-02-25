@@ -28,17 +28,30 @@ import os.path
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Optional, Sequence, Set, Tuple, Union
+from typing import TYPE_CHECKING, AbstractSet, Any, FrozenSet, Optional, Sequence, Set, Tuple, Type, Union
 
 import astropy.time
 from lsst.afw.cameraGeom import Camera
-from lsst.daf.butler import Butler, CollectionType, DataCoordinate, DataId, DatasetType, Timespan
+from lsst.daf.butler import (
+    Butler,
+    CollectionType,
+    DataCoordinate,
+    DataId,
+    DatasetType,
+    DimensionRecord,
+    DimensionUniverse,
+    Timespan,
+)
 from lsst.daf.butler.registry import DataIdError
 from lsst.utils import doImport, getPackageDir
 
 if TYPE_CHECKING:
+    from astro_metadata_translator import ObservationInfo
     from lsst.daf.butler import Registry
+    from lsst.pex.config import Config
 
+    from ._fitsRawFormatterBase import FitsRawFormatterBase
+    from .filters import FilterDefinitionCollection
     from .gen2to3 import TranslatorFactory
 
 # To be a standard text curated calibration means that we use a
@@ -85,7 +98,7 @@ class Instrument(metaclass=ABCMeta):
     Usually a obs _data package.  If `None` no curated calibration files
     will be read. (`str`)"""
 
-    standardCuratedDatasetTypes: Set[str] = frozenset(StandardCuratedCalibrationDatasetTypes)
+    standardCuratedDatasetTypes: AbstractSet[str] = frozenset(StandardCuratedCalibrationDatasetTypes)
     """The dataset types expected to be obtained from the obsDataPackage.
 
     These dataset types are all required to have standard definitions and
@@ -95,7 +108,7 @@ class Instrument(metaclass=ABCMeta):
     since the data package is the source of truth. (`set` of `str`)
     """
 
-    additionalCuratedDatasetTypes: Set[str] = frozenset()
+    additionalCuratedDatasetTypes: AbstractSet[str] = frozenset()
     """Curated dataset types specific to this particular instrument that do
     not follow the standard organization found in obs data packages.
 
@@ -106,11 +119,11 @@ class Instrument(metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def filterDefinitions(self):
+    def filterDefinitions(self) -> FilterDefinitionCollection:
         """`~lsst.obs.base.FilterDefinitionCollection`, defining the filters
         for this instrument.
         """
-        return None
+        raise NotImplementedError()
 
     def __init__(self, collection_prefix: Optional[str] = None):
         self.filterDefinitions.reset()
@@ -121,7 +134,7 @@ class Instrument(metaclass=ABCMeta):
 
     @classmethod
     @abstractmethod
-    def getName(cls):
+    def getName(cls) -> str:
         """Return the short (dimension) name for this instrument.
 
         This is not (in general) the same as the class name - it's what is used
@@ -132,12 +145,12 @@ class Instrument(metaclass=ABCMeta):
 
     @classmethod
     @lru_cache()
-    def getCuratedCalibrationNames(cls) -> Set[str]:
+    def getCuratedCalibrationNames(cls) -> FrozenSet[str]:
         """Return the names of all the curated calibration dataset types.
 
         Returns
         -------
-        names : `set` of `str`
+        names : `frozenset` of `str`
             The dataset type names of all curated calibrations. This will
             include the standard curated calibrations even if the particular
             instrument does not support them.
@@ -164,7 +177,7 @@ class Instrument(metaclass=ABCMeta):
         return frozenset(curated)
 
     @abstractmethod
-    def getCamera(self):
+    def getCamera(self) -> Camera:
         """Retrieve the cameraGeom representation of this instrument.
 
         This is a temporary API that should go away once ``obs`` packages have
@@ -173,7 +186,7 @@ class Instrument(metaclass=ABCMeta):
         raise NotImplementedError()
 
     @abstractmethod
-    def register(self, registry, *, update=False):
+    def register(self, registry: Registry, *, update: bool = False) -> None:
         """Insert instrument, physical_filter, and detector entries into a
         `Registry`.
 
@@ -214,14 +227,15 @@ class Instrument(metaclass=ABCMeta):
 
     @classmethod
     @lru_cache()
-    def getObsDataPackageDir(cls):
+    def getObsDataPackageDir(cls) -> Optional[str]:
         """The root of the obs data package that provides specializations for
         this instrument.
 
         returns
         -------
-        dir : `str`
-            The root of the relevat obs data package.
+        dir : `str` or `None`
+            The root of the relevant obs data package, or `None` if this
+            instrument does not have one.
         """
         if cls.obsDataPackage is None:
             return None
@@ -261,7 +275,8 @@ class Instrument(metaclass=ABCMeta):
             Raised if the class could not be imported.  This could mean
             that the relevant obs package has not been setup.
         TypeError
-            Raised if the class name retrieved is not a string.
+            Raised if the class name retrieved is not a string or the imported
+            symbol is not an `Instrument` subclass.
         """
         try:
             records = list(registry.queryDimensionRecords("instrument", instrument=name))
@@ -269,11 +284,17 @@ class Instrument(metaclass=ABCMeta):
             records = None
         if not records:
             raise LookupError(f"No registered instrument with name '{name}'.")
-        cls = records[0].class_name
-        if not isinstance(cls, str):
-            raise TypeError(f"Unexpected class name retrieved from {name} instrument dimension (got {cls})")
-        instrument = doImport(cls)
-        return instrument(collection_prefix=collection_prefix)
+        cls_name = records[0].class_name
+        if not isinstance(cls_name, str):
+            raise TypeError(
+                f"Unexpected class name retrieved from {name} instrument dimension (got {cls_name})"
+            )
+        instrument_cls: type = doImport(cls_name)  # type: ignore
+        if not issubclass(instrument_cls, Instrument):
+            raise TypeError(
+                f"{instrument_cls!r}, obtained from importing {cls_name}, is not an Instrument subclass."
+            )
+        return instrument_cls(collection_prefix=collection_prefix)
 
     @staticmethod
     def importAll(registry: Registry) -> None:
@@ -300,7 +321,7 @@ class Instrument(metaclass=ABCMeta):
             except Exception:
                 pass
 
-    def _registerFilters(self, registry, update=False):
+    def _registerFilters(self, registry: Registry, update: bool = False) -> None:
         """Register the physical and abstract filter Dimension relationships.
         This should be called in the `register` implementation, within
         a transaction context manager block.
@@ -328,24 +349,24 @@ class Instrument(metaclass=ABCMeta):
             )
 
     @abstractmethod
-    def getRawFormatter(self, dataId):
+    def getRawFormatter(self, dataId: DataId) -> Type[FitsRawFormatterBase]:
         """Return the Formatter class that should be used to read a particular
         raw file.
 
         Parameters
         ----------
-        dataId : `DataCoordinate`
+        dataId : `DataId`
             Dimension-based ID for the raw file or files being ingested.
 
         Returns
         -------
-        formatter : `Formatter` class
+        formatter : `FitsRawFormatterBase` class
             Class to be used that reads the file into an
             `lsst.afw.image.Exposure` instance.
         """
         raise NotImplementedError()
 
-    def applyConfigOverrides(self, name, config):
+    def applyConfigOverrides(self, name: str, config: Config) -> None:
         """Apply instrument-specific overrides for a task config.
 
         Parameters
@@ -522,7 +543,7 @@ class Instrument(metaclass=ABCMeta):
         if collection is None:
             collection = self.makeCalibrationCollectionName(*labels)
         butler.registry.registerCollection(collection, type=CollectionType.CALIBRATION)
-        runs = set()
+        runs: Set[str] = set()
         for datasetTypeName in self.standardCuratedDatasetTypes:
             # We need to define the dataset types.
             if datasetTypeName not in StandardCuratedCalibrationDatasetTypes:
@@ -532,14 +553,19 @@ class Instrument(metaclass=ABCMeta):
                 )
             definition = StandardCuratedCalibrationDatasetTypes[datasetTypeName]
             datasetType = DatasetType(
-                datasetTypeName, universe=butler.registry.dimensions, isCalibration=True, **definition
+                datasetTypeName,
+                universe=butler.registry.dimensions,
+                isCalibration=True,
+                # MyPy should be able to figure out that the kwargs here have
+                # the right types, but it can't.
+                **definition,  # type: ignore
             )
             self._writeSpecificCuratedCalibrationDatasets(
                 butler, datasetType, collection, runs=runs, labels=labels
             )
 
     @classmethod
-    def _getSpecificCuratedCalibrationPath(cls, datasetTypeName):
+    def _getSpecificCuratedCalibrationPath(cls, datasetTypeName: str) -> Optional[str]:
         """Return the path of the curated calibration directory.
 
         Parameters
@@ -549,16 +575,20 @@ class Instrument(metaclass=ABCMeta):
 
         Returns
         -------
-        path : `str`
+        path : `str` or `None`
             The path to the standard curated data directory.  `None` if the
             dataset type is not found or the obs data package is not
             available.
         """
-        if cls.getObsDataPackageDir() is None:
+        data_package_dir = cls.getObsDataPackageDir()
+        if data_package_dir is None:
             # if there is no data package then there can't be datasets
             return None
 
-        calibPath = os.path.join(cls.getObsDataPackageDir(), cls.policyName, datasetTypeName)
+        if cls.policyName is None:
+            raise TypeError(f"Instrument {cls.getName()} has an obs data package but no policy name.")
+
+        calibPath = os.path.join(data_package_dir, cls.policyName, datasetTypeName)
 
         if os.path.exists(calibPath):
             return calibPath
@@ -567,7 +597,7 @@ class Instrument(metaclass=ABCMeta):
 
     def _writeSpecificCuratedCalibrationDatasets(
         self, butler: Butler, datasetType: DatasetType, collection: str, runs: Set[str], labels: Sequence[str]
-    ):
+    ) -> None:
         """Write standardized curated calibration datasets for this specific
         dataset type from an obs data package.
 
@@ -841,7 +871,7 @@ class Instrument(metaclass=ABCMeta):
         return "/".join((self.collection_prefix,) + labels)
 
 
-def makeExposureRecordFromObsInfo(obsInfo, universe):
+def makeExposureRecordFromObsInfo(obsInfo: ObservationInfo, universe: DimensionUniverse) -> DimensionRecord:
     """Construct an exposure DimensionRecord from
     `astro_metadata_translator.ObservationInfo`.
 
@@ -944,5 +974,6 @@ def loadCamera(butler: Butler, dataId: DataId, *, collections: Any = None) -> Tu
         return cameraRef, True
     except LookupError:
         pass
-    instrument = Instrument.fromName(dataId["instrument"], butler.registry)
+    # We know an instrument data ID is a value, but MyPy doesn't.
+    instrument = Instrument.fromName(dataId["instrument"], butler.registry)  # type: ignore
     return instrument.getCamera(), False
