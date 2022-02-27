@@ -33,6 +33,7 @@ from typing import TYPE_CHECKING, Any, Optional, Sequence, Set, Tuple, Union
 import astropy.time
 from lsst.afw.cameraGeom import Camera
 from lsst.daf.butler import Butler, CollectionType, DataCoordinate, DataId, DatasetType, Timespan
+from lsst.daf.butler.registry import DataIdError
 from lsst.utils import doImport, getPackageDir
 
 if TYPE_CHECKING:
@@ -262,7 +263,10 @@ class Instrument(metaclass=ABCMeta):
         TypeError
             Raised if the class name retrieved is not a string.
         """
-        records = list(registry.queryDimensionRecords("instrument", instrument=name))
+        try:
+            records = list(registry.queryDimensionRecords("instrument", instrument=name))
+        except DataIdError:
+            records = None
         if not records:
             raise LookupError(f"No registered instrument with name '{name}'.")
         cls = records[0].class_name
@@ -919,6 +923,11 @@ def loadCamera(butler: Butler, dataId: DataId, *, collections: Any = None) -> Tu
         camera datasets were found, and the returned camera was produced by
         instantiating the appropriate `Instrument` class and calling
         `Instrument.getCamera`.
+
+    Raises
+    ------
+    LookupError
+        Raised when ``dataId`` does not specify a valid data ID.
     """
     if collections is None:
         collections = butler.collections
@@ -926,7 +935,10 @@ def loadCamera(butler: Butler, dataId: DataId, *, collections: Any = None) -> Tu
     # but we might want an expanded data ID ourselves later, so we do it here
     # to ensure it only happens once.
     # This will also catch problems with the data ID not having keys we need.
-    dataId = butler.registry.expandDataId(dataId, graph=butler.registry.dimensions["exposure"].graph)
+    try:
+        dataId = butler.registry.expandDataId(dataId, graph=butler.registry.dimensions["exposure"].graph)
+    except DataIdError as exc:
+        raise LookupError(str(exc)) from exc
     try:
         cameraRef = butler.get("camera", dataId=dataId, collections=collections)
         return cameraRef, True
