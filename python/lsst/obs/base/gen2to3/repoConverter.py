@@ -31,6 +31,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Dict, Iterator, List, Mapping, Optional, Set, Tuple, Union
 
 from lsst.daf.butler import DataCoordinate, DatasetType, FileDataset, Progress
+from lsst.daf.butler.registry import DataIdError
 from lsst.sphgeom import RangeSet, Region
 from lsst.utils import doImport
 
@@ -487,7 +488,7 @@ class RepoConverter(ABC):
                             try:
                                 dataId = self.task.registry.expandDataId(ref.dataId)
                                 dataset.refs[i] = ref.expanded(dataId)
-                            except LookupError as err:
+                            except DataIdError as err:
                                 self.task.log.warning("Skipping ingestion for '%s': %s", dataset.path, err)
                                 # Remove skipped datasets from multi-extension
                                 # FileDatasets
