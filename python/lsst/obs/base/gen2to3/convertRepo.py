@@ -30,6 +30,7 @@ from typing import Iterable, List, Optional, Tuple
 
 from lsst.daf.butler import Butler as Butler3
 from lsst.daf.butler import CollectionType, SkyPixDimension
+from lsst.daf.butler.registry import DataIdError
 from lsst.pex.config import Config, ConfigDictField, ConfigurableField, DictField, Field, ListField
 from lsst.pipe.base import Task
 from lsst.resources import ResourcePath
@@ -563,7 +564,7 @@ class ConvertRepoTask(Task):
                     try:
                         # If the skymap isn't registerd, this will raise.
                         self.butler3.registry.expandDataId(skymap=struct.name)
-                    except LookupError:
+                    except DataIdError:
                         self.log.info("Registering skymap %s.", struct.name)
                         struct.instance.register(struct.name, self.butler3)
                 if subset is not None and self.config.relatedOnly:
