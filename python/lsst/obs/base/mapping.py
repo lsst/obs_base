@@ -26,7 +26,7 @@ from collections import OrderedDict
 from lsst.afw.image import DecoratedImage, Exposure, Image, MaskedImage
 from lsst.daf.base import PropertySet
 from lsst.daf.persistence import ButlerLocation, NoResults
-from lsst.utils import doImport
+from lsst.utils import doImportType
 
 __all__ = ["Mapping", "ImageMapping", "ExposureMapping", "CalibrationMapping", "DatasetMapping"]
 
@@ -556,7 +556,7 @@ class CalibrationMapping(Mapping):
         `lsst.afw.image.Exposure` or item
             The standardized object.
         """
-        if issubclass(doImport(self.python), (Exposure, MaskedImage, Image, DecoratedImage)):
+        if issubclass(doImportType(self.python), (Exposure, MaskedImage, Image, DecoratedImage)):
             return mapper._standardizeExposure(self, item, dataId, filter=self.setFilter)
         return item
 

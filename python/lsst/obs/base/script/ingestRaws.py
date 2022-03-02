@@ -21,7 +21,7 @@
 
 from lsst.daf.butler import Butler
 from lsst.pipe.base.configOverrides import ConfigOverrides
-from lsst.utils import doImport
+from lsst.utils import doImportType
 
 
 def ingestRaws(
@@ -71,7 +71,7 @@ def ingestRaws(
         Raised if operations on configuration object fail.
     """
     butler = Butler(repo, writeable=True)
-    TaskClass = doImport(ingest_task)
+    TaskClass = doImportType(ingest_task)
     ingestConfig = TaskClass.ConfigClass()
     ingestConfig.transfer = transfer
     configOverrides = ConfigOverrides()

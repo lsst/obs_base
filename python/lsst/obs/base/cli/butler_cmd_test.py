@@ -28,7 +28,7 @@ import abc
 
 from lsst.daf.butler.cli import butler
 from lsst.daf.butler.cli.utils import LogCliRunner
-from lsst.utils import doImport
+from lsst.utils import doImportType
 
 
 class ButlerCmdTestBase(metaclass=abc.ABCMeta):
@@ -62,7 +62,7 @@ class ButlerCmdTestBase(metaclass=abc.ABCMeta):
     @property
     def instrument(self):
         """The instrument class."""
-        return doImport(self.instrumentClassName)
+        return doImportType(self.instrumentClassName)
 
     @property
     def instrumentName(self):

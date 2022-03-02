@@ -28,7 +28,7 @@ import lsst.pex.exceptions
 from lsst.afw.cameraGeom import FIELD_ANGLE, PIXELS
 from lsst.afw.geom.skyWcs import makeSkyWcs
 from lsst.afw.image import RotType
-from lsst.utils import doImport
+from lsst.utils import doImportType
 
 from ._instrument import Instrument
 
@@ -176,7 +176,7 @@ def getInstrument(instrumentName, registry=None, collection_prefix=None):
             )
     else:
         try:
-            instr = doImport(instrumentName)
+            instr = doImportType(instrumentName)
         except Exception as err:
             raise RuntimeError(f"Could not import instrument: {instrumentName}. Failed with exception: {err}")
         instr = instr(collection_prefix=collection_prefix)

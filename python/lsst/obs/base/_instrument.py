@@ -43,7 +43,7 @@ from lsst.daf.butler import (
     Timespan,
 )
 from lsst.daf.butler.registry import DataIdError
-from lsst.utils import doImport, getPackageDir
+from lsst.utils import doImportType, getPackageDir
 
 if TYPE_CHECKING:
     from astro_metadata_translator import ObservationInfo
@@ -289,7 +289,7 @@ class Instrument(metaclass=ABCMeta):
             raise TypeError(
                 f"Unexpected class name retrieved from {name} instrument dimension (got {cls_name})"
             )
-        instrument_cls: type = doImport(cls_name)  # type: ignore
+        instrument_cls: type = doImportType(cls_name)
         if not issubclass(instrument_cls, Instrument):
             raise TypeError(
                 f"{instrument_cls!r}, obtained from importing {cls_name}, is not an Instrument subclass."
@@ -317,7 +317,7 @@ class Instrument(metaclass=ABCMeta):
         for record in records:
             cls = record.class_name
             try:
-                doImport(cls)
+                doImportType(cls)
             except Exception:
                 pass
 

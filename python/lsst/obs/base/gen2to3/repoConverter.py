@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING, Dict, Iterator, List, Mapping, Optional, Set, 
 from lsst.daf.butler import DataCoordinate, DatasetType, FileDataset, Progress
 from lsst.daf.butler.registry import DataIdError
 from lsst.sphgeom import RangeSet, Region
-from lsst.utils import doImport
+from lsst.utils import doImportType
 
 from ..ingest import _log_msg_counter
 from .repoWalker import RepoWalker
@@ -378,7 +378,7 @@ class RepoConverter(ABC):
                     assert message is None
                     targetHandler = self.task.config.targetHandlerClasses.get(datasetTypeName)
                     if targetHandler is not None:
-                        targetHandler = doImport(targetHandler)
+                        targetHandler = doImportType(targetHandler)
                     walkerInput = self.makeRepoWalkerTarget(
                         datasetTypeName=datasetTypeName,
                         template=template + extension,

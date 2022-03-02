@@ -36,7 +36,7 @@ import lsst.daf.persistence
 import lsst.ip.isr
 import lsst.utils.tests
 from lsst.obs.base.script import convert
-from lsst.utils import doImport
+from lsst.utils import doImportType
 
 
 class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
@@ -69,7 +69,7 @@ class ConvertGen2To3TestCase(metaclass=abc.ABCMeta):
     @property
     def instrumentClass(self):
         """The instrument class."""
-        return doImport(self.instrumentClassName)
+        return doImportType(self.instrumentClassName)
 
     @property
     def instrumentName(self):
