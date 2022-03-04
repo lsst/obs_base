@@ -30,13 +30,22 @@ __all__ = [
 ]
 
 import dataclasses
+import operator
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Callable, ClassVar, Dict, Iterable, List, Optional, Set, Tuple, TypeVar
 
 import lsst.geom
 from lsst.afw.cameraGeom import FOCAL_PLANE, PIXELS
-from lsst.daf.butler import Butler, DataId, DimensionGraph, DimensionRecord, Progress, Timespan
+from lsst.daf.butler import (
+    Butler,
+    DataCoordinate,
+    DataId,
+    DimensionGraph,
+    DimensionRecord,
+    Progress,
+    Timespan,
+)
 from lsst.geom import Box2D
 from lsst.pex.config import Config, Field, makeRegistry, registerConfigurable
 from lsst.pipe.base import Task
@@ -193,7 +202,7 @@ class ComputeVisitRegionsTask(Task, metaclass=ABCMeta):
     def __init__(self, config: ComputeVisitRegionsConfig, *, butler: Butler, **kwargs: Any):
         Task.__init__(self, config=config, **kwargs)
         self.butler = butler
-        self.instrumentMap = {}
+        self.instrumentMap: Dict[str, Instrument] = {}
 
     ConfigClass = ComputeVisitRegionsConfig
 
@@ -207,7 +216,7 @@ class ComputeVisitRegionsTask(Task, metaclass=ABCMeta):
         configBaseType=ComputeVisitRegionsConfig,
     )
 
-    def getInstrument(self, instrumentName) -> Instrument:
+    def getInstrument(self, instrumentName: str) -> Instrument:
         """Retrieve an `~lsst.obs.base.Instrument` associated with this
         instrument name.
 
@@ -322,7 +331,7 @@ class DefineVisitsTask(Task):
     be done before new visits can be compared to existing visits.
     """
 
-    def __init__(self, config: Optional[DefineVisitsConfig] = None, *, butler: Butler, **kwargs: Any):
+    def __init__(self, config: DefineVisitsConfig, *, butler: Butler, **kwargs: Any):
         config.validate()  # Not a CmdlineTask nor PipelineTask, so have to validate the config here.
         super().__init__(config, **kwargs)
         self.butler = butler
@@ -331,13 +340,16 @@ class DefineVisitsTask(Task):
         self.makeSubtask("groupExposures")
         self.makeSubtask("computeVisitRegions", butler=self.butler)
 
-    def _reduce_kwargs(self):
+    def _reduce_kwargs(self) -> dict:
         # Add extra parameters to pickle
         return dict(**super()._reduce_kwargs(), butler=self.butler)
 
-    ConfigClass = DefineVisitsConfig
+    ConfigClass: ClassVar[Config] = DefineVisitsConfig
 
-    _DefaultName = "defineVisits"
+    _DefaultName: ClassVar[str] = "defineVisits"
+
+    groupExposures: GroupExposuresTask
+    computeVisitRegions: ComputeVisitRegionsTask
 
     def _buildVisitRecords(
         self, definition: VisitDefinitionData, *, collections: Any = None
@@ -370,29 +382,26 @@ class DefineVisitsTask(Task):
             begin=_reduceOrNone(min, (e.timespan.begin for e in definition.exposures)),
             end=_reduceOrNone(max, (e.timespan.end for e in definition.exposures)),
         )
-        exposure_time = _reduceOrNone(sum, (e.exposure_time for e in definition.exposures))
-        physical_filter = _reduceOrNone(
-            lambda a, b: a if a == b else None, (e.physical_filter for e in definition.exposures)
-        )
-        target_name = _reduceOrNone(
-            lambda a, b: a if a == b else None, (e.target_name for e in definition.exposures)
-        )
-        science_program = _reduceOrNone(
-            lambda a, b: a if a == b else None, (e.science_program for e in definition.exposures)
-        )
+        exposure_time = _reduceOrNone(operator.add, (e.exposure_time for e in definition.exposures))
+        physical_filter = _reduceOrNone(_value_if_equal, (e.physical_filter for e in definition.exposures))
+        target_name = _reduceOrNone(_value_if_equal, (e.target_name for e in definition.exposures))
+        science_program = _reduceOrNone(_value_if_equal, (e.science_program for e in definition.exposures))
 
         # observing day for a visit is defined by the earliest observation
         # of the visit
         observing_day = _reduceOrNone(min, (e.day_obs for e in definition.exposures))
         observation_reason = _reduceOrNone(
-            lambda a, b: a if a == b else None, (e.observation_reason for e in definition.exposures)
+            _value_if_equal, (e.observation_reason for e in definition.exposures)
         )
         if observation_reason is None:
             # Be explicit about there being multiple reasons
-            observation_reason = "various"
+            # MyPy can't really handle DimensionRecord fields as
+            # DimensionRecord classes are dynamically defined; easiest to just
+            # shush it when it complains.
+            observation_reason = "various"  # type: ignore
 
         # Use the mean zenith angle as an approximation
-        zenith_angle = _reduceOrNone(sum, (e.zenith_angle for e in definition.exposures))
+        zenith_angle = _reduceOrNone(operator.add, (e.zenith_angle for e in definition.exposures))
         if zenith_angle is not None:
             zenith_angle /= len(definition.exposures)
 
@@ -442,7 +451,7 @@ class DefineVisitsTask(Task):
         *,
         collections: Optional[str] = None,
         update_records: bool = False,
-    ):
+    ) -> None:
         """Add visit definitions to the registry for the given exposures.
 
         Parameters
@@ -472,15 +481,18 @@ class DefineVisitsTask(Task):
         # Normalize, expand, and deduplicate data IDs.
         self.log.info("Preprocessing data IDs.")
         dimensions = DimensionGraph(self.universe, names=["exposure"])
-        dataIds = {self.butler.registry.expandDataId(d, graph=dimensions) for d in dataIds}
-        if not dataIds:
+        data_id_set: Set[DataCoordinate] = {
+            self.butler.registry.expandDataId(d, graph=dimensions) for d in dataIds
+        }
+        if not data_id_set:
             raise RuntimeError("No exposures given.")
         # Extract exposure DimensionRecords, check that there's only one
         # instrument in play, and check for non-science exposures.
         exposures = []
         instruments = set()
-        for dataId in dataIds:
+        for dataId in data_id_set:
             record = dataId.records["exposure"]
+            assert record is not None, "Guaranteed by expandDataIds call earlier."
             if record.observation_type != "science":
                 if self.config.ignoreNonScienceExposures:
                     continue
@@ -543,12 +555,15 @@ class DefineVisitsTask(Task):
                     )
 
 
-def _reduceOrNone(func, iterable):
+_T = TypeVar("_T")
+
+
+def _reduceOrNone(func: Callable[[_T, _T], Optional[_T]], iterable: Iterable[Optional[_T]]) -> Optional[_T]:
     """Apply a binary function to pairs of elements in an iterable until a
     single value is returned, but return `None` if any element is `None` or
     there are no elements.
     """
-    r = None
+    r: Optional[_T] = None
     for v in iterable:
         if v is None:
             return None
@@ -557,6 +572,11 @@ def _reduceOrNone(func, iterable):
         else:
             r = func(r, v)
     return r
+
+
+def _value_if_equal(a: _T, b: _T) -> Optional[_T]:
+    """Return either argument if they are equal, or `None` if they are not."""
+    return a if a == b else None
 
 
 class _GroupExposuresOneToOneConfig(GroupExposuresConfig):
@@ -781,7 +801,7 @@ class _ComputeVisitRegionsFromSingleRawWcsTask(ComputeVisitRegionsTask):
     ) -> Tuple[Region, Dict[int, Region]]:
         # Docstring inherited from ComputeVisitRegionsTask.
         if self.config.mergeExposures:
-            detectorBounds = defaultdict(list)
+            detectorBounds: Dict[int, List[UnitVector3d]] = defaultdict(list)
             for exposure in visit.exposures:
                 exposureDetectorBounds = self.computeExposureBounds(exposure, collections=collections)
                 for detectorId, bounds in exposureDetectorBounds.items():

@@ -37,7 +37,7 @@ from astro_metadata_translator import fix_header
 from deprecated.sphinx import deprecated
 from lsst.afw.fits import readMetadata
 from lsst.afw.table import Schema
-from lsst.utils import doImport, getPackageDir
+from lsst.utils import doImportType, getPackageDir
 
 from ._instrument import Instrument
 from .exposureIdInfo import ExposureIdInfo
@@ -812,7 +812,7 @@ class CameraMapper(dafPersist.Mapper):
             )
         if isinstance(cls._gen3instrument, str):
             # Given a string to convert to an instrument class
-            cls._gen3instrument = doImport(cls._gen3instrument)
+            cls._gen3instrument = doImportType(cls._gen3instrument)
         if not issubclass(cls._gen3instrument, Instrument):
             raise ValueError(
                 f"Mapper {cls} has declared a gen3 instrument class of {cls._gen3instrument}"

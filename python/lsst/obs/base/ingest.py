@@ -27,7 +27,22 @@ import re
 from collections import defaultdict
 from dataclasses import InitVar, dataclass
 from multiprocessing import Pool
-from typing import Any, Callable, Iterable, Iterator, List, Optional, Tuple, Type, Union
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    Optional,
+    Set,
+    Sized,
+    Tuple,
+    Type,
+    Union,
+)
 
 from astro_metadata_translator import MetadataTranslator, ObservationInfo, merge_headers
 from astro_metadata_translator.indexing import process_index_data, process_sidecar_data
@@ -47,14 +62,18 @@ from lsst.daf.butler import (
 )
 from lsst.pex.config import ChoiceField, Config, Field
 from lsst.pipe.base import Task
-from lsst.resources import ResourcePath
+from lsst.resources import ResourcePath, ResourcePathExpression
 from lsst.utils.timer import timeMethod
 
-from ._fitsRawFormatterBase import FitsRawFormatterBase
 from ._instrument import Instrument, makeExposureRecordFromObsInfo
 
+# multiprocessing.Pool is actually a function, not a type, and the real type
+# isn't exposed, so we can't used it annotations, so we'll just punt on it via
+# this alias instead.
+PoolType = Any
 
-def _do_nothing(*args, **kwargs) -> None:
+
+def _do_nothing(*args: Any, **kwargs: Any) -> None:
     """Do nothing.
 
     This is a function that accepts anything and does nothing.
@@ -63,12 +82,12 @@ def _do_nothing(*args, **kwargs) -> None:
     pass
 
 
-def _log_msg_counter(noun: Union[int, Iterable]) -> Tuple[int, str]:
+def _log_msg_counter(noun: Union[int, Sized]) -> Tuple[int, str]:
     """Count the iterable and return the count and plural modifier.
 
     Parameters
     ----------
-    noun : Iterable or `int`
+    noun : `Sized` or `int`
         Thing to count. If given an integer it is assumed to be the count
         to use to calculate modifier.
 
@@ -123,9 +142,9 @@ class RawFileData:
     This is the path prior to ingest, not the path after ingest.
     """
 
-    FormatterClass: Type[FitsRawFormatterBase]
+    FormatterClass: Type[Formatter]
     """Formatter class that should be used to ingest this file (`type`; as
-    subclass of `FitsRawFormatterBase`).
+    subclass of `Formatter`).
     """
 
     instrument: Optional[Instrument]
@@ -154,13 +173,15 @@ class RawExposureData:
     `~lsst.daf.butler.Registry` prior to file-level ingest (`DimensionRecord`).
     """
 
-    def __post_init__(self, universe: DimensionUniverse):
+    def __post_init__(self, universe: DimensionUniverse) -> None:
         # We don't care which file or dataset we read metadata from, because
         # we're assuming they'll all be the same; just use the first ones.
         self.record = makeExposureRecordFromObsInfo(self.files[0].datasets[0].obsInfo, universe)
 
 
-def makeTransferChoiceField(doc="How to transfer files (None for no transfer).", default="auto"):
+def makeTransferChoiceField(
+    doc: str = "How to transfer files (None for no transfer).", default: str = "auto"
+) -> ChoiceField:
     """Create a Config field with options for transferring data between repos.
 
     The allowed options for the field are exactly those supported by
@@ -170,6 +191,8 @@ def makeTransferChoiceField(doc="How to transfer files (None for no transfer).",
     ----------
     doc : `str`
         Documentation for the configuration field.
+    default : `str`, optional
+        Default transfer mode for the field.
 
     Returns
     -------
@@ -247,11 +270,11 @@ class RawIngestTask(Task):
     invocation of `RawIngestTask.run` ingests a list of files.
     """
 
-    ConfigClass = RawIngestConfig
+    ConfigClass: ClassVar[Type[Config]] = RawIngestConfig
 
-    _DefaultName = "ingest"
+    _DefaultName: ClassVar[str] = "ingest"
 
-    def getDatasetType(self):
+    def getDatasetType(self) -> DatasetType:
         """Return the DatasetType of the datasets ingested by this Task."""
         return DatasetType(
             "raw",
@@ -262,11 +285,11 @@ class RawIngestTask(Task):
 
     def __init__(
         self,
-        config: Optional[RawIngestConfig] = None,
+        config: RawIngestConfig,
         *,
         butler: Butler,
         on_success: Callable[[List[FileDataset]], Any] = _do_nothing,
-        on_metadata_failure: Callable[[str, Exception], Any] = _do_nothing,
+        on_metadata_failure: Callable[[ResourcePath, Exception], Any] = _do_nothing,
         on_ingest_failure: Callable[[RawExposureData, Exception], Any] = _do_nothing,
         **kwargs: Any,
     ):
@@ -284,7 +307,7 @@ class RawIngestTask(Task):
         # have all the relevant metadata translators loaded.
         Instrument.importAll(self.butler.registry)
 
-    def _reduce_kwargs(self):
+    def _reduce_kwargs(self) -> Dict[str, Any]:
         # Add extra parameters to pickle.
         return dict(
             **super()._reduce_kwargs(),
@@ -294,7 +317,9 @@ class RawIngestTask(Task):
             on_ingest_failure=self._on_ingest_failure,
         )
 
-    def _determine_instrument_formatter(self, dataId, filename):
+    def _determine_instrument_formatter(
+        self, dataId: DataCoordinate, filename: ResourcePath
+    ) -> Tuple[Optional[Instrument], Type[Formatter]]:
         """Determine the instrument and formatter class.
 
         Parameters
@@ -316,7 +341,7 @@ class RawIngestTask(Task):
         # can be associated with a single file, they must all share the
         # same formatter.
         try:
-            instrument = Instrument.fromName(dataId["instrument"], self.butler.registry)
+            instrument = Instrument.fromName(dataId["instrument"], self.butler.registry)  # type: ignore
         except LookupError as e:
             self._on_metadata_failure(filename, e)
             self.log.warning(
@@ -330,6 +355,7 @@ class RawIngestTask(Task):
             # Indicate that we could not work out the instrument.
             instrument = None
         else:
+            assert instrument is not None, "Should be guaranted by fromName succeeding."
             FormatterClass = instrument.getRawFormatter(dataId)
         return instrument, FormatterClass
 
@@ -425,10 +451,17 @@ class RawIngestTask(Task):
                 datasets = []
 
         return RawFileData(
-            datasets=datasets, filename=filename, FormatterClass=formatterClass, instrument=instrument
+            datasets=datasets,
+            filename=filename,
+            # MyPy wants this to be a non-abstract class, which is not true
+            # for the error case where instrument is None and datasets=[].
+            FormatterClass=formatterClass,  # type: ignore
+            instrument=instrument,
         )
 
-    def _calculate_dataset_info(self, header, filename):
+    def _calculate_dataset_info(
+        self, header: Union[Mapping[str, Any], ObservationInfo], filename: ResourcePath
+    ) -> RawFileDatasetInfo:
         """Calculate a RawFileDatasetInfo from the supplied information.
 
         Parameters
@@ -507,7 +540,9 @@ class RawIngestTask(Task):
         )
         return RawFileDatasetInfo(obsInfo=obsInfo, dataId=dataId)
 
-    def locateAndReadIndexFiles(self, files):
+    def locateAndReadIndexFiles(
+        self, files: Iterable[ResourcePath]
+    ) -> Tuple[Dict[ResourcePath, Any], List[ResourcePath], Set[ResourcePath], Set[ResourcePath]]:
         """Given a list of files, look for index files and read them.
 
         Index files can either be explicitly in the list of files to
@@ -521,15 +556,17 @@ class RawIngestTask(Task):
 
         Returns
         -------
-        index : `dict` [`str`, Any]
+        index : `dict` [`ResourcePath`, Any]
             Merged contents of all relevant index files found. These can
             be explicitly specified index files or ones found in the
             directory alongside a data file to be ingested.
-        updated_files : iterable of `str`
+        updated_files : `list` of `ResourcePath`
             Updated list of the input files with entries removed that were
             found listed in an index file. Order is not guaranteed to
             match the order of the files given to this routine.
-        bad_index_files: `set[str]`
+        good_index_files: `set` [ `ResourcePath` ]
+            Index files that were successfully read.
+        bad_index_files: `set` [ `ResourcePath` ]
             Files that looked like index files but failed to read properly.
         """
         # Convert the paths to absolute for easy comparison with index content.
@@ -548,7 +585,7 @@ class RawIngestTask(Task):
             files_by_directory[directory].add(file_in_dir)
 
         # All the metadata read from index files with keys of full path.
-        index_entries = {}
+        index_entries: Dict[ResourcePath, Any] = {}
 
         # Index files we failed to read.
         bad_index_files = set()
@@ -649,23 +686,23 @@ class RawIngestTask(Task):
 
         return index_entries, ordered, good_index_files, bad_index_files
 
-    def processIndexEntries(self, index_entries):
+    def processIndexEntries(self, index_entries: Dict[ResourcePath, Any]) -> List[RawFileData]:
         """Convert index entries to RawFileData.
 
         Parameters
         ----------
-        index_entries : `dict` [`str`, Any]
+        index_entries : `dict` [`ResourcePath`, Any]
             Dict indexed by name of file to ingest and with keys either
             raw metadata or translated
             `~astro_metadata_translator.ObservationInfo`.
 
         Returns
         -------
-        data :  `RawFileData`
-            A structure containing the metadata extracted from the file,
+        data : `list` [ `RawFileData` ]
+            Structures containing the metadata extracted from the file,
             as well as the original filename.  All fields will be populated,
-            but the `RawFileData.dataId` attribute will be a minimal
-            (unexpanded) `~lsst.daf.butler.DataCoordinate` instance.
+            but the `RawFileData.dataId` attributes will be minimal
+            (unexpanded) `~lsst.daf.butler.DataCoordinate` instances.
         """
         fileData = []
         for filename, metadata in index_entries.items():
@@ -689,7 +726,13 @@ class RawIngestTask(Task):
                     datasets = []
             fileData.append(
                 RawFileData(
-                    datasets=datasets, filename=filename, FormatterClass=formatterClass, instrument=instrument
+                    datasets=datasets,
+                    filename=filename,
+                    # MyPy wants this to be a non-abstract class, which is not
+                    # true for the error case where instrument is None and
+                    # datasets=[].
+                    FormatterClass=formatterClass,  # type: ignore
+                    instrument=instrument,
                 )
             )
         return fileData
@@ -750,9 +793,7 @@ class RawIngestTask(Task):
             # looked up from the database.  We do expect instrument and filter
             # records to be retrieved from the database here (though the
             # Registry may cache them so there isn't a lookup every time).
-            records={
-                self.butler.registry.dimensions["exposure"]: data.record,
-            },
+            records={"exposure": data.record},
         )
         # Now we expand the per-file (exposure+detector) data IDs.  This time
         # we pass in the records we just retrieved from the exposure data ID
@@ -760,13 +801,13 @@ class RawIngestTask(Task):
         for file in data.files:
             for dataset in file.datasets:
                 dataset.dataId = self.butler.registry.expandDataId(
-                    dataset.dataId, records=dict(data.dataId.records)
+                    dataset.dataId, records=data.dataId.records
                 )
         return data
 
     def prep(
-        self, files, *, pool: Optional[Pool] = None, processes: int = 1
-    ) -> Tuple[Iterator[RawExposureData], List[str]]:
+        self, files: Iterable[ResourcePath], *, pool: Optional[PoolType] = None, processes: int = 1
+    ) -> Tuple[Iterator[RawExposureData], List[ResourcePath]]:
         """Perform all non-database-updating ingest preprocessing steps.
 
         Parameters
@@ -792,11 +833,13 @@ class RawIngestTask(Task):
             pool = Pool(processes)
         mapFunc = map if pool is None else pool.imap_unordered
 
-        def _partition_good_bad(file_data: Iterable[RawFileData]) -> Tuple[List[RawFileData], List[str]]:
+        def _partition_good_bad(
+            file_data: Iterable[RawFileData],
+        ) -> Tuple[List[RawFileData], List[ResourcePath]]:
             """Filter out bad files and return good with list of bad."""
             good_files = []
             bad_files = []
-            for fileDatum in self.progress.wrap(file_data, desc="Reading image metadata", total=len(files)):
+            for fileDatum in self.progress.wrap(file_data, desc="Reading image metadata"):
                 if not fileDatum.datasets:
                     bad_files.append(fileDatum.filename)
                 else:
@@ -807,20 +850,20 @@ class RawIngestTask(Task):
         # There should be far fewer index files than data files.
         index_entries, files, good_index_files, bad_index_files = self.locateAndReadIndexFiles(files)
         if bad_index_files:
-            self.log.info("Failed to read the following explicitly requested index files:"),
+            self.log.info("Failed to read the following explicitly requested index files:")
             for bad in sorted(bad_index_files):
                 self.log.info("- %s", bad)
 
         # Now convert all the index file entries to standard form for ingest.
-        bad_index_file_data = []
+        processed_bad_index_files: List[ResourcePath] = []
         indexFileData = self.processIndexEntries(index_entries)
         if indexFileData:
-            indexFileData, bad_index_file_data = _partition_good_bad(indexFileData)
+            indexFileData, processed_bad_index_files = _partition_good_bad(indexFileData)
             self.log.info(
                 "Successfully extracted metadata for %d file%s found in %d index file%s with %d failure%s",
                 *_log_msg_counter(indexFileData),
                 *_log_msg_counter(good_index_files),
-                *_log_msg_counter(bad_index_file_data),
+                *_log_msg_counter(processed_bad_index_files),
             )
 
         # Extract metadata and build per-detector regions.
@@ -830,22 +873,22 @@ class RawIngestTask(Task):
 
         # Filter out all the failed reads and store them for later
         # reporting.
-        fileData, bad_files = _partition_good_bad(fileData)
+        good_file_data, bad_files = _partition_good_bad(fileData)
         self.log.info(
             "Successfully extracted metadata from %d file%s with %d failure%s",
-            *_log_msg_counter(fileData),
+            *_log_msg_counter(good_file_data),
             *_log_msg_counter(bad_files),
         )
 
         # Combine with data from index files.
-        fileData.extend(indexFileData)
-        bad_files.extend(bad_index_file_data)
+        good_file_data.extend(indexFileData)
+        bad_files.extend(processed_bad_index_files)
         bad_files.extend(bad_index_files)
 
         # Use that metadata to group files (and extracted metadata) by
         # exposure.  Never parallelized because it's intrinsically a gather
         # step.
-        exposureData: List[RawExposureData] = self.groupByExposure(fileData)
+        exposureData: List[RawExposureData] = self.groupByExposure(good_file_data)
 
         # The next operation operates on RawExposureData instances (one at
         # a time) in-place and then returns the modified instance.  We call it
@@ -942,15 +985,15 @@ class RawIngestTask(Task):
 
     def ingestFiles(
         self,
-        files,
+        files: Iterable[ResourcePath],
         *,
-        pool: Optional[Pool] = None,
+        pool: Optional[PoolType] = None,
         processes: int = 1,
         run: Optional[str] = None,
         skip_existing_exposures: bool = False,
         update_exposure_records: bool = False,
         track_file_attrs: bool = True,
-    ):
+    ) -> Tuple[List[DatasetRef], List[ResourcePath], int, int, int]:
         """Ingest files into a Butler data repository.
 
         This creates any new exposure or visit Dimension entries needed to
@@ -998,6 +1041,14 @@ class RawIngestTask(Task):
         -------
         refs : `list` of `lsst.daf.butler.DatasetRef`
             Dataset references for ingested raws.
+        bad_files : `list` of `ResourcePath`
+            Given paths that could not be ingested.
+        n_exposures : `int`
+            Number of exposures successfully ingested.
+        n_exposures_failed : `int`
+            Number of exposures that failed when inserting dimension data.
+        n_ingests_failed : `int`
+            Number of exposures that failed when ingesting raw datasets.
         """
 
         exposureData, bad_files = self.prep(files, pool=pool, processes=processes)
@@ -1018,7 +1069,7 @@ class RawIngestTask(Task):
         n_exposures_failed = 0
         n_ingests_failed = 0
         for exposure in self.progress.wrap(exposureData, desc="Ingesting raw exposures"):
-
+            assert exposure.record is not None, "Should be guaranteed by prep()"
             self.log.debug(
                 "Attempting to ingest %d file%s from exposure %s:%s",
                 *_log_msg_counter(exposure.files),
@@ -1058,6 +1109,9 @@ class RawIngestTask(Task):
             # Override default run if nothing specified explicitly.
             if run is None:
                 instrument = exposure.files[0].instrument
+                assert (
+                    instrument is not None
+                ), "file should have been removed from this list by prep if instrument could not be found"
                 this_run = instrument.makeDefaultRawIngestRunName()
             else:
                 this_run = run
@@ -1096,9 +1150,9 @@ class RawIngestTask(Task):
     @timeMethod
     def run(
         self,
-        files,
+        files: Iterable[ResourcePathExpression],
         *,
-        pool: Optional[Pool] = None,
+        pool: Optional[PoolType] = None,
         processes: int = 1,
         run: Optional[str] = None,
         file_filter: Union[str, re.Pattern] = r"\.fit[s]?\b",
@@ -1106,7 +1160,7 @@ class RawIngestTask(Task):
         skip_existing_exposures: bool = False,
         update_exposure_records: bool = False,
         track_file_attrs: bool = True,
-    ):
+    ) -> List[DatasetRef]:
         """Ingest files into a Butler data repository.
 
         This creates any new exposure or visit Dimension entries needed to

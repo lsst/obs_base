@@ -103,7 +103,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         """
         return None
 
-    @property
+    @property  # type: ignore
     @cached_getter
     def checked_parameters(self):
         # Docstring inherited.

@@ -38,8 +38,10 @@ class PackagesFormatter(FileFormatter):
     supportedWriteParameters = frozenset({"format"})
     supportedExtensions = frozenset({".yaml", ".pickle", ".pkl", ".json"})
 
+    # MyPy does't like the fact that the base declares this an instance
+    # attribute while this derived class uses a property.
     @property
-    def extension(self) -> str:
+    def extension(self) -> str:  # type: ignore
         # Default to YAML but allow configuration via write parameter
         format = self.writeParameters.get("format", "yaml")
         ext = "." + format

@@ -22,11 +22,12 @@
 """Support for assembling and disassembling afw Exposures."""
 
 import logging
+from typing import Any, Dict, Iterable, Mapping, Optional, Set, Tuple, Type
 
 # Need to enable PSFs to be instantiated
 import lsst.afw.detection  # noqa: F401
-from lsst.afw.image import makeExposure, makeMaskedImage
-from lsst.daf.butler import StorageClassDelegate
+from lsst.afw.image import Exposure, makeExposure, makeMaskedImage
+from lsst.daf.butler import DatasetComponent, StorageClassDelegate
 
 log = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ class ExposureAssembler(StorageClassDelegate):
     COMPONENT_MAP = {"bbox": "BBox", "xy0": "XY0"}
     """Map component name to actual getter name."""
 
-    def _groupRequestedComponents(self):
+    def _groupRequestedComponents(self) -> Tuple[Set[str], Set[str]]:
         """Group requested components into top level and ExposureInfo.
 
         Returns
@@ -81,7 +82,7 @@ class ExposureAssembler(StorageClassDelegate):
         expInfoItems = requested & self.EXPOSURE_INFO_COMPONENTS
         return expItems, expInfoItems
 
-    def getComponent(self, composite, componentName):
+    def getComponent(self, composite: lsst.afw.image.Exposure, componentName: str) -> Any:
         """Get a component from an Exposure
 
         Parameters
@@ -116,7 +117,7 @@ class ExposureAssembler(StorageClassDelegate):
                 "Do not know how to retrieve component {} from {}".format(componentName, type(composite))
             )
 
-    def getValidComponents(self, composite):
+    def getValidComponents(self, composite: Exposure) -> Dict[str, Any]:
         """Extract all non-None components from a composite.
 
         Parameters
@@ -139,7 +140,9 @@ class ExposureAssembler(StorageClassDelegate):
         components.update(infoComps)
         return components
 
-    def disassemble(self, composite):
+    def disassemble(
+        self, composite: Any, subset: Optional[Iterable] = None, override: Optional[Any] = None
+    ) -> Dict[str, DatasetComponent]:
         """Disassemble an afw Exposure.
 
         This implementation attempts to extract components from the parent
@@ -151,6 +154,10 @@ class ExposureAssembler(StorageClassDelegate):
         composite : `~lsst.afw.image.Exposure`
             `Exposure` composite object consisting of components to be
             extracted.
+        subset : iterable, optional
+            Not supported by this assembler.
+        override : `object`, optional
+            Not supported by this assembler.
 
         Returns
         -------
@@ -172,6 +179,14 @@ class ExposureAssembler(StorageClassDelegate):
         If a PSF is present but is not persistable, the PSF will not be
         included in the returned components.
         """
+        if subset is not None:
+            raise NotImplementedError(
+                "ExposureAssembler does not support the 'subset' argument to disassemble."
+            )
+        if override is not None:
+            raise NotImplementedError(
+                "ExposureAssembler does not support the 'override' argument to disassemble."
+            )
         if not self.storageClass.validateInstance(composite):
             raise TypeError(
                 "Unexpected type mismatch between parent and StorageClass"
@@ -179,13 +194,15 @@ class ExposureAssembler(StorageClassDelegate):
             )
 
         # Only look for components that are defined by the StorageClass
-        components = {}
+        components: Dict[str, DatasetComponent] = {}
         expItems, expInfoItems = self._groupRequestedComponents()
 
         fromExposure = super().disassemble(composite, subset=expItems)
+        assert fromExposure is not None, "Base class implementation guarantees this, but ABC does not."
         components.update(fromExposure)
 
         fromExposureInfo = super().disassemble(composite, subset=expInfoItems, override=composite.getInfo())
+        assert fromExposureInfo is not None, "Base class implementation guarantees this, but ABC does not."
         components.update(fromExposureInfo)
 
         if "psf" in components and not components["psf"].component.isPersistable():
@@ -197,7 +214,7 @@ class ExposureAssembler(StorageClassDelegate):
 
         return components
 
-    def assemble(self, components):
+    def assemble(self, components: Dict[str, Any], pytype: Optional[Type] = None) -> Exposure:
         """Construct an Exposure from components.
 
         Parameters
@@ -205,6 +222,8 @@ class ExposureAssembler(StorageClassDelegate):
         components : `dict`
             All the components from which to construct the Exposure.
             Some can be missing.
+        pytype : `type`, optional
+            Not supported by this assembler.
 
         Returns
         -------
@@ -216,6 +235,8 @@ class ExposureAssembler(StorageClassDelegate):
         ValueError
             Some supplied components are not recognized.
         """
+        if pytype is not None:
+            raise NotImplementedError("ExposureAssembler does not support the 'pytype' argument to assemble.")
         components = components.copy()
         maskedImageComponents = {}
         hasMaskedImage = False
@@ -277,7 +298,7 @@ class ExposureAssembler(StorageClassDelegate):
 
         return exposure
 
-    def handleParameters(self, inMemoryDataset, parameters=None):
+    def handleParameters(self, inMemoryDataset: Any, parameters: Optional[Mapping[str, Any]] = None) -> Any:
         """Modify the in-memory dataset using the supplied parameters,
         returning a possibly new object.
 
@@ -297,6 +318,8 @@ class ExposureAssembler(StorageClassDelegate):
             Updated form of supplied in-memory dataset, after parameters
             have been used.
         """
+        if parameters is None:
+            return inMemoryDataset
         # Understood by *this* subset command
         understood = ("bbox", "origin")
         use = self.storageClass.filterParameters(parameters, subset=understood)
@@ -306,7 +329,8 @@ class ExposureAssembler(StorageClassDelegate):
         return inMemoryDataset
 
     @classmethod
-    def selectResponsibleComponent(cls, readComponent: str, fromComponents) -> str:
+    def selectResponsibleComponent(cls, readComponent: str, fromComponents: Set[Optional[str]]) -> str:
+        # Docstring inherited.
         imageComponents = ["mask", "image", "variance"]
         forwarderMap = {
             "bbox": imageComponents,

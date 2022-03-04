@@ -36,7 +36,7 @@ from lsst.daf.butler import Butler
 from lsst.daf.butler.cli.butler import cli as butlerCli
 from lsst.daf.butler.cli.utils import LogCliRunner
 from lsst.resources import ResourcePath
-from lsst.utils import doImport
+from lsst.utils import doImportType
 
 from . import script
 from .utils import getInstrument
@@ -104,7 +104,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     @property
     def instrumentClass(self):
         """The instrument class."""
-        return doImport(self.instrumentClassName)
+        return doImportType(self.instrumentClassName)
 
     @property
     def instrumentName(self):
