@@ -12,7 +12,7 @@ config.log
 *Lib.py
 .cache
 .pytest_cache
-.coverage
+.coverage*
 bin/
 doc/html
 doc/*.tag
@@ -22,6 +22,7 @@ doc/doxygen.conf
 tests/.tests
 tests/.cache
 tests/Test*-*
+tests/tmp*
 version.py
 tests/trivial_camera/qe_curves/ccd00/19700101T000000.ecsv
 tests/trivial_camera/qe_curves/ccd00/19800101T000000.ecsv
