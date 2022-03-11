@@ -30,6 +30,7 @@ from lsst.daf.butler.cli.opt import (
     repo_argument,
     run_option,
     transfer_option,
+    where_option,
 )
 from lsst.daf.butler.cli.utils import ButlerCommand, split_commas, typeStrAcceptsMultiple
 
@@ -94,6 +95,7 @@ def convert(*args, **kwargs):
     callback=split_commas,
     metavar=typeStrAcceptsMultiple,
 )
+@where_option()
 @options_file_option()
 def define_visits(*args, **kwargs):
     """Define visits from exposures in the butler registry.

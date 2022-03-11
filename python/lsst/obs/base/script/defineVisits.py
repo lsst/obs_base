@@ -28,7 +28,7 @@ from ..utils import getInstrument
 log = logging.getLogger("lsst.obs.base.defineVisits")
 
 
-def defineVisits(repo, config_file, collections, instrument, raw_name="raw"):
+def defineVisits(repo, config_file, collections, instrument, where=None, raw_name="raw"):
     """Implements the command line interface `butler define-visits` subcommand,
     should only be called by command line tools and unit test code that tests
     this function.
@@ -47,6 +47,9 @@ def defineVisits(repo, config_file, collections, instrument, raw_name="raw"):
         If empty it will be passed as `None` to Butler.
     instrument : `str`
         The name or fully-qualified class name of an instrument.
+    where : `str`, optional
+        Query clause to use when querying for dataIds. Can be used to limit
+        the relevant exposures.
     raw_name : `str`, optional
         Name of the raw dataset type name.  Defaults to 'raw'.
 
@@ -67,6 +70,9 @@ def defineVisits(repo, config_file, collections, instrument, raw_name="raw"):
         collections = instr.makeDefaultRawIngestRunName()
         log.info("Defaulting to searching for raw exposures in collection %s", collections)
 
+    if not where:
+        where = None
+
     if config_file is not None:
         config.load(config_file)
     task = DefineVisitsTask(config=config, butler=butler)
@@ -75,7 +81,11 @@ def defineVisits(repo, config_file, collections, instrument, raw_name="raw"):
     # query to filter out exposures not relevant to the specified collection.
     task.run(
         butler.registry.queryDataIds(
-            ["exposure"], dataId={"instrument": instr.getName()}, collections=collections, datasets=raw_name
+            ["exposure"],
+            dataId={"instrument": instr.getName()},
+            collections=collections,
+            datasets=raw_name,
+            where=where,
         ),
         collections=collections,
     )

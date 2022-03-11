@@ -493,18 +493,18 @@ class DefineVisitsTask(Task):
         for dataId in data_id_set:
             record = dataId.records["exposure"]
             assert record is not None, "Guaranteed by expandDataIds call earlier."
-            if record.observation_type != "science":
+            if record.tracking_ra is None or record.tracking_dec is None or record.sky_angle is None:
                 if self.config.ignoreNonScienceExposures:
                     continue
                 else:
                     raise RuntimeError(
                         f"Input exposure {dataId} has observation_type "
-                        f"{record.observation_type}, not 'science'."
+                        f"{record.observation_type}, but is not on sky."
                     )
             instruments.add(dataId["instrument"])
             exposures.append(record)
         if not exposures:
-            self.log.info("No science exposures found after filtering.")
+            self.log.info("No on-sky exposures found after filtering.")
             return
         if len(instruments) > 1:
             raise RuntimeError(
