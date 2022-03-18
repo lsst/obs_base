@@ -225,7 +225,7 @@ class RawIngestConfig(Config):
         dtype=bool,
         default=False,
         doc="If True, stop ingest as soon as any problem is encountered with any file. "
-        "Otherwise problems files will be skipped and logged and a report issued at completion.",
+        "Otherwise problem files will be skipped and logged and a report issued at completion.",
     )
 
 
