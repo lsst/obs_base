@@ -50,6 +50,7 @@ class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
             regex=fits_re,
             transfer="auto",
             track_file_attrs=True,
+            fail_fast=False,
         )
 
     @staticmethod
@@ -143,9 +144,11 @@ class RawIngestMockTest(unittest.TestCase):
             result = self.runner.invoke(butlerCli, ["create", "repo"])
             self.assertEqual(result.exit_code, 0, clickResultMsg(result))
             with unittest.mock.patch("lsst.obs.base.RawIngestTask", new=PatchRawIngestTask) as mock:
-                # call and override the name parameter of the config
+                # Call, override the name parameter of the config and set
+                # fail-fast.
                 result = self.runner.invoke(
-                    butlerCli, ["ingest-raws", "repo", "resources", "--config", "transfer=hardlink"]
+                    butlerCli,
+                    ["ingest-raws", "repo", "resources", "--config", "transfer=hardlink", "--fail-fast"],
                 )
                 self.assertEqual(result.exit_code, 0, clickResultMsg(result))
                 # Verify the mock class was initialized exactly once:
@@ -153,10 +156,13 @@ class RawIngestMockTest(unittest.TestCase):
                 # Verify that the task was initialized with a 'butler' kwarg
                 # that received a butler instance:
                 self.assertIsInstance(mock.init_args[0][1]["butler"], Butler)
+                expectedConfig = RawIngestConfig()
                 # Verify that the task was initialized with a 'config' kwarg
                 # that received an expected config:
-                expectedConfig = RawIngestConfig()
                 expectedConfig.update(transfer="hardlink")
+                # Verfiy that --failfast caused the config's failFast
+                # parameter to be set to True.
+                expectedConfig.update(failFast=True)
                 self.assertEqual(mock.init_args[0][1]["config"], expectedConfig)
 
 

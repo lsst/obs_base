@@ -35,7 +35,7 @@ from lsst.daf.butler.cli.opt import (
 from lsst.daf.butler.cli.utils import ButlerCommand, split_commas, typeStrAcceptsMultiple
 
 from ... import script
-from ..opt import instrument_argument
+from ..opt import failfast_option, instrument_argument
 
 # regular expression that can be used to find supported fits file extensions.
 fits_re = r"\.fit[s]?\b"
@@ -133,6 +133,7 @@ def define_visits(*args, **kwargs):
     " or checksum should be tracked or not. Whether this parameter is honored"
     " depends on the specific datastore implentation.",
 )
+@failfast_option()
 @options_file_option()
 def ingest_raws(*args, **kwargs):
     """Ingest raw frames into from a directory into the butler registry"""

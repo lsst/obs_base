@@ -29,6 +29,7 @@ def ingestRaws(
     locations,
     regex,
     output_run,
+    fail_fast,
     config=None,
     config_file=None,
     transfer="auto",
@@ -49,6 +50,10 @@ def ingestRaws(
         Regex string used to find files in directories listed in locations.
     output_run : `str`
         The path to the location, the run, where datasets should be put.
+    fail_fast : `bool`
+        If True, stop ingest as soon as any problem is encountered with any
+        file. Otherwise problem files will be skipped and logged and a report
+        issued at completion.
     config : `dict` [`str`, `str`] or `None`
         Key-value pairs to apply as overrides to the ingest config.
     config_file : `str` or `None`
@@ -80,6 +85,8 @@ def ingestRaws(
     if config is not None:
         for name, value in config.items():
             configOverrides.addValueOverride(name, value)
+    if fail_fast:
+        configOverrides.addValueOverride("failFast", True)
     configOverrides.applyTo(ingestConfig)
     ingester = TaskClass(config=ingestConfig, butler=butler)
     ingester.run(
