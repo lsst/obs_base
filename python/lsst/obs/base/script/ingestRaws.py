@@ -29,7 +29,7 @@ def ingestRaws(
     locations,
     regex,
     output_run,
-    fail_fast,
+    fail_fast=False,
     config=None,
     config_file=None,
     transfer="auto",
