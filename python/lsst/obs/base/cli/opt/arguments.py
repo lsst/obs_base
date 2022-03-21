@@ -19,8 +19,4 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from lsst.daf.butler.cli.utils import MWArgumentDecorator
-
-instrument_argument = MWArgumentDecorator(
-    "instrument", help="The name or fully-qualified class name of an instrument."
-)
+"""Shared arguments used by obs_base command-line tools."""

@@ -33,9 +33,10 @@ from lsst.daf.butler.cli.opt import (
     where_option,
 )
 from lsst.daf.butler.cli.utils import ButlerCommand, split_commas, typeStrAcceptsMultiple
+from lsst.pipe.base.cli.opt import instrument_argument
 
 from ... import script
-from ..opt import failfast_option, instrument_argument
+from ..opt import failfast_option
 
 # regular expression that can be used to find supported fits file extensions.
 fits_re = r"\.fit[s]?\b"
