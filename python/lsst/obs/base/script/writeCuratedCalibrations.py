@@ -22,8 +22,7 @@
 import logging
 
 from lsst.daf.butler import Butler
-
-from ..utils import getInstrument
+from lsst.pipe.base import Instrument
 
 log = logging.getLogger(__name__)
 
@@ -57,5 +56,5 @@ def writeCuratedCalibrations(repo, instrument, collection, labels):
         `lsst.obs.base.Instrument`.
     """
     butler = Butler(repo, writeable=True)
-    instr = getInstrument(instrument, butler.registry)
+    instr = Instrument.from_string(instrument, butler.registry)
     instr.writeCuratedCalibrations(butler, collection=collection, labels=labels)
