@@ -40,7 +40,6 @@ from lsst.daf.butler.tests import DatasetTestHelper, addDatasetType, makeTestCol
 from lsst.geom import Box2I, Extent2I, Point2I
 from lsst.obs.base.exposureAssembler import ExposureAssembler
 from lsst.obs.base.tests import make_ramp_exposure_trimmed, make_ramp_exposure_untrimmed
-from lsst.utils.packages import Packages
 
 if TYPE_CHECKING:
     from lsst.daf.butler import DatasetRef
@@ -95,13 +94,6 @@ COMPONENTS = {
 READ_COMPONENTS = {"bbox", "xy0", "dimensions", "filter"}
 
 
-class SimpleConfig(lsst.pex.config.Config):
-    """Config to use in tests for butler put/get"""
-
-    i = lsst.pex.config.Field("integer test", int)
-    c = lsst.pex.config.Field("string", str)
-
-
 class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -140,8 +132,6 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         for datasetTypeName, storageClassName in (
             ("ps", "PropertySet"),
             ("pl", "PropertyList"),
-            ("pkg", "Packages"),
-            ("config", "Config"),
             ("int_exp_trimmed", "ExposureI"),
             ("int_exp_untrimmed", "ExposureI"),
         ):
@@ -218,18 +208,6 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         pl["B"] = "string"
         pl.setComment("B", "A string comment")
         self.runFundamentalTypeTest("pl", pl)
-
-        pkg = Packages.fromSystem()
-        self.runFundamentalTypeTest("pkg", pkg)
-
-    def testPexConfig(self) -> None:
-        """Test that we can put and get pex_config Configs"""
-        c = SimpleConfig(i=10, c="hello")
-        self.assertEqual(c.i, 10)
-        ref = self.butler.put(c, "config")
-        butler_c = self.butler.get(ref)
-        self.assertEqual(c, butler_c)
-        self.assertIsInstance(butler_c, SimpleConfig)
 
     def testFitsCatalog(self) -> None:
         """Test reading of a FITS catalog"""
