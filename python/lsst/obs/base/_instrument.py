@@ -625,4 +625,5 @@ def loadCamera(butler: Butler, dataId: DataId, *, collections: Any = None) -> Tu
         pass
     # We know an instrument data ID is a value, but MyPy doesn't.
     instrument = Instrument.fromName(dataId["instrument"], butler.registry)  # type: ignore
+    assert isinstance(instrument, Instrument)  # for mypy
     return instrument.getCamera(), False

@@ -61,11 +61,11 @@ from lsst.daf.butler import (
     Progress,
 )
 from lsst.pex.config import ChoiceField, Config, Field
-from lsst.pipe.base import Task
+from lsst.pipe.base import Instrument, Task
 from lsst.resources import ResourcePath, ResourcePathExpression
 from lsst.utils.timer import timeMethod
 
-from ._instrument import Instrument, makeExposureRecordFromObsInfo
+from ._instrument import makeExposureRecordFromObsInfo
 
 # multiprocessing.Pool is actually a function, not a type, and the real type
 # isn't exposed, so we can't used it annotations, so we'll just punt on it via

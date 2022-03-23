@@ -48,10 +48,11 @@ from lsst.daf.butler import (
 )
 from lsst.geom import Box2D
 from lsst.pex.config import Config, Field, makeRegistry, registerConfigurable
-from lsst.pipe.base import Task
+from lsst.pipe.base import Instrument, Task
 from lsst.sphgeom import ConvexPolygon, Region, UnitVector3d
+from lsst.utils.introspection import get_full_type_name
 
-from ._instrument import Instrument, loadCamera
+from ._instrument import loadCamera
 
 
 @dataclasses.dataclass
@@ -763,8 +764,14 @@ class _ComputeVisitRegionsFromSingleRawWcsTask(ComputeVisitRegionsTask):
             # This allows flips to be taken into account
             instrument = self.getInstrument(exposure.instrument)
             rawFormatter = instrument.getRawFormatter({"detector": detectorId})
-            wcs = rawFormatter.makeRawSkyWcsFromBoresight(radec, orientation, wcsDetector)
 
+            try:
+                wcs = rawFormatter.makeRawSkyWcsFromBoresight(radec, orientation, wcsDetector)  # type: ignore
+            except AttributeError:
+                raise TypeError(
+                    f"Raw formatter is {get_full_type_name(rawFormatter)} but visit"
+                    " definition requires it to support 'makeRawSkyWcsFromBoresight'"
+                ) from None
         else:
             if self.config.detectorId is None:
                 wcsRefsIter = self.butler.registry.queryDatasets(
