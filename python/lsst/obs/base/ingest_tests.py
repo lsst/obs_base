@@ -35,11 +35,11 @@ import lsst.obs.base
 from lsst.daf.butler import Butler
 from lsst.daf.butler.cli.butler import cli as butlerCli
 from lsst.daf.butler.cli.utils import LogCliRunner
+from lsst.pipe.base import Instrument
 from lsst.resources import ResourcePath
 from lsst.utils import doImportType
 
 from . import script
-from .utils import getInstrument
 
 
 class IngestTestBase(metaclass=abc.ABCMeta):
@@ -444,7 +444,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         butler = Butler(self.root, run=self.outputRun)
         visits = butler.registry.queryDataIds(["visit"]).expanded().toSet()
         self.assertCountEqual(visits, self.visits.keys())
-        instr = getInstrument(self.instrumentName, butler.registry)
+        instr = Instrument.from_string(self.instrumentName, butler.registry)
         camera = instr.getCamera()
         for foundVisit, (expectedVisit, expectedExposures) in zip(visits, self.visits.items()):
             # Test that this visit is associated with the expected exposures.

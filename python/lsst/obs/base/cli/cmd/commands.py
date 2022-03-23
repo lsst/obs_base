@@ -33,9 +33,10 @@ from lsst.daf.butler.cli.opt import (
     where_option,
 )
 from lsst.daf.butler.cli.utils import ButlerCommand, split_commas, typeStrAcceptsMultiple
+from lsst.pipe.base.cli.opt import instrument_argument
 
 from ... import script
-from ..opt import failfast_option, instrument_argument
+from ..opt import failfast_option
 
 # regular expression that can be used to find supported fits file extensions.
 fits_re = r"\.fit[s]?\b"
@@ -138,15 +139,6 @@ def define_visits(*args, **kwargs):
 def ingest_raws(*args, **kwargs):
     """Ingest raw frames into from a directory into the butler registry"""
     script.ingestRaws(*args, **kwargs)
-
-
-@click.command(short_help="Add an instrument to the repository", cls=ButlerCommand)
-@repo_argument(required=True)
-@instrument_argument(required=True, nargs=-1, help="The fully-qualified name of an Instrument subclass.")
-@click.option("--update", is_flag=True)
-def register_instrument(*args, **kwargs):
-    """Add an instrument to the data repository."""
-    script.registerInstrument(*args, **kwargs)
 
 
 @click.command(short_help="Add an instrument's curated calibrations.", cls=ButlerCommand)

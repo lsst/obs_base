@@ -22,5 +22,4 @@
 from .convert import convert
 from .defineVisits import defineVisits
 from .ingestRaws import ingestRaws
-from .registerInstrument import registerInstrument
 from .writeCuratedCalibrations import writeCuratedCalibrations

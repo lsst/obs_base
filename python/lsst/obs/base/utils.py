@@ -25,12 +25,11 @@ import re
 
 import lsst.geom as geom
 import lsst.pex.exceptions
+from deprecated.sphinx import deprecated
 from lsst.afw.cameraGeom import FIELD_ANGLE, PIXELS
 from lsst.afw.geom.skyWcs import makeSkyWcs
 from lsst.afw.image import RotType
-from lsst.utils import doImportType
-
-from ._instrument import Instrument
+from lsst.pipe.base import Instrument
 
 
 class InitialSkyWcsError(Exception):
@@ -133,6 +132,11 @@ def bboxFromIraf(irafBBoxStr):
     return geom.BoxI(geom.PointI(x0 - 1, y0 - 1), geom.PointI(x1 - 1, y1 - 1))
 
 
+@deprecated(
+    reason="Replaced with lsst.pipe.base.Instrument.from_string. Will be removed after v25.",
+    version="v24",
+    category=FutureWarning,
+)
 def getInstrument(instrumentName, registry=None, collection_prefix=None):
     """Return an instance of a named instrument.
 
@@ -167,22 +171,7 @@ def getInstrument(instrumentName, registry=None, collection_prefix=None):
     TypeError
         If the instrument is not a subclass of lsst.obs.base.Instrument.
     """
-    if "." not in instrumentName and registry is not None:
-        try:
-            instr = Instrument.fromName(instrumentName, registry, collection_prefix=collection_prefix)
-        except Exception as err:
-            raise RuntimeError(
-                f"Could not get instrument from name: {instrumentName}. Failed with exception: {err}"
-            )
-    else:
-        try:
-            instr = doImportType(instrumentName)
-        except Exception as err:
-            raise RuntimeError(f"Could not import instrument: {instrumentName}. Failed with exception: {err}")
-        instr = instr(collection_prefix=collection_prefix)
-    if not isinstance(instr, Instrument):
-        raise TypeError(f"{instrumentName} is not an Instrument subclass.")
-    return instr
+    return Instrument.from_string(instrumentName, registry, collection_prefix)
 
 
 #  TODO remove the impl in pipe_base? (NB this combines setDottedAtr AND the

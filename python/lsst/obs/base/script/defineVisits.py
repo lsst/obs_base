@@ -22,8 +22,7 @@ import logging
 
 from lsst.daf.butler import Butler
 from lsst.obs.base import DefineVisitsConfig, DefineVisitsTask
-
-from ..utils import getInstrument
+from lsst.pipe.base import Instrument
 
 log = logging.getLogger("lsst.obs.base.defineVisits")
 
@@ -61,7 +60,7 @@ def defineVisits(repo, config_file, collections, instrument, where=None, raw_nam
     if not collections:
         collections = None
     butler = Butler(repo, collections=collections, writeable=True)
-    instr = getInstrument(instrument, butler.registry)
+    instr = Instrument.from_string(instrument, butler.registry)
     config = DefineVisitsConfig()
     instr.applyConfigOverrides(DefineVisitsTask._DefaultName, config)
 

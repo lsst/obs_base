@@ -1,4 +1,4 @@
-# This file is part of daf_butler.
+# This file is part of obs_base.
 #
 # Developed for the LSST Data Management System.
 # This product includes software developed by the LSST Project
@@ -23,54 +23,15 @@ from __future__ import annotations
 
 __all__ = ("PexConfigFormatter",)
 
-import os.path
-from typing import Any, Optional, Type
-
-from lsst.daf.butler.formatters.file import FileFormatter
-from lsst.pex.config import Config
+from lsst.pipe.base.formatters.pexConfig import PexConfigFormatter as CurrentFormatter
 
 
-class PexConfigFormatter(FileFormatter):
-    """Formatter implementation for reading and writing
-    `lsst.pex.config.Config` instances."""
+class PexConfigFormatter(CurrentFormatter):
+    """Deprecated formatter `lsst.pex.config.Config` instances.
 
-    extension = ".py"
+    This class exists to handle datasets that have already been stored
+    using this class but the actual implementation is in
+    `lsst.pipe.base.formatters.pexConfig.PexConfigFormatter`.
+    """
 
-    def _readFile(self, path: str, pytype: Optional[Type[Any]] = None) -> Any:
-        """Read a pex.config.Config instance from the given file.
-
-        Parameters
-        ----------
-        path : `str`
-            Path to use to open the file.
-        pytype : `type`, optional
-            Class to use to read the config file.
-
-        Returns
-        -------
-        data : `lsst.pex.config.Config`
-            Instance of class ``pytype`` read from config file. `None`
-            if the file could not be opened.
-        """
-        if not os.path.exists(path):
-            return None
-
-        # Automatically determine the Config class from the serialized form
-        with open(path, "r") as fd:
-            config_py = fd.read()
-        return Config._fromPython(config_py)
-
-    def _writeFile(self, inMemoryDataset: Any) -> None:
-        """Write the in memory dataset to file on disk.
-
-        Parameters
-        ----------
-        inMemoryDataset : `object`
-            Object to serialize.
-
-        Raises
-        ------
-        Exception
-            The file could not be written.
-        """
-        inMemoryDataset.save(self.fileDescriptor.location.path)
+    pass
