@@ -25,9 +25,11 @@ import re
 
 import lsst.geom as geom
 import lsst.pex.exceptions
+from deprecated.sphinx import deprecated
 from lsst.afw.cameraGeom import FIELD_ANGLE, PIXELS
 from lsst.afw.geom.skyWcs import makeSkyWcs
 from lsst.afw.image import RotType
+from lsst.pipe.base import Instrument
 
 
 class InitialSkyWcsError(Exception):
@@ -128,6 +130,48 @@ def bboxFromIraf(irafBBoxStr):
     x0, x1, y0, y1 = [int(_) for _ in mat.groups()]
 
     return geom.BoxI(geom.PointI(x0 - 1, y0 - 1), geom.PointI(x1 - 1, y1 - 1))
+
+
+@deprecated(
+    reason="Replaced with lsst.pipe.base.Instrument.from_string. Will be removed after v25.",
+    version="v24",
+    category=FutureWarning,
+)
+def getInstrument(instrumentName, registry=None, collection_prefix=None):
+    """Return an instance of a named instrument.
+
+    If the instrument name not is qualified (does not contain a '.') and a
+    butler registry is provided, this will attempt to load the instrument using
+    Instrument.fromName. Otherwise the instrument will be imported and
+    instantiated.
+
+    Parameters
+    ----------
+    instrumentName : string
+        The name or fully-qualified class name of an instrument.
+    registry : `lsst.daf.butler.Registry`, optional
+        Butler registry to query to find information about the instrument, by
+        default None
+    collection_prefix : `str`, optional
+        Prefix for collection names to use instead of the intrument's own name.
+        This is primarily for use in simulated-data repositories, where the
+        instrument name may not be necessary and/or sufficient to distinguish
+        between collections.
+
+    Returns
+    -------
+    Instrument subclass instance
+        The instantiated instrument.
+
+    Raises
+    ------
+    RuntimeError
+        If the instrument can not be imported, instantiated, or obtained from
+        the registry.
+    TypeError
+        If the instrument is not a subclass of lsst.obs.base.Instrument.
+    """
+    return Instrument.from_string(instrumentName, registry, collection_prefix)
 
 
 #  TODO remove the impl in pipe_base? (NB this combines setDottedAtr AND the
