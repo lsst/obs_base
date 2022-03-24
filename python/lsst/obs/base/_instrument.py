@@ -871,7 +871,8 @@ class Instrument(metaclass=ABCMeta):
         return "/".join((self.collection_prefix,) + labels)
 
 
-def makeExposureRecordFromObsInfo(obsInfo: ObservationInfo, universe: DimensionUniverse) -> DimensionRecord:
+def makeExposureRecordFromObsInfo(obsInfo: ObservationInfo, universe: DimensionUniverse, **kwargs: Any
+    ) -> DimensionRecord:
     """Construct an exposure DimensionRecord from
     `astro_metadata_translator.ObservationInfo`.
 
@@ -882,6 +883,8 @@ def makeExposureRecordFromObsInfo(obsInfo: ObservationInfo, universe: DimensionU
         the exposure.
     universe : `DimensionUniverse`
         Set of all known dimensions.
+    **kwargs
+        Additional field values for this record.
 
     Returns
     -------
@@ -923,6 +926,7 @@ def makeExposureRecordFromObsInfo(obsInfo: ObservationInfo, universe: DimensionU
         tracking_dec=dec,
         sky_angle=sky_angle,
         zenith_angle=zenith_angle,
+        **kwargs
     )
 
 

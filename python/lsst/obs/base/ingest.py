@@ -168,16 +168,16 @@ class RawExposureData:
     """Set of all known dimensions.
     """
 
-    record: Optional[DimensionRecord] = None
+    record: DimensionRecord
     """The exposure `DimensionRecord` that must be inserted into the
     `~lsst.daf.butler.Registry` prior to file-level ingest (`DimensionRecord`).
     """
 
-    def __post_init__(self, universe: DimensionUniverse) -> None:
-        # We don't care which file or dataset we read metadata from, because
-        # we're assuming they'll all be the same; just use the first ones.
-        self.record = makeExposureRecordFromObsInfo(self.files[0].datasets[0].obsInfo, universe)
-
+    extraRecords: Dict[str, DimensionRecord]
+    """Additional records that must be inserted into the
+    `~lsst.daf.butler.Registry` prior to ingesting the exposure ``record``
+    (e.g., to satisfy foreign key constraints), indexed by the dimension name.
+    """
 
 def makeTransferChoiceField(
     doc: str = "How to transfer files (None for no transfer).", default: str = "auto"
@@ -273,6 +273,39 @@ class RawIngestTask(Task):
     ConfigClass: ClassVar[Type[Config]] = RawIngestConfig
 
     _DefaultName: ClassVar[str] = "ingest"
+
+    ObservationInfoClass: ClassVar[Type[ObservationInfo]] = ObservationInfo
+    """Class used for carrying information about an observation.
+    Subclasses may want to override this in order to extend the list of columns
+    that end up in the exposure record."""
+
+    obsInfoRequiredSubset: Dict[str, bool] = {
+        "altaz_begin": False,
+        "boresight_rotation_coord": False,
+        "boresight_rotation_angle": False,
+        "dark_time": False,
+        "datetime_begin": True,
+        "datetime_end": True,
+        "detector_num": True,
+        "exposure_group": False,
+        "exposure_id": True,
+        "exposure_time": True,
+        "instrument": True,
+        "tracking_radec": False,
+        "object": False,
+        "observation_counter": False,
+        "observation_id": True,
+        "observation_reason": False,
+        "observation_type": True,
+        "observing_day": False,
+        "physical_filter": True,
+        "science_program": False,
+        "visit_id": False,
+    }
+    """Fields in the `ObservationInfo` that will be used by
+    ``makeExposureRecord`` in constructing an exposure record, and whether they
+    are required.
+    """
 
     def getDatasetType(self) -> DatasetType:
         """Return the DatasetType of the datasets ingested by this Task."""
@@ -477,39 +510,11 @@ class RawIngestTask(Task):
             The dataId, and observation information associated with this
             dataset.
         """
-        # To ensure we aren't slowed down for no reason, explicitly
-        # list here the properties we need for the schema.
-        # Use a dict with values a boolean where True indicates
-        # that it is required that we calculate this property.
-        ingest_subset = {
-            "altaz_begin": False,
-            "boresight_rotation_coord": False,
-            "boresight_rotation_angle": False,
-            "dark_time": False,
-            "datetime_begin": True,
-            "datetime_end": True,
-            "detector_num": True,
-            "exposure_group": False,
-            "exposure_id": True,
-            "exposure_time": True,
-            "instrument": True,
-            "tracking_radec": False,
-            "object": False,
-            "observation_counter": False,
-            "observation_id": True,
-            "observation_reason": False,
-            "observation_type": True,
-            "observing_day": False,
-            "physical_filter": True,
-            "science_program": False,
-            "visit_id": False,
-        }
-
         if isinstance(header, ObservationInfo):
             obsInfo = header
             missing = []
             # Need to check the required properties are present.
-            for property, required in ingest_subset.items():
+            for property, required in self.obsInfoRequiredSubset.items():
                 if not required:
                     continue
                 # getattr does not need to be protected because it is using
@@ -524,12 +529,12 @@ class RawIngestTask(Task):
                 )
 
         else:
-            obsInfo = ObservationInfo(
+            obsInfo = self.ObservationInfoClass(
                 header,
                 pedantic=False,
                 filename=str(filename),
-                required={k for k in ingest_subset if ingest_subset[k]},
-                subset=set(ingest_subset),
+                required={k for k in self.obsInfoRequiredSubset if self.obsInfoRequiredSubset[k]},
+                subset=set(self.obsInfoRequiredSubset),
             )
 
         dataId = DataCoordinate.standardize(
@@ -760,9 +765,62 @@ class RawIngestTask(Task):
             byExposure[f.datasets[0].dataId.subset(exposureDimensions)].append(f)
 
         return [
-            RawExposureData(dataId=dataId, files=exposureFiles, universe=self.universe)
-            for dataId, exposureFiles in byExposure.items()
+            RawExposureData(dataId=dataId, files=exposureFiles, universe=self.universe,
+                            record=self.makeExposureRecord(exposureFiles[0].datasets[0].obsInfo,
+                                                           self.universe),
+                            extraRecords=self.makeExtraRecords(exposureFiles[0].datasets[0].obsInfo,
+                                                               self.universe)
+                            ) for dataId, exposureFiles in byExposure.items()
         ]
+
+    def makeExposureRecord(self, obsInfo: ObservationInfo, universe: DimensionUniverse, **kwargs: Any
+        ) -> DimensionRecord:
+        """Construct a registry record for an exposure
+
+        This is a method that subclasses will often want to customize.
+
+        Parameters
+        ----------
+        obsInfo : `ObservationInfo`
+            Observation details for (one of the components of) the exposure.
+        universe : `DimensionUniverse`
+            Set of all known dimensions.
+        **kwargs
+            Additional field values for this record.
+
+        Returns
+        -------
+        record : `DimensionRecord`
+            The exposure record that must be inserted into the
+            `~lsst.daf.butler.Registry` prior to file-level ingest.
+        """
+        return makeExposureRecordFromObsInfo(obsInfo, universe, **kwargs)
+
+    def makeExtraRecords(self, obsInfo: ObservationInfo, universe: DimensionUniverse
+                         ) -> Dict[str, DimensionRecord]:
+        """Construct extra registry records
+
+        These extra records will be inserted into the
+        `~lsst.daf.butler.Registry` before the exposure records. This allows an
+        opportunity to satisfy foreign key constraints that exist because of
+        dimensions related to the exposure.
+
+        This is a method that subclasses may want to customize, if they've added
+        dimensions that relate to an exposure.
+
+        Parameters
+        ----------
+        obsInfo : `ObservationInfo`
+            Observation details for (one of the components of) the exposure.
+        universe : `DimensionUniverse`
+            Set of all known dimensions.
+
+        Returns
+        -------
+        records : `dict` [`str`, `DimensionRecord`]
+            The records to insert, indexed by dimension name.
+        """
+        return {}
 
     def expandDataIds(self, data: RawExposureData) -> RawExposureData:
         """Expand the data IDs associated with a raw exposure.
@@ -773,7 +831,7 @@ class RawIngestTask(Task):
         ----------
         exposure : `RawExposureData`
             A structure containing information about the exposure to be
-            ingested.  Must have `RawExposureData.records` populated. Should
+            ingested.  Must have `RawExposureData.record` populated. Should
             be considered consumed upon return.
 
         Returns
@@ -1078,6 +1136,8 @@ class RawIngestTask(Task):
             )
 
             try:
+                for name, record in exposure.extraRecords.items():
+                    self.butler.registry.syncDimensionData(name, record, update=update_exposure_records)
                 inserted_or_updated = self.butler.registry.syncDimensionData(
                     "exposure",
                     exposure.record,
