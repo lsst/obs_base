@@ -1,0 +1,7 @@
+* Made choice of required ``ObservationInfo`` properties configurable
+  through ``RawIngestTask.getObservationInfoSubsets``.
+* Added the concept of "dependency" records to be added to the registry before
+  adding the exposure record; this makes it easier to satisfy foreign key
+  constraints when the exposure relates to dimensions beyond the standard set.
+* Added ``RawIngestTask`` methods ```makeExposureRecord` and ``makeDependencyRecords``
+  to provide hooks for subclasses to provide values for additional columns.
