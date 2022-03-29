@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from ._camera_loaders import *
 from ._fitsRawFormatterBase import *
 from ._instrument import *
 from .cameraMapper import *

@@ -27,15 +27,28 @@ import os.path
 from abc import abstractmethod
 from collections import defaultdict
 from functools import lru_cache
-from typing import TYPE_CHECKING, AbstractSet, Any, FrozenSet, Optional, Sequence, Set, Tuple
+from typing import (
+    TYPE_CHECKING,
+    AbstractSet,
+    Any,
+    FrozenSet,
+    Iterable,
+    Mapping,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Union,
+)
 
 import astropy.time
-from lsst.afw.cameraGeom import Camera
+from lsst.afw.cameraGeom import Camera, CameraBuilder, Detector, DetectorBuilder
 from lsst.daf.butler import (
     Butler,
     CollectionType,
     DataCoordinate,
     DataId,
+    DatasetRef,
     DatasetType,
     DimensionRecord,
     DimensionUniverse,
@@ -44,6 +57,8 @@ from lsst.daf.butler import (
 from lsst.daf.butler.registry import DataIdError
 from lsst.pipe.base import Instrument as InstrumentBase
 from lsst.utils import getPackageDir
+
+from ._camera_loaders import CameraLoader, DetectorLoader
 
 if TYPE_CHECKING:
     from astro_metadata_translator import ObservationInfo
@@ -518,6 +533,172 @@ class Instrument(InstrumentBase):
             Factory for `Translator` objects.
         """
         raise NotImplementedError("Must be implemented by derived classes.")
+
+    def load_detector(
+        self,
+        arg: Union[str, int, DatasetRef, Detector, DetectorBuilder],
+        /,
+        butler: Butler,
+        camera: Union[str, DatasetType, DatasetRef, Camera, CameraBuilder] = "camera",
+        data_id: Optional[DataId] = None,
+        collections: Optional[Iterable[str]] = None,
+        **kwargs: Any,
+    ) -> Detector:
+        """Load a detector from a butler repository and update it with all
+        appropriate versioned calibrations for this instrument.
+
+        Parameters
+        ----------
+        arg : `str`, `int`, `DatasetRef`, `Detector`, `DetectorBuilder`
+            If a `DatasetRef`, `Detector`, or `DetectorBuilder`, an object that
+            can be used or loaded to provide the detector directly (``camera``
+            will be ignored).
+            If an `int` or `str`, a detector identifier to use with ``camera``.
+        butler : `Butler`
+            Butler client to read from.  If not initialized with the desired
+            collection search path, the ``collections`` argument must be
+            provided.
+        camera : `str`, `DatasetType`, `DatasetRef`, `Camera`, \
+                `CameraBuilder`, optional
+            Used to obtain a `Camera` or `CameraBuilder` as a way to get a
+            `DetectorBuilder`.  If a `Camera` is given, the detector is
+            extracted and then a `Detector.rebuild` is called, instead of
+            rebuilding the full camera.  Defaults to "camera" (as the nominal
+            dataset type name).
+        data_id : `dict` or `lsst.daf.butler.DataCoordinate`, optional
+            Data ID values that identify the ``exposure`` and/or ``visit``
+            dimension(s).  May include any extended keys supported by
+            `Butler.get`, such as ``day_obs``.  Should not identify the
+            ``detector`` dimension.
+        collections : `Iterable` [ `str` ], optional
+            Collections to search, in order.  If not provided, the butler used
+            to initialize this loader must already have the right collections.
+        **kwargs
+            Additional keyword arguments that are in the keys of
+            `detector_calibrations` will be interpreted as overrides of the
+            calibrations to apply; see `DetectorLoader.update` for details.
+            Other keyword arguments are interpreted as data ID key-value
+            pairs and forwarded directly to `Butler.get`.
+
+        Returns
+        -------
+        detector : `Detector`
+            The updated detector.
+
+        Examples
+        --------
+        Read detector 11 from the nominal camera and apply all default
+        calibrations valid during the observation of exposure 500::
+
+            detector = my_instrument.load_detector(11, butler, exposure=500)
+
+        The same, but use a string detector name and day_obs/seq_num for
+        exposure, and don't attempt to apply gains from PTC:
+
+            detector = my_instrument.load_detector(
+                "R12S21",
+                butler,
+                day_obs=20250129,
+                seq_num=1261,
+                ptc=False,
+            )
+        """
+        update_kwargs = {}
+        for k, v in self.detector_calibrations.items():
+            update_kwargs[k] = kwargs.pop(k, v)
+        loader = DetectorLoader(
+            arg,
+            butler,
+            camera=camera,
+            data_id=data_id,
+            collections=collections,
+            **kwargs,
+            instrument=self.getName(),
+        )
+        loader.update(collections=collections, **update_kwargs)
+        return loader.finish()
+
+    def load_camera(
+        self,
+        butler: Butler,
+        camera: Union[str, DatasetType, DatasetRef, Camera, CameraBuilder] = "camera",
+        data_id: Optional[DataId] = None,
+        **kwargs: Any,
+    ) -> Camera:
+        """
+        Parameters
+        ----------
+        butler : `Butler`
+            Butler client to read from.  If not initialized with the desired
+            collection search path, the ``collections`` argument must be
+            provided.
+        camera : `str`, `DatasetType`, `DatasetRef`, `Camera`, \
+                `CameraBuilder`, optional
+            A `CameraBuilder`, a `Camera` to rebuild into one, or a butler
+            dataset type or reference that can be used to load a `Camera`.
+            Defaults to "camera" (as the nominal dataset type name).
+        data_id : `dict` or `lsst.daf.butler.DataCoordinate`, optional
+            Data ID values that identify the ``exposure`` and/or ``visit``
+            dimension(s).  May include any extended keys supported by
+            `Butler.get`, such as ``day_obs``.
+        **kwargs
+            Additional keyword arguments that are in the keys of
+            `detector_calibrations` or `camera_calibations` will be interpreted
+            as overrides of the calibrations to apply; see
+            `CameraLoader.update` for details.  Other keyword arguments are
+            interpreted as data ID key-value pairs and forwarded directly to
+            `Butler.get`.
+
+        Returns
+        -------
+        camera : `Camera`
+            The updated camera.
+
+        Examples
+        --------
+        Read the nominal camera and apply all default calibrations valid during
+        the observation of exposure 500::
+
+            camera = my_instrument.load_camera(butler, exposure=500)
+
+        The same, but use day_obs/seq_num for exposure, and don't attempt to
+        apply gains from PTC:
+
+            camera = my_instrument.load_camera(
+                butler,
+                day_obs=20250129,
+                seq_num=1261,
+                ptc=False,
+            )
+        """
+        update_camera_kwargs = {}
+        for k, v in self.camera_calibrations.items():
+            update_camera_kwargs[k] = kwargs.pop(k, v)
+        update_detectors_kwargs = {}
+        for k, v in self.detector_calibrations.items():
+            update_detectors_kwargs = kwargs.pop(k, v)
+        loader = CameraLoader(butler, camera, data_id=data_id, **kwargs)
+        loader.update_camera(**update_camera_kwargs)
+        loader.update_detectors(**update_detectors_kwargs)
+        return loader.finish()
+
+    @property
+    def detector_calibrations(self) -> Mapping[str, str]:
+        """A mapping of the calibration dataset types that should be used to
+        update `Detector` objects for this instrument.
+        """
+        return {}
+
+    @property
+    def camera_calibrations(self) -> Mapping[str, str]:
+        """A mapping of the calibration dataset types that should be used to
+        update `Camera` objects for this instrument.
+
+        This should be disjoint with `detector_calibrations`; those detector
+        calibrations are also used to update camera objects, but are not part
+        of this container.
+        """
+        return {}
 
 
 def makeExposureRecordFromObsInfo(obsInfo: ObservationInfo, universe: DimensionUniverse) -> DimensionRecord:
