@@ -476,12 +476,20 @@ class RawIngestTask(Task):
             Set of `ObservationInfo` field names we will use if they are
             available.
         """
+        # Marking the new properties "group_counter_*" and
+        # "has_simulated_content" as required, assumes that we either
+        # recreate any existing index/sidecar files that include translated
+        # values, or else allow astro_metadata_translator to fill in
+        # defaults.
         required = {
             "datetime_begin",
             "datetime_end",
             "detector_num",
             "exposure_id",
             "exposure_time",
+            "group_counter_end",
+            "group_counter_start",
+            "has_simulated_content",
             "instrument",
             "observation_id",
             "observation_type",
