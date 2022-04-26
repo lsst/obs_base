@@ -481,8 +481,9 @@ class DefineVisitsTask(Task):
             # Must take into account 0/360 problem.
             extras["azimuth"] = _calc_mean_angle([e.azimuth for e in definition.exposures])
 
-        # visit_system handling changed. This is the current schema logic.
-        if "visit_system" not in supported:
+        # visit_system handling changed. This is the logic for visit/exposure
+        # that has support for seq_start/seq_end.
+        if "seq_num" in supported:
             # Map visit to exposure.
             visit_definition = [
                 self.universe["visit_definition"].RecordClass(
