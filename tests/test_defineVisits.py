@@ -40,6 +40,7 @@ class DefineVisitsTestCase(unittest.TestCase):
 
         dataIds = {
             "instrument": ["DummyCam"],
+            "band": ["r"],
             "physical_filter": ["d-r"],
             "exposure": [42, 43, 44],
             "visit": [42, 43, 44],

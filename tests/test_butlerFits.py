@@ -105,6 +105,7 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
 
         dataIds = {
             "instrument": ["DummyCam"],
+            "band": ["r"],
             "physical_filter": ["d-r"],
             "visit": [42, 43, 44],
         }
