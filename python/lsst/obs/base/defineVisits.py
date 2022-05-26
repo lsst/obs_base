@@ -218,13 +218,13 @@ class GroupExposuresTask(Task, metaclass=ABCMeta):
         """
         raise NotImplementedError()
 
-    def getVisitSystems(self) -> List[VisitSystem]:
+    def getVisitSystems(self) -> Set[VisitSystem]:
         """Return identifiers for the 'visit_system' dimension this
         algorithm implements.
 
         Returns
         -------
-        visit_systems : `List[VisitSystem]`
+        visit_systems : `Set` [`VisitSystem`]
             The visit systems used by this algorithm.
         """
         raise NotImplementedError()
@@ -507,7 +507,20 @@ class DefineVisitsTask(Task):
 
         else:
             # The old approach can only handle one visit system at a time.
-            visit_system = self.groupExposures.getVisitSystems()[0]
+            # If we have been configured with multiple options, prefer the
+            # one-to-one.
+            visit_systems = self.groupExposures.getVisitSystems()
+            if len(visit_systems) > 1:
+                one_to_one = VisitSystem.from_name("one-to-one")
+                if one_to_one not in visit_systems:
+                    raise ValueError(
+                        f"Multiple visit systems specified ({visit_systems}) for use with old"
+                        " dimension universe but unable to find one-to-one."
+                    )
+                visit_system = one_to_one
+            else:
+                visit_system = visit_systems.pop()
+
             extras["visit_system"] = visit_system.value
 
             # The old visit_definition included visit system.
@@ -754,9 +767,9 @@ class _GroupExposuresOneToOneTask(GroupExposuresTask, metaclass=ABCMeta):
                 visit_systems=visit_systems,
             )
 
-    def getVisitSystems(self) -> List[VisitSystem]:
+    def getVisitSystems(self) -> Set[VisitSystem]:
         # Docstring inherited from GroupExposuresTask.
-        return list(VisitSystem.from_names(["one-to-one"]))
+        return set(VisitSystem.from_names(["one-to-one"]))
 
 
 class _GroupExposuresByGroupMetadataConfig(GroupExposuresConfig):
@@ -808,9 +821,9 @@ class _GroupExposuresByGroupMetadataTask(GroupExposuresTask, metaclass=ABCMeta):
                 visit_systems=visit_systems,
             )
 
-    def getVisitSystems(self) -> List[VisitSystem]:
+    def getVisitSystems(self) -> Set[VisitSystem]:
         # Docstring inherited from GroupExposuresTask.
-        return list(VisitSystem.from_names(["by-group-metadata"]))
+        return set(VisitSystem.from_names(["by-group-metadata"]))
 
 
 class _GroupExposuresByCounterAndExposuresConfig(GroupExposuresConfig):
@@ -913,13 +926,13 @@ class _GroupExposuresByCounterAndExposuresTask(GroupExposuresTask, metaclass=ABC
                     visit_systems={system_seq_start_end},
                 )
 
-    def getVisitSystems(self) -> List[VisitSystem]:
+    def getVisitSystems(self) -> Set[VisitSystem]:
         # Docstring inherited from GroupExposuresTask.
         # Using a Config for this is difficult because what this grouping
         # algorithm is doing is using two visit systems.
         # One is using metadata (but not by-group) and the other is the
         # one-to-one. For now hard-code in class.
-        return list(VisitSystem.from_names(["one-to-one", "by-seq-start-end"]))
+        return set(VisitSystem.from_names(["one-to-one", "by-seq-start-end"]))
 
 
 class _ComputeVisitRegionsFromSingleRawWcsConfig(ComputeVisitRegionsConfig):
