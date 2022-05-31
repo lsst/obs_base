@@ -49,8 +49,6 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
     """Control whether the WCS is flipped in the X-direction (`bool`)"""
 
     def __init__(self, *args, **kwargs):
-        self.filterDefinitions.reset()
-        self.filterDefinitions.defineFilters()
         super().__init__(*args, **kwargs)
         self._metadata = None
         self._observationInfo = None

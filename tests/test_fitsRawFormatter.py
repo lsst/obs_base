@@ -103,9 +103,6 @@ class SimpleFitsRawFormatter(FitsRawFormatterBase):
 
 class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
     def setUp(self):
-        # reset the filters before we test anything
-        FilterDefinitionCollection.reset()
-
         # The FITS WCS and VisitInfo coordinates in this header are
         # intentionally different, to make comparisons between them more
         # obvious.

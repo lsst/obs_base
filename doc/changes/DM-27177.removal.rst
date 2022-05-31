@@ -1,0 +1,2 @@
+`~lsst.obs.base.FilterDefinitions` no longer supports `~lsst.afw.image.Filter`.
+Specifically, the ``defineFilters`` and ``reset`` methods have been removed.

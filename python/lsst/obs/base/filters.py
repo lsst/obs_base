@@ -28,9 +28,7 @@ from __future__ import annotations
 __all__ = ("FilterDefinition", "FilterDefinitionCollection")
 
 import dataclasses
-import re
-import warnings
-from typing import AbstractSet, Any, ClassVar, Dict, Optional, Sequence, Set, overload
+from typing import AbstractSet, Any, Dict, Optional, Sequence, Set, overload
 
 import lsst.afw.image.utils
 import numpy as np
@@ -119,71 +117,6 @@ class FilterDefinition:
             txt += f", alias='{self.alias}'"
         return txt + ")"
 
-    def defineFilter(self) -> None:
-        """Declare the filters via afw.image.Filter."""
-        aliases = set(self.alias)
-        name = self.physical_filter
-
-        current_names = set(lsst.afw.image.Filter.getNames())
-        # band can be defined multiple times -- only use the first
-        # occurrence
-        band = self.band
-        if band is not None:
-            # Special case code that uses afw_name to override the band.
-            # This was generally used as a workaround.
-            if self.afw_name is not None and (mat := re.match(rf"{band}(\d)+$", self.afw_name)):
-                i = int(mat.group(1))
-            else:
-                i = 0
-            while i < 50:  # in some instruments gratings or ND filters are combined
-                if i == 0:
-                    nband = band
-                else:
-                    nband = f"{band}{i}"
-                if nband not in current_names:
-                    band = nband
-                    name = band
-                    aliases.add(self.physical_filter)
-                    break
-                i += 1
-            else:
-                warnings.warn(
-                    f"Too many band aliases found for physical_filter {self.physical_filter}"
-                    f" with band {band}"
-                )
-
-        if self.physical_filter == self.band and self.physical_filter in current_names:
-            # We have already defined a filter like this
-            return
-
-        # Do not add an alias for band if the given afw_name matches
-        # the dynamically calculated band.
-        if self.afw_name is not None and self.afw_name != band and self.afw_name not in current_names:
-            # This will override the band setting above but it
-            # is still used as an alias below
-            name = self.afw_name
-            aliases.add(self.physical_filter)
-
-            # Only add physical_filter/band as an alias if afw_name is defined.
-            if band is not None:
-                aliases.add(band)
-
-        # Aliases are a serious issue so as a last attempt to clean up
-        # remove any registered names from the new aliases
-        # This usually means some variant filter name is being used
-        aliases.difference_update(current_names)
-
-        with warnings.catch_warnings():
-            # suppress Filter warnings; we already know this is deprecated
-            warnings.simplefilter("ignore", category=FutureWarning)
-            lsst.afw.image.utils.defineFilter(
-                name,
-                lambdaEff=self.lambdaEff,
-                lambdaMin=self.lambdaMin,
-                lambdaMax=self.lambdaMax,
-                alias=sorted(aliases),
-            )
-
     def makeFilterLabel(self) -> lsst.afw.image.FilterLabel:
         """Create a complete FilterLabel for this filter."""
         return lsst.afw.image.FilterLabel(band=self.band, physical=self.physical_filter)
@@ -196,12 +129,6 @@ class FilterDefinitionCollection(Sequence[FilterDefinition]):
     ----------
     filters : `Sequence`
         The filters in this collection.
-    """
-
-    _defined: ClassVar[Optional[FilterDefinitionCollection]] = None
-    """Whether these filters have been defined via
-    `~lsst.afw.image.utils.defineFilter`. If so, set to ``self`` to identify
-    the filter collection that defined them.
     """
 
     physical_to_band: Dict[str, Optional[str]]
@@ -231,44 +158,6 @@ class FilterDefinitionCollection(Sequence[FilterDefinition]):
 
     def __str__(self) -> str:
         return "FilterDefinitions(" + ", ".join(str(f) for f in self._filters) + ")"
-
-    def defineFilters(self) -> None:
-        """Define all the filters to `lsst.afw.image.Filter`.
-
-        `~lsst.afw.image.Filter` objects are singletons, so we protect against
-        filters being defined multiple times.
-
-        Raises
-        ------
-        RuntimeError
-            Raised if any other `FilterDefinitionCollection` has already called
-            ``defineFilters``.
-        """
-        if self._defined is None:
-            with warnings.catch_warnings():
-                # suppress Filter warnings; we already know this is deprecated
-                warnings.simplefilter("ignore", category=FutureWarning)
-                self.reset()
-                for filter in self._filters:
-                    filter.defineFilter()
-            FilterDefinitionCollection._defined = self
-        elif self._defined is self:
-            # noop: we've already defined these filters, so do nothing
-            pass
-        else:
-            msg = f"afw Filters were already defined on: {self._defined}"
-            raise RuntimeError(msg)
-
-    @classmethod
-    def reset(cls) -> None:
-        """Reset the afw Filter definitions and clear the `defined` singleton.
-        Use this in unittests that define different filters.
-        """
-        with warnings.catch_warnings():
-            # suppress Filter warnings; we already know this is deprecated
-            warnings.simplefilter("ignore", category=FutureWarning)
-            lsst.afw.image.utils.resetFilters()
-        cls._defined = None
 
     def findAll(self, name: str) -> Set[FilterDefinition]:
         """Return the FilterDefinitions that match a particular name.

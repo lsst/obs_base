@@ -536,16 +536,8 @@ class Mapper2TestCase(unittest.TestCase):
         # Resolve special combinations where the expected output is different
         for input in testLabels:
             for dataId in testIds:
-                if input is None:
-                    # Can still get some filter info out of the Filter registry
-                    if dataId["filter"] == "i2":
-                        data = (input, dataId, afwImage.FilterLabel(band="i", physical="HSC-I2"))
-                    else:
-                        # Data ID maps to filter(s) with aliases; can't
-                        # unambiguously determine physical filter.
-                        data = (input, dataId, afwImage.FilterLabel(band="i"))
-                else:
-                    data = (input, dataId, input)
+                # FilterLabel is only source of truth if no FilterDefinitions.
+                data = (input, dataId, input)
                 testData.append(data)
 
         mapper = MinMapper1(root=ROOT)

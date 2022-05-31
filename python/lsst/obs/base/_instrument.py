@@ -118,8 +118,6 @@ class Instrument(InstrumentBase):
 
     def __init__(self, collection_prefix: Optional[str] = None):
         super().__init__(collection_prefix=collection_prefix)
-        self.filterDefinitions.reset()
-        self.filterDefinitions.defineFilters()
 
     @classmethod
     @lru_cache()

@@ -37,30 +37,6 @@ class TestFilterDefinitionCollection(lsst.utils.tests.TestCase):
             FilterDefinition(physical_filter="abc", lambdaEff=321),
             FilterDefinition(physical_filter="def", band="dd", lambdaEff=654),
         )
-        FilterDefinitionCollection.reset()
-
-    def test_singleton(self):
-        self.filters1.defineFilters()
-        self.assertEqual(lsst.afw.image.Filter("abc").getFilterProperty().getLambdaEff(), 123)
-        self.assertEqual(lsst.afw.image.Filter("def").getFilterProperty().getLambdaEff(), 456)
-        self.filters1.defineFilters()  # this should not change anything
-        self.assertEqual(lsst.afw.image.Filter("abc").getFilterProperty().getLambdaEff(), 123)
-        self.assertEqual(lsst.afw.image.Filter("def").getFilterProperty().getLambdaEff(), 456)
-        with self.assertRaises(RuntimeError):
-            self.filters2.defineFilters()
-        # the defined filters should be unchanged
-        self.assertEqual(lsst.afw.image.Filter("abc").getFilterProperty().getLambdaEff(), 123)
-        self.assertEqual(lsst.afw.image.Filter("def").getFilterProperty().getLambdaEff(), 456)
-
-    def test_reset(self):
-        self.filters1.defineFilters()
-        with self.assertRaises(RuntimeError):
-            self.filters2.defineFilters()
-        self.filters1.reset()
-        # The new filters can be defiend and should replace the old ones.
-        self.filters2.defineFilters()
-        self.assertEqual(lsst.afw.image.Filter("abc").getFilterProperty().getLambdaEff(), 321)
-        self.assertEqual(lsst.afw.image.Filter("def").getFilterProperty().getLambdaEff(), 654)
 
     def test_findAll(self):
         self.assertEqual(set(self.filters1.findAll("r")), set())
@@ -79,7 +55,6 @@ class TestFilterDefinitionCollection(lsst.utils.tests.TestCase):
 
 class TestFilterDefinition(lsst.utils.tests.TestCase):
     def setUp(self):
-        lsst.afw.image.utils.resetFilters()
         self.filter_g = FilterDefinition(band="g", physical_filter="HSC-G", lambdaEff=1234, alias={"ABCDEFG"})
         self.filter_g2 = FilterDefinition(
             band="g", physical_filter="HSC-G2", afw_name="g2", lambdaEff=1235, alias={"HIJK"}
@@ -89,61 +64,18 @@ class TestFilterDefinition(lsst.utils.tests.TestCase):
         self.afw_name = FilterDefinition(physical_filter="afw_name", lambdaEff=5, afw_name="afw only")
         self.abstract = FilterDefinition(physical_filter="abstract", lambdaEff=42, band="abstract only")
 
-    def testDefineFilters(self):
-        """Test that a filter is properly defined in afw."""
-        # the filter should not exist until we define it
-        with self.assertRaises(lsst.pex.exceptions.NotFoundError):
-            lsst.afw.image.Filter("g")
-        with self.assertRaises(lsst.pex.exceptions.NotFoundError):
-            lsst.afw.image.Filter("g2")
-        with self.assertRaises(lsst.pex.exceptions.NotFoundError):
-            lsst.afw.image.Filter("HSC-G")
-
-        self.filter_g.defineFilter()
-        filter = lsst.afw.image.Filter("g")
-        filter_alias = lsst.afw.image.Filter("HSC-G")
-        self.assertEqual(filter.getName(), "g")
-        # afw Filter stores the aliased name as the CannonicalName
-        self.assertEqual(filter_alias.getCanonicalName(), "g")
-        self.assertEqual(filter, filter_alias)
-        self.assertEqual(["ABCDEFG", "HSC-G"], sorted(filter.getAliases()))
-
-        self.filter_g2.defineFilter()
-        filter2 = lsst.afw.image.Filter("g2")
-        filter2_alias = lsst.afw.image.Filter("HSC-G2")
-        self.assertEqual(filter2.getName(), "g2")
-        self.assertEqual(filter2_alias.getCanonicalName(), "g2")
-        self.assertEqual(filter2, filter2_alias)
-        self.assertEqual(["HIJK", "HSC-G2"], sorted(filter2.getAliases()))
-
     def test_physical_only(self):
         """physical_filter is the only name this filter has."""
-        self.physical_only.defineFilter()
-        filter = lsst.afw.image.Filter("physical")
-        self.assertEqual(filter.getName(), "physical")
-        self.assertEqual([], sorted(filter.getAliases()))
         self.assertEqual(
             self.physical_only.makeFilterLabel(), lsst.afw.image.FilterLabel(physical="physical")
         )
 
     def test_afw_name(self):
         """afw_name is the Filter name, physical_filter is an alias."""
-        self.afw_name.defineFilter()
-        filter = lsst.afw.image.Filter("afw only")
-        filter_alias = lsst.afw.image.Filter("afw_name")
-        self.assertEqual(filter.getName(), "afw only")
-        self.assertEqual(filter_alias.getCanonicalName(), "afw only")
-        self.assertEqual(["afw_name"], sorted(filter.getAliases()))
         self.assertEqual(self.afw_name.makeFilterLabel(), lsst.afw.image.FilterLabel(physical="afw_name"))
 
     def test_abstract_only(self):
         """band is the Filter name, physical_filter is an alias."""
-        self.abstract.defineFilter()
-        filter = lsst.afw.image.Filter("abstract only")
-        filter_alias = lsst.afw.image.Filter("abstract")
-        self.assertEqual(filter.getName(), "abstract only")
-        self.assertEqual(filter_alias.getCanonicalName(), "abstract only")
-        self.assertEqual(["abstract"], sorted(filter.getAliases()))
         self.assertEqual(
             self.abstract.makeFilterLabel(),
             lsst.afw.image.FilterLabel(band="abstract only", physical="abstract"),
