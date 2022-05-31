@@ -206,7 +206,7 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
         image."""
         if self.butler_get_data.raw_header_wcs is None:
             self.skipTest("Skipping raw header WCS test since no reference provided.")
-        # Gen3 will not understand this at the moment.
+        # Gen3 will not understand this at the moment (DM-35031).
         wcs = self.butler.get("raw_header_wcs", self.dataIds["raw"])
         self.assertEqual(wcs, self.butler_get_data.raw_header_wcs)
 
