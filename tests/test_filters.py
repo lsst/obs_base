@@ -30,12 +30,12 @@ from lsst.obs.base import FilterDefinition, FilterDefinitionCollection
 class TestFilterDefinitionCollection(lsst.utils.tests.TestCase):
     def setUp(self):
         self.filters1 = FilterDefinitionCollection(
-            FilterDefinition(physical_filter="abc", lambdaEff=123),
-            FilterDefinition(physical_filter="def", band="d", doc="This is a test filter.", lambdaEff=456),
+            FilterDefinition(physical_filter="abc"),
+            FilterDefinition(physical_filter="def", band="d", doc="This is a test filter."),
         )
         self.filters2 = FilterDefinitionCollection(
-            FilterDefinition(physical_filter="abc", lambdaEff=321),
-            FilterDefinition(physical_filter="def", band="dd", lambdaEff=654),
+            FilterDefinition(physical_filter="abc"),
+            FilterDefinition(physical_filter="def", band="dd"),
         )
 
     def test_findAll(self):
@@ -55,14 +55,12 @@ class TestFilterDefinitionCollection(lsst.utils.tests.TestCase):
 
 class TestFilterDefinition(lsst.utils.tests.TestCase):
     def setUp(self):
-        self.filter_g = FilterDefinition(band="g", physical_filter="HSC-G", lambdaEff=1234, alias={"ABCDEFG"})
-        self.filter_g2 = FilterDefinition(
-            band="g", physical_filter="HSC-G2", afw_name="g2", lambdaEff=1235, alias={"HIJK"}
-        )
+        self.filter_g = FilterDefinition(band="g", physical_filter="HSC-G", alias={"ABCDEFG"})
+        self.filter_g2 = FilterDefinition(band="g", physical_filter="HSC-G2", afw_name="g2", alias={"HIJK"})
 
-        self.physical_only = FilterDefinition(physical_filter="physical", lambdaEff=0)
-        self.afw_name = FilterDefinition(physical_filter="afw_name", lambdaEff=5, afw_name="afw only")
-        self.abstract = FilterDefinition(physical_filter="abstract", lambdaEff=42, band="abstract only")
+        self.physical_only = FilterDefinition(physical_filter="physical")
+        self.afw_name = FilterDefinition(physical_filter="afw_name", afw_name="afw only")
+        self.abstract = FilterDefinition(physical_filter="abstract", band="abstract only")
 
     def test_physical_only(self):
         """physical_filter is the only name this filter has."""

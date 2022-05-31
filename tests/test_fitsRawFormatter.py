@@ -82,9 +82,7 @@ class MakeTestingRawVisitInfo(MakeRawVisitInfoViaObsInfo):
 
 
 class SimpleFitsRawFormatter(FitsRawFormatterBase):
-    filterDefinitions = FilterDefinitionCollection(
-        FilterDefinition(physical_filter="u", band="u", lambdaEff=300.0)
-    )
+    filterDefinitions = FilterDefinitionCollection(FilterDefinition(physical_filter="u", band="u"))
 
     @property
     def translatorClass(self):

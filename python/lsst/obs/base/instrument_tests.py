@@ -40,8 +40,8 @@ from lsst.utils.introspection import get_full_type_name
 from .utils import createInitialSkyWcsFromBoresight
 
 DUMMY_FILTER_DEFINITIONS = FilterDefinitionCollection(
-    FilterDefinition(physical_filter="dummy_u", band="u", lambdaEff=0),
-    FilterDefinition(physical_filter="dummy_g", band="g", lambdaEff=0),
+    FilterDefinition(physical_filter="dummy_u", band="u"),
+    FilterDefinition(physical_filter="dummy_g", band="g"),
 )
 
 

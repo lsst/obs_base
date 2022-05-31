@@ -31,7 +31,6 @@ import dataclasses
 from typing import AbstractSet, Any, Dict, Optional, Sequence, Set, overload
 
 import lsst.afw.image.utils
-import numpy as np
 
 
 @dataclasses.dataclass(frozen=True)
@@ -59,9 +58,6 @@ class FilterDefinition:
     list of `~lsst.afw.image.Filter` aliases.
     """
 
-    lambdaEff: float
-    """The effective wavelength of this filter (nm)."""
-
     band: Optional[str] = None
     """The generic name of a filter not associated with a particular instrument
     (e.g. `r` for the SDSS Gunn r-band, which could be on SDSS, LSST, or HSC).
@@ -88,11 +84,6 @@ class FilterDefinition:
     ``r/r2`` and ``i/i2``.
     """
 
-    lambdaMin: float = np.nan
-    """The minimum wavelength of this filter (nm; defined as 1% throughput)"""
-    lambdaMax: float = np.nan
-    """The maximum wavelength of this filter (nm; defined as 1% throughput)"""
-
     alias: AbstractSet[str] = frozenset()
     """Alternate names for this filter. These are added to the
     `~lsst.afw.image.Filter` alias list.
@@ -104,15 +95,11 @@ class FilterDefinition:
             object.__setattr__(self, "alias", frozenset(self.alias))
 
     def __str__(self) -> str:
-        txt = f"FilterDefinition(physical_filter='{self.physical_filter}', lambdaEff='{self.lambdaEff}'"
+        txt = f"FilterDefinition(physical_filter='{self.physical_filter}'"
         if self.band is not None:
             txt += f", band='{self.band}'"
         if self.afw_name is not None:
             txt += f", afw_name='{self.afw_name}'"
-        if not np.isnan(self.lambdaMin):
-            txt += f", lambdaMin='{self.lambdaMin}'"
-        if not np.isnan(self.lambdaMax):
-            txt += f", lambdaMax='{self.lambdaMax}'"
         if len(self.alias) != 0:
             txt += f", alias='{self.alias}'"
         return txt + ")"

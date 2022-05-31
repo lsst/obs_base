@@ -46,17 +46,13 @@ class MinCam(lsst.obs.base.Instrument):
     @property
     def filterDefinitions(self):
         return lsst.obs.base.FilterDefinitionCollection(
-            lsst.obs.base.FilterDefinition(physical_filter="u.MP9301", band="u", lambdaEff=374),
-            lsst.obs.base.FilterDefinition(physical_filter="g.MP9401", band="g", lambdaEff=487),
-            lsst.obs.base.FilterDefinition(
-                physical_filter="r.MP9601", band="r", alias={"old-r"}, lambdaEff=628
-            ),
-            lsst.obs.base.FilterDefinition(
-                physical_filter="i.MP9701", band="i", alias={"old-i"}, lambdaEff=778
-            ),
-            lsst.obs.base.FilterDefinition(physical_filter="z.MP9801", band="z", lambdaEff=1170),
+            lsst.obs.base.FilterDefinition(physical_filter="u.MP9301", band="u"),
+            lsst.obs.base.FilterDefinition(physical_filter="g.MP9401", band="g"),
+            lsst.obs.base.FilterDefinition(physical_filter="r.MP9601", band="r", alias={"old-r"}),
+            lsst.obs.base.FilterDefinition(physical_filter="i.MP9701", band="i", alias={"old-i"}),
+            lsst.obs.base.FilterDefinition(physical_filter="z.MP9801", band="z"),
             # afw_name is so special-cased that only a real example will work
-            lsst.obs.base.FilterDefinition(physical_filter="HSC-I2", band="i", afw_name="i2", lambdaEff=623),
+            lsst.obs.base.FilterDefinition(physical_filter="HSC-I2", band="i", afw_name="i2"),
         )
 
     @classmethod
