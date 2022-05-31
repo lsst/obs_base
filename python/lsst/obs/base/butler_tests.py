@@ -210,17 +210,6 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
         wcs = self.butler.get("raw_header_wcs", self.dataIds["raw"])
         self.assertEqual(wcs, self.butler_get_data.raw_header_wcs)
 
-    @unittest.skip("Cannot test this. Raw data can not reliably have bbox requested.")
-    def test_raw_sub_bbox(self):
-        # Gen2 variant only. Gen3 will never support this.
-        self._require_gen2()
-        exp = self.butler.get("raw", self.dataIds["raw"], immediate=True)
-        bbox = exp.getBBox()
-        bbox.grow(-1)
-        sub = self.butler.get("raw_sub", self.dataIds["raw"], bbox=bbox, immediate=True)
-        self.assertEqual(sub.getImage().getBBox(), bbox)
-        self.assertImagesEqual(sub, exp.Factory(exp, bbox))
-
     def test_subset_raw(self):
         for kwargs, expect in self.butler_get_data.raw_subsets:
             if self._is_gen3():
