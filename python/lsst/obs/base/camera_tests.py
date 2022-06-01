@@ -25,6 +25,7 @@ import math
 
 import lsst.geom
 from lsst.afw.cameraGeom import FIELD_ANGLE, FOCAL_PLANE
+from lsst.daf.butler import Butler
 
 __all__ = ["CameraTests"]
 
@@ -71,10 +72,23 @@ class CameraTests(metaclass=abc.ABCMeta):
             plate_scale=plate_scale,
         )
 
+    def _butler_args(self):
+        """Arguments to pass to butler get in addition to camera dataset type.
+
+        Returns
+        -------
+        kwargs : `dict`
+            The arguments to add.
+        """
+        kwargs = {}
+        if isinstance(self.butler, Butler):
+            kwargs = dict(instrument=self.camera_data.camera_name)
+        return kwargs
+
     def test_iterable(self):
         """Simplest camera test: can we get a Camera instance, and does
         iterating return Detectors?"""
-        camera = self.butler.get("camera", immediate=True)
+        camera = self.butler.get("camera", **self._butler_args())
         self.assertIsInstance(camera, lsst.afw.cameraGeom.Camera)
         for detector in camera:
             msg = "Failed for detector={}".format(detector)
@@ -82,7 +96,7 @@ class CameraTests(metaclass=abc.ABCMeta):
 
     def test_camera_butler(self):
         """Check that the butler returns the right type of camera."""
-        camera = self.butler.get("camera", immediate=True)
+        camera = self.butler.get("camera", **self._butler_args())
         self.assertEqual(camera.getName(), self.camera_data.camera_name)
         self.assertEqual(len(camera), self.camera_data.n_detectors)
         self.assertEqual(next(iter(camera)).getName(), self.camera_data.first_detector_name)
@@ -95,7 +109,7 @@ class CameraTests(metaclass=abc.ABCMeta):
         """
         plate_scale = self.camera_data.plate_scale
         self.assertIsNotNone(plate_scale)
-        camera = self.butler.get("camera", immediate=True)
+        camera = self.butler.get("camera", **self._butler_args())
         focalPlaneToFieldAngle = camera.getTransformMap().getTransform(FOCAL_PLANE, FIELD_ANGLE)
         focalPlaneRadiusMm = 0.001  # an offset small enough to be in the linear regime
         for offsetAngleRad in (0.0, 0.65, 1.3):  # direction of offset; a few arbitrary angles

@@ -24,6 +24,9 @@ import collections
 import inspect
 import unittest
 
+from lsst.daf.butler import Butler
+from lsst.daf.butler.registry import DataIdValueError
+
 __all__ = ["ButlerGetTests"]
 
 
@@ -130,7 +133,17 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
             raw_header_wcs=raw_header_wcs,
         )
 
+    def _require_gen2(self):
+        if isinstance(self.butler, Butler):
+            self.skipTest("This test requires daf_persistence Butler, not daf_butler Butler.")
+
+    def _is_gen3(self):
+        if isinstance(self.butler, Butler):
+            return True
+        return False
+
     def test_exposureId_bits(self):
+        self._require_gen2()
         bits = self.butler.get("ccdExposureId_bits")
         self.assertEqual(bits, self.butler_get_data.ccdExposureId_bits)
 
@@ -139,13 +152,17 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
             self.skipTest("Skipping %s as requested" % (inspect.currentframe().f_code.co_name))
         exp = self.butler.get(name, self.dataIds[name])
 
-        exp_md = self.butler.get(name + "_md", self.dataIds[name])
+        md_component = ".metadata" if self._is_gen3() else "_md"
+        exp_md = self.butler.get(name + md_component, self.dataIds[name])
         self.assertEqual(type(exp_md), type(exp.getMetadata()))
 
         self.assertEqual(exp.getDimensions(), self.butler_get_data.dimensions[name])
-        self.assertEqual(exp.getDetector().getId(), self.butler_get_data.detectorIds[name])
-        self.assertEqual(exp.getDetector().getName(), self.butler_get_data.detector_names[name])
-        self.assertEqual(exp.getDetector().getSerial(), self.butler_get_data.detector_serials[name])
+        detector = exp.detector
+        # Some calibration files are missing the detector.
+        if detector:
+            self.assertEqual(detector.getId(), self.butler_get_data.detectorIds[name])
+            self.assertEqual(detector.getName(), self.butler_get_data.detector_names[name])
+            self.assertEqual(detector.getSerial(), self.butler_get_data.detector_serials[name])
         # obs_test does not have physical filters, so include a fallback
         exposureFilter = exp.getFilterLabel()
         if exposureFilter:
@@ -156,8 +173,9 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
         else:
             filterName = "_unknown_"
         self.assertEqual(filterName, self.butler_get_data.filters[name])
-        exposureId = self.butler.get("ccdExposureId", dataId=self.dataIds[name])
-        self.assertEqual(exposureId, self.butler_get_data.exposureIds[name])
+        if not self._is_gen3():
+            exposureId = self.butler.get("ccdExposureId", dataId=self.dataIds[name])
+            self.assertEqual(exposureId, self.butler_get_data.exposureIds[name])
         self.assertEqual(exp.getInfo().getVisitInfo().getExposureTime(), self.butler_get_data.exptimes[name])
         return exp
 
@@ -186,22 +204,37 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
     def test_raw_header_wcs(self):
         """Test that `raw_header_wcs` returns the unmodified header of the raw
         image."""
-        if self.butler_get_data.raw_header_wcs is not None:
-            wcs = self.butler.get("raw_header_wcs", self.dataIds["raw"])
-            self.assertEqual(wcs, self.butler_get_data.raw_header_wcs)
-
-    @unittest.skip("Cannot test this, as there is a bug in the butler! DM-8097")
-    def test_raw_sub_bbox(self):
-        exp = self.butler.get("raw", self.dataIds["raw"], immediate=True)
-        bbox = exp.getBBox()
-        bbox.grow(-1)
-        sub = self.butler.get("raw_sub", self.dataIds["raw"], bbox=bbox, immediate=True)
-        self.assertEqual(sub.getImage().getBBox(), bbox)
-        self.assertImagesEqual(sub, exp.Factory(exp, bbox))
+        if self.butler_get_data.raw_header_wcs is None:
+            self.skipTest("Skipping raw header WCS test since no reference provided.")
+        # Gen3 will not understand this at the moment (DM-35031).
+        wcs = self.butler.get("raw_header_wcs", self.dataIds["raw"])
+        self.assertEqual(wcs, self.butler_get_data.raw_header_wcs)
 
     def test_subset_raw(self):
         for kwargs, expect in self.butler_get_data.raw_subsets:
-            subset = self.butler.subset("raw", **kwargs)
+            if self._is_gen3():
+                # If one of the keyword args looks like a dimension record
+                # subquery, pull it out into the WHERE clause.
+                where = []
+                bind = {}
+                for k, v in list(kwargs.items()):
+                    if "." in k:
+                        bindval = k.replace(".", "_")
+                        where.append(f"{k} = {bindval}")
+                        bind[bindval] = v
+                        del kwargs[k]
+                try:
+                    subset = set(
+                        self.butler.registry.queryDatasets(
+                            "raw", **kwargs, bind=bind, where=" AND ".join(where)
+                        )
+                    )
+                except DataIdValueError:
+                    # This means one of the dataId values does not exist.
+                    subset = {}
+            else:
+                subset = self.butler.subset("raw", **kwargs)
+
             self.assertEqual(len(subset), expect, msg="Failed for kwargs: {}".format(kwargs))
 
     def test_get_linearizer(self):
@@ -212,7 +245,11 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
         camera = self.butler.get("camera")
         for detectorId in self.butler_get_data.good_detectorIds:
             detector = camera[detectorId]
-            linearizer = self.butler.get("linearizer", dataId=dict(ccd=detectorId), immediate=True)
+            if self._is_gen3():
+                kwargs = {"detector": detectorId}
+            else:
+                kwargs = {"dataId": dict(ccd=detectorId), "immediate": True}
+            linearizer = self.butler.get("linearizer", **kwargs)
             self.assertEqual(linearizer.LinearityType, self.butler_get_data.linearizer_type[detectorId])
             linearizer.checkDetector(detector)
 
@@ -222,5 +259,9 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
             self.skipTest("Skipping %s as requested" % (inspect.currentframe().f_code.co_name))
 
         for badccd in self.butler_get_data.bad_detectorIds:
+            if self._is_gen3():
+                kwargs = {"detector": badccd}
+            else:
+                kwargs = {"dataId": dict(ccd=badccd), "immediate": True}
             with self.assertRaises(RuntimeError):
-                self.butler.get("linearizer", dataId=dict(ccd=badccd), immediate=True)
+                self.butler.get("linearizer", **kwargs)

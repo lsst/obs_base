@@ -131,7 +131,12 @@ class MapperTests(metaclass=abc.ABCMeta):
             test_config_metadata=test_config_metadata,
         )
 
+    def _check_mapper(self):
+        if self.mapper is None:
+            self.skipTest("No mapper defined. Likely a gen3 test environment.")
+
     def test_map_config_data(self):
+        self._check_mapper()
         if not self.mapper_data.test_config_metadata:
             self.skipTest("Skipping %s as requested" % (inspect.currentframe().f_code.co_name))
         dataId = self.dataIds["raw"]
@@ -148,6 +153,7 @@ class MapperTests(metaclass=abc.ABCMeta):
             )
 
     def test_map_metadata_data(self):
+        self._check_mapper()
         if not self.mapper_data.test_config_metadata:
             self.skipTest("Skipping %s as requested" % (inspect.currentframe().f_code.co_name))
         dataId = self.dataIds["raw"]
@@ -162,23 +168,28 @@ class MapperTests(metaclass=abc.ABCMeta):
             )
 
     def test_keys(self):
+        self._check_mapper()
         self.assertEqual(set(self.mapper.keys()), self.mapper_data.keys)
 
     def test_get_dataset_types(self):
+        self._check_mapper()
         if not self.mapper_data.test_config_metadata:
             self.skipTest("Skipping %s as requested" % (inspect.currentframe().f_code.co_name))
         someKeys = set(["raw", "processCcd_config", "processCcd_metadata"])
         self.assertTrue(set(self.mapper.getDatasetTypes()).issuperset(someKeys))
 
     def test_get_keys_raw(self):
+        self._check_mapper()
         for level, expect in self.mapper_data.raw_levels:
             result = self.mapper.getKeys("raw", level)
             self.assertEqual(set(result), expect, msg="Failed for level={}".format(level))
 
     def test_get_default_level(self):
+        self._check_mapper()
         self.assertEqual(self.mapper.getDefaultLevel(), self.mapper_data.default_level)
 
     def _test_map(self, butlerLocation, dataId):
+        self._check_mapper()
         self.assertEqual(butlerLocation.getPythonType(), self.mapper_data.map_python_type)
         self.assertEqual(butlerLocation.getCppType(), self.mapper_data.map_cpp_type)
         self.assertEqual(butlerLocation.getStorageName(), self.mapper_data.map_storage_name)
@@ -192,6 +203,7 @@ class MapperTests(metaclass=abc.ABCMeta):
             )
 
     def test_map(self):
+        self._check_mapper()
         dataId = self.dataIds["raw"]
         location = self.mapper.map_raw(dataId)
         if not isinstance(location, lsst.daf.persistence.butlerLocation.ButlerComposite):
@@ -214,6 +226,7 @@ there are tests of the objects in the package in which they are implemented."""
         Test expansion of incomplete information of the available data in this
         obs package's testdata repo.
         """
+        self._check_mapper()
         for query, expect in self.mapper_data.queryMetadata:
             # queryMetadata returns tuples of available items of the 2nd
             # parameter.
@@ -221,6 +234,7 @@ there are tests of the objects in the package in which they are implemented."""
             self.assertEqual(sorted(result), sorted(expect), msg="Failed for query={}".format(query))
 
     def test_can_standardize(self):
+        self._check_mapper()
         self.assertTrue(self.mapper.canStandardize("raw"))
         self.assertFalse(self.mapper.canStandardize("camera"))
         if not self.mapper_data.test_config_metadata:
@@ -228,9 +242,11 @@ there are tests of the objects in the package in which they are implemented."""
             self.assertFalse(self.mapper.canStandardize("processCcd_metadata"))
 
     def _test_validate(self, dataId):
+        self._check_mapper()
         self.assertEqual(self.mapper.validate(dataId), dataId)
 
     def test_validate(self):
+        self._check_mapper()
         self._test_validate({"visit": 1, "filter": "g"})
         self._test_validate({"visit": 2, "filter": "r"})
         self._test_validate({"visit": 3, "filter": "g", "tract": 4})
