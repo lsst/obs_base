@@ -23,6 +23,8 @@
 `lsst.obs.base.ConvertRepoConfig` for most of the config options.
 """
 
+import logging
+
 import lsst.daf.butler
 import lsst.utils
 from lsst.daf.persistence import Butler as Butler2
@@ -30,6 +32,8 @@ from lsst.log import Log
 from lsst.log.utils import temporaryLogLevel
 
 from ..gen2to3 import CalibRepo, ConvertRepoSkyMapConfig, ConvertRepoTask, Rerun
+
+log = logging.getLogger(__name__)
 
 
 def convert(repo, gen2root, skymap_name, skymap_config, calibs, reruns, config_file, transfer, processes=1):
@@ -100,6 +104,23 @@ def convert(repo, gen2root, skymap_name, skymap_config, calibs, reruns, config_f
         rerunsArg = []
     else:
         rerunsArg = [Rerun(rerun, runName=None, chainName=None, parents=[]) for rerun in reruns]
+
+    # If this is old schema but is using modern visit grouping algorithm,
+    # (which is the default for new code) revert to one-to-one (which
+    # was the old default).
+    exposure_dimension = butler.registry.dimensions["exposure"]
+    modern = "one-to-one-and-by-counter"
+    if (
+        "seq_end" not in exposure_dimension.metadata
+        and convertRepoConfig.defineVisits.groupExposures.name == modern
+    ):
+        legacy = "one-to-one"
+        log.warning(
+            "Request to use %s grouping algorithm but registry schema is too old. Using %s instead.",
+            modern,
+            legacy,
+        )
+        convertRepoConfig.defineVisits.groupExposures.name = legacy
 
     # create a new butler instance for running the convert repo task
     butler = lsst.daf.butler.Butler(butlerConfig, run=instrument.makeDefaultRawIngestRunName())

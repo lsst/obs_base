@@ -27,7 +27,7 @@ import os.path
 from abc import abstractmethod
 from collections import defaultdict
 from functools import lru_cache
-from typing import TYPE_CHECKING, AbstractSet, Any, FrozenSet, Optional, Sequence, Set, Tuple
+from typing import TYPE_CHECKING, AbstractSet, Any, Dict, FrozenSet, Optional, Sequence, Set, Tuple
 
 import astropy.time
 from lsst.afw.cameraGeom import Camera
@@ -544,7 +544,10 @@ def makeExposureRecordFromObsInfo(
     """
     dimension = universe["exposure"]
 
-    ra, dec, sky_angle, zenith_angle = (None, None, None, None)
+    # Some registries support additional items.
+    supported = {meta.name for meta in dimension.metadata}
+
+    ra, dec, sky_angle, azimuth, zenith_angle = (None, None, None, None, None)
     if obsInfo.tracking_radec is not None:
         icrs = obsInfo.tracking_radec.icrs
         ra = icrs.ra.degree
@@ -553,6 +556,19 @@ def makeExposureRecordFromObsInfo(
             sky_angle = obsInfo.boresight_rotation_angle.degree
     if obsInfo.altaz_begin is not None:
         zenith_angle = obsInfo.altaz_begin.zen.degree
+        azimuth = obsInfo.altaz_begin.az.degree
+
+    extras: Dict[str, Any] = {}
+    for meta_key, info_key in (
+        ("has_simulated", "has_simulated_content"),
+        ("seq_start", "group_counter_start"),
+        ("seq_end", "group_counter_end"),
+    ):
+        if meta_key in supported:
+            extras[meta_key] = getattr(obsInfo, info_key)
+
+    if (k := "azimuth") in supported:
+        extras[k] = azimuth
 
     return dimension.RecordClass(
         instrument=obsInfo.instrument,
@@ -576,6 +592,7 @@ def makeExposureRecordFromObsInfo(
         tracking_dec=dec,
         sky_angle=sky_angle,
         zenith_angle=zenith_angle,
+        **extras,
         **kwargs,
     )
 

@@ -27,13 +27,17 @@ __all__ = [
     "GroupExposuresConfig",
     "GroupExposuresTask",
     "VisitDefinitionData",
+    "VisitSystem",
 ]
 
+import cmath
 import dataclasses
+import enum
+import math
 import operator
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
-from typing import Any, Callable, ClassVar, Dict, Iterable, List, Optional, Set, Tuple, TypeVar
+from typing import Any, Callable, ClassVar, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple, TypeVar
 
 import lsst.geom
 from lsst.afw.cameraGeom import FOCAL_PLANE, PIXELS
@@ -53,6 +57,62 @@ from lsst.sphgeom import ConvexPolygon, Region, UnitVector3d
 from lsst.utils.introspection import get_full_type_name
 
 from ._instrument import loadCamera
+
+
+class VisitSystem(enum.Enum):
+    """Enumeration used to label different visit systems."""
+
+    ONE_TO_ONE = 0
+    """Each exposure is assigned to its own visit."""
+
+    BY_GROUP_METADATA = 1
+    """Visit membership is defined by the value of the exposure.group_id."""
+
+    BY_SEQ_START_END = 2
+    """Visit membership is defined by the values of the ``exposure.day_obs``,
+    ``exposure.seq_start``, and ``exposure.seq_end`` values.
+    """
+
+    @classmethod
+    def all(cls) -> FrozenSet[VisitSystem]:
+        """Return a `frozenset` containing all members."""
+        return frozenset(cls.__members__.values())
+
+    @classmethod
+    def from_name(cls, external_name: str) -> VisitSystem:
+        """Construct the enumeration from given name."""
+        name = external_name.upper()
+        name = name.replace("-", "_")
+        try:
+            return cls.__members__[name]
+        except KeyError:
+            raise KeyError(f"Visit system named '{external_name}' not known.") from None
+
+    @classmethod
+    def from_names(cls, names: Optional[Iterable[str]]) -> FrozenSet[VisitSystem]:
+        """Return a `frozenset` of all the visit systems matching the supplied
+        names.
+
+        Parameters
+        ----------
+        names : iterable of `str`, or `None`
+            Names of visit systems. Case insensitive. If `None` or empty, all
+            the visit systems are returned.
+
+        Returns
+        -------
+        systems : `frozenset` of `VisitSystem`
+            The matching visit systems.
+        """
+        if not names:
+            return cls.all()
+
+        return frozenset({cls.from_name(name) for name in names})
+
+    def __str__(self) -> str:
+        name = self.name.lower()
+        name = name.replace("_", "-")
+        return name
 
 
 @dataclasses.dataclass
@@ -77,6 +137,9 @@ class VisitDefinitionData:
     This must be unique across all visit systems for the instrument.
     """
 
+    visit_systems: Set[VisitSystem]
+    """All the visit systems associated with this visit."""
+
     exposures: List[DimensionRecord] = dataclasses.field(default_factory=list)
     """Dimension records for the exposures that are part of this visit.
     """
@@ -98,6 +161,9 @@ class _VisitRecords:
     """Records for 'visit_detector_region', which associates the combination
     of a 'visit' and a 'detector' with a region on the sky.
     """
+
+    visit_system_membership: List[DimensionRecord]
+    """Records relating visits to an associated visit system."""
 
 
 class GroupExposuresConfig(Config):
@@ -152,18 +218,14 @@ class GroupExposuresTask(Task, metaclass=ABCMeta):
         """
         raise NotImplementedError()
 
-    @abstractmethod
-    def getVisitSystem(self) -> Tuple[int, str]:
+    def getVisitSystems(self) -> Set[VisitSystem]:
         """Return identifiers for the 'visit_system' dimension this
         algorithm implements.
 
         Returns
         -------
-        id : `int`
-            Integer ID for the visit system (given an instrument).
-        name : `str`
-            Unique string identifier for the visit system (given an
-            instrument).
+        visit_systems : `Set` [`VisitSystem`]
+            The visit systems used by this algorithm.
         """
         raise NotImplementedError()
 
@@ -271,7 +333,7 @@ class ComputeVisitRegionsTask(Task, metaclass=ABCMeta):
 class DefineVisitsConfig(Config):
     groupExposures = GroupExposuresTask.registry.makeField(
         doc="Algorithm for grouping exposures into visits.",
-        default="one-to-one",
+        default="one-to-one-and-by-counter",
     )
     computeVisitRegions = ComputeVisitRegionsTask.registry.makeField(
         doc="Algorithm from computing visit and visit+detector regions.",
@@ -359,7 +421,7 @@ class DefineVisitsTask(Task):
 
         Parameters
         ----------
-        definition : `VisitDefinition`
+        definition : `VisitDefinitionData`
             Struct with identifiers for the visit and records for its
             constituent exposures.
         collections : Any, optional
@@ -374,6 +436,11 @@ class DefineVisitsTask(Task):
             Struct containing DimensionRecords for the visit, including
             associated dimension elements.
         """
+        dimension = self.universe["visit"]
+
+        # Some registries support additional items.
+        supported = {meta.name for meta in dimension.metadata}
+
         # Compute all regions.
         visitRegion, visitDetectorRegions = self.computeVisitRegions.compute(
             definition, collections=collections
@@ -406,9 +473,73 @@ class DefineVisitsTask(Task):
         if zenith_angle is not None:
             zenith_angle /= len(definition.exposures)
 
+        # New records that may not be supported.
+        extras: Dict[str, Any] = {}
+        if "seq_num" in supported:
+            extras["seq_num"] = _reduceOrNone(min, (e.seq_num for e in definition.exposures))
+        if "azimuth" in supported:
+            # Must take into account 0/360 problem.
+            extras["azimuth"] = _calc_mean_angle([e.azimuth for e in definition.exposures])
+
+        # visit_system handling changed. This is the logic for visit/exposure
+        # that has support for seq_start/seq_end.
+        if "seq_num" in supported:
+            # Map visit to exposure.
+            visit_definition = [
+                self.universe["visit_definition"].RecordClass(
+                    instrument=definition.instrument,
+                    visit=definition.id,
+                    exposure=exposure.id,
+                )
+                for exposure in definition.exposures
+            ]
+
+            # Map visit to visit system.
+            visit_system_membership = []
+            for visit_system in self.groupExposures.getVisitSystems():
+                if visit_system in definition.visit_systems:
+                    record = self.universe["visit_system_membership"].RecordClass(
+                        instrument=definition.instrument,
+                        visit=definition.id,
+                        visit_system=visit_system.value,
+                    )
+                    visit_system_membership.append(record)
+
+        else:
+            # The old approach can only handle one visit system at a time.
+            # If we have been configured with multiple options, prefer the
+            # one-to-one.
+            visit_systems = self.groupExposures.getVisitSystems()
+            if len(visit_systems) > 1:
+                one_to_one = VisitSystem.from_name("one-to-one")
+                if one_to_one not in visit_systems:
+                    raise ValueError(
+                        f"Multiple visit systems specified ({visit_systems}) for use with old"
+                        " dimension universe but unable to find one-to-one."
+                    )
+                visit_system = one_to_one
+            else:
+                visit_system = visit_systems.pop()
+
+            extras["visit_system"] = visit_system.value
+
+            # The old visit_definition included visit system.
+            visit_definition = [
+                self.universe["visit_definition"].RecordClass(
+                    instrument=definition.instrument,
+                    visit=definition.id,
+                    exposure=exposure.id,
+                    visit_system=visit_system.value,
+                )
+                for exposure in definition.exposures
+            ]
+
+            # This concept does not exist in old schema.
+            visit_system_membership = []
+
         # Construct the actual DimensionRecords.
         return _VisitRecords(
-            visit=self.universe["visit"].RecordClass(
+            visit=dimension.RecordClass(
                 instrument=definition.instrument,
                 id=definition.id,
                 name=definition.name,
@@ -418,23 +549,16 @@ class DefineVisitsTask(Task):
                 observation_reason=observation_reason,
                 day_obs=observing_day,
                 zenith_angle=zenith_angle,
-                visit_system=self.groupExposures.getVisitSystem()[0],
                 exposure_time=exposure_time,
                 timespan=timespan,
                 region=visitRegion,
                 # TODO: no seeing value in exposure dimension records, so we
                 # can't set that here.  But there are many other columns that
                 # both dimensions should probably have as well.
+                **extras,
             ),
-            visit_definition=[
-                self.universe["visit_definition"].RecordClass(
-                    instrument=definition.instrument,
-                    visit=definition.id,
-                    exposure=exposure.id,
-                    visit_system=self.groupExposures.getVisitSystem()[0],
-                )
-                for exposure in definition.exposures
-            ],
+            visit_definition=visit_definition,
+            visit_system_membership=visit_system_membership,
             visit_detector_region=[
                 self.universe["visit_detector_region"].RecordClass(
                     instrument=definition.instrument,
@@ -515,11 +639,12 @@ class DefineVisitsTask(Task):
         (instrument,) = instruments
         # Ensure the visit_system our grouping algorithm uses is in the
         # registry, if it wasn't already.
-        visitSystemId, visitSystemName = self.groupExposures.getVisitSystem()
-        self.log.info("Registering visit_system %d: %s.", visitSystemId, visitSystemName)
-        self.butler.registry.syncDimensionData(
-            "visit_system", {"instrument": instrument, "id": visitSystemId, "name": visitSystemName}
-        )
+        visitSystems = self.groupExposures.getVisitSystems()
+        for visitSystem in visitSystems:
+            self.log.info("Registering visit_system %d: %s.", visitSystem.value, visitSystem)
+            self.butler.registry.syncDimensionData(
+                "visit_system", {"instrument": instrument, "id": visitSystem.value, "name": str(visitSystem)}
+            )
         # Group exposures into visits, delegating to subtask.
         self.log.info("Grouping %d exposure(s) into visits.", len(exposures))
         definitions = list(self.groupExposures.group(exposures))
@@ -548,6 +673,10 @@ class DefineVisitsTask(Task):
                         self.butler.registry.insertDimensionData(
                             "visit_definition", *visitRecords.visit_definition
                         )
+                        if visitRecords.visit_system_membership:
+                            self.butler.registry.insertDimensionData(
+                                "visit_system_membership", *visitRecords.visit_system_membership
+                            )
                     # [Re]Insert visit_detector_region records for both inserts
                     # and updates, because we do allow updating to affect the
                     # region calculations.
@@ -580,16 +709,41 @@ def _value_if_equal(a: _T, b: _T) -> Optional[_T]:
     return a if a == b else None
 
 
+def _calc_mean_angle(angles: List[float]) -> float:
+    """Calculate the mean angle, taking into account 0/360 wrapping.
+
+    Parameters
+    ----------
+    angles : `list` [`float`]
+        Angles to average together, in degrees.
+
+    Returns
+    -------
+    average : `float`
+        Average angle in degrees.
+    """
+    # Save on all the math if we only have one value.
+    if len(angles) == 1:
+        return angles[0]
+
+    # Convert polar coordinates of unit circle to complex values.
+    # Average the complex values.
+    # Convert back to a phase angle.
+    return math.degrees(cmath.phase(sum(cmath.rect(1.0, math.radians(d)) for d in angles) / len(angles)))
+
+
 class _GroupExposuresOneToOneConfig(GroupExposuresConfig):
     visitSystemId = Field(
         doc="Integer ID of the visit_system implemented by this grouping algorithm.",
         dtype=int,
         default=0,
+        deprecated="No longer used. Replaced by enum.",
     )
     visitSystemName = Field(
         doc="String name of the visit_system implemented by this grouping algorithm.",
         dtype=str,
         default="one-to-one",
+        deprecated="No longer used. Replaced by enum.",
     )
 
 
@@ -603,17 +757,19 @@ class _GroupExposuresOneToOneTask(GroupExposuresTask, metaclass=ABCMeta):
 
     def group(self, exposures: List[DimensionRecord]) -> Iterable[VisitDefinitionData]:
         # Docstring inherited from GroupExposuresTask.
+        visit_systems = {VisitSystem.from_name("one-to-one")}
         for exposure in exposures:
             yield VisitDefinitionData(
                 instrument=exposure.instrument,
                 id=exposure.id,
                 name=exposure.obs_id,
                 exposures=[exposure],
+                visit_systems=visit_systems,
             )
 
-    def getVisitSystem(self) -> Tuple[int, str]:
+    def getVisitSystems(self) -> Set[VisitSystem]:
         # Docstring inherited from GroupExposuresTask.
-        return (self.config.visitSystemId, self.config.visitSystemName)
+        return set(VisitSystem.from_names(["one-to-one"]))
 
 
 class _GroupExposuresByGroupMetadataConfig(GroupExposuresConfig):
@@ -621,11 +777,13 @@ class _GroupExposuresByGroupMetadataConfig(GroupExposuresConfig):
         doc="Integer ID of the visit_system implemented by this grouping algorithm.",
         dtype=int,
         default=1,
+        deprecated="No longer used. Replaced by enum.",
     )
     visitSystemName = Field(
         doc="String name of the visit_system implemented by this grouping algorithm.",
         dtype=str,
         default="by-group-metadata",
+        deprecated="No longer used. Replaced by enum.",
     )
 
 
@@ -645,6 +803,7 @@ class _GroupExposuresByGroupMetadataTask(GroupExposuresTask, metaclass=ABCMeta):
 
     def group(self, exposures: List[DimensionRecord]) -> Iterable[VisitDefinitionData]:
         # Docstring inherited from GroupExposuresTask.
+        visit_systems = {VisitSystem.from_name("by-group-metadata")}
         groups = defaultdict(list)
         for exposure in exposures:
             groups[exposure.group_name].append(exposure)
@@ -655,12 +814,125 @@ class _GroupExposuresByGroupMetadataTask(GroupExposuresTask, metaclass=ABCMeta):
                 e.group_id == visitId for e in exposuresInGroup
             ), "Grouping by exposure.group_name does not yield consistent group IDs"
             yield VisitDefinitionData(
-                instrument=instrument, id=visitId, name=visitName, exposures=exposuresInGroup
+                instrument=instrument,
+                id=visitId,
+                name=visitName,
+                exposures=exposuresInGroup,
+                visit_systems=visit_systems,
             )
 
-    def getVisitSystem(self) -> Tuple[int, str]:
+    def getVisitSystems(self) -> Set[VisitSystem]:
         # Docstring inherited from GroupExposuresTask.
-        return (self.config.visitSystemId, self.config.visitSystemName)
+        return set(VisitSystem.from_names(["by-group-metadata"]))
+
+
+class _GroupExposuresByCounterAndExposuresConfig(GroupExposuresConfig):
+    visitSystemId = Field(
+        doc="Integer ID of the visit_system implemented by this grouping algorithm.",
+        dtype=int,
+        default=2,
+        deprecated="No longer used. Replaced by enum.",
+    )
+    visitSystemName = Field(
+        doc="String name of the visit_system implemented by this grouping algorithm.",
+        dtype=str,
+        default="by-counter-and-exposures",
+        deprecated="No longer used. Replaced by enum.",
+    )
+
+
+@registerConfigurable("one-to-one-and-by-counter", GroupExposuresTask.registry)
+class _GroupExposuresByCounterAndExposuresTask(GroupExposuresTask, metaclass=ABCMeta):
+    """An exposure grouping algorithm that uses the sequence start and
+    sequence end metadata to create multi-exposure visits, but also
+    creates one-to-one visits.
+
+    This algorithm uses the exposure.seq_start and
+    exposure.seq_end fields to collect related snaps.
+    It also groups single exposures.
+    """
+
+    ConfigClass = _GroupExposuresByCounterAndExposuresConfig
+
+    def group(self, exposures: List[DimensionRecord]) -> Iterable[VisitDefinitionData]:
+        # Docstring inherited from GroupExposuresTask.
+        system_one_to_one = VisitSystem.from_name("one-to-one")
+        system_seq_start_end = VisitSystem.from_name("by-seq-start-end")
+
+        groups = defaultdict(list)
+        for exposure in exposures:
+            groups[exposure.day_obs, exposure.seq_start, exposure.seq_end].append(exposure)
+        for visit_key, exposures_in_group in groups.items():
+            instrument = exposures_in_group[0].instrument
+
+            # It is possible that the first exposure in a visit has not
+            # been ingested. This can be determined and if that is the case
+            # we can not reliably define the multi-exposure visit.
+            skip_multi = False
+            sorted_exposures = sorted(exposures_in_group, key=lambda e: e.seq_num)
+            first = sorted_exposures.pop(0)
+            if first.seq_num != first.seq_start:
+                # Special case seq_num == 0 since that implies that the
+                # instrument has no counters and therefore no multi-exposure
+                # visits.
+                if first.seq_num == 0:
+                    self.log.warning(
+                        "First exposure for visit %s is not present. Skipping the multi-snap definition.",
+                        visit_key,
+                    )
+                skip_multi = True
+
+            # Define the one-to-one visits.
+            num_exposures = len(exposures_in_group)
+            for exposure in exposures_in_group:
+                # Default is to use the exposure ID and name unless
+                # this is the first exposure in a multi-exposure visit.
+                visit_name = exposure.obs_id
+                visit_id = exposure.id
+                visit_systems = {system_one_to_one}
+
+                if num_exposures == 1:
+                    # This is also a by-counter visit.
+                    # It will use the same visit_name and visit_id.
+                    visit_systems.add(system_seq_start_end)
+
+                elif num_exposures > 1 and not skip_multi and exposure == first:
+                    # This is the first legitimate exposure in a multi-exposure
+                    # visit. It therefore needs a modified visit name and ID
+                    # so it does not clash with the multi-exposure visit
+                    # definition.
+                    visit_name = f"{visit_name}_first"
+                    visit_id = int(f"9{visit_id}")
+
+                yield VisitDefinitionData(
+                    instrument=instrument,
+                    id=visit_id,
+                    name=visit_name,
+                    exposures=[exposure],
+                    visit_systems=visit_systems,
+                )
+
+            # Multi-exposure visit.
+            if not skip_multi and num_exposures > 1:
+                # Define the visit using the first exposure
+                visit_name = first.obs_id
+                visit_id = first.id
+
+                yield VisitDefinitionData(
+                    instrument=instrument,
+                    id=visit_id,
+                    name=visit_name,
+                    exposures=exposures_in_group,
+                    visit_systems={system_seq_start_end},
+                )
+
+    def getVisitSystems(self) -> Set[VisitSystem]:
+        # Docstring inherited from GroupExposuresTask.
+        # Using a Config for this is difficult because what this grouping
+        # algorithm is doing is using two visit systems.
+        # One is using metadata (but not by-group) and the other is the
+        # one-to-one. For now hard-code in class.
+        return set(VisitSystem.from_names(["one-to-one", "by-seq-start-end"]))
 
 
 class _ComputeVisitRegionsFromSingleRawWcsConfig(ComputeVisitRegionsConfig):

@@ -1,0 +1,4 @@
+* Modify ingest-raws to support new schema for exposure records.
+* Change define-visits to support new and old schema.
+* Visit system is now an enum rather than a configuration value.
+* Add new visit system to group by seq_start and seq_end and also allocate one-to-one visits for every exposure.

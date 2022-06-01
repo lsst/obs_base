@@ -35,7 +35,7 @@ from typing import (
     Iterable,
     Iterator,
     List,
-    Mapping,
+    MutableMapping,
     Optional,
     Set,
     Sized,
@@ -414,7 +414,9 @@ class RawIngestTask(Task):
 
                     try:
                         # Try to work out a translator class early.
-                        translator_class = MetadataTranslator.determine_translator(header, filename=filename)
+                        translator_class = MetadataTranslator.determine_translator(
+                            header, filename=str(filename)
+                        )
                     except ValueError:
                         # Primary header was not sufficient (maybe this file
                         # has been compressed or is a MEF with minimal
@@ -423,10 +425,10 @@ class RawIngestTask(Task):
 
                     # Try again to work out a translator class, letting this
                     # fail.
-                    translator_class = MetadataTranslator.determine_translator(header, filename=filename)
+                    translator_class = MetadataTranslator.determine_translator(header, filename=str(filename))
 
                     # Request the headers to use for ingest
-                    headers = translator_class.determine_translatable_headers(filename.ospath, header)
+                    headers = list(translator_class.determine_translatable_headers(filename.ospath, header))
 
             # Add each header to the dataset list
             datasets = [self._calculate_dataset_info(h, filename) for h in headers]
@@ -474,12 +476,20 @@ class RawIngestTask(Task):
             Set of `ObservationInfo` field names we will use if they are
             available.
         """
+        # Marking the new properties "group_counter_*" and
+        # "has_simulated_content" as required, assumes that we either
+        # recreate any existing index/sidecar files that include translated
+        # values, or else allow astro_metadata_translator to fill in
+        # defaults.
         required = {
             "datetime_begin",
             "datetime_end",
             "detector_num",
             "exposure_id",
             "exposure_time",
+            "group_counter_end",
+            "group_counter_start",
+            "has_simulated_content",
             "instrument",
             "observation_id",
             "observation_type",
@@ -502,7 +512,7 @@ class RawIngestTask(Task):
         return required, optional
 
     def _calculate_dataset_info(
-        self, header: Union[Mapping[str, Any], ObservationInfo], filename: ResourcePath
+        self, header: Union[MutableMapping[str, Any], ObservationInfo], filename: ResourcePath
     ) -> RawFileDatasetInfo:
         """Calculate a RawFileDatasetInfo from the supplied information.
 
@@ -623,6 +633,9 @@ class RawIngestTask(Task):
                 try:
                     content = json.loads(possible_index_file.read())
                     index = process_index_data(content, force_dict=True)
+                    # mypy should in theory know that this is a mapping
+                    # from the overload type annotation of process_index_data.
+                    assert isinstance(index, MutableMapping)
                 except Exception as e:
                     # Only trigger the callback if the index file
                     # was asked for explicitly. Triggering on implied file
