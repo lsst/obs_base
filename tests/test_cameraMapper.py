@@ -362,7 +362,6 @@ class Mapper2TestCase(unittest.TestCase):
 
         butler = dafPersist.ButlerFactory(mapper=mapper).create()
         image = butler.get("some", ccd=35)
-        self.assertEqual(image.getFilter().getName(), "r")
         self.assertEqual(image.getFilterLabel().bandLabel, "r")
 
         self.assertEqual(butler.get("some_bbox", ccd=35), image.getBBox())
@@ -401,7 +400,6 @@ class Mapper2TestCase(unittest.TestCase):
 
         butler = dafPersist.ButlerFactory(mapper=mapper).create()
         image = butler.get("someGz", ccd=35)
-        self.assertEqual(image.getFilter().getName(), "r")
         self.assertEqual(image.getFilterLabel().bandLabel, "r")
 
         bbox = geom.BoxI(geom.Point2I(200, 100), geom.Extent2I(300, 400))
@@ -419,7 +417,6 @@ class Mapper2TestCase(unittest.TestCase):
 
         butler = dafPersist.ButlerFactory(mapper=mapper).create()
         image = butler.get("someFz", ccd=35)
-        self.assertEqual(image.getFilter().getName(), "r")
         self.assertEqual(image.getFilterLabel().bandLabel, "r")
 
         bbox = geom.BoxI(geom.Point2I(200, 100), geom.Extent2I(300, 400))

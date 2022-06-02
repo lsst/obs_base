@@ -23,7 +23,6 @@ import copy
 import os
 import re
 import traceback
-import warnings
 import weakref
 
 import lsst.afw.cameraGeom as afwCameraGeom
@@ -1244,14 +1243,6 @@ class CameraMapper(dafPersist.Mapper):
             # Old Filter cleanup, without the benefit of FilterDefinition
             if self.filters is not None and idFilter in self.filters:
                 idFilter = self.filters[idFilter]
-            try:
-                # TODO: remove in DM-27177; at that point may not be able
-                # to process IDs without FilterDefinition.
-                with warnings.catch_warnings():
-                    warnings.filterwarnings("ignore", category=FutureWarning)
-                    item.setFilter(afwImage.Filter(idFilter))
-            except pexExcept.NotFoundError:
-                self.log.warning("Filter %s not defined.  Set to UNKNOWN.", idFilter)
 
     def _standardizeExposure(
         self, mapping, item, dataId, filter=True, trimmed=True, setVisitInfo=True, setExposureId=False
