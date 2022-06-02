@@ -28,7 +28,6 @@ import lsst.afw.fits
 import lsst.afw.geom
 import lsst.afw.image
 from astro_metadata_translator import ObservationInfo, fix_header
-from deprecated.sphinx import deprecated
 from lsst.daf.butler import FileDescriptor
 from lsst.utils.classes import cached_getter
 
@@ -280,28 +279,6 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             log.warning("Cannot create a valid WCS from metadata: %s", e.args[0])
             return None
 
-    # TODO: remove in DM-27177
-    @deprecated(
-        reason="Replaced with makeFilterLabel. Will be removed after v22.",
-        version="v22",
-        category=FutureWarning,
-    )
-    def makeFilter(self):
-        """Construct a Filter from metadata.
-
-        Returns
-        -------
-        filter : `~lsst.afw.image.Filter`
-            Object that identifies the filter for this image.
-
-        Raises
-        ------
-        NotFoundError
-            Raised if the physical filter was not registered via
-            `~lsst.afw.image.utils.defineFilter`.
-        """
-        return lsst.afw.image.Filter(self.observationInfo.physical_filter)
-
     # TODO: deprecate in DM-27177, remove in DM-27811
     def makeFilterLabel(self):
         """Construct a FilterLabel from metadata.
@@ -320,8 +297,6 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         self.checked_parameters  # just for checking; no supported parameters.
         if component == "image":
             return self.readImage()
-        elif component == "filter":
-            return self.makeFilter()
         elif component == "filterLabel":
             return self.makeFilterLabel()
         elif component == "visitInfo":

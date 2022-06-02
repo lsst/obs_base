@@ -95,7 +95,6 @@ READ_COMPONENTS = {
     "bbox",
     "xy0",
     "dimensions",
-    "filter"
 }
 
 
@@ -282,8 +281,6 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
             elif compName == "psf":
                 # Equality for PSF does not work
                 pass
-            elif compName == "filter":
-                self.assertEqual(component.getCanonicalName(), reference.getCanonicalName())
             elif compName == "filterLabel":
                 self.assertEqual(component, reference)
             elif compName == "id":

@@ -535,8 +535,6 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
             "coaddInputs": "readCoaddInputs",
             "psf": "readPsf",
             "photoCalib": "readPhotoCalib",
-            # TODO: deprecate in DM-27170, remove in DM-27177
-            "filter": "readFilter",
             # TODO: deprecate in DM-27177, remove in DM-27811
             "filterLabel": "readFilterLabel",
             "validPolygon": "readValidPolygon",

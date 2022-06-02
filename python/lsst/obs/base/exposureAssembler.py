@@ -54,7 +54,6 @@ class ExposureAssembler(StorageClassDelegate):
         "bbox",
         "dimensions",
         "xy0",
-        "filter"
     }
 
     COMPONENT_MAP = {"bbox": "BBox", "xy0": "XY0"}
@@ -341,7 +340,6 @@ class ExposureAssembler(StorageClassDelegate):
             "bbox": imageComponents,
             "dimensions": imageComponents,
             "xy0": imageComponents,
-            "filter": ["filterLabel"],
         }
         forwarder = forwarderMap.get(readComponent)
         if forwarder is not None:

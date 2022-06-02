@@ -33,7 +33,6 @@ import lsst.daf.persistence as dafPersist
 import lsst.log as lsstLog
 import lsst.pex.exceptions as pexExcept
 from astro_metadata_translator import fix_header
-from deprecated.sphinx import deprecated
 from lsst.afw.fits import readMetadata
 from lsst.afw.table import Schema
 from lsst.utils import doImportType, getPackageDir
@@ -511,18 +510,6 @@ class CameraMapper(dafPersist.Mapper):
                                 return fitsReader.readVisitInfo()
 
                             setMethods("visitInfo", bypassImpl=getVisitInfo)
-
-                            # TODO: remove in DM-27177
-                            @deprecated(
-                                reason="Replaced with getFilterLabel. Will be removed after v22.",
-                                category=FutureWarning,
-                                version="v22",
-                            )
-                            def getFilter(datasetType, pythonType, location, dataId):
-                                fitsReader = afwImage.ExposureFitsReader(location.getLocationsWithRoot()[0])
-                                return fitsReader.readFilter()
-
-                            setMethods("filter", bypassImpl=getFilter)
 
                             # TODO: deprecate in DM-27177, remove in DM-27811
                             def getFilterLabel(datasetType, pythonType, location, dataId):
