@@ -41,7 +41,7 @@ class ExposureAssembler(StorageClassDelegate):
             "coaddInputs",
             "photoCalib",
             "metadata",
-            "filterLabel",
+            "filter",
             "transmissionCurve",
             "visitInfo",
             "detector",
@@ -54,6 +54,7 @@ class ExposureAssembler(StorageClassDelegate):
         "bbox",
         "dimensions",
         "xy0",
+        "filterLabel",
     }
 
     COMPONENT_MAP = {"bbox": "BBox", "xy0": "XY0"}
@@ -291,8 +292,7 @@ class ExposureAssembler(StorageClassDelegate):
         info.setTransmissionCurve(components.pop("transmissionCurve", None))
         info.setSummaryStats(components.pop("summaryStats", None))
 
-        # TODO: switch back to "filter" as primary component in DM-27177
-        info.setFilterLabel(components.pop("filterLabel", None))
+        info.setFilter(components.pop("filter", None))
 
         # If we have some components left over that is a problem
         if components:
@@ -340,6 +340,7 @@ class ExposureAssembler(StorageClassDelegate):
             "bbox": imageComponents,
             "dimensions": imageComponents,
             "xy0": imageComponents,
+            "filterLabel": ["filter"],
         }
         forwarder = forwarderMap.get(readComponent)
         if forwarder is not None:

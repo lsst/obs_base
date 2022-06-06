@@ -280,6 +280,7 @@ class Mapper2TestCase(unittest.TestCase):
                 "someExp_photoCalib",
                 "someExp_visitInfo",
                 "someExp_detector",
+                "someExp_filter",
                 "someExp_header_wcs",
                 "someExp_wcs",
             ]

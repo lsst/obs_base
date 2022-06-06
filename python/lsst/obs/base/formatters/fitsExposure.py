@@ -535,6 +535,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
             "coaddInputs": "readCoaddInputs",
             "psf": "readPsf",
             "photoCalib": "readPhotoCalib",
+            "filter": "readFilter",
             # TODO: deprecate in DM-27177, remove in DM-27811
             "filterLabel": "readFilterLabel",
             "validPolygon": "readValidPolygon",
@@ -546,7 +547,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         }
         if (methodName := standardComponents.get(component)) is not None:
             result = getattr(self.reader, methodName)()
-            if component == "filterLabel":
+            if component == "filter" or component == "filterLabel":
                 return self._fixFilterLabels(result)
             return result
         # Delegate to MaskedImage and ImageBase implementations for the rest.

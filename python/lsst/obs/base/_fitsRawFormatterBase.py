@@ -297,6 +297,8 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         self.checked_parameters  # just for checking; no supported parameters.
         if component == "image":
             return self.readImage()
+        elif component == "filter":
+            return self.makeFilterLabel()
         elif component == "filterLabel":
             return self.makeFilterLabel()
         elif component == "visitInfo":

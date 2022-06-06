@@ -511,7 +511,24 @@ class CameraMapper(dafPersist.Mapper):
 
                             setMethods("visitInfo", bypassImpl=getVisitInfo)
 
-                            # TODO: deprecate in DM-27177, remove in DM-27811
+                            def getFilter(datasetType, pythonType, location, dataId):
+                                fitsReader = afwImage.ExposureFitsReader(location.getLocationsWithRoot()[0])
+                                storedFilter = fitsReader.readFilter()
+
+                                # Apply standardization used by full Exposure
+                                try:
+                                    # mapping is local to enclosing scope
+                                    idFilter = mapping.need(["filter"], dataId)["filter"]
+                                except dafPersist.NoResults:
+                                    idFilter = None
+                                bestFilter = self._getBestFilter(storedFilter, idFilter)
+                                if bestFilter is not None:
+                                    return bestFilter
+                                else:
+                                    return storedFilter
+
+                            setMethods("filter", bypassImpl=getFilter)
+
                             def getFilterLabel(datasetType, pythonType, location, dataId):
                                 fitsReader = afwImage.ExposureFitsReader(location.getLocationsWithRoot()[0])
                                 storedFilter = fitsReader.readFilterLabel()
