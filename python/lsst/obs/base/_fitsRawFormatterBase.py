@@ -22,6 +22,7 @@
 __all__ = ("FitsRawFormatterBase",)
 
 import logging
+import warnings
 from abc import abstractmethod
 
 import lsst.afw.fits
@@ -279,7 +280,6 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             log.warning("Cannot create a valid WCS from metadata: %s", e.args[0])
             return None
 
-    # TODO: deprecate in DM-27177, remove in DM-27811
     def makeFilterLabel(self):
         """Construct a FilterLabel from metadata.
 
@@ -299,7 +299,13 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             return self.readImage()
         elif component == "filter":
             return self.makeFilterLabel()
+        # TODO: remove in DM-27811
         elif component == "filterLabel":
+            warnings.warn(
+                "Exposure.filterLabel component is deprecated; use .filter instead. "
+                "Will be removed after v24.",
+                FutureWarning,
+            )
             return self.makeFilterLabel()
         elif component == "visitInfo":
             return self.makeVisitInfo()

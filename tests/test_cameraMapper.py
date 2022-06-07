@@ -379,7 +379,7 @@ class Mapper2TestCase(unittest.TestCase):
 
         butler = dafPersist.ButlerFactory(mapper=mapper).create()
         image = butler.get("someExp", ccd=35)
-        filter = butler.get("someExp_filterLabel", ccd=35)
+        filter = butler.get("someExp_filter", ccd=35)
         # Test only valid with a complete filter
         self.assertEqual(image.getFilterLabel(), afwImage.FilterLabel(band="r", physical="r.MP9601"))
         # Datasets should give consistent answers

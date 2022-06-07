@@ -206,7 +206,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             self.assertEqual(rawImage.getBBox(), exposure.getBBox())
 
             # Check that the filter label got the correct band.
-            filterLabel = butler.get(f"{self.ingestDatasetTypeName}.filterLabel", dataId)
+            filterLabel = butler.get(f"{self.ingestDatasetTypeName}.filter", dataId)
             self.assertEqual(filterLabel, self.filterLabel)
 
             # Check that the exposure's Detector is the same as the component
