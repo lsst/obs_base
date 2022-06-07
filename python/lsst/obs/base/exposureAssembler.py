@@ -50,7 +50,12 @@ class ExposureAssembler(StorageClassDelegate):
             "id",
         )
     )
-    EXPOSURE_READ_COMPONENTS = {"bbox", "dimensions", "xy0", "filter"}
+    EXPOSURE_READ_COMPONENTS = {
+        "bbox",
+        "dimensions",
+        "xy0",
+        "filter"
+    }
 
     COMPONENT_MAP = {"bbox": "BBox", "xy0": "XY0"}
     """Map component name to actual getter name."""

@@ -91,7 +91,12 @@ COMPONENTS = {
     "summaryStats",
     "id",
 }
-READ_COMPONENTS = {"bbox", "xy0", "dimensions", "filter"}
+READ_COMPONENTS = {
+    "bbox",
+    "xy0",
+    "dimensions",
+    "filter"
+}
 
 
 class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
