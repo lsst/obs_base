@@ -578,7 +578,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
             result.setDetector(amplifier_isolator.make_detector())
         else:
             result = self.reader.read(**self.checked_parameters)
-        result.getInfo().setFilterLabel(self._fixFilterLabels(result.getInfo().getFilterLabel()))
+        result.getInfo().setFilter(self._fixFilterLabels(result.getInfo().getFilter()))
         return result
 
     def _fixFilterLabels(self, file_filter_label, should_be_standardized=None):

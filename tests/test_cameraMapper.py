@@ -362,7 +362,7 @@ class Mapper2TestCase(unittest.TestCase):
 
         butler = dafPersist.ButlerFactory(mapper=mapper).create()
         image = butler.get("some", ccd=35)
-        self.assertEqual(image.getFilterLabel().bandLabel, "r")
+        self.assertEqual(image.getFilter().bandLabel, "r")
 
         self.assertEqual(butler.get("some_bbox", ccd=35), image.getBBox())
 
@@ -381,9 +381,9 @@ class Mapper2TestCase(unittest.TestCase):
         image = butler.get("someExp", ccd=35)
         filter = butler.get("someExp_filter", ccd=35)
         # Test only valid with a complete filter
-        self.assertEqual(image.getFilterLabel(), afwImage.FilterLabel(band="r", physical="r.MP9601"))
+        self.assertEqual(image.getFilter(), afwImage.FilterLabel(band="r", physical="r.MP9601"))
         # Datasets should give consistent answers
-        self.assertEqual(filter, image.getFilterLabel())
+        self.assertEqual(filter, image.getFilter())
 
     def testDetector(self):
         mapper = MinMapper2(root=ROOT)
@@ -400,7 +400,7 @@ class Mapper2TestCase(unittest.TestCase):
 
         butler = dafPersist.ButlerFactory(mapper=mapper).create()
         image = butler.get("someGz", ccd=35)
-        self.assertEqual(image.getFilterLabel().bandLabel, "r")
+        self.assertEqual(image.getFilter().bandLabel, "r")
 
         bbox = geom.BoxI(geom.Point2I(200, 100), geom.Extent2I(300, 400))
         image = butler.get("someGz_sub", ccd=35, bbox=bbox, imageOrigin="LOCAL", immediate=True)
@@ -417,7 +417,7 @@ class Mapper2TestCase(unittest.TestCase):
 
         butler = dafPersist.ButlerFactory(mapper=mapper).create()
         image = butler.get("someFz", ccd=35)
-        self.assertEqual(image.getFilterLabel().bandLabel, "r")
+        self.assertEqual(image.getFilter().bandLabel, "r")
 
         bbox = geom.BoxI(geom.Point2I(200, 100), geom.Extent2I(300, 400))
         image = butler.get("someFz_sub", ccd=35, bbox=bbox, imageOrigin="LOCAL", immediate=True)
@@ -502,9 +502,9 @@ class Mapper2TestCase(unittest.TestCase):
         mapper = MinMapper2(root=ROOT)
         for label, dataId, corrected in testData:
             exposure = afwImage.ExposureF()
-            exposure.setFilterLabel(label)
+            exposure.setFilter(label)
             mapper._setFilter(mapper.exposures["raw"], exposure, dataId)
-            self.assertEqual(exposure.getFilterLabel(), corrected, msg=f"Started from {label} and {dataId}")
+            self.assertEqual(exposure.getFilter(), corrected, msg=f"Started from {label} and {dataId}")
 
     def testStandardizeFiltersFilterNoDefs(self):
         testLabels = [
@@ -536,9 +536,9 @@ class Mapper2TestCase(unittest.TestCase):
         mapper = MinMapper1(root=ROOT)
         for label, dataId, corrected in testData:
             exposure = afwImage.ExposureF()
-            exposure.setFilterLabel(label)
+            exposure.setFilter(label)
             mapper._setFilter(mapper.exposures["raw"], exposure, dataId)
-            self.assertEqual(exposure.getFilterLabel(), corrected, msg=f"Started from {label} and {dataId}")
+            self.assertEqual(exposure.getFilter(), corrected, msg=f"Started from {label} and {dataId}")
 
     def testCalib(self):
         mapper = MinMapper2(root=ROOT)

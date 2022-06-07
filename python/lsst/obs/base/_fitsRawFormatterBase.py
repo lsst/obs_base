@@ -385,7 +385,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         """
         info = exposure.getInfo()
         info.id = self.observationInfo.detector_exposure_id
-        info.setFilterLabel(self.makeFilterLabel())
+        info.setFilter(self.makeFilterLabel())
         info.setVisitInfo(self.makeVisitInfo())
         info.setWcs(self.makeWcs(info.getVisitInfo(), info.getDetector()))
         # We don't need to call stripMetadata() here because it has already

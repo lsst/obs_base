@@ -164,7 +164,7 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
             self.assertEqual(detector.getName(), self.butler_get_data.detector_names[name])
             self.assertEqual(detector.getSerial(), self.butler_get_data.detector_serials[name])
         # obs_test does not have physical filters, so include a fallback
-        exposureFilter = exp.getFilterLabel()
+        exposureFilter = exp.getFilter()
         if exposureFilter:
             if exposureFilter.hasPhysicalLabel():
                 filterName = exposureFilter.physicalLabel

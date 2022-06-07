@@ -1239,7 +1239,7 @@ class CameraMapper(dafPersist.Mapper):
         ):
             return
 
-        itemFilter = item.getFilterLabel()  # may be None
+        itemFilter = item.getFilter()  # may be None
         try:
             idFilter = mapping.need(["filter"], dataId)["filter"]
         except dafPersist.NoResults:
@@ -1248,7 +1248,7 @@ class CameraMapper(dafPersist.Mapper):
         bestFilter = self._getBestFilter(itemFilter, idFilter)
         if bestFilter is not None:
             if bestFilter != itemFilter:
-                item.setFilterLabel(bestFilter)
+                item.setFilter(bestFilter)
             # Already using bestFilter, avoid unnecessary edits
         elif itemFilter is None:
             # Old Filter cleanup, without the benefit of FilterDefinition
@@ -1609,7 +1609,7 @@ def exposureFromImage(
 
     if metadata is not None:
         # set filter if we can
-        if setFilter and mapper is not None and exposure.getFilterLabel() is None:
+        if setFilter and mapper is not None and exposure.getFilter() is None:
             # Translate whatever was in the metadata
             if "FILTER" in metadata:
                 oldFilter = metadata["FILTER"]
@@ -1619,7 +1619,7 @@ def exposureFromImage(
                 # unvalidated input.
                 filter = mapper._getBestFilter(afwImage.FilterLabel(physical=oldFilter), idFilter)
                 if filter is not None:
-                    exposure.setFilterLabel(filter)
+                    exposure.setFilter(filter)
         # set VisitInfo if we can
         if setVisitInfo and exposure.getInfo().getVisitInfo() is None:
             if mapper is None:
