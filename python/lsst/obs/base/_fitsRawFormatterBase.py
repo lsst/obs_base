@@ -22,13 +22,13 @@
 __all__ = ("FitsRawFormatterBase",)
 
 import logging
+import warnings
 from abc import abstractmethod
 
 import lsst.afw.fits
 import lsst.afw.geom
 import lsst.afw.image
 from astro_metadata_translator import ObservationInfo, fix_header
-from deprecated.sphinx import deprecated
 from lsst.daf.butler import FileDescriptor
 from lsst.utils.classes import cached_getter
 
@@ -49,8 +49,6 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
     """Control whether the WCS is flipped in the X-direction (`bool`)"""
 
     def __init__(self, *args, **kwargs):
-        self.filterDefinitions.reset()
-        self.filterDefinitions.defineFilters()
         super().__init__(*args, **kwargs)
         self._metadata = None
         self._observationInfo = None
@@ -282,29 +280,6 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             log.warning("Cannot create a valid WCS from metadata: %s", e.args[0])
             return None
 
-    # TODO: remove in DM-27177
-    @deprecated(
-        reason="Replaced with makeFilterLabel. Will be removed after v22.",
-        version="v22",
-        category=FutureWarning,
-    )
-    def makeFilter(self):
-        """Construct a Filter from metadata.
-
-        Returns
-        -------
-        filter : `~lsst.afw.image.Filter`
-            Object that identifies the filter for this image.
-
-        Raises
-        ------
-        NotFoundError
-            Raised if the physical filter was not registered via
-            `~lsst.afw.image.utils.defineFilter`.
-        """
-        return lsst.afw.image.Filter(self.observationInfo.physical_filter)
-
-    # TODO: deprecate in DM-27177, remove in DM-27811
     def makeFilterLabel(self):
         """Construct a FilterLabel from metadata.
 
@@ -323,8 +298,14 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         if component == "image":
             return self.readImage()
         elif component == "filter":
-            return self.makeFilter()
+            return self.makeFilterLabel()
+        # TODO: remove in DM-27811
         elif component == "filterLabel":
+            warnings.warn(
+                "Exposure.filterLabel component is deprecated; use .filter instead. "
+                "Will be removed after v24.",
+                FutureWarning,
+            )
             return self.makeFilterLabel()
         elif component == "visitInfo":
             return self.makeVisitInfo()
@@ -404,7 +385,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         """
         info = exposure.getInfo()
         info.id = self.observationInfo.detector_exposure_id
-        info.setFilterLabel(self.makeFilterLabel())
+        info.setFilter(self.makeFilterLabel())
         info.setVisitInfo(self.makeVisitInfo())
         info.setWcs(self.makeWcs(info.getVisitInfo(), info.getDetector()))
         # We don't need to call stripMetadata() here because it has already

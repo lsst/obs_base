@@ -535,9 +535,8 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
             "coaddInputs": "readCoaddInputs",
             "psf": "readPsf",
             "photoCalib": "readPhotoCalib",
-            # TODO: deprecate in DM-27170, remove in DM-27177
             "filter": "readFilter",
-            # TODO: deprecate in DM-27177, remove in DM-27811
+            # TODO: deprecated; remove in DM-27811
             "filterLabel": "readFilterLabel",
             "validPolygon": "readValidPolygon",
             "apCorrMap": "readApCorrMap",
@@ -548,7 +547,14 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         }
         if (methodName := standardComponents.get(component)) is not None:
             result = getattr(self.reader, methodName)()
+            # TODO: remove filterLabel in DM-27811
             if component == "filterLabel":
+                warnings.warn(
+                    "Exposure.filterLabel component is deprecated; use .filter instead. "
+                    "Will be removed after v24.",
+                    FutureWarning,
+                )
+            if component == "filter" or component == "filterLabel":
                 return self._fixFilterLabels(result)
             return result
         # Delegate to MaskedImage and ImageBase implementations for the rest.
@@ -572,7 +578,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
             result.setDetector(amplifier_isolator.make_detector())
         else:
             result = self.reader.read(**self.checked_parameters)
-        result.getInfo().setFilterLabel(self._fixFilterLabels(result.getInfo().getFilterLabel()))
+        result.getInfo().setFilter(self._fixFilterLabels(result.getInfo().getFilter()))
         return result
 
     def _fixFilterLabels(self, file_filter_label, should_be_standardized=None):

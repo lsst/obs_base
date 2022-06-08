@@ -23,7 +23,6 @@ import copy
 import os
 import re
 import traceback
-import warnings
 import weakref
 
 import lsst.afw.cameraGeom as afwCameraGeom
@@ -513,19 +512,30 @@ class CameraMapper(dafPersist.Mapper):
 
                             setMethods("visitInfo", bypassImpl=getVisitInfo)
 
-                            # TODO: remove in DM-27177
-                            @deprecated(
-                                reason="Replaced with getFilterLabel. Will be removed after v22.",
-                                category=FutureWarning,
-                                version="v22",
-                            )
                             def getFilter(datasetType, pythonType, location, dataId):
                                 fitsReader = afwImage.ExposureFitsReader(location.getLocationsWithRoot()[0])
-                                return fitsReader.readFilter()
+                                storedFilter = fitsReader.readFilter()
+
+                                # Apply standardization used by full Exposure
+                                try:
+                                    # mapping is local to enclosing scope
+                                    idFilter = mapping.need(["filter"], dataId)["filter"]
+                                except dafPersist.NoResults:
+                                    idFilter = None
+                                bestFilter = self._getBestFilter(storedFilter, idFilter)
+                                if bestFilter is not None:
+                                    return bestFilter
+                                else:
+                                    return storedFilter
 
                             setMethods("filter", bypassImpl=getFilter)
 
-                            # TODO: deprecate in DM-27177, remove in DM-27811
+                            # TODO: remove in DM-27811
+                            @deprecated(
+                                reason="Replaced by 'filter' component. Will be removed after v24.",
+                                version="v24.0",
+                                category=FutureWarning,
+                            )
                             def getFilterLabel(datasetType, pythonType, location, dataId):
                                 fitsReader = afwImage.ExposureFitsReader(location.getLocationsWithRoot()[0])
                                 storedFilter = fitsReader.readFilterLabel()
@@ -1229,7 +1239,7 @@ class CameraMapper(dafPersist.Mapper):
         ):
             return
 
-        itemFilter = item.getFilterLabel()  # may be None
+        itemFilter = item.getFilter()  # may be None
         try:
             idFilter = mapping.need(["filter"], dataId)["filter"]
         except dafPersist.NoResults:
@@ -1238,20 +1248,12 @@ class CameraMapper(dafPersist.Mapper):
         bestFilter = self._getBestFilter(itemFilter, idFilter)
         if bestFilter is not None:
             if bestFilter != itemFilter:
-                item.setFilterLabel(bestFilter)
+                item.setFilter(bestFilter)
             # Already using bestFilter, avoid unnecessary edits
         elif itemFilter is None:
             # Old Filter cleanup, without the benefit of FilterDefinition
             if self.filters is not None and idFilter in self.filters:
                 idFilter = self.filters[idFilter]
-            try:
-                # TODO: remove in DM-27177; at that point may not be able
-                # to process IDs without FilterDefinition.
-                with warnings.catch_warnings():
-                    warnings.filterwarnings("ignore", category=FutureWarning)
-                    item.setFilter(afwImage.Filter(idFilter))
-            except pexExcept.NotFoundError:
-                self.log.warning("Filter %s not defined.  Set to UNKNOWN.", idFilter)
 
     def _standardizeExposure(
         self, mapping, item, dataId, filter=True, trimmed=True, setVisitInfo=True, setExposureId=False
@@ -1607,7 +1609,7 @@ def exposureFromImage(
 
     if metadata is not None:
         # set filter if we can
-        if setFilter and mapper is not None and exposure.getFilterLabel() is None:
+        if setFilter and mapper is not None and exposure.getFilter() is None:
             # Translate whatever was in the metadata
             if "FILTER" in metadata:
                 oldFilter = metadata["FILTER"]
@@ -1617,7 +1619,7 @@ def exposureFromImage(
                 # unvalidated input.
                 filter = mapper._getBestFilter(afwImage.FilterLabel(physical=oldFilter), idFilter)
                 if filter is not None:
-                    exposure.setFilterLabel(filter)
+                    exposure.setFilter(filter)
         # set VisitInfo if we can
         if setVisitInfo and exposure.getInfo().getVisitInfo() is None:
             if mapper is None:

@@ -83,7 +83,7 @@ COMPONENTS = {
     "variance",
     "metadata",
     "photoCalib",
-    "filterLabel",
+    "filter",
     "validPolygon",
     "transmissionCurve",
     "detector",
@@ -91,7 +91,12 @@ COMPONENTS = {
     "summaryStats",
     "id",
 }
-READ_COMPONENTS = {"bbox", "xy0", "dimensions", "filter"}
+READ_COMPONENTS = {
+    "bbox",
+    "xy0",
+    "dimensions",
+    "filterLabel",
+}
 
 
 class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
@@ -278,7 +283,7 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
                 # Equality for PSF does not work
                 pass
             elif compName == "filter":
-                self.assertEqual(component.getCanonicalName(), reference.getCanonicalName())
+                self.assertEqual(component, reference)
             elif compName == "filterLabel":
                 self.assertEqual(component, reference)
             elif compName == "id":

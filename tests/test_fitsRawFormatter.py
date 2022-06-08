@@ -82,9 +82,7 @@ class MakeTestingRawVisitInfo(MakeRawVisitInfoViaObsInfo):
 
 
 class SimpleFitsRawFormatter(FitsRawFormatterBase):
-    filterDefinitions = FilterDefinitionCollection(
-        FilterDefinition(physical_filter="u", band="u", lambdaEff=300.0)
-    )
+    filterDefinitions = FilterDefinitionCollection(FilterDefinition(physical_filter="u", band="u"))
 
     @property
     def translatorClass(self):
@@ -103,9 +101,6 @@ class SimpleFitsRawFormatter(FitsRawFormatterBase):
 
 class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
     def setUp(self):
-        # reset the filters before we test anything
-        FilterDefinitionCollection.reset()
-
         # The FITS WCS and VisitInfo coordinates in this header are
         # intentionally different, to make comparisons between them more
         # obvious.
