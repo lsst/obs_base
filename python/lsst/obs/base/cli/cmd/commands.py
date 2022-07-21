@@ -80,7 +80,10 @@ def convert(*args, **kwargs):
     has no chained reruns.  Custom scripts that call ConvertRepoTask should be
     used on more complex suites of repositories.
     """
-    script.convert(*args, **kwargs)
+    raise RuntimeError(
+        "Gen2 conversion to Gen3 is no longer supported. "
+        "Please use version v23.0 of the pipelines code to do legacy conversions."
+    )
 
 
 @click.command(short_help="Define visits from exposures.", cls=ButlerCommand)
