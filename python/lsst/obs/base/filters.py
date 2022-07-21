@@ -37,10 +37,8 @@ import lsst.afw.image.utils
 class FilterDefinition:
     """The definition of an instrument's filter bandpass.
 
-    This class is used to interface between the `~lsst.afw.image.Filter` class
-    and the Gen2 `~lsst.daf.persistence.CameraMapper` and Gen3
-    `~lsst.obs.base.Instruments` and ``physical_filter``/``band``
-    `~lsst.daf.butler.Dimension`.
+    This class is used to declare ``physical_filter`` and ``band``
+    information for an instrument.
 
     This class is likely temporary, until we have a better versioned filter
     definition system that includes complete transmission information.

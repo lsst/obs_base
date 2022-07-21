@@ -36,10 +36,10 @@ import numpy as np
 from lsst.afw.cameraGeom.utils import calcRawCcdBBox
 from lsst.afw.image import Exposure
 
-from . import butler_tests, camera_tests, mapper_tests
+from . import butler_tests, camera_tests
 
 
-class ObsTests(butler_tests.ButlerGetTests, mapper_tests.MapperTests, camera_tests.CameraTests):
+class ObsTests(butler_tests.ButlerGetTests, camera_tests.CameraTests):
     """Aggregator class for all of the obs_* test classes.
 
     Inherit from this class, then lsst.utils.tests.TestCase, in that order.
@@ -70,13 +70,12 @@ class ObsTests(butler_tests.ButlerGetTests, mapper_tests.MapperTests, camera_tes
 
         Parameters
         ----------
-        butler: lsst.daf.persistence.Butler
+        butler: `lsst.daf.butler.Butler`
             A butler object, instantiated on the testdata repository for the
             obs package being tested.
-        mapper: lsst.obs.CameraMapper
-            A CameraMapper object for your camera, instantiated on the testdata
-            repository the obs package being tested.
-        dataIds: dict
+        mapper: `None`
+            A Gen2 parameter that should now always be `None`.
+        dataIds: `dict`
             dictionary of (exposure name): (dataId of that exposure in the
             testdata repository), with unittest.SkipTest as the value for any
             exposures you do not have/do not want to test. It must contain a
@@ -89,8 +88,9 @@ class ObsTests(butler_tests.ButlerGetTests, mapper_tests.MapperTests, camera_tes
                                   'dark': unittest.SkipTest
                                  }
         """
+        if mapper is not None:
+            raise RuntimeError("Mapper provided but Gen2 is no longer supported.")
         self.butler = butler
-        self.mapper = mapper
         self.dataIds = dataIds
         self.log = logging.getLogger(__name__)
 
