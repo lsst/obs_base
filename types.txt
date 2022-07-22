@@ -3,3 +3,4 @@ types-PyYAML
 types-click
 types-pkg_resources
 types-Deprecated
+types-python-dateutil

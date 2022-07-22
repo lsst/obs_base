@@ -1,12 +1,41 @@
+# This file is part of obs_base.
+#
+# Developed for the LSST Data Management System.
+# This product includes software developed by the LSST Project
+# (http://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from __future__ import annotations
+
 import glob
 import os
+from typing import TYPE_CHECKING, Any
 
 import dateutil.parser
 from lsst.ip.isr import BrighterFatterKernel, CrosstalkCalib, Defects, Linearizer, PhotodiodeCalib
 from lsst.meas.algorithms.simple_curve import Curve
 
+if TYPE_CHECKING:
+    import datetime
 
-def read_one_chip(root, chip_name, chip_id):
+    import lsst.afw.cameraGeom
+
+
+def read_one_chip(root: str, chip_name: str, chip_id: int) -> tuple[dict[datetime.datetime, Any], str]:
     """Read data for a particular sensor from the standard format at a
     particular root.
 
@@ -48,7 +77,7 @@ def read_one_chip(root, chip_name, chip_id):
             f"Only understand {','.join(k for k in factory_map)}"
         )
     factory = factory_map[data_name]
-    data_dict = {}
+    data_dict: dict[datetime.datetime, Any] = {}
     for f in files:
         date_str = os.path.splitext(os.path.basename(f))[0]
         valid_start = dateutil.parser.parse(date_str)
@@ -57,7 +86,9 @@ def read_one_chip(root, chip_name, chip_id):
     return data_dict, data_name
 
 
-def check_metadata(obj, valid_start, instrument, chip_id, filepath, data_name):
+def check_metadata(
+    obj: Any, valid_start: datetime.datetime, instrument: str, chip_id: int, filepath: str, data_name: str
+) -> None:
     """Check that the metadata is complete and self consistent
 
     Parameters
@@ -101,7 +132,9 @@ def check_metadata(obj, valid_start, instrument, chip_id, filepath, data_name):
         )
 
 
-def read_all(root, camera):
+def read_all(
+    root: str, camera: lsst.afw.cameraGeom.Camera
+) -> tuple[dict[str, dict[datetime.datetime, Any]], str]:
     """Read all data from the standard format at a particular root.
 
     Parameters
