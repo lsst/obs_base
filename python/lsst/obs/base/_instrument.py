@@ -45,6 +45,8 @@ from lsst.daf.butler.registry import DataIdError
 from lsst.pipe.base import Instrument as InstrumentBase
 from lsst.utils import getPackageDir
 
+from ._read_curated_calibs import read_all
+
 if TYPE_CHECKING:
     from astro_metadata_translator import ObservationInfo
     from lsst.daf.butler import Registry
@@ -449,7 +451,7 @@ class Instrument(InstrumentBase):
         supplied dataset type.  The directory name in the data package must
         match the name of the dataset type. They are assumed to use the
         standard layout and can be read by
-        `~lsst.pipe.tasks.read_curated_calibs.read_all` and provide standard
+        `~lsst.obs.base._read_curated_calibs.read_all` and provide standard
         metadata.
         """
         calibPath = self._getSpecificCuratedCalibrationPath(datasetType.name)
@@ -458,10 +460,6 @@ class Instrument(InstrumentBase):
 
         # Register the dataset type
         butler.registry.registerDatasetType(datasetType)
-
-        # obs_base can't depend on pipe_tasks but concrete obs packages
-        # can -- we therefore have to defer import
-        from lsst.pipe.tasks.read_curated_calibs import read_all
 
         # Read calibs, registering a new run for each CALIBDATE as needed.
         # We try to avoid registering runs multiple times as an optimization
@@ -472,9 +470,11 @@ class Instrument(InstrumentBase):
         for det in calibsDict:
             times = sorted([k for k in calibsDict[det]])
             calibs = [calibsDict[det][time] for time in times]
-            times = [astropy.time.Time(t, format="datetime", scale="utc") for t in times]
-            times += [None]
-            for calib, beginTime, endTime in zip(calibs, times[:-1], times[1:]):
+            atimes: list[Optional[astropy.time.Time]] = [
+                astropy.time.Time(t, format="datetime", scale="utc") for t in times
+            ]
+            atimes += [None]
+            for calib, beginTime, endTime in zip(calibs, atimes[:-1], atimes[1:]):
                 md = calib.getMetadata()
                 run = self.makeCuratedCalibrationRunName(md["CALIBDATE"], *labels)
                 if run not in runs:
