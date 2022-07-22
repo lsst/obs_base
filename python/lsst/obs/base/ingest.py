@@ -222,7 +222,7 @@ class RawIngestConfig(Config):
     """Configuration class for RawIngestTask."""
 
     transfer = makeTransferChoiceField()
-    failFast = Field(
+    failFast: Field[bool] = Field(
         dtype=bool,
         default=False,
         doc="If True, stop ingest as soon as any problem is encountered with any file. "
@@ -283,6 +283,9 @@ class RawIngestTask(Task):
             "Exposure",
             universe=self.butler.registry.dimensions,
         )
+
+    # Mypy can not determine that the config passed to super() is this type.
+    config: RawIngestConfig
 
     def __init__(
         self,
