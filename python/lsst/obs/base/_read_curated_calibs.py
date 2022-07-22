@@ -7,13 +7,15 @@ from lsst.meas.algorithms.simple_curve import Curve
 
 
 def read_one_chip(root, chip_name, chip_id):
-    """Read data for a particular sensor from the standard format at a particular root.
+    """Read data for a particular sensor from the standard format at a
+    particular root.
 
     Parameters
     ----------
     root : `str`
-        Path to the top level of the data tree.  This is expected to hold directories
-        named after the sensor names.  They are expected to be lower case.
+        Path to the top level of the data tree.  This is expected to hold
+        directories named after the sensor names.  They are expected to be
+        lower case.
     chip_name : `str`
         The name of the sensor for which to read data.
     chip_id : `int`
@@ -105,22 +107,24 @@ def read_all(root, camera):
     Parameters
     ----------
     root : `str`
-        Path to the top level of the data tree.  This is expected to hold directories
-        named after the sensor names.  They are expected to be lower case.
+        Path to the top level of the data tree.  This is expected to hold
+        directories named after the sensor names.  They are expected to be
+        lower case.
     camera : `lsst.afw.cameraGeom.Camera`
         The camera that goes with the data being read.
 
     Returns
     -------
     dict
-        A dictionary of dictionaries of objects constructed with the appropriate factory class.
-        The first key is the sensor name lowered, and the second is the validity
-        start time as a `datetime` object.
+        A dictionary of dictionaries of objects constructed with the
+        appropriate factory class. The first key is the sensor name lowered,
+        and the second is the validity start time as a `datetime` object.
 
     Notes
     -----
-    Each leaf object in the constructed dictionary has metadata associated with it.
-    The detector ID may be retrieved from the DETECTOR entry of that metadata.
+    Each leaf object in the constructed dictionary has metadata associated with
+    it. The detector ID may be retrieved from the DETECTOR entry of that
+    metadata.
     """
     root = os.path.normpath(root)
     dirs = os.listdir(root)  # assumes all directories contain data
