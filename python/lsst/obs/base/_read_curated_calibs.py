@@ -23,7 +23,8 @@ from __future__ import annotations
 
 import glob
 import os
-from typing import TYPE_CHECKING, Any
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, Protocol
 
 import dateutil.parser
 from lsst.ip.isr import BrighterFatterKernel, CrosstalkCalib, Defects, Linearizer, PhotodiodeCalib
@@ -35,7 +36,20 @@ if TYPE_CHECKING:
     import lsst.afw.cameraGeom
 
 
-def read_one_chip(root: str, chip_name: str, chip_id: int) -> tuple[dict[datetime.datetime, Any], str]:
+class CuratedCalibration(Protocol):
+    """Protocol that describes the methods needed by this class when dealing
+    with curated calibration datasets."""
+
+    def readText(self, path: str) -> CuratedCalibration:
+        ...
+
+    def getMetadata(self) -> Mapping:
+        ...
+
+
+def read_one_chip(
+    root: str, chip_name: str, chip_id: int
+) -> tuple[dict[datetime.datetime, CuratedCalibration], str]:
     """Read data for a particular sensor from the standard format at a
     particular root.
 
@@ -76,7 +90,7 @@ def read_one_chip(root: str, chip_name: str, chip_id: int) -> tuple[dict[datetim
             f"Unknown calibration data type, '{data_name}' found. "
             f"Only understand {','.join(k for k in factory_map)}"
         )
-    factory = factory_map[data_name]
+    factory: CuratedCalibration = factory_map[data_name]
     data_dict: dict[datetime.datetime, Any] = {}
     for f in files:
         date_str = os.path.splitext(os.path.basename(f))[0]
@@ -134,7 +148,7 @@ def check_metadata(
 
 def read_all(
     root: str, camera: lsst.afw.cameraGeom.Camera
-) -> tuple[dict[str, dict[datetime.datetime, Any]], str]:
+) -> tuple[dict[str, dict[datetime.datetime, CuratedCalibration]], str]:
     """Read all data from the standard format at a particular root.
 
     Parameters
