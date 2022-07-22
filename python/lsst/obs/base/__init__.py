@@ -21,13 +21,10 @@
 
 from ._fitsRawFormatterBase import *
 from ._instrument import *
-from .cameraMapper import *
 from .defineVisits import *
 from .exposureIdInfo import *
 from .filters import *
 from .ingest import *
-from .makeRawVisitInfo import *
 from .makeRawVisitInfoViaObsInfo import *
-from .mapping import *
 from .utils import *
 from .version import *

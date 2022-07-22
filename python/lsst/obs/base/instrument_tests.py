@@ -33,7 +33,6 @@ import pkg_resources
 from lsst.daf.butler import Registry, RegistryConfig
 from lsst.daf.butler.formatters.yaml import YamlFormatter
 from lsst.obs.base import FilterDefinition, FilterDefinitionCollection, Instrument
-from lsst.obs.base.gen2to3 import TranslatorFactory
 from lsst.obs.base.yamlCamera import makeCamera
 from lsst.utils.introspection import get_full_type_name
 
@@ -110,9 +109,6 @@ class DummyCam(Instrument):
     def applyConfigOverrides(self, name, config):
         pass
 
-    def makeDataIdTranslatorFactory(self) -> TranslatorFactory:
-        return TranslatorFactory()
-
 
 @dataclasses.dataclass
 class InstrumentTestData:
@@ -184,8 +180,3 @@ class InstrumentTests(metaclass=abc.ABCMeta):
 
         # Check that re-registration is not an error.
         self.instrument.register(registry)
-
-    def testMakeTranslatorFactory(self):
-        factory = self.instrument.makeDataIdTranslatorFactory()
-        self.assertIsInstance(factory, TranslatorFactory)
-        str(factory)  # Just make sure this doesn't raise.

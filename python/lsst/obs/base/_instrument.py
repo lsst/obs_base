@@ -50,7 +50,6 @@ if TYPE_CHECKING:
     from lsst.daf.butler import Registry
 
     from .filters import FilterDefinitionCollection
-    from .gen2to3 import TranslatorFactory
 
 # To be a standard text curated calibration means that we use a
 # standard definition for the corresponding DatasetType.
@@ -499,21 +498,11 @@ class Instrument(InstrumentBase):
             for timespan, refs in refsByTimespan.items():
                 butler.registry.certify(collection, refs, timespan)
 
-    @abstractmethod
-    def makeDataIdTranslatorFactory(self) -> TranslatorFactory:
+    def makeDataIdTranslatorFactory(self) -> None:
         """Return a factory for creating Gen2->Gen3 data ID translators,
         specialized for this instrument.
 
-        Derived class implementations should generally call
-        `TranslatorFactory.addGenericInstrumentRules` with appropriate
-        arguments, but are not required to (and may not be able to if their
-        Gen2 raw data IDs are sufficiently different from the HSC/DECam/CFHT
-        norm).
-
-        Returns
-        -------
-        factory : `TranslatorFactory`.
-            Factory for `Translator` objects.
+        No longer used.
         """
         raise NotImplementedError("Must be implemented by derived classes.")
 
