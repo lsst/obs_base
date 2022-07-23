@@ -24,11 +24,9 @@ from __future__ import annotations
 import glob
 import os
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol, Type
 
 import dateutil.parser
-from lsst.ip.isr import BrighterFatterKernel, CrosstalkCalib, Defects, Linearizer, PhotodiodeCalib
-from lsst.meas.algorithms.simple_curve import Curve
 
 if TYPE_CHECKING:
     import datetime
@@ -40,7 +38,8 @@ class CuratedCalibration(Protocol):
     """Protocol that describes the methods needed by this class when dealing
     with curated calibration datasets."""
 
-    def readText(self, path: str) -> CuratedCalibration:
+    @classmethod
+    def readText(cls, path: str) -> CuratedCalibration:
         ...
 
     def getMetadata(self) -> Mapping:
@@ -48,7 +47,10 @@ class CuratedCalibration(Protocol):
 
 
 def read_one_chip(
-    root: str, chip_name: str, chip_id: int
+    root: str,
+    chip_name: str,
+    chip_id: int,
+    calib_class: Type[CuratedCalibration],
 ) -> tuple[dict[datetime.datetime, CuratedCalibration], str]:
     """Read data for a particular sensor from the standard format at a
     particular root.
@@ -63,6 +65,9 @@ def read_one_chip(
         The name of the sensor for which to read data.
     chip_id : `int`
         The identifier for the sensor in question.
+    calib_class : `Any`
+        The class to use to read the curated calibration text file. Must
+        support the ``readText()`` method.
 
     Returns
     -------
@@ -70,14 +75,6 @@ def read_one_chip(
         A dictionary of objects constructed from the appropriate factory class.
         The key is the validity start time as a `datetime` object.
     """
-    factory_map = {
-        "qe_curve": Curve,
-        "defects": Defects,
-        "linearizer": Linearizer,
-        "crosstalk": CrosstalkCalib,
-        "bfk": BrighterFatterKernel,
-        "photodiode": PhotodiodeCalib,
-    }
     files = []
     extensions = (".ecsv", ".yaml")
     for ext in extensions:
@@ -85,17 +82,11 @@ def read_one_chip(
     parts = os.path.split(root)
     instrument = os.path.split(parts[0])[1]  # convention is that these reside at <instrument>/<data_name>
     data_name = parts[1]
-    if data_name not in factory_map:
-        raise ValueError(
-            f"Unknown calibration data type, '{data_name}' found. "
-            f"Only understand {','.join(k for k in factory_map)}"
-        )
-    factory: CuratedCalibration = factory_map[data_name]
     data_dict: dict[datetime.datetime, Any] = {}
     for f in files:
         date_str = os.path.splitext(os.path.basename(f))[0]
         valid_start = dateutil.parser.parse(date_str)
-        data_dict[valid_start] = factory.readText(f)
+        data_dict[valid_start] = calib_class.readText(f)
         check_metadata(data_dict[valid_start], valid_start, instrument, chip_id, f, data_name)
     return data_dict, data_name
 
@@ -147,7 +138,9 @@ def check_metadata(
 
 
 def read_all(
-    root: str, camera: lsst.afw.cameraGeom.Camera
+    root: str,
+    camera: lsst.afw.cameraGeom.Camera,
+    calib_class: Type[CuratedCalibration],
 ) -> tuple[dict[str, dict[datetime.datetime, CuratedCalibration]], str]:
     """Read all data from the standard format at a particular root.
 
@@ -159,6 +152,9 @@ def read_all(
         lower case.
     camera : `lsst.afw.cameraGeom.Camera`
         The camera that goes with the data being read.
+    calib_class : `Any`
+        The class to use to read the curated calibration text file. Must
+        support the ``readText()`` and ``getMetadata()`` methods.
 
     Returns
     -------
@@ -202,7 +198,7 @@ def read_all(
                 f"{camera.getName()} ({note_str}: {','.join(detectors)})"
             )
         chip_id = camera[name_map[chip_name]].getId()
-        data_by_chip[chip_name], calib_type = read_one_chip(root, chip_name, chip_id)
+        data_by_chip[chip_name], calib_type = read_one_chip(root, chip_name, chip_id, calib_class)
         calib_types.add(calib_type)
         if len(calib_types) != 1:  # set.add(None) has length 1 so None is OK here.
             raise ValueError(f"Error mixing calib types: {calib_types}")

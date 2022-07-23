@@ -23,11 +23,24 @@ from __future__ import annotations
 
 __all__ = ("Instrument", "makeExposureRecordFromObsInfo", "loadCamera")
 
+import logging
 import os.path
 from abc import abstractmethod
 from collections import defaultdict
 from functools import lru_cache
-from typing import TYPE_CHECKING, AbstractSet, Any, Dict, FrozenSet, Optional, Sequence, Set, Tuple
+from typing import (
+    TYPE_CHECKING,
+    AbstractSet,
+    Any,
+    Dict,
+    FrozenSet,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Type,
+    cast,
+)
 
 import astropy.time
 from lsst.afw.cameraGeom import Camera
@@ -44,14 +57,17 @@ from lsst.daf.butler import (
 from lsst.daf.butler.registry import DataIdError
 from lsst.pipe.base import Instrument as InstrumentBase
 from lsst.utils import getPackageDir
+from lsst.utils.introspection import get_full_type_name
 
-from ._read_curated_calibs import read_all
+from ._read_curated_calibs import CuratedCalibration, read_all
 
 if TYPE_CHECKING:
     from astro_metadata_translator import ObservationInfo
     from lsst.daf.butler import Registry
 
     from .filters import FilterDefinitionCollection
+
+_LOG = logging.getLogger(__name__)
 
 # To be a standard text curated calibration means that we use a
 # standard definition for the corresponding DatasetType.
@@ -460,12 +476,23 @@ class Instrument(InstrumentBase):
 
         # Register the dataset type
         butler.registry.registerDatasetType(datasetType)
+        _LOG.info("Processing %r curated calibration", datasetType.name)
+
+        # The class to use to read these calibrations comes from the storage
+        # class.
+        calib_class = datasetType.storageClass.pytype
+        if not hasattr(calib_class, "readText"):
+            raise ValueError(
+                f"Curated calibration {datasetType.name} is using a class "
+                f"{get_full_type_name(calib_class)} that lacks a readText class method"
+            )
+        calib_class = cast(Type[CuratedCalibration], calib_class)
 
         # Read calibs, registering a new run for each CALIBDATE as needed.
         # We try to avoid registering runs multiple times as an optimization
         # by putting them in the ``runs`` set that was passed in.
         camera = self.getCamera()
-        calibsDict = read_all(calibPath, camera)[0]  # second return is calib type
+        calibsDict = read_all(calibPath, camera, calib_class)[0]  # second return is calib type
         datasetRecords = []
         for det in calibsDict:
             times = sorted([k for k in calibsDict[det]])
