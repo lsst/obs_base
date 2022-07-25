@@ -26,7 +26,11 @@ lsst.log, and only uses it if it has been setup by another package."""
 
 import unittest
 
-import lsst.log
+try:
+    import lsst.log as lsstLog
+except ImportError:
+    lsstLog = None
+
 from lsst.daf.butler.cli.cliLog import CliLog
 from lsst.daf.butler.tests import CliLogTestBase
 
@@ -41,15 +45,16 @@ class CliLogTestCase(CliLogTestBase, unittest.TestCase):
     pass
 
 
+@unittest.skipIf(lsstLog is None, "lsst.log is not available.")
 class ConvertLsstLogLevelTestCase(unittest.TestCase):
     def test_convertToLsstLogLevel(self):
         """Test that the log levels accepted by the log_level_option are
         translated to lsst.log levels correctly."""
-        self.assertEqual(lsst.log.Log.FATAL, CliLog._getLsstLogLevel("CRITICAL"))
-        self.assertEqual(lsst.log.ERROR, CliLog._getLsstLogLevel("ERROR"))
-        self.assertEqual(lsst.log.WARN, CliLog._getLsstLogLevel("WARNING"))
-        self.assertEqual(lsst.log.INFO, CliLog._getLsstLogLevel("INFO"))
-        self.assertEqual(lsst.log.DEBUG, CliLog._getLsstLogLevel("DEBUG"))
+        self.assertEqual(lsstLog.Log.FATAL, CliLog._getLsstLogLevel("CRITICAL"))
+        self.assertEqual(lsstLog.ERROR, CliLog._getLsstLogLevel("ERROR"))
+        self.assertEqual(lsstLog.WARN, CliLog._getLsstLogLevel("WARNING"))
+        self.assertEqual(lsstLog.INFO, CliLog._getLsstLogLevel("INFO"))
+        self.assertEqual(lsstLog.DEBUG, CliLog._getLsstLogLevel("DEBUG"))
 
 
 if __name__ == "__main__":

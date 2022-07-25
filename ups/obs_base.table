@@ -11,7 +11,7 @@ setupRequired(daf_base)
 setupRequired(afw)
 setupRequired(geom)
 setupRequired(pex_exceptions)
-setupRequired(log)
+setupOptional(log)
 
 envPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
 envPrepend(PATH, ${PRODUCT_DIR}/bin)
