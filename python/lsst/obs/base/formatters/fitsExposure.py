@@ -536,8 +536,6 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
             "psf": "readPsf",
             "photoCalib": "readPhotoCalib",
             "filter": "readFilter",
-            # TODO: deprecated; remove in DM-27811
-            "filterLabel": "readFilterLabel",
             "validPolygon": "readValidPolygon",
             "apCorrMap": "readApCorrMap",
             "visitInfo": "readVisitInfo",
@@ -545,16 +543,17 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
             "detector": "readDetector",
             "exposureInfo": "readExposureInfo",
         }
+        if component == "filterLabel":
+            warnings.warn(
+                "Exposure.filterLabel component is deprecated; use .filter instead. "
+                "Will be removed after v24.",
+                FutureWarning,
+                stacklevel=2,  # Report from caller.
+            )
+            component = "filter"
         if (methodName := standardComponents.get(component)) is not None:
             result = getattr(self.reader, methodName)()
-            # TODO: remove filterLabel in DM-27811
-            if component == "filterLabel":
-                warnings.warn(
-                    "Exposure.filterLabel component is deprecated; use .filter instead. "
-                    "Will be removed after v24.",
-                    FutureWarning,
-                )
-            if component == "filter" or component == "filterLabel":
+            if component == "filter":
                 return self._fixFilterLabels(result)
             return result
         # Delegate to MaskedImage and ImageBase implementations for the rest.
