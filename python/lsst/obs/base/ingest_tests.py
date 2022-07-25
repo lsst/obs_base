@@ -89,6 +89,12 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     observations).
     """
 
+    seed_config = None
+    """Location of a seed configuration file to pass to butler create.
+
+    Useful if additional formatters or storage classes need to be defined.
+    """
+
     @property
     @abc.abstractmethod
     def instrumentClassName(self):
@@ -236,7 +242,10 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         """Use the Click `testing` module to call the butler command line api
         to create a repository."""
         runner = LogCliRunner()
-        result = runner.invoke(butlerCli, ["create", cls.root])
+        args = []
+        if cls.seed_config:
+            args.extend(["--seed-config", cls.seed_config])
+        result = runner.invoke(butlerCli, ["create", cls.root, *args])
         # Classmethod so assertEqual does not work.
         assert result.exit_code == 0, f"output: {result.output} exception: {result.exception}"
 
@@ -408,6 +417,9 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         # trying to test the CLI interface anyway.
         butler = Butler(self.root, writeable=False)
 
+        instrumentClass = self.instrumentClass()
+        calibration_names = instrumentClass.getCuratedCalibrationNames()
+
         for datasetTypeName in self.curatedCalibrationDatasetTypes:
             with self.subTest(dtype=datasetTypeName):
                 found = list(
@@ -417,6 +429,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
                     )
                 )
                 self.assertGreater(len(found), 0, f"Checking {datasetTypeName}")
+                self.assertIn(datasetTypeName, calibration_names)
 
         # Load camera should returned the versioned camera from the repo.
         camera, isVersioned = lsst.obs.base.loadCamera(butler, self.dataIds[0], collections=collection)

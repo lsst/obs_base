@@ -25,18 +25,34 @@ These are not tests themselves, but can be subclassed (plus unittest.TestCase)
 to get a functional test of an Instrument.
 """
 
+from __future__ import annotations
+
+__all__ = [
+    "DummyCam",
+    "InstrumentTestData",
+    "InstrumentTests",
+    "DummyCamYamlWcsFormatter",
+    "CuratedCalibration",
+]
+
 import abc
 import dataclasses
-from typing import ClassVar, Optional, Set
+import json
+from functools import lru_cache
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, Sequence, Set
 
 import pkg_resources
-from lsst.daf.butler import Registry, RegistryConfig
+from lsst.daf.butler import CollectionType, DatasetType, Registry, RegistryConfig
 from lsst.daf.butler.formatters.yaml import YamlFormatter
 from lsst.obs.base import FilterDefinition, FilterDefinitionCollection, Instrument
 from lsst.obs.base.yamlCamera import makeCamera
 from lsst.utils.introspection import get_full_type_name
+from pydantic import BaseModel
 
 from .utils import createInitialSkyWcsFromBoresight
+
+if TYPE_CHECKING:
+    from lsst.daf.butler import Butler
 
 DUMMY_FILTER_DEFINITIONS = FilterDefinitionCollection(
     FilterDefinition(physical_filter="dummy_u", band="u"),
@@ -61,13 +77,43 @@ class DummyCamYamlWcsFormatter(YamlFormatter):
         return createInitialSkyWcsFromBoresight(boresight, orientation, detector, flipX=False)
 
 
+class CuratedCalibration(BaseModel):
+    """Class that implements minimal read/write interface needed to support
+    curated calibration ingest.
+    """
+
+    metadata: dict[str, Any]
+    values: list[int]
+
+    @classmethod
+    def readText(cls, path: str) -> CuratedCalibration:
+        with open(path) as f:
+            data = f.read()
+        return cls.parse_obj(json.loads(data))
+
+    def writeText(self, path: str) -> None:
+        with open(path, "w") as f:
+            print(self.json(), file=f)
+
+    def getMetadata(self) -> dict[str, Any]:
+        return self.metadata
+
+
 class DummyCam(Instrument):
 
     filterDefinitions = DUMMY_FILTER_DEFINITIONS
+    additionalCuratedDatasetTypes = frozenset(["testCalib"])
+    policyName = "dummycam"
+    dataPackageDir: Optional[str] = ""
 
     @classmethod
     def getName(cls):
         return "DummyCam"
+
+    @classmethod
+    @lru_cache()  # For mypy
+    def getObsDataPackageDir(cls) -> Optional[str]:
+        return cls.dataPackageDir
 
     def getCamera(self):
         # Return something that can be indexed by detector number
@@ -103,11 +149,32 @@ class DummyCam(Instrument):
         # Docstring inherited fromt Instrument.getRawFormatter.
         return DummyCamYamlWcsFormatter
 
-    def writeCuratedCalibrations(self, butler):
-        pass
-
     def applyConfigOverrides(self, name, config):
         pass
+
+    def writeAdditionalCuratedCalibrations(
+        self, butler: Butler, collection: Optional[str] = None, labels: Sequence[str] = ()
+    ) -> None:
+        # We want to test the standard curated calibration ingest
+        # but we do not have a standard class to use. There is no way
+        # at the moment to inject a new class into the standard list
+        # that is a package constant, so instead use this "Additional"
+        # method but call the standard curated calibration code.
+        if collection is None:
+            collection = self.makeCalibrationCollectionName(*labels)
+        butler.registry.registerCollection(collection, type=CollectionType.CALIBRATION)
+
+        datasetType = DatasetType(
+            "testCalib",
+            universe=butler.registry.dimensions,
+            isCalibration=True,
+            dimensions=("instrument", "detector"),
+            storageClass="CuratedCalibration",
+        )
+        runs: Set[str] = set()
+        self._writeSpecificCuratedCalibrationDatasets(
+            butler, datasetType, collection, runs=runs, labels=labels
+        )
 
 
 @dataclasses.dataclass

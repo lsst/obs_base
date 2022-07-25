@@ -78,7 +78,7 @@ def read_one_chip(
         The key is the validity start time as a `datetime` object.
     """
     files = []
-    extensions = (".ecsv", ".yaml")
+    extensions = (".ecsv", ".yaml", ".json")
     for ext in extensions:
         files.extend(glob.glob(os.path.join(root, chip_name, f"*{ext}")))
     parts = os.path.split(root)
@@ -188,7 +188,7 @@ def read_all(
         # Give informative error message if the detector name is not known
         # rather than a simple KeyError
         if chip_name not in name_map:
-            detectors = [det for det in camera.getNameIter()]
+            detectors = [det for det in name_map.keys()]
             max_detectors = 10
             note_str = "knows"
             if len(detectors) > max_detectors:

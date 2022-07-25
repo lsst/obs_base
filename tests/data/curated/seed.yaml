@@ -1,0 +1,7 @@
+datastore:
+  formatters:
+    CuratedCalibration: lsst.daf.butler.formatters.json.JsonFormatter
+storageClasses:
+  # For curated calibration test.
+  CuratedCalibration:
+    pytype: lsst.obs.base.instrument_tests.CuratedCalibration
