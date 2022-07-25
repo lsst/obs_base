@@ -96,7 +96,6 @@ class ObsTests(butler_tests.ButlerGetTests, camera_tests.CameraTests):
 
     def tearDown(self):
         del self.butler
-        del self.mapper
         super(ObsTests, self).tearDown()
 
 
