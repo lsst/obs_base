@@ -1,0 +1,2 @@
+* Remove Gen2 code from package, including 2to3 conversion code.
+* Move support for reading curated calibrations for _data packages from ``pipe_tasks`` and add unit tests for this code.
