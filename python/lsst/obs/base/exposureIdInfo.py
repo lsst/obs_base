@@ -19,7 +19,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+
 __all__ = ["ExposureIdInfo"]
+
+from typing import Optional
 
 from lsst.afw.table import IdFactory
 from lsst.daf.butler import DataCoordinate
@@ -58,15 +62,8 @@ class ExposureIdInfo:
         #...add fields to schema as desired, then...
         sourceTable = SourceTable.make(self.schema, info.makeSourceIdFactory())
 
-    An `ExposureIdInfo` instance can be obtained from a Gen2 data butler
-    ``butler`` and dictionary ``dataId`` that identifies a visit and a detector
-    via
-
-    .. code-block:: python
-
-        info = butler.get("expIdInfo", dataId)
-
-    The Gen3 version is
+    An `ExposureIdInfo` instance can be obtained from a
+    `~lsst.daf.butler.DataCoordinate` with:
 
     .. code-block:: python
 
@@ -83,7 +80,7 @@ class ExposureIdInfo:
     exposure ID, for reasons that are not entirely clear (this is DM-6664).
     """
 
-    def __init__(self, expId=0, expBits=1, maxBits=None):
+    def __init__(self, expId: int = 0, expBits: int = 1, maxBits: Optional[int] = None):
         """Construct an ExposureIdInfo
 
         See the class doc string for an explanation of the arguments.
@@ -103,8 +100,15 @@ class ExposureIdInfo:
                 raise RuntimeError("expBits=%s > maxBits=%s" % (expBits, maxBits))
         self.maxBits = maxBits
 
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}(expId={self.expId}, expBits={self.expBits}, maxBits={self.maxBits})"
+        )
+
     @classmethod
-    def fromDataId(cls, dataId, name="visit_detector", maxBits=None):
+    def fromDataId(
+        cls, dataId: DataCoordinate, name: str = "visit_detector", maxBits: Optional[int] = None
+    ) -> ExposureIdInfo:
         """Construct an instance from a fully-expanded data ID.
 
         Parameters
@@ -137,7 +141,7 @@ class ExposureIdInfo:
         return cls(expId=expId, expBits=expBits, maxBits=maxBits)
 
     @property
-    def unusedBits(self):
+    def unusedBits(self) -> int:
         """Maximum number of bits available for non-exposure info `(int)`."""
         if self.maxBits is None:
             from lsst.afw.table import IdFactory
@@ -146,7 +150,7 @@ class ExposureIdInfo:
         else:
             return self.maxBits - self.expBits
 
-    def makeSourceIdFactory(self):
+    def makeSourceIdFactory(self) -> IdFactory:
         """Make a `lsst.afw.table.SourceTable.IdFactory` instance from this
         exposure information.
 

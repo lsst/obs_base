@@ -1,0 +1,13 @@
+{
+  "metadata": {
+    "INSTRUME": "DummyCam",
+    "DETECTOR": 0,
+    "OBSTYPE": "testCalib",
+    "CALIBDATE": "20220101T000000Z"
+  },
+  "values": [
+    1,
+    2,
+    34
+  ]
+}

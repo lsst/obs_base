@@ -19,10 +19,27 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from .calibRepoConverter import *
-from .convertRepo import *
-from .repoConverter import *
-from .repoWalker import *
-from .rootRepoConverter import *
-from .standardRepoConverter import *
-from .translators import *
+import unittest
+
+from lsst.obs.base import ExposureIdInfo
+
+
+class ExposureIdInfoTestCase(unittest.TestCase):
+    def testExposureIdInfo(self):
+        idInfo = ExposureIdInfo(12345, 32, 128)
+        self.assertEqual(idInfo.unusedBits, 96)
+
+        self.assertIn("=12345", str(idInfo))
+
+        with self.assertRaises(RuntimeError):
+            ExposureIdInfo.fromDataId({})
+
+        with self.assertRaises(RuntimeError):
+            ExposureIdInfo(1e6, 4)
+
+        with self.assertRaises(RuntimeError):
+            ExposureIdInfo(12345, 64, 32)
+
+
+if __name__ == "__main__":
+    unittest.main()

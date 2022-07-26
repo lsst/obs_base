@@ -23,11 +23,24 @@ from __future__ import annotations
 
 __all__ = ("Instrument", "makeExposureRecordFromObsInfo", "loadCamera")
 
+import logging
 import os.path
 from abc import abstractmethod
 from collections import defaultdict
 from functools import lru_cache
-from typing import TYPE_CHECKING, AbstractSet, Any, Dict, FrozenSet, Optional, Sequence, Set, Tuple
+from typing import (
+    TYPE_CHECKING,
+    AbstractSet,
+    Any,
+    Dict,
+    FrozenSet,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Type,
+    cast,
+)
 
 import astropy.time
 from lsst.afw.cameraGeom import Camera
@@ -44,13 +57,17 @@ from lsst.daf.butler import (
 from lsst.daf.butler.registry import DataIdError
 from lsst.pipe.base import Instrument as InstrumentBase
 from lsst.utils import getPackageDir
+from lsst.utils.introspection import get_full_type_name
+
+from ._read_curated_calibs import CuratedCalibration, read_all
 
 if TYPE_CHECKING:
     from astro_metadata_translator import ObservationInfo
     from lsst.daf.butler import Registry
 
     from .filters import FilterDefinitionCollection
-    from .gen2to3 import TranslatorFactory
+
+_LOG = logging.getLogger(__name__)
 
 # To be a standard text curated calibration means that we use a
 # standard definition for the corresponding DatasetType.
@@ -450,7 +467,7 @@ class Instrument(InstrumentBase):
         supplied dataset type.  The directory name in the data package must
         match the name of the dataset type. They are assumed to use the
         standard layout and can be read by
-        `~lsst.pipe.tasks.read_curated_calibs.read_all` and provide standard
+        `~lsst.obs.base._read_curated_calibs.read_all` and provide standard
         metadata.
         """
         calibPath = self._getSpecificCuratedCalibrationPath(datasetType.name)
@@ -459,23 +476,32 @@ class Instrument(InstrumentBase):
 
         # Register the dataset type
         butler.registry.registerDatasetType(datasetType)
+        _LOG.info("Processing %r curated calibration", datasetType.name)
 
-        # obs_base can't depend on pipe_tasks but concrete obs packages
-        # can -- we therefore have to defer import
-        from lsst.pipe.tasks.read_curated_calibs import read_all
+        # The class to use to read these calibrations comes from the storage
+        # class.
+        calib_class = datasetType.storageClass.pytype
+        if not hasattr(calib_class, "readText"):
+            raise ValueError(
+                f"Curated calibration {datasetType.name} is using a class "
+                f"{get_full_type_name(calib_class)} that lacks a readText class method"
+            )
+        calib_class = cast(Type[CuratedCalibration], calib_class)
 
         # Read calibs, registering a new run for each CALIBDATE as needed.
         # We try to avoid registering runs multiple times as an optimization
         # by putting them in the ``runs`` set that was passed in.
         camera = self.getCamera()
-        calibsDict = read_all(calibPath, camera)[0]  # second return is calib type
+        calibsDict = read_all(calibPath, camera, calib_class)[0]  # second return is calib type
         datasetRecords = []
         for det in calibsDict:
             times = sorted([k for k in calibsDict[det]])
             calibs = [calibsDict[det][time] for time in times]
-            times = [astropy.time.Time(t, format="datetime", scale="utc") for t in times]
-            times += [None]
-            for calib, beginTime, endTime in zip(calibs, times[:-1], times[1:]):
+            atimes: list[Optional[astropy.time.Time]] = [
+                astropy.time.Time(t, format="datetime", scale="utc") for t in times
+            ]
+            atimes += [None]
+            for calib, beginTime, endTime in zip(calibs, atimes[:-1], atimes[1:]):
                 md = calib.getMetadata()
                 run = self.makeCuratedCalibrationRunName(md["CALIBDATE"], *labels)
                 if run not in runs:
@@ -498,24 +524,6 @@ class Instrument(InstrumentBase):
                 refsByTimespan[timespan].append(butler.put(calib, datasetType, dataId, run=run))
             for timespan, refs in refsByTimespan.items():
                 butler.registry.certify(collection, refs, timespan)
-
-    @abstractmethod
-    def makeDataIdTranslatorFactory(self) -> TranslatorFactory:
-        """Return a factory for creating Gen2->Gen3 data ID translators,
-        specialized for this instrument.
-
-        Derived class implementations should generally call
-        `TranslatorFactory.addGenericInstrumentRules` with appropriate
-        arguments, but are not required to (and may not be able to if their
-        Gen2 raw data IDs are sufficiently different from the HSC/DECam/CFHT
-        norm).
-
-        Returns
-        -------
-        factory : `TranslatorFactory`.
-            Factory for `Translator` objects.
-        """
-        raise NotImplementedError("Must be implemented by derived classes.")
 
 
 def makeExposureRecordFromObsInfo(

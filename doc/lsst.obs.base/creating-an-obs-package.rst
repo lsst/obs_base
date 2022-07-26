@@ -48,12 +48,8 @@ Create a file, ``python/lsst/obs/example/exampleFilters.py``, formatted like the
     from lsst.obs.base import FilterDefinition, FilterDefinitionCollection
 
     EXAMPLE_FILTER_DEFINITIONS = FilterDefinitionCollection(
-        FilterDefinition(physical_filter="example g filter",
-                         band="g",
-                         lambdaEff=432),
-        FilterDefinition(physical_filter="example z filter",
-                         band="z",
-                         lambdaEff=1234),
+        FilterDefinition(physical_filter="example g filter", band="g"),
+        FilterDefinition(physical_filter="example z filter", band="z"),
     )
 
 See the `FilterDefinition` docs for the various components that go into defining a filter.

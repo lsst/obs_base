@@ -24,7 +24,6 @@ import collections
 import inspect
 import unittest
 
-from lsst.daf.butler import Butler
 from lsst.daf.butler.registry import DataIdValueError
 
 __all__ = ["ButlerGetTests"]
@@ -133,26 +132,12 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
             raw_header_wcs=raw_header_wcs,
         )
 
-    def _require_gen2(self):
-        if isinstance(self.butler, Butler):
-            self.skipTest("This test requires daf_persistence Butler, not daf_butler Butler.")
-
-    def _is_gen3(self):
-        if isinstance(self.butler, Butler):
-            return True
-        return False
-
-    def test_exposureId_bits(self):
-        self._require_gen2()
-        bits = self.butler.get("ccdExposureId_bits")
-        self.assertEqual(bits, self.butler_get_data.ccdExposureId_bits)
-
     def _test_exposure(self, name):
         if self.dataIds[name] is unittest.SkipTest:
             self.skipTest("Skipping %s as requested" % (inspect.currentframe().f_code.co_name))
         exp = self.butler.get(name, self.dataIds[name])
 
-        md_component = ".metadata" if self._is_gen3() else "_md"
+        md_component = ".metadata"
         exp_md = self.butler.get(name + md_component, self.dataIds[name])
         self.assertEqual(type(exp_md), type(exp.getMetadata()))
 
@@ -173,9 +158,6 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
         else:
             filterName = "_unknown_"
         self.assertEqual(filterName, self.butler_get_data.filters[name])
-        if not self._is_gen3():
-            exposureId = self.butler.get("ccdExposureId", dataId=self.dataIds[name])
-            self.assertEqual(exposureId, self.butler_get_data.exposureIds[name])
         self.assertEqual(exp.getInfo().getVisitInfo().getExposureTime(), self.butler_get_data.exptimes[name])
         return exp
 
@@ -212,28 +194,23 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
 
     def test_subset_raw(self):
         for kwargs, expect in self.butler_get_data.raw_subsets:
-            if self._is_gen3():
-                # If one of the keyword args looks like a dimension record
-                # subquery, pull it out into the WHERE clause.
-                where = []
-                bind = {}
-                for k, v in list(kwargs.items()):
-                    if "." in k:
-                        bindval = k.replace(".", "_")
-                        where.append(f"{k} = {bindval}")
-                        bind[bindval] = v
-                        del kwargs[k]
-                try:
-                    subset = set(
-                        self.butler.registry.queryDatasets(
-                            "raw", **kwargs, bind=bind, where=" AND ".join(where)
-                        )
-                    )
-                except DataIdValueError:
-                    # This means one of the dataId values does not exist.
-                    subset = {}
-            else:
-                subset = self.butler.subset("raw", **kwargs)
+            # If one of the keyword args looks like a dimension record
+            # subquery, pull it out into the WHERE clause.
+            where = []
+            bind = {}
+            for k, v in list(kwargs.items()):
+                if "." in k:
+                    bindval = k.replace(".", "_")
+                    where.append(f"{k} = {bindval}")
+                    bind[bindval] = v
+                    del kwargs[k]
+            try:
+                subset = set(
+                    self.butler.registry.queryDatasets("raw", **kwargs, bind=bind, where=" AND ".join(where))
+                )
+            except DataIdValueError:
+                # This means one of the dataId values does not exist.
+                subset = {}
 
             self.assertEqual(len(subset), expect, msg="Failed for kwargs: {}".format(kwargs))
 
@@ -245,10 +222,7 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
         camera = self.butler.get("camera")
         for detectorId in self.butler_get_data.good_detectorIds:
             detector = camera[detectorId]
-            if self._is_gen3():
-                kwargs = {"detector": detectorId}
-            else:
-                kwargs = {"dataId": dict(ccd=detectorId), "immediate": True}
+            kwargs = {"detector": detectorId}
             linearizer = self.butler.get("linearizer", **kwargs)
             self.assertEqual(linearizer.LinearityType, self.butler_get_data.linearizer_type[detectorId])
             linearizer.checkDetector(detector)
@@ -259,9 +233,6 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
             self.skipTest("Skipping %s as requested" % (inspect.currentframe().f_code.co_name))
 
         for badccd in self.butler_get_data.bad_detectorIds:
-            if self._is_gen3():
-                kwargs = {"detector": badccd}
-            else:
-                kwargs = {"dataId": dict(ccd=badccd), "immediate": True}
+            kwargs = {"detector": badccd}
             with self.assertRaises(RuntimeError):
                 self.butler.get("linearizer", **kwargs)

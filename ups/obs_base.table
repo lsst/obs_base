@@ -1,14 +1,17 @@
-setupRequired(daf_base)
-setupRequired(log)
-setupRequired(daf_persistence)
-setupRequired(afw)
+# Python Middleware
 setupRequired(utils)
-setupRequired(astro_metadata_translator)
-setupRequired(geom)
 setupRequired(daf_butler)
 setupRequired(pipe_base)
-setupOptional(skymap)
 setupRequired(resources)
+setupRequired(astro_metadata_translator)
+setupRequired(pex_config)
+
+# LSST C++.
+setupRequired(daf_base)
+setupRequired(afw)
+setupRequired(geom)
+setupRequired(pex_exceptions)
+setupOptional(log)
 
 envPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
 envPrepend(PATH, ${PRODUCT_DIR}/bin)

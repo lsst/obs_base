@@ -19,7 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from .convert import convert
 from .defineVisits import defineVisits
 from .ingestRaws import ingestRaws
 from .writeCuratedCalibrations import writeCuratedCalibrations

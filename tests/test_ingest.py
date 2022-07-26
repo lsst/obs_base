@@ -57,11 +57,12 @@ class RawIngestTestCase(IngestTestBase, unittest.TestCase):
 
     ingestDatasetTypeName = "raw_dict"
     rawIngestTask = get_full_type_name(DummyCamRawIngestTask)
-    curatedCalibrationDatasetTypes = ()
+    curatedCalibrationDatasetTypes = ("testCalib",)
     ingestDir = TESTDIR
     instrumentClassName = "lsst.obs.base.instrument_tests.DummyCam"
     file = os.path.join(INGESTDIR, "sidecar_data", "dataset_1.yaml")
     dataIds = [dict(instrument="DummyCam", exposure=100, detector=0)]
+    seed_config = os.path.join(TESTDIR, "data", "curated", "seed.yaml")
 
     @property
     def visits(self):
@@ -77,8 +78,9 @@ class RawIngestTestCase(IngestTestBase, unittest.TestCase):
         }
 
     def testWriteCuratedCalibrations(self):
-        """There are no curated calibrations in this test instrument"""
-        pass
+        # Inject the "data package" location.
+        DummyCam.dataPackageDir = os.path.join(TESTDIR, "data", "curated")
+        return super().testWriteCuratedCalibrations()
 
 
 class RawIngestImpliedIndexTestCase(RawIngestTestCase):
