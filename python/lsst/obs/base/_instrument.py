@@ -525,14 +525,6 @@ class Instrument(InstrumentBase):
             for timespan, refs in refsByTimespan.items():
                 butler.registry.certify(collection, refs, timespan)
 
-    def makeDataIdTranslatorFactory(self) -> None:
-        """Return a factory for creating Gen2->Gen3 data ID translators,
-        specialized for this instrument.
-
-        No longer used.
-        """
-        raise NotImplementedError("Must be implemented by derived classes.")
-
 
 def makeExposureRecordFromObsInfo(
     obsInfo: ObservationInfo, universe: DimensionUniverse, **kwargs: Any
