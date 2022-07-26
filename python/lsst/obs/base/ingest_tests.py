@@ -474,3 +474,6 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             self.assertEqual(len(detectorVisitDataIds), len(camera))
             for dataId in detectorVisitDataIds:
                 self.assertTrue(foundVisit.region.contains(dataId.region))
+
+                idInfo = lsst.obs.base.ExposureIdInfo.fromDataId(dataId)
+                self.assertGreater(idInfo.unusedBits, 0)

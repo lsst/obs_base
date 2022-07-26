@@ -130,6 +130,8 @@ class DummyCam(Instrument):
             "instrument": self.getName(),
             "class_name": get_full_type_name(DummyCam),
             "detector_max": detector_max,
+            "visit_max": 1_000_000,
+            "exposure_max": 1_000_000,
         }
         with registry.transaction():
             registry.syncDimensionData("instrument", dataId, update=update)
