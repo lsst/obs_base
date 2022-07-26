@@ -62,15 +62,8 @@ class ExposureIdInfo:
         #...add fields to schema as desired, then...
         sourceTable = SourceTable.make(self.schema, info.makeSourceIdFactory())
 
-    An `ExposureIdInfo` instance can be obtained from a Gen2 data butler
-    ``butler`` and dictionary ``dataId`` that identifies a visit and a detector
-    via
-
-    .. code-block:: python
-
-        info = butler.get("expIdInfo", dataId)
-
-    The Gen3 version is
+    An `ExposureIdInfo` instance can be obtained from a
+    `~lsst.daf.butler.DataCoordinate` with:
 
     .. code-block:: python
 
@@ -106,6 +99,11 @@ class ExposureIdInfo:
             if maxBits < expBits:
                 raise RuntimeError("expBits=%s > maxBits=%s" % (expBits, maxBits))
         self.maxBits = maxBits
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}(expId={self.expId}, expBits={self.expBits}, maxBits={self.maxBits})"
+        )
 
     @classmethod
     def fromDataId(
