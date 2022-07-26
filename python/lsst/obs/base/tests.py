@@ -52,7 +52,6 @@ class ObsTests(butler_tests.ButlerGetTests, camera_tests.CameraTests):
             def setUp(self):
                 self.setUp_tests(...)
                 self.setUp_butler_get(...)
-                self.setUp_mapper(...)
                 self.setUp_camera(...)
 
     Notes
@@ -65,7 +64,7 @@ class ObsTests(butler_tests.ButlerGetTests, camera_tests.CameraTests):
     neglect.
     """
 
-    def setUp_tests(self, butler, mapper, dataIds):
+    def setUp_tests(self, butler, dataIds):
         """Set up the necessary shared variables used by multiple tests.
 
         Parameters
@@ -73,8 +72,6 @@ class ObsTests(butler_tests.ButlerGetTests, camera_tests.CameraTests):
         butler: `lsst.daf.butler.Butler`
             A butler object, instantiated on the testdata repository for the
             obs package being tested.
-        mapper: `None`
-            A Gen2 parameter that should now always be `None`.
         dataIds: `dict`
             dictionary of (exposure name): (dataId of that exposure in the
             testdata repository), with unittest.SkipTest as the value for any
@@ -88,8 +85,6 @@ class ObsTests(butler_tests.ButlerGetTests, camera_tests.CameraTests):
                                   'dark': unittest.SkipTest
                                  }
         """
-        if mapper is not None:
-            raise RuntimeError("Mapper provided but Gen2 is no longer supported.")
         self.butler = butler
         self.dataIds = dataIds
         self.log = logging.getLogger(__name__)
