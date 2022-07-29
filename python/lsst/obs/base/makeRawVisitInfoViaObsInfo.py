@@ -134,6 +134,8 @@ class MakeRawVisitInfoViaObsInfo:
         argDict["exposureId"] = obsInfo.detector_exposure_id
         argDict["id"] = obsInfo.exposure_id
         argDict["instrumentLabel"] = obsInfo.instrument
+        if obsInfo.focus_z is not None:
+            argDict["focusZ"] = obsInfo.focus_z.to_value("mm")
 
         # VisitInfo uses the middle of the observation for the date
         if obsInfo.datetime_begin is not None and obsInfo.datetime_end is not None:

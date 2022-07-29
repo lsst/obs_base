@@ -87,6 +87,8 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
         # The header can possibly grow with header fix up provenance.
         self.assertGreaterEqual(len(self.header), beforeLength)
         self.assertEqual(visitInfo.getInstrumentLabel(), "SomeCamera")
+        # Check focusZ with default value from astro_metadata_translator
+        self.assertEqual(visitInfo.getFocusZ(), 0.0)
 
     def testObservationInfo2VisitInfo(self):
 
@@ -103,6 +105,8 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
         self.assertEqual(visitInfo.id, self.exposure_id)
         self.assertEqual(visitInfo.getDate(), DateTime("2001-01-02T03:04:06.123456789Z", DateTime.UTC))
         self.assertEqual(visitInfo.getInstrumentLabel(), "SomeCamera")
+        # Check focusZ with default value from astro_metadata_translator
+        self.assertEqual(visitInfo.getFocusZ(), 0.0)
 
 
 if __name__ == "__main__":
