@@ -41,6 +41,9 @@ class NewTranslator(FitsTranslator, StubTranslator):
     def to_detector_exposure_id(self):
         return self.to_exposure_id()
 
+    def to_focus_z(self):
+        return self._header["FOCUSZ"]
+
 
 class MakeTestableVisitInfo(MakeRawVisitInfoViaObsInfo):
     metadataTranslator = NewTranslator
@@ -55,6 +58,7 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
         self.datetime_begin.precision = 9
         self.datetime_end = Time("2001-01-02T03:04:07.123456789", format="isot", scale="utc")
         self.datetime_end.precision = 9
+        self.focus_z = 1.5 * u.mm
 
         self.header = {
             "DATE-OBS": self.datetime_begin.isot,
@@ -64,6 +68,7 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
             "TIMESYS": "UTC",
             "EXPTIME": self.exposure_time,
             "EXP-ID": self.exposure_id,
+            "FOCUSZ": self.focus_z,
             "EXTRA1": "an abitrary key and value",
             "EXTRA2": 5,
         }
@@ -87,6 +92,8 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
         # The header can possibly grow with header fix up provenance.
         self.assertGreaterEqual(len(self.header), beforeLength)
         self.assertEqual(visitInfo.getInstrumentLabel(), "SomeCamera")
+        # Check focusZ with default value from astro_metadata_translator
+        self.assertEqual(visitInfo.getFocusZ(), self.focus_z.to_value("mm"))
 
     def testObservationInfo2VisitInfo(self):
 
@@ -103,6 +110,8 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
         self.assertEqual(visitInfo.id, self.exposure_id)
         self.assertEqual(visitInfo.getDate(), DateTime("2001-01-02T03:04:06.123456789Z", DateTime.UTC))
         self.assertEqual(visitInfo.getInstrumentLabel(), "SomeCamera")
+        # Check focusZ with default value from astro_metadata_translator
+        self.assertEqual(visitInfo.getFocusZ(), self.focus_z.to_value("mm"))
 
 
 if __name__ == "__main__":
