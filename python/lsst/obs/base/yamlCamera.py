@@ -96,7 +96,11 @@ def makeDetectorConfigList(ccdParams):
         transforms = ccd["transformDict"]["transforms"]
         detectorConfig.transformDict.transforms = None if transforms == "None" else transforms
         detectorConfig.refpos_x, detectorConfig.refpos_y = ccd["refpos"]
-        detectorConfig.offset_x, detectorConfig.offset_y = ccd["offset"]
+        if len(ccd["offset"]) == 2:
+            detectorConfig.offset_x, detectorConfig.offset_y = ccd["offset"]
+            detectorConfig.offset_z = 0.0
+        else:
+            detectorConfig.offset_x, detectorConfig.offset_y, detectorConfig.offset_z = ccd["offset"]
         detectorConfig.transposeDetector = ccd["transposeDetector"]
         detectorConfig.pitchDeg = ccd["pitch"]
         detectorConfig.yawDeg = ccd["yaw"]
