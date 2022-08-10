@@ -31,6 +31,7 @@ import tempfile
 import unittest
 
 import lsst.afw.cameraGeom
+import lsst.afw.cameraGeom.testUtils  # For assertDetectorsEqual
 import lsst.obs.base
 from lsst.daf.butler import Butler
 from lsst.daf.butler.cli.butler import cli as butlerCli
