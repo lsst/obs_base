@@ -76,7 +76,9 @@ class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
                 "-c",
                 "foo=1",
                 "--config",
-                "bar=2,baz=3",
+                "bar=2",
+                "--config",
+                "baz=3",
             ],
             self.makeExpected(
                 repo="repo",
