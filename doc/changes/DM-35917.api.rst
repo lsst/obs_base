@@ -1,0 +1,3 @@
+The ``ingest-raws`` and ``define-visits`` subcommands no longer allow multiple config settings within a single ``--config`` option.
+We have decided that it is too dangerous to split on comma in the general case and so have removed that facility to be consistent with other commands.
+Use multiple ``--config`` options instead.
