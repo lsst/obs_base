@@ -136,6 +136,16 @@ class MakeRawVisitInfoViaObsInfo:
         argDict["instrumentLabel"] = obsInfo.instrument
         if obsInfo.focus_z is not None:
             argDict["focusZ"] = obsInfo.focus_z.to_value("mm")
+        if obsInfo.observation_type is not None:
+            argDict["observationType"] = obsInfo.observation_type
+        if obsInfo.science_program is not None:
+            argDict["scienceProgram"] = obsInfo.science_program
+        if obsInfo.observation_reason is not None:
+            argDict["observationReason"] = obsInfo.observation_reason
+        if obsInfo.object is not None:
+            argDict["object"] = obsInfo.object
+        if obsInfo.has_simulated_content is not None:
+            argDict["hasSimulatedContent"] = obsInfo.has_simulated_content
 
         # VisitInfo uses the middle of the observation for the date
         if obsInfo.datetime_begin is not None and obsInfo.datetime_end is not None:
