@@ -1,15 +1,62 @@
-obs_base v23.0.0 2021-12-10
-===========================
+obs_base v24.0.0 (2022-08-30)
+=============================
+
+New Features
+------------
+
+- * Visits will now be defined for all on-sky observations regardless of the observation type.
+  * Changed ``butler define-visits`` so that it now takes a ``--where`` option.
+    This can be used to restrict the visit definition to specific exposures. (`DM-33848 <https://jira.lsstcorp.org/browse/DM-33848>`_)
+- Add a ``--fail-fast`` option to ``butler ingest-raws`` (`DM-33891 <https://jira.lsstcorp.org/browse/DM-33891>`_)
+- * Modify ``ingest-raws`` to support new schema for exposure records.
+  * Change ``define-visits`` to support new and old schema.
+  * Visit system is now an enum rather than a configuration value.
+  * Add new visit system to group by ``seq_start`` and ``seq_end`` and also allocate one-to-one visits for every exposure. (`DM-33942 <https://jira.lsstcorp.org/browse/DM-33942>`_)
+- * `lsst.obs.base.Instrument` is now a subclass of `lsst.pipe.base.Instrument`. This simplifies the dependencies of ``ctrl_mpexec`` by removing any need to understand camera geometry or curated calibrations.
+  * As part of this move the ``butler register-instrument`` command has been moved to ``pipe_base``.
+  * The ``PackagesFormatter`` has been moved to ``daf_butler`` and the ``PexConfigFormatter`` has been moved to ``pipe_base`` since both of these are required by ``ctrl_mpexec``.
+  * ``lsst.obs.base.utils.getInstrument`` has been replaced with ``Instrument.from_string``. (`DM-34105 <https://jira.lsstcorp.org/browse/DM-34105>`_)
+- * Made choice of required ``ObservationInfo`` properties configurable
+    through ``RawIngestTask.getObservationInfoSubsets``.
+  * Added the concept of "dependency" records to be added to the registry before
+    adding the exposure record; this makes it easier to satisfy foreign key
+    constraints when the exposure relates to dimensions beyond the standard set.
+  * Added ``RawIngestTask`` methods ``makeExposureRecord`` and ``makeDependencyRecords``
+    to provide hooks for subclasses to provide values for additional columns. (`DM-34175 <https://jira.lsstcorp.org/browse/DM-34175>`_)
+
+
+API Changes
+-----------
+
+- Add a new option ``--track-file-attrs`` to ``butler ingest-raws``.
+  This controls whether the ingested files should have file sizes and checksums tracked by the datastore.
+  Use ``--no-track-files-attrs`` to disable size tracking. (`DM-33086 <https://jira.lsstcorp.org/browse/DM-33086>`_)
+
+
+An API Removal or Deprecation
+-----------------------------
+
+- `~lsst.obs.base.FilterDefinition` no longer supports `~lsst.afw.image.Filter`.
+  The ``defineFilters`` and ``reset`` methods have been removed, as have all wavelength parameters to the `~lsst.obs.base.FilterDefinition` constructor.
+
+  The old ``filter`` component for exposures has been removed, and replaced with a new ``filter`` component backed by `~lsst.afw.image.FilterLabel`.
+  It functions identically to the ``filterLabel`` component, which has been deprecated. (`DM-27177 <https://jira.lsstcorp.org/browse/DM-27177>`_)
+- Remove the ``processes`` and ``pool`` arguments and the ``--processes`` command-line argument from `lsst.obs.base.DefineVisitsTask.run` and ``butler define-visits`` (respectively).
+  These were already broken for ``processes > 1``, and internal parallelization here is no longer useful now that this task just does database I/O, not raw metadata reads. (`DM-33783 <https://jira.lsstcorp.org/browse/DM-33783>`_)
+
+
+obs_base v23.0.0 (2021-12-10)
+=============================
 
 New Features
 ------------
 
 - 2to3 conversion has been improved to add a dry run facility, to defer dataId expansion when not required, and to allow templates to be overridden. (`DM-28636 <https://jira.lsstcorp.org/browse/DM-28636>`_)
 - Reorganize the base ``Exposure`` and raw formatters to improve efficiency and clarify component handling. (`DM-28698 <https://jira.lsstcorp.org/browse/DM-28698>`_)
-- Add ``amp`` parameter to the formatters for the Exposure StorageClass, allowing single-amplifier subimage reads. (`DM-29370 <https://jira.lsstcorp.org/browse/DM-29370>`_)
+- Add ``amp`` parameter to the formatters for the ``Exposure`` `~lsst.daf.butler.StorageClass`, allowing single-amplifier subimage reads. (`DM-29370 <https://jira.lsstcorp.org/browse/DM-29370>`_)
 - Change raw ingest to use a reproducible UUID5 dataset ID. This means that the dataset ID for a raw ingested in one repository will be identical to that used in another.  For integer-based registries this change will have no effect. (`DM-29950 <https://jira.lsstcorp.org/browse/DM-29950>`_)
-- Add support for updating exposure and visit definitions in RawIngestTask and DefineVisitsTask. (`DM-30866 <https://jira.lsstcorp.org/browse/DM-30866>`_)
-- Add support for forced updates of `instrument`, `detector`, and `physical_filter` definitions during instrument registration. (`DM-31903 <https://jira.lsstcorp.org/browse/DM-31903>`_)
+- Add support for updating exposure and visit definitions in `~lsst.obs.base.RawIngestTask` and `~lsst.obs.base.DefineVisitsTask`. (`DM-30866 <https://jira.lsstcorp.org/browse/DM-30866>`_)
+- Add support for forced updates of ``instrument``, ``detector``, and ``physical_filter`` definitions during instrument registration. (`DM-31903 <https://jira.lsstcorp.org/browse/DM-31903>`_)
 
 
 Bug Fixes
