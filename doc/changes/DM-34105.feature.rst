@@ -1,4 +1,0 @@
-* `lsst.obs.base.Instrument` is now a subclass of `lsst.pipe.base.Instrument`. This simplifies the dependencies of ``ctrl_mpexec`` by removing any need to understand camera geometry or curated calibrations.
-* As part of this move the ``butler register-instrument`` command has been moved to ``pipe_base``.
-* The ``PackagesFormatter`` has been moved to ``daf_butler`` and the ``PexConfigFormatter`` has been moved to ``pipe_base`` since both of these are required by ``ctrl_mpexec``.
-* ``lsst.obs.base.utils.getInstrument`` has been replaced with ``Instrument.from_string``.

@@ -1,3 +1,0 @@
-* Visits will now be defined for all on-sky observations regardless of the observation type.
-* Changed `butler define-visits` so that it now takes a `--where` option.
-  This can be used to restrict the visit definition to specific exposures.

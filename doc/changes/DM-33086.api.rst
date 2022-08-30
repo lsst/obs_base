@@ -1,3 +1,0 @@
-Add a new option ``--track-file-attrs`` to ``butler ingest-raws``.
-This controls whether the ingested files should have file sizes and checksums tracked by the datastore.
-Use ``--no-track-files-attrs`` to disable size tracking.

@@ -37,7 +37,20 @@ import math
 import operator
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
-from typing import Any, Callable, ClassVar, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple, TypeVar
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Dict,
+    FrozenSet,
+    Iterable,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+)
 
 import lsst.geom
 from lsst.afw.cameraGeom import FOCAL_PLANE, PIXELS
@@ -231,7 +244,7 @@ class GroupExposuresTask(Task, metaclass=ABCMeta):
 
 
 class ComputeVisitRegionsConfig(Config):
-    padding = Field(
+    padding: Field[int] = Field(
         dtype=int,
         default=250,
         doc=(
@@ -339,7 +352,7 @@ class DefineVisitsConfig(Config):
         doc="Algorithm from computing visit and visit+detector regions.",
         default="single-raw-wcs",
     )
-    ignoreNonScienceExposures = Field(
+    ignoreNonScienceExposures: Field[bool] = Field(
         doc=(
             "If True, silently ignore input exposures that do not have "
             "observation_type=SCIENCE.  If False, raise an exception if one "
@@ -407,10 +420,11 @@ class DefineVisitsTask(Task):
         # Add extra parameters to pickle
         return dict(**super()._reduce_kwargs(), butler=self.butler)
 
-    ConfigClass: ClassVar[Config] = DefineVisitsConfig
+    ConfigClass: ClassVar[Type[Config]] = DefineVisitsConfig
 
     _DefaultName: ClassVar[str] = "defineVisits"
 
+    config: DefineVisitsConfig
     groupExposures: GroupExposuresTask
     computeVisitRegions: ComputeVisitRegionsTask
 
@@ -733,13 +747,13 @@ def _calc_mean_angle(angles: List[float]) -> float:
 
 
 class _GroupExposuresOneToOneConfig(GroupExposuresConfig):
-    visitSystemId = Field(
+    visitSystemId: Field[int] = Field(
         doc="Integer ID of the visit_system implemented by this grouping algorithm.",
         dtype=int,
         default=0,
         deprecated="No longer used. Replaced by enum.",
     )
-    visitSystemName = Field(
+    visitSystemName: Field[str] = Field(
         doc="String name of the visit_system implemented by this grouping algorithm.",
         dtype=str,
         default="one-to-one",
@@ -773,13 +787,13 @@ class _GroupExposuresOneToOneTask(GroupExposuresTask, metaclass=ABCMeta):
 
 
 class _GroupExposuresByGroupMetadataConfig(GroupExposuresConfig):
-    visitSystemId = Field(
+    visitSystemId: Field[int] = Field(
         doc="Integer ID of the visit_system implemented by this grouping algorithm.",
         dtype=int,
         default=1,
         deprecated="No longer used. Replaced by enum.",
     )
-    visitSystemName = Field(
+    visitSystemName: Field[str] = Field(
         doc="String name of the visit_system implemented by this grouping algorithm.",
         dtype=str,
         default="by-group-metadata",
@@ -827,13 +841,13 @@ class _GroupExposuresByGroupMetadataTask(GroupExposuresTask, metaclass=ABCMeta):
 
 
 class _GroupExposuresByCounterAndExposuresConfig(GroupExposuresConfig):
-    visitSystemId = Field(
+    visitSystemId: Field[int] = Field(
         doc="Integer ID of the visit_system implemented by this grouping algorithm.",
         dtype=int,
         default=2,
         deprecated="No longer used. Replaced by enum.",
     )
-    visitSystemName = Field(
+    visitSystemName: Field[str] = Field(
         doc="String name of the visit_system implemented by this grouping algorithm.",
         dtype=str,
         default="by-counter-and-exposures",
@@ -936,7 +950,7 @@ class _GroupExposuresByCounterAndExposuresTask(GroupExposuresTask, metaclass=ABC
 
 
 class _ComputeVisitRegionsFromSingleRawWcsConfig(ComputeVisitRegionsConfig):
-    mergeExposures = Field(
+    mergeExposures: Field[bool] = Field(
         doc=(
             "If True, merge per-detector regions over all exposures in a "
             "visit (via convex hull) instead of using the first exposure and "
@@ -945,7 +959,7 @@ class _ComputeVisitRegionsFromSingleRawWcsConfig(ComputeVisitRegionsConfig):
         dtype=bool,
         default=False,
     )
-    detectorId = Field(
+    detectorId: Field[Optional[int]] = Field(
         doc=(
             "Load the WCS for the detector with this ID.  If None, use an "
             "arbitrary detector (the first found in a query of the data "
@@ -956,7 +970,7 @@ class _ComputeVisitRegionsFromSingleRawWcsConfig(ComputeVisitRegionsConfig):
         optional=True,
         default=None,
     )
-    requireVersionedCamera = Field(
+    requireVersionedCamera: Field[bool] = Field(
         doc=(
             "If True, raise LookupError if version camera geometry cannot be "
             "loaded for an exposure.  If False, use the nominal camera from "
@@ -985,6 +999,7 @@ class _ComputeVisitRegionsFromSingleRawWcsTask(ComputeVisitRegionsTask):
     """
 
     ConfigClass = _ComputeVisitRegionsFromSingleRawWcsConfig
+    config: _ComputeVisitRegionsFromSingleRawWcsConfig
 
     def computeExposureBounds(
         self, exposure: DimensionRecord, *, collections: Any = None
