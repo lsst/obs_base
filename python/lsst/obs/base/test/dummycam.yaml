@@ -106,7 +106,7 @@ CCDs :
     serial : DummyCam-2
     physicalType : FAKE
     refpos : [20.5, 20.5]
-    offset : [-00, -0.0]
+    offset : [-00, -0.0, 1.5]
     amplifiers :
       C00 :
         << : *C00
