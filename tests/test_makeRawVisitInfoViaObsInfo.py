@@ -23,6 +23,7 @@ import unittest
 
 import astropy.units as u
 import lsst.afw.image
+import numpy as np
 from astro_metadata_translator import FitsTranslator, ObservationInfo, StubTranslator
 from astropy.time import Time
 from lsst.daf.base import DateTime
@@ -33,6 +34,11 @@ class NewTranslator(FitsTranslator, StubTranslator):
     _trivial_map = {
         "exposure_time": "EXPTIME",
         "exposure_id": "EXP-ID",
+        "observation_type": "OBSTYPE",
+        "science_program": "PROGRAM",
+        "observation_reason": "REASON",
+        "object": "OBJECT",
+        "has_simulated_content": "SIMULATE",
     }
 
     def to_location(self):
@@ -71,6 +77,11 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
             "FOCUSZ": self.focus_z,
             "EXTRA1": "an abitrary key and value",
             "EXTRA2": 5,
+            "OBSTYPE": "test type",
+            "PROGRAM": "test program",
+            "REASON": "test reason",
+            "OBJECT": "test object",
+            "SIMULATE": True,
         }
 
     def testMakeRawVisitInfoViaObsInfo(self):
@@ -94,6 +105,26 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
         self.assertEqual(visitInfo.getInstrumentLabel(), "SomeCamera")
         # Check focusZ with default value from astro_metadata_translator
         self.assertEqual(visitInfo.getFocusZ(), self.focus_z.to_value("mm"))
+        self.assertEqual(visitInfo.observationType, "test type")
+        self.assertEqual(visitInfo.scienceProgram, "test program")
+        self.assertEqual(visitInfo.observationReason, "test reason")
+        self.assertEqual(visitInfo.object, "test object")
+        self.assertEqual(visitInfo.hasSimulatedContent, True)
+
+    def testMakeRawVisitInfoViaObsInfo_empty(self):
+        """Test that empty metadata fields are set to appropriate defaults."""
+        maker = MakeTestableVisitInfo()
+        # Capture the warnings from StubTranslator since they are
+        # confusing to people but irrelevant for the test.
+        with self.assertWarns(UserWarning):
+            with self.assertLogs(level="WARNING"):
+                visitInfo = maker({})
+        self.assertTrue(np.isnan(visitInfo.focusZ))
+        self.assertEqual(visitInfo.observationType, "")
+        self.assertEqual(visitInfo.scienceProgram, "")
+        self.assertEqual(visitInfo.observationReason, "")
+        self.assertEqual(visitInfo.object, "")
+        self.assertEqual(visitInfo.hasSimulatedContent, False)
 
     def testObservationInfo2VisitInfo(self):
 
