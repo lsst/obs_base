@@ -89,16 +89,8 @@ class FitsImageFormatterBase(Formatter):
 
     def read(self, component=None):
         # Docstring inherited.
-        if self.fileDescriptor.readStorageClass != self.fileDescriptor.storageClass:
-            if component is not None:
-                return self.readComponent(component)
-            else:
-                raise ValueError(
-                    "Storage class inconsistency ({} vs {}) but no"
-                    " component requested".format(
-                        self.fileDescriptor.readStorageClass.name, self.fileDescriptor.storageClass.name
-                    )
-                )
+        if component is not None:
+            return self.readComponent(component)
         return self.readFull()
 
     @abstractmethod
