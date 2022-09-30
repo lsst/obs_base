@@ -70,7 +70,7 @@ class FitsImageFormatterBase(Formatter):
     unsupportedParameters: ClassVar[AbstractSet[str]] = frozenset()
     """Support all parameters."""
 
-    @property  # type: ignore
+    @property
     @cached_getter
     def checked_parameters(self):
         """The parameters passed by the butler user, after checking them
@@ -230,7 +230,7 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
     supportedWriteParameters = frozenset({"recipe"})
     ReaderClass: type  # must be set by concrete subclasses
 
-    @property  # type: ignore
+    @property
     @cached_getter
     def reader(self):
         """The reader object that backs this formatter's read operations.
