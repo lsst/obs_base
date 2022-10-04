@@ -70,7 +70,7 @@ class FitsImageFormatterBase(Formatter):
     unsupportedParameters: ClassVar[AbstractSet[str]] = frozenset()
     """Support all parameters."""
 
-    @property  # type: ignore
+    @property
     @cached_getter
     def checked_parameters(self):
         """The parameters passed by the butler user, after checking them
@@ -89,16 +89,8 @@ class FitsImageFormatterBase(Formatter):
 
     def read(self, component=None):
         # Docstring inherited.
-        if self.fileDescriptor.readStorageClass != self.fileDescriptor.storageClass:
-            if component is not None:
-                return self.readComponent(component)
-            else:
-                raise ValueError(
-                    "Storage class inconsistency ({} vs {}) but no"
-                    " component requested".format(
-                        self.fileDescriptor.readStorageClass.name, self.fileDescriptor.storageClass.name
-                    )
-                )
+        if component is not None:
+            return self.readComponent(component)
         return self.readFull()
 
     @abstractmethod
@@ -230,7 +222,7 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
     supportedWriteParameters = frozenset({"recipe"})
     ReaderClass: type  # must be set by concrete subclasses
 
-    @property  # type: ignore
+    @property
     @cached_getter
     def reader(self):
         """The reader object that backs this formatter's read operations.

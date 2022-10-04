@@ -27,6 +27,7 @@ import tempfile
 import unittest
 from typing import TYPE_CHECKING
 
+import astropy.table
 import lsst.afw.cameraGeom.testUtils  # for test asserts injected into TestCase
 import lsst.afw.image
 import lsst.pex.config
@@ -221,6 +222,11 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         ref = self.butler.put(catalog, "testCatalog", dataId)
         stored = self.butler.get(ref)
         self.assertCatalogEqual(catalog, stored)
+
+        # Override the storage class.
+        astropy_table = self.butler.getDirect(ref, storageClass="AstropyTable")
+        self.assertIsInstance(astropy_table, astropy.table.Table)
+        self.assertEqual(len(astropy_table), len(stored))
 
     def testExposureCompositePutGetConcrete(self) -> None:
         """Test composite with no disassembly"""
