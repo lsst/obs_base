@@ -22,7 +22,6 @@
 __all__ = ("FitsRawFormatterBase",)
 
 import logging
-import warnings
 from abc import abstractmethod
 
 import lsst.afw.fits
@@ -298,14 +297,6 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         if component == "image":
             return self.readImage()
         elif component == "filter":
-            return self.makeFilterLabel()
-        # TODO: remove in DM-27811
-        elif component == "filterLabel":
-            warnings.warn(
-                "Exposure.filterLabel component is deprecated; use .filter instead. "
-                "Will be removed after v24.",
-                FutureWarning,
-            )
             return self.makeFilterLabel()
         elif component == "visitInfo":
             return self.makeVisitInfo()

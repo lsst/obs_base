@@ -535,14 +535,6 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
             "detector": "readDetector",
             "exposureInfo": "readExposureInfo",
         }
-        if component == "filterLabel":
-            warnings.warn(
-                "Exposure.filterLabel component is deprecated; use .filter instead. "
-                "Will be removed after v24.",
-                FutureWarning,
-                stacklevel=2,  # Report from caller.
-            )
-            component = "filter"
         if (methodName := standardComponents.get(component)) is not None:
             result = getattr(self.reader, methodName)()
             if component == "filter":
