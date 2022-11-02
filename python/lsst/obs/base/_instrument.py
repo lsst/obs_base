@@ -77,6 +77,16 @@ StandardCuratedCalibrationDatasetTypes = {
     "crosstalk": {"dimensions": ("instrument", "detector"), "storageClass": "CrosstalkCalib"},
     "linearizer": {"dimensions": ("instrument", "detector"), "storageClass": "Linearizer"},
     "bfk": {"dimensions": ("instrument", "detector"), "storageClass": "BrighterFatterKernel"},
+    "transmission_optics": {"dimensions": ("instrument", ),
+                            "storageClass": "TransmissionCurve"},
+    "transmission_filter": {"dimensions": ("instrument", "physical_filter"),
+                            "storageClass": "TransmissionCurve"},
+    "transmission_sensor": {"dimensions": ("instrument", "detector"),
+                            "storageClass": "TransmissionCurve"},
+    "transmission_atmosphere": {"dimensions": ("instrument", ),
+                                "storageClass": "TransmissionCurve"},
+    "transmission_system": {"dimensions": ("instrument", "detector", "physical_filter"),
+                            "storageClass": "TransmissionCurve"},
 }
 
 
