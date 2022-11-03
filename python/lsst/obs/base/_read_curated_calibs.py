@@ -53,6 +53,7 @@ def read_one_chip(
     chip_name: str,
     chip_id: int,
     calib_class: Type[CuratedCalibration],
+    filters: list,
 ) -> tuple[dict[datetime.datetime, CuratedCalibration], str]:
     """Read data for a particular sensor from the standard format at a
     particular root.
@@ -81,6 +82,10 @@ def read_one_chip(
     extensions = (".ecsv", ".yaml", ".json")
     for ext in extensions:
         files.extend(glob.glob(os.path.join(root, chip_name, f"*{ext}")))
+        for filt in filters:
+            files.extend(glob.glob(os.path.join(root, chip_name, filt.lower(), f"*{ext}")))
+    # print(files)
+    # import pdb; pdb.set_trace()
     parts = os.path.split(root)
     instrument = os.path.split(parts[0])[1]  # convention is that these reside at <instrument>/<data_name>
     data_name = parts[1]
@@ -143,6 +148,7 @@ def read_all(
     root: str,
     camera: lsst.afw.cameraGeom.Camera,
     calib_class: Type[CuratedCalibration],
+    filters: list,
 ) -> tuple[dict[str, dict[datetime.datetime, CuratedCalibration]], str]:
     """Read all data from the standard format at a particular root.
 
@@ -200,7 +206,7 @@ def read_all(
                 f"{camera.getName()} ({note_str}: {','.join(detectors)})"
             )
         chip_id = camera[name_map[chip_name]].getId()
-        data_by_chip[chip_name], calib_type = read_one_chip(root, chip_name, chip_id, calib_class)
+        data_by_chip[chip_name], calib_type = read_one_chip(root, chip_name, chip_id, calib_class, filters)
         calib_types.add(calib_type)
         if len(calib_types) != 1:  # set.add(None) has length 1 so None is OK here.
             raise ValueError(f"Error mixing calib types: {calib_types}")

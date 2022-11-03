@@ -56,7 +56,7 @@ from lsst.daf.butler import (
 )
 from lsst.daf.butler.registry import DataIdError
 from lsst.pipe.base import Instrument as InstrumentBase
-from lsst.utils import getPackageDir
+from lsst.utils import getPackageDir, doImport
 from lsst.utils.introspection import get_full_type_name
 
 from ._read_curated_calibs import CuratedCalibration, read_all
@@ -492,17 +492,21 @@ class Instrument(InstrumentBase):
         # class.
         calib_class = datasetType.storageClass.pytype
         if not hasattr(calib_class, "readText"):
-            raise ValueError(
-                f"Curated calibration {datasetType.name} is using a class "
-                f"{get_full_type_name(calib_class)} that lacks a readText class method"
-            )
+            # Let's try the default calib class.  That should work.
+            calib_class = doImport('lsst.ip.isr.IsrCalib')
+            # raise ValueError(
+            #    f"Curated calibration {datasetType.name} is using a class "
+            #    f"{get_full_type_name(calib_class)} that lacks a readText class method"
+            # )
+
         calib_class = cast(Type[CuratedCalibration], calib_class)
 
         # Read calibs, registering a new run for each CALIBDATE as needed.
         # We try to avoid registering runs multiple times as an optimization
         # by putting them in the ``runs`` set that was passed in.
         camera = self.getCamera()
-        calibsDict = read_all(calibPath, camera, calib_class)[0]  # second return is calib type
+        filters = list(self.filterDefinitions.physical_to_band.keys())
+        calibsDict = read_all(calibPath, camera, calib_class, filters)[0]  # second return is calib type
         datasetRecords = []
         for det in calibsDict:
             times = sorted([k for k in calibsDict[det]])
@@ -517,11 +521,19 @@ class Instrument(InstrumentBase):
                 if run not in runs:
                     butler.registry.registerRun(run)
                     runs.add(run)
-                dataId = DataCoordinate.standardize(
-                    universe=butler.registry.dimensions,
-                    instrument=self.getName(),
-                    detector=md["DETECTOR"],
-                )
+                if "FILTER" in md:
+                    dataId = DataCoordinate.standardize(
+                        universe=butler.registry.dimensions,
+                        instrument=self.getName(),
+                        detector=md["DETECTOR"],
+                        physical_filter=md["FILTER"],
+                    )
+                else:
+                    dataId = DataCoordinate.standardize(
+                        universe=butler.registry.dimensions,
+                        instrument=self.getName(),
+                        detector=md["DETECTOR"],
+                    )
                 datasetRecords.append((calib, dataId, run, Timespan(beginTime, endTime)))
 
         # Second loop actually does the inserts and filesystem writes.  We
