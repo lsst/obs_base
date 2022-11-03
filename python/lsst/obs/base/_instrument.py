@@ -492,12 +492,9 @@ class Instrument(InstrumentBase):
         # class.
         calib_class = datasetType.storageClass.pytype
         if not hasattr(calib_class, "readText"):
-            # Let's try the default calib class.  That should work.
+            # Let's try the default calib class.  All curated
+            # calibrations should be subclasses of that.
             calib_class = doImport('lsst.ip.isr.IsrCalib')
-            # raise ValueError(
-            #    f"Curated calibration {datasetType.name} is using a class "
-            #    f"{get_full_type_name(calib_class)} that lacks a readText class method"
-            # )
 
         calib_class = cast(Type[CuratedCalibration], calib_class)
 
@@ -506,11 +503,13 @@ class Instrument(InstrumentBase):
         # by putting them in the ``runs`` set that was passed in.
         camera = self.getCamera()
         filters = list(self.filterDefinitions.physical_to_band.keys())
-        calibsDict = read_all(calibPath, camera, calib_class, filters)[0]  # second return is calib type
+        calib_dimensions = StandardCuratedCalibrationDatasetTypes[datasetType.name]['dimensions']
+        calibsDict, calib_type = read_all(calibPath, camera, calib_class, calib_dimensions, filters)
+
         datasetRecords = []
-        for det in calibsDict:
-            times = sorted([k for k in calibsDict[det]])
-            calibs = [calibsDict[det][time] for time in times]
+        for path in calibsDict:
+            times = sorted([k for k in calibsDict[path]])
+            calibs = [calibsDict[path][time] for time in times]
             atimes: list[Optional[astropy.time.Time]] = [
                 astropy.time.Time(t, format="datetime", scale="utc") for t in times
             ]
