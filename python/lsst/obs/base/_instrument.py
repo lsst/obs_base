@@ -57,7 +57,6 @@ from lsst.daf.butler import (
 from lsst.daf.butler.registry import DataIdError
 from lsst.pipe.base import Instrument as InstrumentBase
 from lsst.utils import getPackageDir, doImport
-from lsst.utils.introspection import get_full_type_name
 
 from ._read_curated_calibs import CuratedCalibration, read_all
 
@@ -503,7 +502,10 @@ class Instrument(InstrumentBase):
         # by putting them in the ``runs`` set that was passed in.
         camera = self.getCamera()
         filters = list(self.filterDefinitions.physical_to_band.keys())
-        calib_dimensions = StandardCuratedCalibrationDatasetTypes[datasetType.name]['dimensions']
+        if datasetType.name in StandardCuratedCalibrationDatasetTypes.keys():
+            calib_dimensions = StandardCuratedCalibrationDatasetTypes[datasetType.name]['dimensions']
+        else:
+            calib_dimensions = datasetType.dimensions
         calibsDict, calib_type = read_all(calibPath, camera, calib_class, calib_dimensions, filters)
 
         datasetRecords = []

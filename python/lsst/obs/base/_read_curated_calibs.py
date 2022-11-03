@@ -234,8 +234,8 @@ def read_all(
                 )
             else:
                 if 'physical_filter' in required_dimensions:
-                    subdirs = os.listdir(os.path.join(root, chip_name))
-                    subdirs = [d for d in subdirs if os.path.isdir(os.path.join(root, chip_name, d))]
+                    subdirs = os.listdir(os.path.join(root, dir_name))
+                    subdirs = [d for d in subdirs if os.path.isdir(os.path.join(root, dir_name, d))]
                     for sd in subdirs:
                         subdir_name = os.path.basename(sd)
                         if subdir_name not in filter_map:
