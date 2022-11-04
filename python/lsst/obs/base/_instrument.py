@@ -522,19 +522,18 @@ class Instrument(InstrumentBase):
                 if run not in runs:
                     butler.registry.registerRun(run)
                     runs.add(run)
+
+                dimension_arguments = {}
+                if "DETECTOR" in md:
+                    dimension_arguments["detector"] = md["DETECTOR"]
                 if "FILTER" in md:
-                    dataId = DataCoordinate.standardize(
-                        universe=butler.registry.dimensions,
-                        instrument=self.getName(),
-                        detector=md["DETECTOR"],
-                        physical_filter=md["FILTER"],
-                    )
-                else:
-                    dataId = DataCoordinate.standardize(
-                        universe=butler.registry.dimensions,
-                        instrument=self.getName(),
-                        detector=md["DETECTOR"],
-                    )
+                    dimension_arguments["physical_filter"] = md["FILTER"]
+
+                dataId = DataCoordinate.standardize(
+                    universe=butler.registry.dimensions,
+                    instrument=self.getName(),
+                    **dimension_arguments,
+                )
                 datasetRecords.append((calib, dataId, run, Timespan(beginTime, endTime)))
 
         # Second loop actually does the inserts and filesystem writes.  We
