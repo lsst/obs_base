@@ -26,7 +26,7 @@ __all__ = ["CuratedCalibration", "read_all"]
 import glob
 import os
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Protocol, Type
+from typing import TYPE_CHECKING, Any, Protocol, Type, Tuple
 
 import dateutil.parser
 
@@ -50,8 +50,8 @@ class CuratedCalibration(Protocol):
 
 def read_one_calib(
     path: tuple,
-    chip_id: int,
-    filter_id: str,
+    chip_id: Any,
+    filter_id: Any,
     calib_class: Type[CuratedCalibration],
 ) -> tuple[dict[datetime.datetime, CuratedCalibration], str]:
     """Read data for a particular path from the standard format at a
@@ -164,7 +164,7 @@ def read_all(
     calib_class: Type[CuratedCalibration],
     required_dimensions: list,
     filters: list,
-) -> tuple[dict[str, dict[datetime.datetime, CuratedCalibration]], str]:
+) -> tuple[dict[tuple[str, ...], dict[datetime.datetime, CuratedCalibration]], str]:
     """Read all data from the standard format at a particular root.
 
     Parameters
@@ -213,7 +213,7 @@ def read_all(
         filterName.lower(): filterName for filterName in filters
     }
 
-    paths_to_search = []
+    paths_to_search: list[Tuple[str, ...]] = []
     for d in dirs:
         dir_name = os.path.basename(d)
         # Catch possible mistakes:
