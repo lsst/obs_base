@@ -76,16 +76,17 @@ StandardCuratedCalibrationDatasetTypes = {
     "crosstalk": {"dimensions": ("instrument", "detector"), "storageClass": "CrosstalkCalib"},
     "linearizer": {"dimensions": ("instrument", "detector"), "storageClass": "Linearizer"},
     "bfk": {"dimensions": ("instrument", "detector"), "storageClass": "BrighterFatterKernel"},
-    "transmission_optics": {"dimensions": ("instrument", ),
-                            "storageClass": "TransmissionCurve"},
-    "transmission_filter": {"dimensions": ("instrument", "physical_filter"),
-                            "storageClass": "TransmissionCurve"},
-    "transmission_sensor": {"dimensions": ("instrument", "detector"),
-                            "storageClass": "TransmissionCurve"},
-    "transmission_atmosphere": {"dimensions": ("instrument", ),
-                                "storageClass": "TransmissionCurve"},
-    "transmission_system": {"dimensions": ("instrument", "detector", "physical_filter"),
-                            "storageClass": "TransmissionCurve"},
+    "transmission_optics": {"dimensions": ("instrument",), "storageClass": "TransmissionCurve"},
+    "transmission_filter": {
+        "dimensions": ("instrument", "physical_filter"),
+        "storageClass": "TransmissionCurve",
+    },
+    "transmission_sensor": {"dimensions": ("instrument", "detector"), "storageClass": "TransmissionCurve"},
+    "transmission_atmosphere": {"dimensions": ("instrument",), "storageClass": "TransmissionCurve"},
+    "transmission_system": {
+        "dimensions": ("instrument", "detector", "physical_filter"),
+        "storageClass": "TransmissionCurve",
+    },
 }
 
 
@@ -493,7 +494,8 @@ class Instrument(InstrumentBase):
         calib_class = datasetType.storageClass.pytype
         if not hasattr(calib_class, "readText"):
             # Let's try the default calib class.  All curated
-            # calibrations should be subclasses of that.
+            # calibrations should be subclasses of that, and the
+            # parent can identify the correct one to use.
             calib_class = doImport("lsst.ip.isr.IsrCalib")
 
         calib_class = cast(Type[CuratedCalibration], calib_class)
@@ -502,12 +504,19 @@ class Instrument(InstrumentBase):
         # We try to avoid registering runs multiple times as an optimization
         # by putting them in the ``runs`` set that was passed in.
         camera = self.getCamera()
-        filters = list(self.filterDefinitions.physical_to_band.keys())
+        filters = set(self.filterDefinitions.physical_to_band.keys())
         calib_dimensions: list[Any]
-        if datasetType.name in StandardCuratedCalibrationDatasetTypes.keys():
+        if datasetType.name in StandardCuratedCalibrationDatasetTypes:
             calib_dimensions = list(StandardCuratedCalibrationDatasetTypes[datasetType.name]["dimensions"])
         else:
+            # This should never trigger with real data, but will
+            # trigger on the unit tests.
+            _LOG.warn(
+                "Unknown curated calibration type %s.  Attempting to use supplied definition.",
+                datasetType.name,
+            )
             calib_dimensions = list(datasetType.dimensions)
+
         calibsDict, calib_type = read_all(calibPath, camera, calib_class, calib_dimensions, filters)
 
         datasetRecords = []
@@ -525,6 +534,9 @@ class Instrument(InstrumentBase):
                     butler.registry.registerRun(run)
                     runs.add(run)
 
+                # DETECTOR and FILTER keywords in the calibration
+                # metadata must exist if the calibration depends on
+                # those dimensions.
                 dimension_arguments = {}
                 if "DETECTOR" in md:
                     dimension_arguments["detector"] = md["DETECTOR"]
