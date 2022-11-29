@@ -26,7 +26,7 @@ __all__ = ["CuratedCalibration", "read_all"]
 import glob
 import os
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Protocol, Type
+from typing import TYPE_CHECKING, Any, Protocol, Type, Union
 
 import dateutil.parser
 
@@ -48,25 +48,27 @@ class CuratedCalibration(Protocol):
         ...
 
 
-def read_one_chip(
-    root: str,
-    chip_name: str,
-    chip_id: int,
+def read_one_calib(
+    path: tuple[str, ...],
+    chip_id: Union[int, None],
+    filter_name: Union[str, None],
     calib_class: Type[CuratedCalibration],
 ) -> tuple[dict[datetime.datetime, CuratedCalibration], str]:
-    """Read data for a particular sensor from the standard format at a
+    """Read data for a particular path from the standard format at a
     particular root.
 
     Parameters
     ----------
-    root : `str`
-        Path to the top level of the data tree.  This is expected to hold
-        directories named after the sensor names.  They are expected to be
-        lower case.
-    chip_name : `str`
-        The name of the sensor for which to read data.
-    chip_id : `int`
-        The identifier for the sensor in question.
+    path : `tuple` [`str`]
+        This tuple contains the top level of the data tree at index=0,
+        and then further optional subdirectories in subsequent
+        indices.  See Notes below for more details.
+    chip_id : `int` or None
+        The identifier for the sensor in question.  To be used in
+        validation.
+    filter_name : `str` or None
+        The identifier for the filter in question.  To be used in
+        validation.
     calib_class : `Any`
         The class to use to read the curated calibration text file. Must
         support the ``readText()`` method.
@@ -76,12 +78,36 @@ def read_one_chip(
     `dict`
         A dictionary of objects constructed from the appropriate factory class.
         The key is the validity start time as a `datetime` object.
+
+    Notes
+    -----
+    Curated calibrations are read from the appropriate ``obs_ _data``
+    package, and are required to have a common directory structure to
+    be identified and ingested properly.  The top-level directories
+    are organized by the instrument's ``policyName``.  These names are
+    generally all lower-case, but this is not universally true.
+
+    Below the top-level instrument directory, subdirectories named
+    after the curated calibration type contained within, with the
+    dataset_type_name forced to lowercase.  For calibrations that
+    depend on the detector (i.e., the defects), the next level of
+    subdirectories should contain directories named with the detector
+    name, again forced to lowercase.
+
+    For filter dependent calibrations that do not depend on the
+    detector (i.e., transmission_filter), the calibrations should be
+    grouped into directories named with the physical filter name
+    (again, all lowercase) below the dataset_type_name directory.
+    Filter dependent calibrations that do depend on the detector
+    (i.e., transmission_system), have physical filter named
+    directories below the detector level directories.
     """
     files = []
     extensions = (".ecsv", ".yaml", ".json")
     for ext in extensions:
-        files.extend(glob.glob(os.path.join(root, chip_name, f"*{ext}")))
-    parts = os.path.split(root)
+        files.extend(glob.glob(os.path.join(*path, f"*{ext}")))
+
+    parts = os.path.split(path[0])
     instrument = os.path.split(parts[0])[1]  # convention is that these reside at <instrument>/<data_name>
     data_name = parts[1]
     data_dict: dict[datetime.datetime, Any] = {}
@@ -89,12 +115,18 @@ def read_one_chip(
         date_str = os.path.splitext(os.path.basename(f))[0]
         valid_start = dateutil.parser.parse(date_str)
         data_dict[valid_start] = calib_class.readText(f)
-        check_metadata(data_dict[valid_start], valid_start, instrument, chip_id, f, data_name)
+        check_metadata(data_dict[valid_start], valid_start, instrument, chip_id, filter_name, f, data_name)
     return data_dict, data_name
 
 
 def check_metadata(
-    obj: Any, valid_start: datetime.datetime, instrument: str, chip_id: int, filepath: str, data_name: str
+    obj: Any,
+    valid_start: datetime.datetime,
+    instrument: str,
+    chip_id: Union[int, None],
+    filter_name: Union[str, None],
+    filepath: str,
+    data_name: str,
 ) -> None:
     """Check that the metadata is complete and self consistent
 
@@ -104,15 +136,17 @@ def check_metadata(
         Object to retrieve metadata from in order to compare with
         metadata inferred from the path.
     valid_start : `datetime`
-        Start of the validity range for data
+        Start of the validity range for data.
     instrument : `str`
-        Name of the instrument in question
+        Name of the instrument in question.
     chip_id : `int`
-        Identifier of the sensor in question
+        Identifier of the sensor in question.
+    filter_name : `str`
+        Identifier of the filter in question.
     filepath : `str`
-        Path of the file read to construct the data
+        Path of the file read to construct the data.
     data_name : `str`
-        Name of the type of data being read
+        Name of the type of data being read.
 
     Returns
     -------
@@ -125,16 +159,27 @@ def check_metadata(
         in the path do not match for any reason.
     """
     md = obj.getMetadata()
+    # It is an error if these two do not exist.
     finst = md["INSTRUME"]
-    fchip_id = md["DETECTOR"]
     fdata_name = md["OBSTYPE"]
+    # These may optionally not exist.
+    fchip_id = md.get("DETECTOR", None)
+    ffilter_name = md.get("FILTER", None)
+
+    if chip_id is not None:
+        fchip_id = int(fchip_id)
+    if filter_name is not None:
+        ffilter_name = ffilter_name.lower()
+        filter_name = filter_name.lower()
+
     if not (
-        (finst.lower(), int(fchip_id), fdata_name.lower()) == (instrument.lower(), chip_id, data_name.lower())
+        (finst.lower(), fchip_id, ffilter_name, fdata_name.lower())
+        == (instrument.lower(), chip_id, filter_name, data_name.lower())
     ):
         raise ValueError(
             f"Path and file metadata do not agree:\n"
-            f"Path metadata: {instrument} {chip_id} {data_name}\n"
-            f"File metadata: {finst} {fchip_id} {fdata_name}\n"
+            f"Path metadata: {instrument} {chip_id} {filter_name} {data_name}\n"
+            f"File metadata: {finst} {fchip_id} {ffilter_name} {fdata_name}\n"
             f"File read from : %s\n" % (filepath)
         )
 
@@ -143,7 +188,9 @@ def read_all(
     root: str,
     camera: lsst.afw.cameraGeom.Camera,
     calib_class: Type[CuratedCalibration],
-) -> tuple[dict[str, dict[datetime.datetime, CuratedCalibration]], str]:
+    required_dimensions: list[str],
+    filters: set[str],
+) -> tuple[dict[tuple[str, ...], dict[datetime.datetime, CuratedCalibration]], str]:
     """Read all data from the standard format at a particular root.
 
     Parameters
@@ -157,6 +204,11 @@ def read_all(
     calib_class : `Any`
         The class to use to read the curated calibration text file. Must
         support the ``readText()`` and ``getMetadata()`` methods.
+    required_dimensions : `list` [`str`]
+        Dimensions required for the calibration.
+    filters : `list` [`str`]
+        List of the known filters for this camera.  Used to identify
+        filter-dependent calibrations.
 
     Returns
     -------
@@ -171,42 +223,81 @@ def read_all(
     it. The detector ID may be retrieved from the DETECTOR entry of that
     metadata.
     """
+    calibration_data = {}
+
     root = os.path.normpath(root)
     dirs = os.listdir(root)  # assumes all directories contain data
     dirs = [d for d in dirs if os.path.isdir(os.path.join(root, d))]
-    data_by_chip = {}
-    name_map = {
-        det.getName().lower(): det.getName() for det in camera
-    }  # we assume the directories have been lowered
-
     if not dirs:
         raise RuntimeError(f"No data found on path {root}")
 
     calib_types = set()
+    # We assume the directories have been lowered.
+    detector_map = {det.getName().lower(): det.getName() for det in camera}
+    filter_map = {filterName.lower().replace(" ", "_"): filterName for filterName in filters}
+
+    paths_to_search: list[tuple[str, ...]] = []
     for d in dirs:
-        chip_name = os.path.basename(d)
-        # Give informative error message if the detector name is not known
-        # rather than a simple KeyError
-        if chip_name not in name_map:
-            detectors = [det for det in name_map.keys()]
-            max_detectors = 10
-            note_str = "knows"
-            if len(detectors) > max_detectors:
-                # report example subset
-                note_str = "examples"
-                detectors = detectors[:max_detectors]
-            raise RuntimeError(
-                f"Detector {chip_name} not known to supplied camera "
-                f"{camera.getName()} ({note_str}: {','.join(detectors)})"
-            )
-        chip_id = camera[name_map[chip_name]].getId()
-        data_by_chip[chip_name], calib_type = read_one_chip(root, chip_name, chip_id, calib_class)
+        dir_name = os.path.basename(d)
+        # Catch possible mistakes:
+        if "detector" in required_dimensions:
+            if dir_name not in detector_map:
+                # Top level directories must be detectors if they're
+                # required.
+                detectors = [det for det in detector_map.keys()]
+                max_detectors = 10
+                note_str = "knows"
+                if len(detectors) > max_detectors:
+                    # report example subset
+                    note_str = "examples"
+                    detectors = detectors[:max_detectors]
+                raise RuntimeError(
+                    f"Detector {dir_name} not known to supplied camera "
+                    f"{camera.getName()} ({note_str}: {','.join(detectors)})"
+                )
+            elif "physical_filter" in required_dimensions:
+                # If the calibration depends on both detector and
+                # physical_filter, the subdirs here should contain the
+                # filter name.
+                subdirs = os.listdir(os.path.join(root, dir_name))
+                subdirs = [d for d in subdirs if os.path.isdir(os.path.join(root, dir_name, d))]
+                for sd in subdirs:
+                    subdir_name = os.path.basename(sd)
+                    if subdir_name not in filter_map:
+                        raise RuntimeError(f"Filter {subdir_name} not known to supplied camera.")
+                    else:
+                        paths_to_search.append((root, dir_name, subdir_name))
+            else:
+                paths_to_search.append((root, dir_name))
+        elif "physical_filter" in required_dimensions:
+            # If detector is not required, but physical_filter is,
+            # then the top level should contain the filter
+            # directories.
+            if dir_name not in filter_map:
+                raise RuntimeError(f"Filter {dir_name} not known to supplied camera.")
+            paths_to_search.append((root, dir_name))
+        else:
+            # Neither detector nor physical_filter are required, so
+            # the calibration is global, and will not be found in
+            # subdirectories.
+            paths_to_search.append((root,))
+
+    for path in paths_to_search:
+        chip_id = None
+        filter_name = None
+        if "detector" in required_dimensions:
+            chip_id = camera[detector_map[path[1]]].getId()
+        if "physical_filter" in required_dimensions:
+            filter_name = filter_map[path[-1]]
+
+        calibration_data[path], calib_type = read_one_calib(path, chip_id, filter_name, calib_class)
+
         calib_types.add(calib_type)
         if len(calib_types) != 1:  # set.add(None) has length 1 so None is OK here.
             raise ValueError(f"Error mixing calib types: {calib_types}")
 
-    no_data = all([v == {} for v in data_by_chip.values()])
+    no_data = all([v == {} for v in calibration_data.values()])
     if no_data:
         raise RuntimeError("No data to ingest")
 
-    return data_by_chip, calib_type
+    return calibration_data, calib_type

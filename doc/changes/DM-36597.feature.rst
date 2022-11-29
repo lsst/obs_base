@@ -1,0 +1,3 @@
+* Add ``transmission_`` curve dataset types to the set of curated calibrations.
+* Update the curated calibration code in the ``Instrument`` definition to allow for flexibility in required dimensions.
+* Update the read curated calibration code to allow for the same flexibility in dimensions.
