@@ -229,7 +229,7 @@ def read_all(
     dirs = os.listdir(root)  # assumes all directories contain data
     dirs = [d for d in dirs if os.path.isdir(os.path.join(root, d))]
     if not dirs:
-        raise RuntimeError(f"No data found on path {root}")
+        dirs = [root]
 
     calib_types = set()
     # We assume the directories have been lowered.
