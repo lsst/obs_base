@@ -889,7 +889,7 @@ class _GroupExposuresByCounterAndExposuresTask(GroupExposuresTask, metaclass=ABC
                 # Special case seq_num == 0 since that implies that the
                 # instrument has no counters and therefore no multi-exposure
                 # visits.
-                if first.seq_num == 0:
+                if first.seq_num != 0:
                     self.log.warning(
                         "First exposure for visit %s is not present. Skipping the multi-snap definition.",
                         visit_key,
