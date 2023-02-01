@@ -285,10 +285,7 @@ class ComputeVisitRegionsTask(Task, metaclass=ABCMeta):
     _DefaultName = "computeVisitRegions"
 
     registry = makeRegistry(
-        doc=(
-            "Registry of algorithms for computing on-sky regions for visits "
-            "and visit+detector combinations."
-        ),
+        doc="Registry of algorithms for computing on-sky regions for visits and visit+detector combinations.",
         configBaseType=ComputeVisitRegionsConfig,
     )
 
@@ -647,7 +644,7 @@ class DefineVisitsTask(Task):
             return
         if len(instruments) > 1:
             raise RuntimeError(
-                f"All data IDs passed to DefineVisitsTask.run must be "
+                "All data IDs passed to DefineVisitsTask.run must be "
                 f"from the same instrument; got {instruments}."
             )
         (instrument,) = instruments

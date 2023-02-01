@@ -79,7 +79,7 @@ class ExposureAssembler(StorageClassDelegate):
         # Check that we are requesting something that we support
         unknown = requested - (self.EXPOSURE_COMPONENTS | self.EXPOSURE_INFO_COMPONENTS)
         if unknown:
-            raise ValueError("Asking for unrecognized component: {}".format(unknown))
+            raise ValueError(f"Asking for unrecognized component: {unknown}")
 
         expItems = requested & self.EXPOSURE_COMPONENTS
         expInfoItems = requested & self.EXPOSURE_INFO_COMPONENTS
@@ -117,7 +117,7 @@ class ExposureAssembler(StorageClassDelegate):
             return super().getComponent(composite, self.COMPONENT_MAP.get(componentName, componentName))
         else:
             raise AttributeError(
-                "Do not know how to retrieve component {} from {}".format(componentName, type(composite))
+                f"Do not know how to retrieve component {componentName} from {type(composite)}"
             )
 
     def getValidComponents(self, composite: Exposure) -> Dict[str, Any]:
@@ -193,7 +193,7 @@ class ExposureAssembler(StorageClassDelegate):
         if not self.storageClass.validateInstance(composite):
             raise TypeError(
                 "Unexpected type mismatch between parent and StorageClass"
-                " ({} != {})".format(type(composite), self.storageClass.pytype)
+                f" ({type(composite)} != {self.storageClass.pytype})"
             )
 
         # Only look for components that are defined by the StorageClass
@@ -261,8 +261,7 @@ class ExposureAssembler(StorageClassDelegate):
 
             if not isinstance(exposure, pytype):
                 raise RuntimeError(
-                    "Unexpected type created in assembly;"
-                    " was {} expected {}".format(type(exposure), pytype)
+                    f"Unexpected type created in assembly; was {type(exposure)} expected {pytype}"
                 )
 
         else:
@@ -294,9 +293,7 @@ class ExposureAssembler(StorageClassDelegate):
 
         # If we have some components left over that is a problem
         if components:
-            raise ValueError(
-                "The following components were not understood: {}".format(list(components.keys()))
-            )
+            raise ValueError(f"The following components were not understood: {list(components.keys())}")
 
         return exposure
 

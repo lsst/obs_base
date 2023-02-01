@@ -545,8 +545,7 @@ class RawIngestTask(Task):
                     missing.append(property)
             if missing:
                 raise ValueError(
-                    f"Requested required properties are missing from file {filename}:"
-                    f" {missing} (via JSON)"
+                    f"Requested required properties are missing from file {filename}: {missing} (via JSON)"
                 )
 
         else:
