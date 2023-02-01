@@ -35,7 +35,6 @@ from lsst.obs.base.ingest import RawIngestConfig
 
 
 class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
-
     mockFuncName = "lsst.obs.base.cli.cmd.commands.script.ingestRaws"
 
     @staticmethod
@@ -125,7 +124,6 @@ class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
 
 
 class PatchRawIngestTask(lsst.obs.base.RawIngestTask):
-
     init_args = []
 
     def __init__(self, *args, **kwargs):
