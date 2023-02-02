@@ -71,7 +71,7 @@ def createInitialSkyWcs(visitInfo, detector, flipX=False):
     """
     if visitInfo.getRotType() != RotType.SKY:
         msg = (
-            f"Cannot create SkyWcs from camera geometry: rotator angle defined using "
+            "Cannot create SkyWcs from camera geometry: rotator angle defined using "
             f"RotType={visitInfo.getRotType()} instead of SKY."
         )
         raise InitialSkyWcsError(msg)

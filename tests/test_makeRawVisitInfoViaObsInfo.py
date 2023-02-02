@@ -127,7 +127,6 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
         self.assertEqual(visitInfo.hasSimulatedContent, False)
 
     def testObservationInfo2VisitInfo(self):
-
         with self.assertWarns(UserWarning):
             obsInfo = ObservationInfo(self.header, translator_class=NewTranslator)
 

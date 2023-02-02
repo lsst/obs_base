@@ -177,10 +177,10 @@ def check_metadata(
         == (instrument.lower(), chip_id, filter_name, data_name.lower())
     ):
         raise ValueError(
-            f"Path and file metadata do not agree:\n"
+            "Path and file metadata do not agree:\n"
             f"Path metadata: {instrument} {chip_id} {filter_name} {data_name}\n"
             f"File metadata: {finst} {fchip_id} {ffilter_name} {fdata_name}\n"
-            f"File read from : %s\n" % (filepath)
+            f"File read from : {filepath}\n"
         )
 
 
