@@ -104,6 +104,11 @@ class DummyCam(Instrument):
     additionalCuratedDatasetTypes = frozenset(["testCalib"])
     policyName = "dummycam"
     dataPackageDir: Optional[str] = ""
+    raw_definition = (
+        "raw_dict",
+        ("instrument", "detector", "exposure"),
+        "StructuredDataDict",
+    )
 
     @classmethod
     def getName(cls):

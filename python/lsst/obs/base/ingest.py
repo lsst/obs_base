@@ -276,7 +276,16 @@ class RawIngestTask(Task):
     _DefaultName: ClassVar[str] = "ingest"
 
     def getDatasetType(self) -> DatasetType:
-        """Return the DatasetType of the datasets ingested by this Task."""
+        """Return the default DatasetType of the datasets ingested by this
+        Task.
+
+        Returns
+        -------
+        datasetType : `DatasetType`
+            The default dataset type to use for the data being ingested. This
+            is only used if the relevant `~lsst.pipe.base.Instrument` does not
+            define an override.
+        """
         return DatasetType(
             "raw",
             ("instrument", "detector", "exposure"),
@@ -1000,6 +1009,7 @@ class RawIngestTask(Task):
     def ingestExposureDatasets(
         self,
         exposure: RawExposureData,
+        datasetType: DatasetType,
         *,
         run: Optional[str] = None,
         skip_existing_exposures: bool = False,
@@ -1013,6 +1023,8 @@ class RawIngestTask(Task):
             A structure containing information about the exposure to be
             ingested.  Must have `RawExposureData.records` populated and all
             data ID attributes expanded.
+        datasetType : `DatasetType`
+            The dataset type associated with this exposure.
         run : `str`, optional
             Name of a RUN-type collection to write to, overriding
             ``self.butler.run``.
@@ -1043,7 +1055,7 @@ class RawIngestTask(Task):
             existing = {
                 ref.dataId
                 for ref in self.butler.registry.queryDatasets(
-                    self.datasetType,
+                    datasetType,
                     collections=[run],
                     dataId=exposure.dataId,
                 )
@@ -1052,7 +1064,7 @@ class RawIngestTask(Task):
             existing = set()
         datasets = []
         for file in exposure.files:
-            refs = [DatasetRef(self.datasetType, d.dataId) for d in file.datasets if d.dataId not in existing]
+            refs = [DatasetRef(datasetType, d.dataId) for d in file.datasets if d.dataId not in existing]
             if refs:
                 datasets.append(
                     FileDataset(path=file.filename.abspath(), refs=refs, formatter=file.FormatterClass)
@@ -1151,10 +1163,9 @@ class RawIngestTask(Task):
         # usage of savepoints; we've tried to get everything but the database
         # operations done in advance to reduce the time spent inside
         # transactions.
-        self.butler.registry.registerDatasetType(self.datasetType)
-
         refs = []
         runs = set()
+        datasetTypes = set()
         n_exposures = 0
         n_exposures_failed = 0
         n_ingests_failed = 0
@@ -1198,12 +1209,24 @@ class RawIngestTask(Task):
                     str(list(inserted_or_updated.keys())),
                 )
 
+            # Determine the instrument so we can work out the dataset type.
+            instrument = exposure.files[0].instrument
+            assert (
+                instrument is not None
+            ), "file should have been removed from this list by prep if instrument could not be found"
+
+            if instrument.raw_definition:
+                datasetType = DatasetType(
+                    *instrument.raw_definition, universe=self.butler.registry.dimensions
+                )
+            else:
+                datasetType = self.datasetType
+            if datasetType not in datasetTypes:
+                self.butler.registry.registerDatasetType(datasetType)
+                datasetTypes.add(datasetType)
+
             # Override default run if nothing specified explicitly.
             if run is None:
-                instrument = exposure.files[0].instrument
-                assert (
-                    instrument is not None
-                ), "file should have been removed from this list by prep if instrument could not be found"
                 this_run = instrument.makeDefaultRawIngestRunName()
             else:
                 this_run = run
@@ -1213,6 +1236,7 @@ class RawIngestTask(Task):
             try:
                 datasets_for_exposure = self.ingestExposureDatasets(
                     exposure,
+                    datasetType=datasetType,
                     run=this_run,
                     skip_existing_exposures=skip_existing_exposures,
                     track_file_attrs=track_file_attrs,
