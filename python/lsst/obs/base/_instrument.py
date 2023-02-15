@@ -511,7 +511,7 @@ class Instrument(InstrumentBase):
         else:
             # This should never trigger with real data, but will
             # trigger on the unit tests.
-            _LOG.warn(
+            _LOG.warning(
                 "Unknown curated calibration type %s.  Attempting to use supplied definition.",
                 datasetType.name,
             )
