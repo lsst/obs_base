@@ -1165,7 +1165,7 @@ class RawIngestTask(Task):
         # transactions.
         refs = []
         runs = set()
-        datasetTypes = set()
+        datasetTypes: dict[str, DatasetType] = {}
         n_exposures = 0
         n_exposures_failed = 0
         n_ingests_failed = 0
@@ -1215,15 +1215,17 @@ class RawIngestTask(Task):
                 instrument is not None
             ), "file should have been removed from this list by prep if instrument could not be found"
 
-            if instrument.raw_definition:
-                datasetType = DatasetType(
-                    *instrument.raw_definition, universe=self.butler.registry.dimensions
-                )
+            if raw_definition := getattr(instrument, "raw_definition", None):
+                datasetTypeName, dimensions, storageClass = raw_definition
+                if not (datasetType := datasetTypes.get(datasetTypeName)):
+                    datasetType = DatasetType(
+                        datasetTypeName, dimensions, storageClass, universe=self.butler.registry.dimensions
+                    )
             else:
                 datasetType = self.datasetType
-            if datasetType not in datasetTypes:
+            if datasetType.name not in datasetTypes:
                 self.butler.registry.registerDatasetType(datasetType)
-                datasetTypes.add(datasetType)
+                datasetTypes[datasetType.name] = datasetType
 
             # Override default run if nothing specified explicitly.
             if run is None:
