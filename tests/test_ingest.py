@@ -27,7 +27,7 @@ import tempfile
 import unittest
 
 import lsst.daf.butler.tests as butlerTests
-from lsst.daf.butler import Butler, Config, DataCoordinate, DatasetType
+from lsst.daf.butler import Butler, Config, DataCoordinate
 from lsst.daf.butler.registry import ConflictingDefinitionError
 from lsst.obs.base import RawIngestTask
 from lsst.obs.base.ingest_tests import IngestTestBase
@@ -38,25 +38,11 @@ TESTDIR = os.path.abspath(os.path.dirname(__file__))
 INGESTDIR = os.path.join(TESTDIR, "data", "ingest")
 
 
-class DummyCamRawIngestTask(RawIngestTask):
-    """For DummyCam we ingest a different dataset type that can return
-    a non-Exposure."""
-
-    def getDatasetType(self):
-        """Return the DatasetType of the datasets ingested by this Task."""
-        return DatasetType(
-            "raw_dict",
-            ("instrument", "detector", "exposure"),
-            "StructuredDataDict",
-            universe=self.butler.registry.dimensions,
-        )
-
-
 class RawIngestTestCase(IngestTestBase, unittest.TestCase):
     """Test ingest using JSON sidecar files."""
 
     ingestDatasetTypeName = "raw_dict"
-    rawIngestTask = get_full_type_name(DummyCamRawIngestTask)
+    rawIngestTask = get_full_type_name(RawIngestTask)
     curatedCalibrationDatasetTypes = ("testCalib",)
     ingestDir = TESTDIR
     instrumentClassName = "lsst.obs.base.instrument_tests.DummyCam"
@@ -113,7 +99,7 @@ datastore:
         self.outputRun = self.butler.run
 
         config = RawIngestTask.ConfigClass()
-        self.task = DummyCamRawIngestTask(config=config, butler=self.butler)
+        self.task = RawIngestTask(config=config, butler=self.butler)
 
         # Different test files.
         self.bad_metadata_file = os.path.join(TESTDIR, "data", "small.fits")
@@ -301,7 +287,7 @@ datastore:
 
         # Need our own task instance
         config = RawIngestTask.ConfigClass()
-        self.task = DummyCamRawIngestTask(
+        self.task = RawIngestTask(
             config=config,
             butler=self.butler,
             on_metadata_failure=on_metadata_failure,
@@ -377,7 +363,7 @@ datastore:
         modified.
         """
         config = RawIngestTask.ConfigClass(failFast=True)
-        task = DummyCamRawIngestTask(config=config, butler=self.butler)
+        task = RawIngestTask(config=config, butler=self.butler)
         with open(os.path.join(INGESTDIR, "sidecar_data", "dataset_1.json"), "r") as file:
             metadata = json.load(file)
         # Modify unique identifiers to avoid clashes with ingests from
