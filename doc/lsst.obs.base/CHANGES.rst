@@ -1,3 +1,29 @@
+obs_base v25.0.0 (2023-03-02)
+=============================
+
+New Features
+------------
+
+- * Removed Gen2 code from package, including 2to3 conversion code.
+    Use an older release to convert any remaining Gen2 repositories to Gen3.
+  * Moved support for reading curated calibrations for ``obs_*_data`` packages from ``pipe_tasks`` and added unit tests for this code. (`DM-35035 <https://jira.lsstcorp.org/browse/DM-35035>`_)
+- * Added ``focusZ`` to ``MakeRawVisitInfoViaObsInfo``. (`DM-35186 <https://jira.lsstcorp.org/browse/DM-35186>`_)
+
+
+API Changes
+-----------
+
+- The ``ingest-raws`` and ``define-visits`` subcommands no longer allow multiple config settings within a single ``--config`` option.
+  We have decided that it is too dangerous to split on comma in the general case and so have removed that facility to be consistent with other commands.
+  Use multiple ``--config`` options instead. (`DM-35917 <https://jira.lsstcorp.org/browse/DM-35917>`_)
+
+
+An API Removal or Deprecation
+-----------------------------
+
+- Removed deprecated ``filterLabel`` exposure component access. (`DM-27811 <https://jira.lsstcorp.org/browse/DM-27811>`_)
+
+
 obs_base v24.0.0 (2022-08-30)
 =============================
 
