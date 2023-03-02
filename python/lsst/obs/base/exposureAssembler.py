@@ -33,7 +33,6 @@ log = logging.getLogger(__name__)
 
 
 class ExposureAssembler(StorageClassDelegate):
-
     EXPOSURE_COMPONENTS = set(("image", "variance", "mask", "wcs", "psf"))
     EXPOSURE_INFO_COMPONENTS = set(
         (
