@@ -100,7 +100,6 @@ class CuratedCalibration(BaseModel):
 
 
 class DummyCam(Instrument):
-
     filterDefinitions = DUMMY_FILTER_DEFINITIONS
     additionalCuratedDatasetTypes = frozenset(["testCalib"])
     policyName = "dummycam"
