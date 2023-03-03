@@ -1092,7 +1092,7 @@ class _ComputeVisitRegionsFromSingleRawWcsTask(ComputeVisitRegionsTask):
                     )
                 wcsRef = next(iter(wcsRefsIter))
                 wcsDetector = camera[wcsRef.dataId["detector"]]
-                wcs = self.butler.getDirect(wcsRef)
+                wcs = self.butler.get(wcsRef)
             else:
                 wcsDetector = camera[self.config.detectorId]
                 wcs = self.butler.get(
