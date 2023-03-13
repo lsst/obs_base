@@ -33,7 +33,7 @@ import unittest
 import lsst.afw.cameraGeom
 import lsst.afw.cameraGeom.testUtils  # For assertDetectorsEqual
 import lsst.obs.base
-from lsst.daf.butler import Butler
+from lsst.daf.butler import Butler, Registry
 from lsst.daf.butler.cli.butler import cli as butlerCli
 from lsst.daf.butler.cli.utils import LogCliRunner
 from lsst.pipe.base import Instrument
@@ -442,6 +442,10 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             self.skipTest("Expected visits were not defined.")
         self._ingestRaws(transfer="link")
 
+        # Check that obscore table (if configured) has correct contents.
+        butler = Butler(self.root, run=self.outputRun)
+        self._check_obscore(butler.registry, has_visits=False)
+
         # Calling defineVisits tests the implementation of the butler command
         # line interface "define-visits" subcommand. Functions in the script
         # folder are generally considered protected and should not be used
@@ -455,7 +459,6 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         )
 
         # Test that we got the visits we expected.
-        butler = Butler(self.root, run=self.outputRun)
         visits = butler.registry.queryDataIds(["visit"]).expanded().toSet()
         self.assertCountEqual(visits, self.visits.keys())
         instr = Instrument.from_string(self.instrumentName, butler.registry)
@@ -478,3 +481,10 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
                 idInfo = lsst.obs.base.ExposureIdInfo.fromDataId(dataId)
                 self.assertGreater(idInfo.unusedBits, 0)
+
+        # Check obscore table again.
+        self._check_obscore(butler.registry, has_visits=True)
+
+    def _check_obscore(self, registry: Registry, has_visits: bool) -> None:
+        """Verify contents of obscore table."""
+        return

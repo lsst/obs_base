@@ -27,7 +27,7 @@ import tempfile
 import unittest
 
 import lsst.daf.butler.tests as butlerTests
-from lsst.daf.butler import Butler, Config, DataCoordinate
+from lsst.daf.butler import Butler, Config, DataCoordinate, Registry
 from lsst.daf.butler.registry import ConflictingDefinitionError
 from lsst.obs.base import RawIngestTask
 from lsst.obs.base.ingest_tests import IngestTestBase
@@ -67,6 +67,26 @@ class RawIngestTestCase(IngestTestBase, unittest.TestCase):
         # Inject the "data package" location.
         DummyCam.dataPackageDir = os.path.join(TESTDIR, "data", "curated")
         return super().testWriteCuratedCalibrations()
+
+    def _check_obscore(self, registry: Registry, has_visits: bool) -> None:
+        # Docstring inherited from base class.
+        assert registry.obsCoreTableManager is not None
+        with registry.obsCoreTableManager.query(lsst_run=self.outputRun) as result:
+            rows = list(result)
+            self.assertEqual(len(rows), 1)
+            row = rows[0]
+
+            # No spatial information until visits are defined
+            if not has_visits:
+                self.assertIsNone(row.s_ra)
+                self.assertIsNone(row.s_dec)
+                self.assertIsNone(row.s_fov)
+                self.assertIsNone(row.s_region)
+            else:
+                self.assertIsNotNone(row.s_ra)
+                self.assertIsNotNone(row.s_dec)
+                self.assertIsNotNone(row.s_fov)
+                self.assertRegex(row.s_region, "POLYGON ICRS .*")
 
 
 class RawIngestImpliedIndexTestCase(RawIngestTestCase):

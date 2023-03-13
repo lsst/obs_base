@@ -50,6 +50,7 @@ from typing import (
     Tuple,
     Type,
     TypeVar,
+    cast,
 )
 
 import lsst.geom
@@ -357,6 +358,14 @@ class DefineVisitsConfig(Config):
         ),
         dtype=bool,
         optional=False,
+        default=True,
+    )
+    updateObsCoreTable: Field[bool] = Field(
+        doc=(
+            "If True, update exposure regions in obscore table after visits "
+            "are defined.  If False, do not update obscore table."
+        ),
+        dtype=bool,
         default=True,
     )
 
@@ -694,6 +703,21 @@ class DefineVisitsTask(Task):
                     self.butler.registry.insertDimensionData(
                         "visit_detector_region", *visitRecords.visit_detector_region, replace=update_records
                     )
+
+                    # Update obscore exposure records with region information
+                    # from corresponding visits.
+                    if self.config.updateObsCoreTable:
+                        if obscore_manager := self.butler.registry.obsCoreTableManager:
+                            obscore_updates: list[tuple[int, int, Region]] = []
+                            exposure_ids = [rec.exposure for rec in visitRecords.visit_definition]
+                            for record in visitRecords.visit_detector_region:
+                                obscore_updates += [
+                                    (exposure, record.detector, record.region) for exposure in exposure_ids
+                                ]
+                            if obscore_updates:
+                                obscore_manager.update_exposure_regions(
+                                    cast(str, instrument), obscore_updates
+                                )
 
 
 _T = TypeVar("_T")

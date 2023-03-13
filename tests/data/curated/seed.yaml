@@ -1,3 +1,6 @@
+registry:
+  managers:
+    obscore: !include obscore.yaml
 datastore:
   formatters:
     CuratedCalibration: lsst.daf.butler.formatters.json.JsonFormatter
