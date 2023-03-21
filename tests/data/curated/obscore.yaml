@@ -1,0 +1,46 @@
+# Config file for obscore in obs_base test
+cls: lsst.daf.butler.registry.obscore._manager.ObsCoreLiveTableManager
+config:
+  namespace: test
+  version: 1
+  facility_name: obs-base-test
+  obs_collection: OBS_BASE_TEST
+  collection_type: RUN
+  collections: null
+  use_butler_uri: false
+  dataset_types:
+    raw_dict:  # Must match dataset type name defined in RawIngestTestCase
+      dataproduct_type: image  # We do not care about correct values for some fields
+      dataproduct_subtype: lsst.raw
+      calib_level: 1
+      obs_id_fmt: "{records[exposure].obs_id}-{records[detector].full_name}"
+      o_ucd: phot.count
+      access_format: image/fits
+  extra_columns:
+    lsst_visit:
+      template: "{visit}"
+      type: "int"
+    lsst_exposure:
+      template: "{exposure}"
+      type: "int"
+    lsst_detector:
+      template: "{detector}"
+      type: "int"
+    lsst_band:
+      template: "{band}"
+      type: "string"
+      length: 32
+    lsst_filter:
+      template: "{physical_filter}"
+      type: "string"
+      length: 32
+    lsst_dataset_type:
+      template: "{dataset_type}"
+      type: "string"
+      length: 64
+    lsst_run:
+      template: "{run}"
+      type: "string"
+      length: 255
+  spectral_ranges:
+    "u": [330.0e-9, 400.0e-9]
