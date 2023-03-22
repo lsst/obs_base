@@ -663,7 +663,8 @@ class DefineVisitsTask(Task):
         for visitSystem in visitSystems:
             self.log.info("Registering visit_system %d: %s.", visitSystem.value, visitSystem)
             self.butler.registry.syncDimensionData(
-                "visit_system", {"instrument": instrument, "id": visitSystem.value, "name": str(visitSystem)}
+                "visit_system",
+                {"instrument": instrument, "id": visitSystem.value, "name": str(visitSystem)},
             )
         # Group exposures into visits, delegating to subtask.
         self.log.info("Grouping %d exposure(s) into visits.", len(exposures))
@@ -917,8 +918,13 @@ class _GroupExposuresByCounterAndExposuresTask(GroupExposuresTask, metaclass=ABC
                     )
                 skip_multi = True
 
+            multi_exposure = False
+            if first.seq_start != first.seq_end:
+                # This is a multi-exposure visit regardless of the number
+                # of exposures present.
+                multi_exposure = True
+
             # Define the one-to-one visits.
-            num_exposures = len(exposures_in_group)
             for exposure in exposures_in_group:
                 # Default is to use the exposure ID and name unless
                 # this is the first exposure in a multi-exposure visit.
@@ -926,12 +932,12 @@ class _GroupExposuresByCounterAndExposuresTask(GroupExposuresTask, metaclass=ABC
                 visit_id = exposure.id
                 visit_systems = {system_one_to_one}
 
-                if num_exposures == 1:
+                if not multi_exposure:
                     # This is also a by-counter visit.
                     # It will use the same visit_name and visit_id.
                     visit_systems.add(system_seq_start_end)
 
-                elif num_exposures > 1 and not skip_multi and exposure == first:
+                elif not skip_multi and exposure == first:
                     # This is the first legitimate exposure in a multi-exposure
                     # visit. It therefore needs a modified visit name and ID
                     # so it does not clash with the multi-exposure visit
@@ -948,7 +954,7 @@ class _GroupExposuresByCounterAndExposuresTask(GroupExposuresTask, metaclass=ABC
                 )
 
             # Multi-exposure visit.
-            if not skip_multi and num_exposures > 1:
+            if not skip_multi and multi_exposure:
                 # Define the visit using the first exposure
                 visit_name = first.obs_id
                 visit_id = first.id
