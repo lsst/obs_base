@@ -43,7 +43,7 @@ class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
         """Test the most basic required arguments."""
         self.run_test(
             ["define-visits", "here", "a.b.c"],
-            self.makeExpected(repo="here", instrument="a.b.c", where=""),
+            self.makeExpected(repo="here", instrument="a.b.c", where="", update_records=False),
         )
 
     def test_all(self):
@@ -70,6 +70,7 @@ class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
                 # run_test.
                 collections=("foo/bar", "baz", "boz"),
                 where="",
+                update_records=False,
             ),
         )
 
