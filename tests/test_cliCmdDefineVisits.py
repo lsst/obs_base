@@ -61,6 +61,10 @@ class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
                 "/path/to/config",
                 "--collections",
                 "boz",
+                "--where",
+                "x=y",
+                "--incremental",
+                "--update-records",
             ],
             self.makeExpected(
                 repo="here",
@@ -71,9 +75,9 @@ class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
                 # passed in the list of arguments to
                 # run_test.
                 collections=("foo/bar", "baz", "boz"),
-                where="",
-                update_records=False,
-                incremental=False,
+                where="x=y",
+                update_records=True,
+                incremental=True,
             ),
         )
 
