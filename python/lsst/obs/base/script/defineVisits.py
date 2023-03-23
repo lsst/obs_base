@@ -28,7 +28,14 @@ log = logging.getLogger("lsst.obs.base.defineVisits")
 
 
 def defineVisits(
-    repo, config_file, collections, instrument, where=None, update_records=False, raw_name="raw"
+    repo,
+    config_file,
+    collections,
+    instrument,
+    where=None,
+    update_records=False,
+    incremental=False,
+    raw_name="raw",
 ):
     """Implements the command line interface `butler define-visits` subcommand,
     should only be called by command line tools and unit test code that tests
@@ -54,6 +61,10 @@ def defineVisits(
     update_records : `bool`, optional
         Control whether recalculated visit definitions will be accepted or
         not.
+    incremental : `bool`, optional
+        Declare that the visit definitions are being run in a situation
+        where data from multi-snap visits are being ingested incrementally
+        and so the visit definition could change as new data arrive.
     raw_name : `str`, optional
         Name of the raw dataset type name.  Defaults to 'raw'.
 
@@ -107,4 +118,5 @@ def defineVisits(
         ).expanded(),
         collections=collections,
         update_records=update_records,
+        incremental=incremental,
     )

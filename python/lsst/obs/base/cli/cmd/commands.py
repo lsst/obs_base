@@ -108,6 +108,13 @@ def convert(*args, **kwargs):
     "exposure records or if new exposures have been added to an existing "
     "visit since the visits were last defined.",
 )
+@click.option(
+    "--incremental/--no-incremental",
+    default=False,
+    help="Use this option to force updates to the visit definition record "
+    "when multi-snap visits are being ingested incrementally and so you "
+    "might encounter partial visits.  Implies --update-records.",
+)
 @options_file_option()
 def define_visits(*args, **kwargs):
     """Define visits from exposures in the butler registry.

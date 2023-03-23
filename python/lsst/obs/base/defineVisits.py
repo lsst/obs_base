@@ -596,6 +596,7 @@ class DefineVisitsTask(Task):
         *,
         collections: Optional[str] = None,
         update_records: bool = False,
+        incremental: bool = False,
     ) -> None:
         """Add visit definitions to the registry for the given exposures.
 
@@ -616,6 +617,13 @@ class DefineVisitsTask(Task):
             OPTION THAT SHOULD ONLY BE USED TO FIX REGIONS AND/OR METADATA THAT
             ARE KNOWN TO BE BAD, AND IT CANNOT BE USED TO REMOVE EXPOSURES OR
             DETECTORS FROM A VISIT.
+        incremental : `bool`, optional
+            If `True` indicate that exposures are being ingested incrementally
+            and visit definition will be run on partial visits. This will
+            force ``update_records`` to `True`. If ``update_records`` is
+            `True` but ``incremental`` is `False`, then visits will be
+            determined correctly but the ``visit_definition`` table will not
+            be updated to know about the additional exposure.
 
         Raises
         ------
@@ -631,6 +639,8 @@ class DefineVisitsTask(Task):
         }
         if not data_id_set:
             raise RuntimeError("No exposures given.")
+        if incremental:
+            update_records = True
         # Extract exposure DimensionRecords, check that there's only one
         # instrument in play, and check for non-science exposures.
         exposures = []
@@ -698,6 +708,20 @@ class DefineVisitsTask(Task):
                             self.butler.registry.insertDimensionData(
                                 "visit_system_membership", *visitRecords.visit_system_membership
                             )
+                    elif incremental and len(visitRecords.visit_definition) > 1:
+                        # The visit record was modified. This could happen
+                        # if a multi-snap visit was redefined with an
+                        # additional snap so play it safe and allow for the
+                        # visit definition to be updated. We use update=False
+                        # here since there should not be any rows updated,
+                        # just additional rows added. update=True does not work
+                        # correctly with multiple records. In incremental mode
+                        # we assume that the caller wants the visit definition
+                        # to be updated and has no worries about provenance
+                        # with the previous definition.
+                        for definition in visitRecords.visit_definition:
+                            self.butler.registry.syncDimensionData("visit_definition", definition)
+
                     # [Re]Insert visit_detector_region records for both inserts
                     # and updates, because we do allow updating to affect the
                     # region calculations.
