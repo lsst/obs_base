@@ -1,0 +1,3 @@
+Added support for defining visits incrementally as exposures are ingested.
+This allows files from the telescope to be ingested one at a time whilst redefining the existing visits.
+Additionally ``--update-records`` and ``--incremental`` have been added to the ``butler define-visits`` command-line.
