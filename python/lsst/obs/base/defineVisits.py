@@ -215,6 +215,50 @@ class GroupExposuresTask(Task, metaclass=ABCMeta):
     )
 
     @abstractmethod
+    def find_missing(
+        self, exposures: list[DimensionRecord], registry: lsst.daf.butler.Registry
+    ) -> list[DimensionRecord]:
+        """Determine, if possible, which exposures might be missing.
+
+        Parameters
+        ----------
+        exposures : `list` of `lsst.daf.butler.DimensionRecord`
+            The exposure records to analyze.
+        registry : `lsst.daf.butler.Registry`
+            A butler registry that contains these exposure records.
+
+        Returns
+        -------
+        missing : `list` of `lsst.daf.butler.DimensionRecord`
+            Any exposure records present in registry that were related to
+            the given exposures but were missing from that list and deemed
+            to be relevant.
+
+        Notes
+        -----
+        Only some grouping schemes are able to find missing exposures. It
+        is acceptable to return an empty list.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def group_exposures(self, exposures: list[DimensionRecord]) -> dict[Any, list[DimensionRecord]]:
+        """Group the exposures in a way most natural for this visit definition.
+
+        Parameters
+        ----------
+        exposures : `list` of `lsst.daf.butler.DimensionRecord`
+            The exposure records to group.
+
+        Returns
+        -------
+        groups : `dict` [Any, `list` of `DimensionRecord`]
+            Groupings of exposure records. The key type is relevant to the
+            specific visit definition and could be a string or a tuple.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
     def group(self, exposures: List[DimensionRecord]) -> Iterable[VisitDefinitionData]:
         """Group the given exposures into visits.
 
@@ -676,6 +720,14 @@ class DefineVisitsTask(Task):
                 "visit_system",
                 {"instrument": instrument, "id": visitSystem.value, "name": str(visitSystem)},
             )
+
+        # In true incremental we will be given the second snap on its
+        # own on the assumption that the previous snap was already handled.
+        # For correct grouping we need access to the other exposures in the
+        # visit.
+        if incremental:
+            exposures.extend(self.groupExposures.find_missing(exposures, self.butler.registry))
+
         # Group exposures into visits, delegating to subtask.
         self.log.info("Grouping %d exposure(s) into visits.", len(exposures))
         definitions = list(self.groupExposures.group(exposures))
@@ -815,6 +867,16 @@ class _GroupExposuresOneToOneTask(GroupExposuresTask, metaclass=ABCMeta):
 
     ConfigClass = _GroupExposuresOneToOneConfig
 
+    def find_missing(
+        self, exposures: list[DimensionRecord], registry: lsst.daf.butler.Registry
+    ) -> list[DimensionRecord]:
+        # By definition no exposures can be missing.
+        return []
+
+    def group_exposures(self, exposures: list[DimensionRecord]) -> dict[Any, list[DimensionRecord]]:
+        # No grouping.
+        return {exposure.id: [exposure] for exposure in exposures}
+
     def group(self, exposures: List[DimensionRecord]) -> Iterable[VisitDefinitionData]:
         # Docstring inherited from GroupExposuresTask.
         visit_systems = {VisitSystem.from_name("one-to-one")}
@@ -861,12 +923,37 @@ class _GroupExposuresByGroupMetadataTask(GroupExposuresTask, metaclass=ABCMeta):
 
     ConfigClass = _GroupExposuresByGroupMetadataConfig
 
-    def group(self, exposures: List[DimensionRecord]) -> Iterable[VisitDefinitionData]:
-        # Docstring inherited from GroupExposuresTask.
-        visit_systems = {VisitSystem.from_name("by-group-metadata")}
+    def find_missing(
+        self, exposures: list[DimensionRecord], registry: lsst.daf.butler.Registry
+    ) -> list[DimensionRecord]:
+        groups = self.group_exposures(exposures)
+        missing_exposures: list[DimensionRecord] = []
+        for exposures_in_group in groups.values():
+            # We can not tell how many exposures are expected to be in the
+            # visit so we have to query every time.
+            first = exposures_in_group[0]
+            records = set(
+                registry.queryDimensionRecords(
+                    "exposure",
+                    where="exposure.group_name = group",
+                    bind={"group": first.group_name},
+                    instrument=first.instrument,
+                )
+            )
+            records.difference_update(set(exposures_in_group))
+            missing_exposures.extend(list(records))
+        return missing_exposures
+
+    def group_exposures(self, exposures: list[DimensionRecord]) -> dict[Any, list[DimensionRecord]]:
         groups = defaultdict(list)
         for exposure in exposures:
             groups[exposure.group_name].append(exposure)
+        return groups
+
+    def group(self, exposures: List[DimensionRecord]) -> Iterable[VisitDefinitionData]:
+        # Docstring inherited from GroupExposuresTask.
+        visit_systems = {VisitSystem.from_name("by-group-metadata")}
+        groups = self.group_exposures(exposures)
         for visitName, exposuresInGroup in groups.items():
             instrument = exposuresInGroup[0].instrument
             visitId = exposuresInGroup[0].group_id
@@ -914,14 +1001,43 @@ class _GroupExposuresByCounterAndExposuresTask(GroupExposuresTask, metaclass=ABC
 
     ConfigClass = _GroupExposuresByCounterAndExposuresConfig
 
+    def find_missing(
+        self, exposures: list[DimensionRecord], registry: lsst.daf.butler.Registry
+    ) -> list[DimensionRecord]:
+        """Analyze the exposures and return relevant exposures known to
+        registry.
+        """
+        groups = self.group_exposures(exposures)
+        missing_exposures: list[DimensionRecord] = []
+        for exposures_in_group in groups.values():
+            sorted_exposures = sorted(exposures_in_group, key=lambda e: e.seq_num)
+            first = sorted_exposures[0]
+            if len(sorted_exposures) < first.seq_end - first.seq_start + 1:
+                # Missing something. Check registry.
+                records = set(
+                    registry.queryDimensionRecords(
+                        "exposure",
+                        where="exposure.seq_start = seq_start AND exposure.seq_end = seq_end",
+                        bind={"seq_start": first.seq_start, "seq_end": first.seq_end},
+                        instrument=first.instrument,
+                    )
+                )
+                records.difference_update(set(sorted_exposures))
+                missing_exposures.extend(list(records))
+        return missing_exposures
+
+    def group_exposures(self, exposures: list[DimensionRecord]) -> dict[Any, list[DimensionRecord]]:
+        groups = defaultdict(list)
+        for exposure in exposures:
+            groups[exposure.day_obs, exposure.seq_start, exposure.seq_end].append(exposure)
+        return groups
+
     def group(self, exposures: List[DimensionRecord]) -> Iterable[VisitDefinitionData]:
         # Docstring inherited from GroupExposuresTask.
         system_one_to_one = VisitSystem.from_name("one-to-one")
         system_seq_start_end = VisitSystem.from_name("by-seq-start-end")
 
-        groups = defaultdict(list)
-        for exposure in exposures:
-            groups[exposure.day_obs, exposure.seq_start, exposure.seq_end].append(exposure)
+        groups = self.group_exposures(exposures)
         for visit_key, exposures_in_group in groups.items():
             instrument = exposures_in_group[0].instrument
 

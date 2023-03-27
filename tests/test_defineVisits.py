@@ -89,6 +89,7 @@ class DefineVisitsTestCase(unittest.TestCase):
     ) -> None:
         for records in exposures:
             self.butler.registry.insertDimensionData("exposure", *ensure_iterable(records))
+            # Include all records so far in definition.
             dataIds = [d for d in self.butler.registry.queryDataIds("exposure", instrument="DummyCam")]
             self.task.run(dataIds, incremental=incremental)
 
@@ -97,17 +98,37 @@ class DefineVisitsTestCase(unittest.TestCase):
         self.define_visits([[r for r in self.records.values()]], incremental=False)  # list inside a list
         self.assertVisits()
 
-    def test_incremental(self):
+    def test_incremental_cumulative(self):
         # Define the visits after each exposure.
         self.define_visits([exp for exp in self.records.values()], incremental=True)
         self.assertVisits()
 
-    def test_incremental_reverse(self):
+    def test_incremental_cumulative_reverse(self):
         # In reverse order we should still eventually end up with the right
         # answer.
         with self.assertLogs("lsst.defineVisits.groupExposures", level="WARNING") as cm:
             self.define_visits(list(reversed(self.records.values())), incremental=True)
         self.assertIn("Skipping the multi-snap definition", "\n".join(cm.output))
+        self.assertVisits()
+
+    def define_visits_incrementally(self, exposure: DimensionRecord) -> None:
+        self.butler.registry.insertDimensionData("exposure", exposure)
+        dataIds = [
+            d
+            for d in self.butler.registry.queryDataIds(
+                "exposure", instrument="DummyCam", exposure=exposure.id
+            )
+        ]
+        self.task.run(dataIds, incremental=True)
+
+    def test_incremental(self):
+        for record in self.records.values():
+            self.define_visits_incrementally(record)
+        self.assertVisits()
+
+    def test_incremental_reverse(self):
+        for record in reversed(self.records.values()):
+            self.define_visits_incrementally(record)
         self.assertVisits()
 
     def testPickleTask(self):
