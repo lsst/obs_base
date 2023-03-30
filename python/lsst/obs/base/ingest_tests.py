@@ -479,9 +479,6 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             for dataId in detectorVisitDataIds:
                 self.assertTrue(foundVisit.region.contains(dataId.region))
 
-                idInfo = lsst.obs.base.ExposureIdInfo.fromDataId(dataId)
-                self.assertGreater(idInfo.unusedBits, 0)
-
         # Check obscore table again.
         self._check_obscore(butler.registry, has_visits=True)
 

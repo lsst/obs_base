@@ -25,10 +25,16 @@ __all__ = ["ExposureIdInfo"]
 
 from typing import Optional
 
+from deprecated.sphinx import deprecated
 from lsst.afw.table import IdFactory
 from lsst.daf.butler import DataCoordinate
 
 
+@deprecated(
+    "Deprecated in favor of lsst.meas.base.CatalogIdPacker; will be removed after v27.",
+    version="v26",
+    category=FutureWarning,
+)
 class ExposureIdInfo:
     """Struct representing an exposure ID and the number of bits it uses.
 
