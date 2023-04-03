@@ -223,7 +223,7 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
         self.assertCatalogEqual(catalog, stored)
 
         # Override the storage class.
-        astropy_table = self.butler.getDirect(ref, storageClass="AstropyTable")
+        astropy_table = self.butler.get(ref, storageClass="AstropyTable")
         self.assertIsInstance(astropy_table, astropy.table.Table)
         self.assertEqual(len(astropy_table), len(stored))
 
@@ -385,8 +385,8 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
             for amp_parameter in [amp, amp.getName(), n]:
                 for parameters in [{"amp": amp_parameter}, {"amp": amp_parameter, "detector": detector}]:
                     with self.subTest(parameters=parameters):
-                        test_trimmed = self.butler.getDirect(trimmed_ref, parameters=parameters)
-                        test_untrimmed = self.butler.getDirect(untrimmed_ref, parameters=parameters)
+                        test_trimmed = self.butler.get(trimmed_ref, parameters=parameters)
+                        test_untrimmed = self.butler.get(untrimmed_ref, parameters=parameters)
                         self.assertImagesEqual(test_trimmed.image, trimmed_full[amp.getBBox()].image)
                         self.assertImagesEqual(test_untrimmed.image, untrimmed_full[amp.getRawBBox()].image)
                         self.assertEqual(len(test_trimmed.getDetector()), 1)
@@ -397,12 +397,12 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
             # to make sure flips and offsets are applied correctly.
             # First flip X only.
             amp_t1 = amp.rebuild().transform(outFlipX=True).finish()
-            test_t1_trimmed = self.butler.getDirect(trimmed_ref, parameters={"amp": amp_t1})
+            test_t1_trimmed = self.butler.get(trimmed_ref, parameters={"amp": amp_t1})
             self.assertImagesEqual(
                 test_t1_trimmed.image, flipImage(trimmed_full[amp.getBBox()].image, flipLR=True, flipTB=False)
             )
             self.assertAmplifiersEqual(test_t1_trimmed.getDetector()[0], amp_t1)
-            test_t1_untrimmed = self.butler.getDirect(untrimmed_ref, parameters={"amp": amp_t1})
+            test_t1_untrimmed = self.butler.get(untrimmed_ref, parameters={"amp": amp_t1})
             self.assertImagesEqual(
                 test_t1_untrimmed.image,
                 flipImage(untrimmed_full[amp.getRawBBox()].image, flipLR=True, flipTB=False),
@@ -410,12 +410,12 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
             self.assertAmplifiersEqual(test_t1_trimmed.getDetector()[0], amp_t1)
             # Flip Y only.
             amp_t2 = amp.rebuild().transform(outFlipY=True).finish()
-            test_t2_trimmed = self.butler.getDirect(trimmed_ref, parameters={"amp": amp_t2})
+            test_t2_trimmed = self.butler.get(trimmed_ref, parameters={"amp": amp_t2})
             self.assertImagesEqual(
                 test_t2_trimmed.image, flipImage(trimmed_full[amp.getBBox()].image, flipLR=False, flipTB=True)
             )
             self.assertAmplifiersEqual(test_t2_trimmed.getDetector()[0], amp_t2)
-            test_t2_untrimmed = self.butler.getDirect(untrimmed_ref, parameters={"amp": amp_t2})
+            test_t2_untrimmed = self.butler.get(untrimmed_ref, parameters={"amp": amp_t2})
             self.assertImagesEqual(
                 test_t2_untrimmed.image,
                 flipImage(untrimmed_full[amp.getRawBBox()].image, flipLR=False, flipTB=True),
@@ -423,10 +423,10 @@ class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
             self.assertAmplifiersEqual(test_t2_trimmed.getDetector()[0], amp_t2)
             # Add an XY offset only.
             amp_t3 = amp.rebuild().transform(outOffset=Extent2I(5, 4)).finish()
-            test_t3_trimmed = self.butler.getDirect(trimmed_ref, parameters={"amp": amp_t3})
+            test_t3_trimmed = self.butler.get(trimmed_ref, parameters={"amp": amp_t3})
             self.assertImagesEqual(test_t3_trimmed.image, trimmed_full[amp.getBBox()].image)
             self.assertAmplifiersEqual(test_t3_trimmed.getDetector()[0], amp_t3)
-            test_t3_untrimmed = self.butler.getDirect(untrimmed_ref, parameters={"amp": amp_t3})
+            test_t3_untrimmed = self.butler.get(untrimmed_ref, parameters={"amp": amp_t3})
             self.assertImagesEqual(test_t3_untrimmed.image, untrimmed_full[amp.getRawBBox()].image)
             self.assertAmplifiersEqual(test_t3_trimmed.getDetector()[0], amp_t3)
 
