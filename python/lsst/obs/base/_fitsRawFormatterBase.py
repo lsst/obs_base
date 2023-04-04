@@ -161,7 +161,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             Header metadata.
         """
         md = lsst.afw.fits.readMetadata(self.fileDescriptor.location.path)
-        fix_header(md)
+        fix_header(md, translator_class=self.translatorClass)
         return md
 
     def stripMetadata(self):
