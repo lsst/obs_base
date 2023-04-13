@@ -99,6 +99,6 @@ def defineVisits(repo, config_file, collections, instrument, where=None, raw_nam
             collections=collections,
             datasets=raw_name,
             where=where,
-        ),
+        ).expanded(),
         collections=collections,
     )
