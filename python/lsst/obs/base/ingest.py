@@ -24,6 +24,7 @@ __all__ = ("RawIngestTask", "RawIngestConfig", "makeTransferChoiceField")
 
 import json
 import re
+import warnings
 from collections import defaultdict
 from dataclasses import InitVar, dataclass
 from multiprocessing import Pool
@@ -59,6 +60,7 @@ from lsst.daf.butler import (
     FileDataset,
     Formatter,
     Progress,
+    UnresolvedRefWarning,
 )
 from lsst.pex.config import ChoiceField, Config, Field
 from lsst.pipe.base import Instrument, Task
@@ -1064,7 +1066,9 @@ class RawIngestTask(Task):
             existing = set()
         datasets = []
         for file in exposure.files:
-            refs = [DatasetRef(datasetType, d.dataId) for d in file.datasets if d.dataId not in existing]
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=UnresolvedRefWarning)
+                refs = [DatasetRef(datasetType, d.dataId) for d in file.datasets if d.dataId not in existing]
             if refs:
                 datasets.append(
                     FileDataset(path=file.filename.abspath(), refs=refs, formatter=file.FormatterClass)
