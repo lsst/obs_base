@@ -24,7 +24,6 @@ __all__ = ("RawIngestTask", "RawIngestConfig", "makeTransferChoiceField")
 
 import json
 import re
-import warnings
 from collections import defaultdict
 from dataclasses import InitVar, dataclass
 from multiprocessing import Pool
@@ -60,7 +59,6 @@ from lsst.daf.butler import (
     FileDataset,
     Formatter,
     Progress,
-    UnresolvedRefWarning,
 )
 from lsst.pex.config import ChoiceField, Config, Field
 from lsst.pipe.base import Instrument, Task
@@ -1060,15 +1058,6 @@ class RawIngestTask(Task):
             }
         else:
             existing = set()
-        datasets = []
-        for file in exposure.files:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", category=UnresolvedRefWarning)
-                refs = [DatasetRef(datasetType, d.dataId) for d in file.datasets if d.dataId not in existing]
-            if refs:
-                datasets.append(
-                    FileDataset(path=file.filename.abspath(), refs=refs, formatter=file.FormatterClass)
-                )
 
         # Raw files are preferentially ingested using a UUID derived from
         # the collection name and dataId.
@@ -1076,11 +1065,22 @@ class RawIngestTask(Task):
             mode = DatasetIdGenEnum.DATAID_TYPE_RUN
         else:
             mode = DatasetIdGenEnum.UNIQUE
+
+        datasets = []
+        for file in exposure.files:
+            refs = [
+                DatasetRef(datasetType, d.dataId, run=run, id_generation_mode=mode)
+                for d in file.datasets
+                if d.dataId not in existing
+            ]
+            if refs:
+                datasets.append(
+                    FileDataset(path=file.filename.abspath(), refs=refs, formatter=file.FormatterClass)
+                )
+
         self.butler.ingest(
             *datasets,
             transfer=self.config.transfer,
-            run=run,
-            idGenerationMode=mode,
             record_validation_info=track_file_attrs,
         )
         return datasets
