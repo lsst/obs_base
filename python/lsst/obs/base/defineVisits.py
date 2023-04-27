@@ -80,7 +80,12 @@ class VisitSystem(enum.Enum):
     """Each exposure is assigned to its own visit."""
 
     BY_GROUP_METADATA = 1
-    """Visit membership is defined by the value of the exposure.group_id."""
+    """Visit membership is defined by the value of the exposure.group_id.
+
+    THIS SYSTEM IS NO LONGER SUPPORTED.  It cannot be used to define new
+    visits, and the enum value is being retained only to support existing
+    visits in long-lived data repositories.
+    """
 
     BY_SEQ_START_END = 2
     """Visit membership is defined by the values of the ``exposure.day_obs``,
@@ -805,60 +810,6 @@ class _GroupExposuresOneToOneTask(GroupExposuresTask, metaclass=ABCMeta):
     def getVisitSystems(self) -> Set[VisitSystem]:
         # Docstring inherited from GroupExposuresTask.
         return set(VisitSystem.from_names(["one-to-one"]))
-
-
-class _GroupExposuresByGroupMetadataConfig(GroupExposuresConfig):
-    visitSystemId: Field[int] = Field(
-        doc="Integer ID of the visit_system implemented by this grouping algorithm.",
-        dtype=int,
-        default=1,
-        deprecated="No longer used. Replaced by enum.",
-    )
-    visitSystemName: Field[str] = Field(
-        doc="String name of the visit_system implemented by this grouping algorithm.",
-        dtype=str,
-        default="by-group-metadata",
-        deprecated="No longer used. Replaced by enum.",
-    )
-
-
-@registerConfigurable("by-group-metadata", GroupExposuresTask.registry)
-class _GroupExposuresByGroupMetadataTask(GroupExposuresTask, metaclass=ABCMeta):
-    """An exposure grouping algorithm that uses exposure.group_name and
-    exposure.group_id.
-
-    This algorithm _assumes_ exposure.group_id (generally populated from
-    `astro_metadata_translator.ObservationInfo.visit_id`) is not just unique,
-    but disjoint from all `ObservationInfo.exposure_id` values - if it isn't,
-    it will be impossible to ever use both this grouping algorithm and the
-    one-to-one algorithm for a particular camera in the same data repository.
-    """
-
-    ConfigClass = _GroupExposuresByGroupMetadataConfig
-
-    def group(self, exposures: List[DimensionRecord]) -> Iterable[VisitDefinitionData]:
-        # Docstring inherited from GroupExposuresTask.
-        visit_systems = {VisitSystem.from_name("by-group-metadata")}
-        groups = defaultdict(list)
-        for exposure in exposures:
-            groups[exposure.group_name].append(exposure)
-        for visitName, exposuresInGroup in groups.items():
-            instrument = exposuresInGroup[0].instrument
-            visitId = exposuresInGroup[0].group_id
-            assert all(
-                e.group_id == visitId for e in exposuresInGroup
-            ), "Grouping by exposure.group_name does not yield consistent group IDs"
-            yield VisitDefinitionData(
-                instrument=instrument,
-                id=visitId,
-                name=visitName,
-                exposures=exposuresInGroup,
-                visit_systems=visit_systems,
-            )
-
-    def getVisitSystems(self) -> Set[VisitSystem]:
-        # Docstring inherited from GroupExposuresTask.
-        return set(VisitSystem.from_names(["by-group-metadata"]))
 
 
 class _GroupExposuresByCounterAndExposuresConfig(GroupExposuresConfig):
