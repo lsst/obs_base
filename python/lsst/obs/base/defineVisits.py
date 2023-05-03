@@ -1011,18 +1011,24 @@ class _GroupExposuresByCounterAndExposuresTask(GroupExposuresTask, metaclass=ABC
         for exposures_in_group in groups.values():
             sorted_exposures = sorted(exposures_in_group, key=lambda e: e.seq_num)
             first = sorted_exposures[0]
-            if len(sorted_exposures) < first.seq_end - first.seq_start + 1:
+
+            # Only need to look for the seq_nums that we don't already have.
+            seq_nums = set(range(first.seq_start, first.seq_end + 1))
+            seq_nums.difference_update({exp.seq_num for exp in sorted_exposures})
+
+            if seq_nums:
                 # Missing something. Check registry.
-                records = set(
+                records = list(
                     registry.queryDimensionRecords(
                         "exposure",
-                        where="exposure.seq_start = seq_start AND exposure.seq_end = seq_end",
-                        bind={"seq_start": first.seq_start, "seq_end": first.seq_end},
+                        where="exposure.seq_start = seq_start AND exposure.seq_end = seq_end AND "
+                        "exposure.seq_num IN (seq_nums)",
+                        bind={"seq_start": first.seq_start, "seq_end": first.seq_end, "seq_nums": seq_nums},
                         instrument=first.instrument,
                     )
                 )
-                records.difference_update(set(sorted_exposures))
-                missing_exposures.extend(list(records))
+                missing_exposures.extend(records)
+
         return missing_exposures
 
     def group_exposures(self, exposures: list[DimensionRecord]) -> dict[Any, list[DimensionRecord]]:
