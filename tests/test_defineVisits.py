@@ -27,7 +27,7 @@ import unittest
 from collections import defaultdict
 
 import lsst.daf.butler.tests as butlerTests
-from lsst.daf.butler import DimensionRecord, SerializedDimensionRecord
+from lsst.daf.butler import DataCoordinate, DimensionRecord, SerializedDimensionRecord
 from lsst.obs.base import DefineVisitsTask
 from lsst.obs.base.instrument_tests import DummyCam
 from lsst.utils.iteration import ensure_iterable
@@ -114,9 +114,8 @@ class DefineVisitsTestCase(unittest.TestCase):
     def define_visits_incrementally(self, exposure: DimensionRecord) -> None:
         self.butler.registry.insertDimensionData("exposure", exposure)
         dataIds = [
-            d
-            for d in self.butler.registry.queryDataIds(
-                "exposure", instrument="DummyCam", exposure=exposure.id
+            DataCoordinate.standardize(
+                instrument="DummyCam", exposure=exposure.id, universe=self.butler.registry.dimensions
             )
         ]
         self.task.run(dataIds, incremental=True)
