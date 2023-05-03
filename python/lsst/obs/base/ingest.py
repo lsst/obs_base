@@ -907,7 +907,7 @@ class RawIngestTask(Task):
         return data
 
     def prep(
-        self, files: Iterable[ResourcePath], *, pool: Optional[PoolType] = None, processes: int = 1
+        self, files: Iterable[ResourcePath], *, pool: Optional[PoolType] = None
     ) -> Tuple[Iterator[RawExposureData], List[ResourcePath]]:
         """Perform all non-database-updating ingest preprocessing steps.
 
@@ -919,8 +919,6 @@ class RawIngestTask(Task):
         pool : `multiprocessing.Pool`, optional
             If not `None`, a process pool with which to parallelize some
             operations.
-        processes : `int`, optional
-            The number of processes to use.  Ignored if ``pool`` is not `None`.
 
         Returns
         -------
@@ -930,8 +928,6 @@ class RawIngestTask(Task):
         bad_files : `list` of `str`
             List of all the files that could not have metadata extracted.
         """
-        if pool is None and processes > 1:
-            pool = Pool(processes)
         mapFunc = map if pool is None else pool.imap_unordered
 
         def _partition_good_bad(
@@ -1157,7 +1153,19 @@ class RawIngestTask(Task):
             Number of exposures that failed when ingesting raw datasets.
         """
 
-        exposureData, bad_files = self.prep(files, pool=pool, processes=processes)
+        created_pool = False
+        if pool is None and processes > 1:
+            pool = Pool(processes)
+            created_pool = True
+
+        try:
+            exposureData, bad_files = self.prep(files, pool=pool)
+        finally:
+            if created_pool and pool:
+                # The pool is not needed any more so close it if we created
+                # it to ensure we clean up resources.
+                pool.close()
+                pool.join()
 
         # Up to this point, we haven't modified the data repository at all.
         # Now we finally do that, with one transaction per exposure.  This is
