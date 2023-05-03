@@ -664,10 +664,9 @@ class DefineVisitsTask(Task):
         incremental : `bool`, optional
             If `True` indicate that exposures are being ingested incrementally
             and visit definition will be run on partial visits. This will
-            force ``update_records`` to `True`. If ``update_records`` is
-            `True` but ``incremental`` is `False`, then visits will be
-            determined correctly but the ``visit_definition`` table will not
-            be updated to know about the additional exposure.
+            force ``update_records`` to `True`. If there is any risk that
+            files are being ingested incrementally it is critical that this
+            parameter is set to `True` and not to rely on ``updated_records``.
 
         Raises
         ------

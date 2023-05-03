@@ -105,8 +105,7 @@ def convert(*args, **kwargs):
     default=False,
     help="Use this option to force updates to the visit definition record. "
     "Should only be used if you know that there has been a change to the "
-    "exposure records or if new exposures have been added to an existing "
-    "visit since the visits were last defined.",
+    "exposure records, such as a change to the metadata translator.",
 )
 @click.option(
     "--incremental/--no-incremental",
