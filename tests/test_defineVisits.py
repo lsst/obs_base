@@ -24,48 +24,111 @@ import pickle
 import shutil
 import tempfile
 import unittest
+from collections import defaultdict
 
-import lsst.daf.butler as dafButler
 import lsst.daf.butler.tests as butlerTests
+from lsst.daf.butler import DataCoordinate, DimensionRecord, SerializedDimensionRecord
 from lsst.obs.base import DefineVisitsTask
+from lsst.obs.base.instrument_tests import DummyCam
+from lsst.utils.iteration import ensure_iterable
 
 TESTDIR = os.path.dirname(__file__)
+DATADIR = os.path.join(TESTDIR, "data", "visits")
 
 
 class DefineVisitsTestCase(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        """Create a new butler once only."""
-        cls.root = tempfile.mkdtemp(dir=TESTDIR)
-
-        dataIds = {
-            "instrument": ["DummyCam"],
-            "physical_filter": ["d-r"],
-            "exposure": [42, 43, 44],
-            "visit": [42, 43, 44],
-        }
-
-        cls.creatorButler = butlerTests.makeTestRepo(cls.root, dataIds)
-
-        # Create dataset types used by the tests
-        cls.storageClassFactory = dafButler.StorageClassFactory()
-        for datasetTypeName, storageClassName in (("raw", "ExposureF"),):
-            storageClass = cls.storageClassFactory.getStorageClass(storageClassName)
-            butlerTests.addDatasetType(
-                cls.creatorButler, datasetTypeName, {"instrument", "exposure"}, storageClass
-            )
-
-    @classmethod
-    def tearDownClass(cls):
-        if cls.root is not None:
-            shutil.rmtree(cls.root, ignore_errors=True)
-
     def setUp(self):
+        """Create a new butler for each test since we are changing dimension
+        records."""
+        self.root = tempfile.mkdtemp(dir=TESTDIR)
+        self.creatorButler = butlerTests.makeTestRepo(self.root, [])
         self.butler = butlerTests.makeTestCollection(self.creatorButler)
 
         self.config = DefineVisitsTask.ConfigClass()
-        self.config.computeVisitRegions.active.padding = 42  # non-default value
         self.task = DefineVisitsTask(config=self.config, butler=self.butler)
+
+        # Need to register the instrument.
+        DummyCam().register(self.butler.registry)
+
+        # Read the exposure records.
+        self.records: dict[int, DimensionRecord] = {}
+        for i in (347, 348, 349):
+            simple = SerializedDimensionRecord.parse_file(os.path.join(DATADIR, f"exp_{i}.json"))
+            self.records[i] = DimensionRecord.from_simple(simple, registry=self.butler.registry)
+
+    def tearDown(self):
+        if self.root is not None:
+            shutil.rmtree(self.root, ignore_errors=True)
+
+    def assertVisits(self):
+        """Check that the visits were registered as expected."""
+        visits = list(self.butler.registry.queryDimensionRecords("visit"))
+        self.assertEqual(len(visits), 4)
+        self.assertEqual(
+            {visit.id for visit in visits}, {2022040500347, 2022040500348, 2022040500349, 92022040500348}
+        )
+
+        # Ensure that the definitions are correct (ignoring order).
+        defmap = defaultdict(set)
+        definitions = list(self.butler.registry.queryDimensionRecords("visit_definition"))
+        for defn in definitions:
+            defmap[defn.visit].add(defn.exposure)
+
+        self.assertEqual(
+            dict(defmap),
+            {
+                92022040500348: {2022040500348},
+                2022040500347: {2022040500347},
+                2022040500348: {2022040500348, 2022040500349},
+                2022040500349: {2022040500349},
+            },
+        )
+
+    def define_visits(
+        self, exposures: list[DimensionRecord | list[DimensionRecord]], incremental: bool
+    ) -> None:
+        for records in exposures:
+            self.butler.registry.insertDimensionData("exposure", *ensure_iterable(records))
+            # Include all records so far in definition.
+            dataIds = [d for d in self.butler.registry.queryDataIds("exposure", instrument="DummyCam")]
+            self.task.run(dataIds, incremental=incremental)
+
+    def test_defineVisits(self):
+        # Test visit definition with all the records.
+        self.define_visits([[r for r in self.records.values()]], incremental=False)  # list inside a list
+        self.assertVisits()
+
+    def test_incremental_cumulative(self):
+        # Define the visits after each exposure.
+        self.define_visits([exp for exp in self.records.values()], incremental=True)
+        self.assertVisits()
+
+    def test_incremental_cumulative_reverse(self):
+        # In reverse order we should still eventually end up with the right
+        # answer.
+        with self.assertLogs("lsst.defineVisits.groupExposures", level="WARNING") as cm:
+            self.define_visits(list(reversed(self.records.values())), incremental=True)
+        self.assertIn("Skipping the multi-snap definition", "\n".join(cm.output))
+        self.assertVisits()
+
+    def define_visits_incrementally(self, exposure: DimensionRecord) -> None:
+        self.butler.registry.insertDimensionData("exposure", exposure)
+        dataIds = [
+            DataCoordinate.standardize(
+                instrument="DummyCam", exposure=exposure.id, universe=self.butler.registry.dimensions
+            )
+        ]
+        self.task.run(dataIds, incremental=True)
+
+    def test_incremental(self):
+        for record in self.records.values():
+            self.define_visits_incrementally(record)
+        self.assertVisits()
+
+    def test_incremental_reverse(self):
+        for record in reversed(self.records.values()):
+            self.define_visits_incrementally(record)
+        self.assertVisits()
 
     def testPickleTask(self):
         stream = pickle.dumps(self.task)

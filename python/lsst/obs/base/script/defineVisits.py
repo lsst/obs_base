@@ -27,7 +27,16 @@ from lsst.pipe.base import Instrument
 log = logging.getLogger("lsst.obs.base.defineVisits")
 
 
-def defineVisits(repo, config_file, collections, instrument, where=None, raw_name="raw"):
+def defineVisits(
+    repo,
+    config_file,
+    collections,
+    instrument,
+    where=None,
+    update_records=False,
+    incremental=False,
+    raw_name="raw",
+):
     """Implements the command line interface `butler define-visits` subcommand,
     should only be called by command line tools and unit test code that tests
     this function.
@@ -49,6 +58,13 @@ def defineVisits(repo, config_file, collections, instrument, where=None, raw_nam
     where : `str`, optional
         Query clause to use when querying for dataIds. Can be used to limit
         the relevant exposures.
+    update_records : `bool`, optional
+        Control whether recalculated visit definitions will be accepted or
+        not.
+    incremental : `bool`, optional
+        Declare that the visit definitions are being run in a situation
+        where data from multi-snap visits are being ingested incrementally
+        and so the visit definition could change as new data arrive.
     raw_name : `str`, optional
         Name of the raw dataset type name.  Defaults to 'raw'.
 
@@ -101,4 +117,6 @@ def defineVisits(repo, config_file, collections, instrument, where=None, raw_nam
             where=where,
         ).expanded(),
         collections=collections,
+        update_records=update_records,
+        incremental=incremental,
     )
