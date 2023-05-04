@@ -224,11 +224,10 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             # This is not an on-sky observation
             return None
 
-        skyWcs = self._createSkyWcsFromMetadata()
-
         if visitInfo is None:
             msg = "No VisitInfo; cannot access boresight information. Defaulting to metadata-based SkyWcs."
             log.warning(msg)
+            skyWcs = self._createSkyWcsFromMetadata()
             if skyWcs is None:
                 raise InitialSkyWcsError(
                     "Failed to create both metadata and boresight-based SkyWcs."
