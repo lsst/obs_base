@@ -1007,7 +1007,7 @@ class RawIngestTask(Task):
         exposure: RawExposureData,
         datasetType: DatasetType,
         *,
-        run: Optional[str] = None,
+        run: str,
         skip_existing_exposures: bool = False,
         track_file_attrs: bool = True,
     ) -> List[FileDataset]:
@@ -1021,9 +1021,8 @@ class RawIngestTask(Task):
             data ID attributes expanded.
         datasetType : `DatasetType`
             The dataset type associated with this exposure.
-        run : `str`, optional
-            Name of a RUN-type collection to write to, overriding
-            ``self.butler.run``.
+        run : `str`
+            Name of a RUN-type collection to write to.
         skip_existing_exposures : `bool`, optional
             If `True` (`False` is default), skip raws that have already been
             ingested (i.e. raws for which we already have a dataset with the
