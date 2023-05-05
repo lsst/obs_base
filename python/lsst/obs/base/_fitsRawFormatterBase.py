@@ -169,7 +169,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         try:
             lsst.afw.geom.stripWcsMetadata(self.metadata)
         except TypeError as e:
-            log.warning("Cannot create a valid WCS from metadata: %s", e.args[0])
+            log.debug("Error caught and ignored while stripping metadata: %s", e.args[0])
 
     def makeVisitInfo(self):
         """Construct a VisitInfo from metadata.
@@ -381,8 +381,6 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         info.setFilter(self.makeFilterLabel())
         info.setVisitInfo(self.makeVisitInfo())
         info.setWcs(self.makeWcs(info.getVisitInfo(), info.getDetector()))
-        # We don't need to call stripMetadata() here because it has already
-        # been stripped during creation of the WCS.
 
         self.stripMetadata()
         exposure.setMetadata(self.metadata)
