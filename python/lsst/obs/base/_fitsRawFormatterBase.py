@@ -166,7 +166,10 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
 
     def stripMetadata(self):
         """Remove metadata entries that are parsed into components."""
-        self._createSkyWcsFromMetadata()
+        try:
+            lsst.afw.geom.stripWcsMetadata(self.metadata)
+        except TypeError as e:
+            log.warning("Cannot create a valid WCS from metadata: %s", e.args[0])
 
     def makeVisitInfo(self):
         """Construct a VisitInfo from metadata.
@@ -380,4 +383,6 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         info.setWcs(self.makeWcs(info.getVisitInfo(), info.getDetector()))
         # We don't need to call stripMetadata() here because it has already
         # been stripped during creation of the WCS.
+
+        self.stripMetadata()
         exposure.setMetadata(self.metadata)
