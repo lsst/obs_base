@@ -166,7 +166,10 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
 
     def stripMetadata(self):
         """Remove metadata entries that are parsed into components."""
-        self._createSkyWcsFromMetadata()
+        try:
+            lsst.afw.geom.stripWcsMetadata(self.metadata)
+        except TypeError as e:
+            log.warning("Cannot create a valid WCS from metadata: %s", e.args[0])
 
     def makeVisitInfo(self):
         """Construct a VisitInfo from metadata.
@@ -224,9 +227,9 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             # This is not an on-sky observation
             return None
 
-        skyWcs = self._createSkyWcsFromMetadata()
-
         if visitInfo is None:
+            skyWcs = self._createSkyWcsFromMetadata()
+
             msg = "No VisitInfo; cannot access boresight information. Defaulting to metadata-based SkyWcs."
             log.warning(msg)
             if skyWcs is None:
@@ -235,6 +238,8 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
                     "See warnings in log messages for details."
                 )
             return skyWcs
+
+        self.stripMetadata()
 
         return self.makeRawSkyWcsFromBoresight(
             visitInfo.getBoresightRaDec(), visitInfo.getBoresightRotAngle(), detector
