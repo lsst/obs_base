@@ -166,7 +166,10 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
 
     def stripMetadata(self):
         """Remove metadata entries that are parsed into components."""
-        self._createSkyWcsFromMetadata()
+        try:
+            lsst.afw.geom.stripWcsMetadata(self.metadata)
+        except TypeError as e:
+            log.debug("Error caught and ignored while stripping metadata: %s", e.args[0])
 
     def makeVisitInfo(self):
         """Construct a VisitInfo from metadata.
@@ -224,11 +227,10 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             # This is not an on-sky observation
             return None
 
-        skyWcs = self._createSkyWcsFromMetadata()
-
         if visitInfo is None:
             msg = "No VisitInfo; cannot access boresight information. Defaulting to metadata-based SkyWcs."
             log.warning(msg)
+            skyWcs = self._createSkyWcsFromMetadata()
             if skyWcs is None:
                 raise InitialSkyWcsError(
                     "Failed to create both metadata and boresight-based SkyWcs."
@@ -379,6 +381,6 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         info.setFilter(self.makeFilterLabel())
         info.setVisitInfo(self.makeVisitInfo())
         info.setWcs(self.makeWcs(info.getVisitInfo(), info.getDetector()))
-        # We don't need to call stripMetadata() here because it has already
-        # been stripped during creation of the WCS.
+
+        self.stripMetadata()
         exposure.setMetadata(self.metadata)

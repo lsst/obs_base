@@ -159,12 +159,11 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
         self.assertNotEqual(wcs, self.metadataSkyWcs)
         self.assertEqual(wcs, self.boresightSkyWcs)
 
-    def test_makeWcs_warn_if_metadata_is_bad(self):
-        """If the metadata is bad, log a warning and use the VisitInfo WCS."""
+    def test_makeWcs_if_metadata_is_bad(self):
+        """Always use the VisitInfo WCS if available."""
         detector = self.formatter.getDetector(1)
         self.metadata.remove("CTYPE1")
-        with self.warnContext:
-            wcs = self.formatter.makeWcs(self.visitInfo, detector)
+        wcs = self.formatter.makeWcs(self.visitInfo, detector)
         self.assertNotEqual(wcs, self.metadataSkyWcs)
         self.assertEqual(wcs, self.boresightSkyWcs)
 
