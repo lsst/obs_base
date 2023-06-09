@@ -351,7 +351,7 @@ class Instrument(InstrumentBase):
         run = self.makeUnboundedCalibrationRunName(*labels)
         butler.registry.registerRun(run)
         datasetType = DatasetType(
-            "camera", ("instrument",), "Camera", isCalibration=True, universe=butler.registry.dimensions
+            "camera", ("instrument",), "Camera", isCalibration=True, universe=butler.dimensions
         )
         butler.registry.registerDatasetType(datasetType)
         camera = self.getCamera()
@@ -403,7 +403,7 @@ class Instrument(InstrumentBase):
             definition = StandardCuratedCalibrationDatasetTypes[datasetTypeName]
             datasetType = DatasetType(
                 datasetTypeName,
-                universe=butler.registry.dimensions,
+                universe=butler.dimensions,
                 isCalibration=True,
                 # MyPy should be able to figure out that the kwargs here have
                 # the right types, but it can't.
@@ -544,7 +544,7 @@ class Instrument(InstrumentBase):
                     dimension_arguments["physical_filter"] = md["FILTER"]
 
                 dataId = DataCoordinate.standardize(
-                    universe=butler.registry.dimensions,
+                    universe=butler.dimensions,
                     instrument=self.getName(),
                     **dimension_arguments,
                 )
@@ -679,7 +679,7 @@ def loadCamera(butler: Butler, dataId: DataId, *, collections: Any = None) -> Tu
     # to ensure it only happens once.
     # This will also catch problems with the data ID not having keys we need.
     try:
-        dataId = butler.registry.expandDataId(dataId, graph=butler.registry.dimensions["exposure"].graph)
+        dataId = butler.registry.expandDataId(dataId, graph=butler.dimensions["exposure"].graph)
     except DataIdError as exc:
         raise LookupError(str(exc)) from exc
     try:

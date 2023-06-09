@@ -290,7 +290,7 @@ class RawIngestTask(Task):
             "raw",
             ("instrument", "detector", "exposure"),
             "Exposure",
-            universe=self.butler.registry.dimensions,
+            universe=self.butler.dimensions,
         )
 
     # Mypy can not determine that the config passed to super() is this type.
@@ -309,7 +309,7 @@ class RawIngestTask(Task):
         config.validate()  # Not a CmdlineTask nor PipelineTask, so have to validate the config here.
         super().__init__(config, **kwargs)
         self.butler = butler
-        self.universe = self.butler.registry.dimensions
+        self.universe = self.butler.dimensions
         self.datasetType = self.getDatasetType()
         self._on_success = on_success
         self._on_metadata_failure = on_metadata_failure
@@ -1230,7 +1230,7 @@ class RawIngestTask(Task):
                 datasetTypeName, dimensions, storageClass = raw_definition
                 if not (datasetType := datasetTypes.get(datasetTypeName)):
                     datasetType = DatasetType(
-                        datasetTypeName, dimensions, storageClass, universe=self.butler.registry.dimensions
+                        datasetTypeName, dimensions, storageClass, universe=self.butler.dimensions
                     )
             else:
                 datasetType = self.datasetType

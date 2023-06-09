@@ -83,7 +83,7 @@ def defineVisits(
     # If this is old schema but is using modern visit grouping algorithm,
     # (which is the default for new code) revert to one-to-one (which
     # was the old default).
-    exposure_dimension = butler.registry.dimensions["exposure"]
+    exposure_dimension = butler.dimensions["exposure"]
     modern = "one-to-one-and-by-counter"
     if "seq_end" not in exposure_dimension.metadata and config.groupExposures.name == modern:
         legacy = "one-to-one"

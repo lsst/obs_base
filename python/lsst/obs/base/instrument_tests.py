@@ -172,7 +172,7 @@ class DummyCam(Instrument):
 
         datasetType = DatasetType(
             "testCalib",
-            universe=butler.registry.dimensions,
+            universe=butler.dimensions,
             isCalibration=True,
             dimensions=("instrument", "detector"),
             storageClass="CuratedCalibration",
