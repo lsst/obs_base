@@ -115,7 +115,7 @@ class DefineVisitsTestCase(unittest.TestCase):
         self.butler.registry.insertDimensionData("exposure", exposure)
         dataIds = [
             DataCoordinate.standardize(
-                instrument="DummyCam", exposure=exposure.id, universe=self.butler.registry.dimensions
+                instrument="DummyCam", exposure=exposure.id, universe=self.butler.dimensions
             )
         ]
         self.task.run(dataIds, incremental=True)

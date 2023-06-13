@@ -120,29 +120,6 @@ class ExposureAssembler(StorageClassDelegate):
                 f"Do not know how to retrieve component {componentName} from {type(composite)}"
             )
 
-    def getValidComponents(self, composite: Exposure) -> Dict[str, Any]:
-        """Extract all non-None components from a composite.
-
-        Parameters
-        ----------
-        composite : `object`
-            Composite from which to extract components.
-
-        Returns
-        -------
-        comps : `dict`
-            Non-None components extracted from the composite, indexed by the
-            component name as derived from the `self.storageClass`.
-        """
-        # For Exposure we call the generic version twice: once for top level
-        # components, and again for ExposureInfo.
-        expItems, expInfoItems = self._groupRequestedComponents()
-
-        components = super().getValidComponents(composite)
-        infoComps = super().getValidComponents(composite.getInfo())
-        components.update(infoComps)
-        return components
-
     def disassemble(
         self, composite: Any, subset: Optional[Iterable] = None, override: Optional[Any] = None
     ) -> Dict[str, DatasetComponent]:

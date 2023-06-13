@@ -461,7 +461,7 @@ class DefineVisitsTask(Task):
         config.validate()  # Not a CmdlineTask nor PipelineTask, so have to validate the config here.
         super().__init__(config, **kwargs)
         self.butler = butler
-        self.universe = self.butler.registry.dimensions
+        self.universe = self.butler.dimensions
         self.progress = Progress("obs.base.DefineVisitsTask")
         self.makeSubtask("groupExposures")
         self.makeSubtask("computeVisitRegions", butler=self.butler)

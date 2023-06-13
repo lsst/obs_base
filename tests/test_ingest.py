@@ -54,12 +54,8 @@ class RawIngestTestCase(IngestTestBase, unittest.TestCase):
     def visits(self):
         butler = Butler(self.root, collections=[self.outputRun])
         return {
-            DataCoordinate.standardize(
-                instrument="DummyCam", visit=100, universe=butler.registry.dimensions
-            ): [
-                DataCoordinate.standardize(
-                    instrument="DummyCam", exposure=100, universe=butler.registry.dimensions
-                )
+            DataCoordinate.standardize(instrument="DummyCam", visit=100, universe=butler.dimensions): [
+                DataCoordinate.standardize(instrument="DummyCam", exposure=100, universe=butler.dimensions)
             ]
         }
 
