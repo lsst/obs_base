@@ -31,7 +31,7 @@ from lsst.daf.butler import DataCoordinate
 
 
 @deprecated(
-    "Deprecated in favor of lsst.meas.base.CatalogIdPacker; will be removed after v27.",
+    "Deprecated in favor of `lsst.meas.base.IdGenerator`; will be removed after v27.",
     version="v26",
     category=FutureWarning,
 )
