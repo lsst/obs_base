@@ -37,7 +37,7 @@ from lsst.afw.image import LOCAL, ExposureFitsReader
 from lsst.afw.math import flipImage
 from lsst.daf.base import PropertyList, PropertySet
 from lsst.daf.butler import Config, DatasetType, StorageClassFactory
-from lsst.daf.butler.tests import DatasetTestHelper, addDatasetType, makeTestCollection, makeTestRepo
+from lsst.daf.butler.tests import addDatasetType, makeTestCollection, makeTestRepo
 from lsst.geom import Box2I, Extent2I, Point2I
 from lsst.obs.base.exposureAssembler import ExposureAssembler
 from lsst.obs.base.tests import make_ramp_exposure_trimmed, make_ramp_exposure_untrimmed
@@ -99,7 +99,7 @@ READ_COMPONENTS = {
 }
 
 
-class ButlerFitsTests(DatasetTestHelper, lsst.utils.tests.TestCase):
+class ButlerFitsTests(lsst.utils.tests.TestCase):
     @classmethod
     def setUpClass(cls):
         """Create a new butler once only."""
