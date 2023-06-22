@@ -1,5 +1,4 @@
 types-requests
 types-PyYAML
-types-pkg_resources
 types-Deprecated
 types-python-dateutil
