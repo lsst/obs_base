@@ -21,19 +21,20 @@
 
 import unittest
 
-import pkg_resources
 from lsst.obs.base.yamlCamera import makeCamera
+from lsst.resources import ResourcePath
 
 
 class YamlCameraTestCase(unittest.TestCase):
     """Test the YAML camera geometry."""
 
     def setUp(self):
-        self.cameraFile = pkg_resources.resource_filename("lsst.obs.base", "test/dummycam.yaml")
+        self.cameraFile = ResourcePath("resource://lsst.obs.base/test/dummycam.yaml")
 
     def test_basics(self):
         """Basic test of yaml camera construction"""
-        camera = makeCamera(self.cameraFile)
+        with self.cameraFile.as_local() as local_file:
+            camera = makeCamera(local_file.ospath)
 
         self.assertEqual(len(camera), 2)
         self.assertEqual(camera[0].getName(), "RXX_S00")

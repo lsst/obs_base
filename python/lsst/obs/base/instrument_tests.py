@@ -41,11 +41,11 @@ import json
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, ClassVar, Optional, Sequence, Set
 
-import pkg_resources
 from lsst.daf.butler import CollectionType, DatasetType, Registry, RegistryConfig
 from lsst.daf.butler.formatters.yaml import YamlFormatter
 from lsst.obs.base import FilterDefinition, FilterDefinitionCollection, Instrument
 from lsst.obs.base.yamlCamera import makeCamera
+from lsst.resources import ResourcePath
 from lsst.utils.introspection import get_full_type_name
 from pydantic import BaseModel
 
@@ -122,8 +122,8 @@ class DummyCam(Instrument):
     def getCamera(self):
         # Return something that can be indexed by detector number
         # but also has to support getIdIter.
-        filename = pkg_resources.resource_filename("lsst.obs.base", "test/dummycam.yaml")
-        return makeCamera(filename)
+        with ResourcePath("resource://lsst.obs.base/test/dummycam.yaml").as_local() as local_file:
+            return makeCamera(local_file.ospath)
 
     def register(self, registry, update=False):
         """Insert Instrument, physical_filter, and detector entries into a
