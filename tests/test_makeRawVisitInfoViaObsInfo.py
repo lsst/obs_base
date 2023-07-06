@@ -95,9 +95,6 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
                 visitInfo = maker(self.header)
 
         self.assertAlmostEqual(visitInfo.getExposureTime(), self.exposure_time.to_value("s"))
-        with self.assertWarns(FutureWarning):
-            # TODO: tested for backward-compatibility; remove on DM-32138
-            self.assertEqual(visitInfo.getExposureId(), self.exposure_id)
         self.assertEqual(visitInfo.id, self.exposure_id)
         self.assertEqual(visitInfo.getDate(), DateTime("2001-01-02T03:04:06.123456789Z", DateTime.UTC))
         # The header can possibly grow with header fix up provenance.
@@ -134,9 +131,6 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
         visitInfo = MakeRawVisitInfoViaObsInfo.observationInfo2visitInfo(obsInfo)
         self.assertIsInstance(visitInfo, lsst.afw.image.VisitInfo)
         self.assertAlmostEqual(visitInfo.getExposureTime(), self.exposure_time.to_value("s"))
-        with self.assertWarns(FutureWarning):
-            # TODO: tested for backward-compatibility; remove on DM-32138
-            self.assertEqual(visitInfo.getExposureId(), self.exposure_id)
         self.assertEqual(visitInfo.id, self.exposure_id)
         self.assertEqual(visitInfo.getDate(), DateTime("2001-01-02T03:04:06.123456789Z", DateTime.UTC))
         self.assertEqual(visitInfo.getInstrumentLabel(), "SomeCamera")

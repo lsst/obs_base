@@ -78,7 +78,7 @@ class MakeRawVisitInfoViaObsInfo:
         self.log = log
         self.doStripHeader = doStripHeader
 
-    def __call__(self, md, exposureId=None):
+    def __call__(self, md):
         """Construct a VisitInfo and strip associated data from the metadata.
 
         Parameters
@@ -86,8 +86,6 @@ class MakeRawVisitInfoViaObsInfo:
         md : `lsst.daf.base.PropertyList` or `lsst.daf.base.PropertySet`
             Metadata to pull from.
             May be modified if ``stripHeader`` is ``True``.
-        exposureId : `int`, optional
-            Ignored.  Here for compatibility with `MakeRawVisitInfo`.
 
         Returns
         -------
@@ -131,7 +129,6 @@ class MakeRawVisitInfoViaObsInfo:
             argDict["exposureTime"] = obsInfo.exposure_time.to_value("s")
         if obsInfo.dark_time is not None:
             argDict["darkTime"] = obsInfo.dark_time.to_value("s")
-        argDict["exposureId"] = obsInfo.detector_exposure_id
         argDict["id"] = obsInfo.exposure_id
         argDict["instrumentLabel"] = obsInfo.instrument
         if obsInfo.focus_z is not None:
