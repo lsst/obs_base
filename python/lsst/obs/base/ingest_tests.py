@@ -133,6 +133,12 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         # Register the instrument and its static metadata.
         cls._registerInstrument()
 
+        # Determine the relevant datastore root to use for testing.
+        butler = Butler(cls.root)
+        roots = butler.get_datastore_roots()
+        assert len(roots) == 1  # Only one datastore.
+        cls.datastore_root = list(roots.values())[0]
+
     def setUp(self):
         # Want a unique run name per test.
         self.outputRun = "raw_ingest_" + self.id()
@@ -171,7 +177,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         # Get the URI to the first dataset and check it is inside the
         # datastore.
         datasetUri = butler.getURI(datasets[0])
-        self.assertIsNotNone(datasetUri.relative_to(butler.datastore.root))
+        self.assertIsNotNone(datasetUri.relative_to(self.datastore_root))
 
         # Get the relevant dataset type.
         datasetType = butler.registry.getDatasetType(self.ingestDatasetTypeName)
@@ -350,14 +356,14 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         index_file = source_file_uri.dirname().join("_index.json")
         pathInStore = source_file_uri.basename()
         if index_file.exists():
-            os.symlink(index_file.ospath, butler.datastore.root.join("_index.json").ospath)
+            os.symlink(index_file.ospath, self.datastore_root.join("_index.json").ospath)
         else:
             # No index file so we are free to pick any name.
             pathInStore = "prefix-" + pathInStore
 
         # Create a symlink to the original file so that it looks like it
         # is now inside the datastore.
-        newPath = butler.datastore.root.join(pathInStore)
+        newPath = self.datastore_root.join(pathInStore)
         os.symlink(os.path.abspath(self.file), newPath.ospath)
 
         # If there is a sidecar file it needs to be linked in as well
@@ -378,7 +384,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
         # Check that the URI associated with this path is the right one.
         uri = butler.getURI(self.ingestDatasetTypeName, self.dataIds[0])
-        self.assertEqual(uri.relative_to(butler.datastore.root), pathInStore)
+        self.assertEqual(uri.relative_to(self.datastore_root), pathInStore)
 
     def testFailOnConflict(self):
         """Re-ingesting the same data into the repository should fail."""
