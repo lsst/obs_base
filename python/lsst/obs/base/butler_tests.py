@@ -19,7 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import abc
 import collections
 import inspect
 import unittest
@@ -29,7 +28,7 @@ from lsst.daf.butler.registry import DataIdValueError
 __all__ = ["ButlerGetTests"]
 
 
-class ButlerGetTests(metaclass=abc.ABCMeta):
+class ButlerGetTests:
     """Tests of obs_* Butler get() functionality.
 
     In the subclasses's setUp():

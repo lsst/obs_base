@@ -19,7 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import abc
 import collections
 import math
 
@@ -30,7 +29,7 @@ from lsst.daf.butler import Butler
 __all__ = ["CameraTests"]
 
 
-class CameraTests(metaclass=abc.ABCMeta):
+class CameraTests:
     """Tests that the butler returns a useable Camera.
 
     In the subclasses's setUp():

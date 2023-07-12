@@ -242,7 +242,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         files : `list` [`str`], or None
             List of files to be ingested, or None to use ``self.file``
         """
-        pass
+        return
 
     @classmethod
     def _createRepo(cls):
