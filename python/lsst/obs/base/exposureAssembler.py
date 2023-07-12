@@ -34,6 +34,10 @@ log = logging.getLogger(__name__)
 
 
 class ExposureAssembler(StorageClassDelegate):
+    """Knowledge of how to assemble and disassemble an
+    `~lsst.afw.image.Exposure`.
+    """
+
     EXPOSURE_COMPONENTS = {"image", "variance", "mask", "wcs", "psf"}
     EXPOSURE_INFO_COMPONENTS = {
         "apCorrMap",
@@ -85,7 +89,7 @@ class ExposureAssembler(StorageClassDelegate):
         return expItems, expInfoItems
 
     def getComponent(self, composite: lsst.afw.image.Exposure, componentName: str) -> Any:
-        """Get a component from an Exposure
+        """Get a component from an Exposure.
 
         Parameters
         ----------

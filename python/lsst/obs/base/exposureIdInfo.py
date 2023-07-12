@@ -86,7 +86,7 @@ class ExposureIdInfo:
     """
 
     def __init__(self, expId: int = 0, expBits: int = 1, maxBits: int | None = None):
-        """Construct an ExposureIdInfo
+        """Construct an ExposureIdInfo.
 
         See the class doc string for an explanation of the arguments.
         """

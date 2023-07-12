@@ -168,7 +168,7 @@ class _VisitRecords:
 
 
 class GroupExposuresConfig(Config):
-    pass
+    """Configure exposure grouping."""
 
 
 class GroupExposuresTask(Task, metaclass=ABCMeta):
@@ -276,6 +276,8 @@ class GroupExposuresTask(Task, metaclass=ABCMeta):
 
 
 class ComputeVisitRegionsConfig(Config):
+    """Configure visit region calculations."""
+
     padding: Field[int] = Field(
         dtype=int,
         default=250,
@@ -373,6 +375,8 @@ class ComputeVisitRegionsTask(Task, metaclass=ABCMeta):
 
 
 class DefineVisitsConfig(Config):
+    """Configure visit definition."""
+
     groupExposures = GroupExposuresTask.registry.makeField(
         doc="Algorithm for grouping exposures into visits.",
         default="one-to-one-and-by-counter",

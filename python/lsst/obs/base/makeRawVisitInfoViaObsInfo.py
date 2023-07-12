@@ -105,7 +105,7 @@ class MakeRawVisitInfoViaObsInfo:
     @staticmethod
     def observationInfo2visitInfo(obsInfo, log=None):
         """Construct a `~lsst.afw.image.VisitInfo` from an
-        `~astro_metadata_translator.ObservationInfo`
+        `~astro_metadata_translator.ObservationInfo`.
 
         Parameters
         ----------

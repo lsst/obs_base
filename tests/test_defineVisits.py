@@ -37,6 +37,8 @@ DATADIR = os.path.join(TESTDIR, "data", "visits")
 
 
 class DefineVisitsTestCase(unittest.TestCase):
+    """Test visit definition."""
+
     def setUp(self):
         """Create a new butler for each test since we are changing dimension
         records.

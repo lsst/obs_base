@@ -226,7 +226,7 @@ class ButlerGetTests:
             linearizer.checkDetector(detector)
 
     def test_get_linearizer_bad_detectorIds(self):
-        """Do bad detectorIds raise?"""
+        """Check that bad detectorIds raise."""
         if self.butler_get_data.linearizer_type is unittest.SkipTest:
             self.skipTest("Skipping %s as requested" % (inspect.currentframe().f_code.co_name))
 

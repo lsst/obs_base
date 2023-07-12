@@ -33,7 +33,7 @@ __all__ = ["makeCamera"]
 
 @lru_cache
 def makeCamera(cameraFile):
-    """An imaging camera (e.g. the LSST 3Gpix camera)
+    """Construct an imaging camera (e.g. the LSST 3Gpix camera).
 
     Parameters
     ----------
@@ -68,7 +68,7 @@ def makeCamera(cameraFile):
 
 
 def makeDetectorConfigList(ccdParams):
-    """Make a list of detector configs
+    """Make a list of detector configs.
 
     Returns
     -------
@@ -111,7 +111,7 @@ def makeDetectorConfigList(ccdParams):
 
 
 def makeAmplifierList(ccd):
-    """Construct a list of AmplifierBuilder objects"""
+    """Construct a list of AmplifierBuilder objects."""
     # Much of this will need to be filled in when we know it.
     assert len(ccd) > 0
     amp = list(ccd["amplifiers"].values())[0]
@@ -198,7 +198,7 @@ def makeAmpInfoCatalog(ccd):
 
 def makeBBoxFromList(ylist):
     """Given a list [(x0, y0), (xsize, ysize)], probably from a yaml file,
-    return a BoxI
+    return a BoxI.
     """
     (x0, y0), (xsize, ysize) = ylist
     return geom.BoxI(geom.PointI(x0, y0), geom.ExtentI(xsize, ysize))
@@ -206,7 +206,7 @@ def makeBBoxFromList(ylist):
 
 def makeTransformDict(nativeSys, transformDict, plateScale):
     """Make a dictionary of TransformPoint2ToPoint2s from yaml, mapping from
-    nativeSys
+    nativeSys.
 
     Parameters
     ----------
@@ -276,7 +276,7 @@ def makeCameraFromCatalogs(
     pupilFactoryClass=cameraGeom.pupil.PupilFactory,
 ):
     """Construct a Camera instance from a dictionary of
-       detector name : `lsst.afw.cameraGeom.amplifier`
+    detector name and `lsst.afw.cameraGeom.amplifier`.
 
     Parameters
     ----------
@@ -290,12 +290,11 @@ def makeCameraFromCatalogs(
     transformDict : `dict`
         A dict of lsst.afw.cameraGeom.CameraSys :
         `lsst.afw.geom.TransformPoint2ToPoint2`
-    amplifierDict : `dict`
-        A dictionary of detector name :
-                           `lsst.afw.cameraGeom.Amplifier.Builder`
-    pupilFactoryClass : `type`, optional
-        Class to attach to camera;
-             `lsst.default afw.cameraGeom.PupilFactory`
+    amplifierDict : `dict` [`str`, `lsst.afw.cameraGeom.Amplifier.Builder` ]
+        A dictionary of detector name and amplifier builders.
+    pupilFactoryClass : `type` [ `lsst.default afw.cameraGeom.PupilFactory`], \
+            optional
+        Class to attach to camera.
 
     Returns
     -------

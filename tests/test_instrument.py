@@ -39,7 +39,7 @@ class InstrumentTestCase(InstrumentTests, unittest.TestCase):
     )
 
     def test_getCamera(self):
-        """No camera defined in DummyCam"""
+        """No camera defined in DummyCam."""
         return
 
     def test_collectionTimestamps(self):

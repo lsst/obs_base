@@ -45,6 +45,10 @@ from lsst.obs.base.utils import InitialSkyWcsError, createInitialSkyWcs
 
 
 class SimpleTestingTranslator(FitsTranslator, StubTranslator):
+    """Simple `~astro_metadata_translator.MetadataTranslator` used for
+    testing.
+    """
+
     _const_map = {
         "boresight_rotation_angle": Angle(90 * u.deg),
         "boresight_rotation_coord": "sky",
@@ -78,10 +82,14 @@ class SimpleTestingTranslator(FitsTranslator, StubTranslator):
 
 
 class MakeTestingRawVisitInfo(MakeRawVisitInfoViaObsInfo):
+    """Test class for VisitInfo creation."""
+
     metadataTranslator = SimpleTestingTranslator
 
 
 class SimpleFitsRawFormatter(FitsRawFormatterBase):
+    """Simple test formatter for datastore interaction,."""
+
     filterDefinitions = FilterDefinitionCollection(FilterDefinition(physical_filter="u", band="u"))
 
     @property
@@ -100,6 +108,8 @@ class SimpleFitsRawFormatter(FitsRawFormatterBase):
 
 
 class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
+    """Test that we can read and write FITS files with butler."""
+
     def setUp(self):
         # The FITS WCS and VisitInfo coordinates in this header are
         # intentionally different, to make comparisons between them more
@@ -234,10 +244,11 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
 
 
 class MemoryTester(lsst.utils.tests.MemoryTestCase):
-    pass
+    """Check for file leaks."""
 
 
 def setup_module(module):
+    """Initialize pytest."""
     lsst.utils.tests.init()
 
 

@@ -129,7 +129,7 @@ def check_metadata(
     filepath: str,
     data_name: str,
 ) -> None:
-    """Check that the metadata is complete and self consistent
+    """Check that the metadata is complete and self consistent.
 
     Parameters
     ----------

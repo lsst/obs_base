@@ -28,6 +28,8 @@ from lsst.obs.base import FilterDefinition, FilterDefinitionCollection
 
 
 class TestFilterDefinitionCollection(lsst.utils.tests.TestCase):
+    """Test filter definition collection."""
+
     def setUp(self):
         self.filters1 = FilterDefinitionCollection(
             FilterDefinition(physical_filter="abc"),
@@ -54,6 +56,8 @@ class TestFilterDefinitionCollection(lsst.utils.tests.TestCase):
 
 
 class TestFilterDefinition(lsst.utils.tests.TestCase):
+    """Test filter definition."""
+
     def setUp(self):
         self.filter_g = FilterDefinition(band="g", physical_filter="HSC-G", alias={"ABCDEFG"})
         self.filter_g2 = FilterDefinition(band="g", physical_filter="HSC-G2", afw_name="g2", alias={"HIJK"})
@@ -81,10 +85,11 @@ class TestFilterDefinition(lsst.utils.tests.TestCase):
 
 
 class MemoryTester(lsst.utils.tests.MemoryTestCase):
-    pass
+    """Check for file leaks."""
 
 
 def setup_module(module):
+    """Initialize pytest."""
     lsst.utils.tests.init()
 
 

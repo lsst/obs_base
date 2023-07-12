@@ -179,8 +179,8 @@ class Instrument(InstrumentBase):
     @classmethod
     @lru_cache
     def getObsDataPackageDir(cls) -> str | None:
-        """The root of the obs data package that provides specializations for
-        this instrument.
+        """Return the root of the obs data package that provides
+        specializations for this instrument.
 
         Returns
         -------

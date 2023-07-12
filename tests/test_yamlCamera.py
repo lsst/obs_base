@@ -32,7 +32,7 @@ class YamlCameraTestCase(unittest.TestCase):
         self.cameraFile = ResourcePath("resource://lsst.obs.base/test/dummycam.yaml")
 
     def test_basics(self):
-        """Basic test of yaml camera construction"""
+        """Basic test of yaml camera construction."""
         with self.cameraFile.as_local() as local_file:
             camera = makeCamera(local_file.ospath)
 

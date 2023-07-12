@@ -358,7 +358,7 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
             return recipes
 
         def checkUnrecognized(entry, allowed, description):
-            """Check to see if the entry contains unrecognised keywords"""
+            """Check to see if the entry contains unrecognised keywords."""
             unrecognized = set(entry) - set(allowed)
             if unrecognized:
                 raise RuntimeError(
@@ -426,7 +426,7 @@ class FitsMaskedImageFormatter(StandardFitsImageFormatterBase):
 
 
 def standardizeAmplifierParameters(parameters, on_disk_detector):
-    """Preprocess the Exposure storage class's "amp" and "detector" parameters
+    """Preprocess the Exposure storage class's "amp" and "detector" parameters.
 
     This checks the given objects for consistency with the on-disk geometry and
     converts amplifier IDs/names to Amplifier instances.

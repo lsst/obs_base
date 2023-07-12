@@ -27,7 +27,7 @@ import lsst.utils.tests
 
 
 class BboxFromIrafTestCase(lsst.utils.tests.TestCase):
-    """Demonstrate that we can correctly parse IRAF-style BBOXes"""
+    """Demonstrate that we can correctly parse IRAF-style BBOXes."""
 
     def testValid(self):
         test_data = {
@@ -48,10 +48,11 @@ class BboxFromIrafTestCase(lsst.utils.tests.TestCase):
 
 
 class MemoryTester(lsst.utils.tests.MemoryTestCase):
-    pass
+    """Test for file leaks."""
 
 
 def setup_module(module):
+    """Initialize pytest."""
     lsst.utils.tests.init()
 
 

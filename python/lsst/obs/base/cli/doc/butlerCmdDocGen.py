@@ -30,6 +30,8 @@ from .. import cmd
 
 
 class ButlerCmdDocGen(click.MultiCommand):
+    """Provide access of butler subcommand plugins to Sphinx."""
+
     def list_commands(self, ctx):
         """List the click commands provided by this package.
 
@@ -65,4 +67,5 @@ class ButlerCmdDocGen(click.MultiCommand):
 
 @click.command(cls=ButlerCmdDocGen)
 def cli():
+    """Run the command."""
     pass

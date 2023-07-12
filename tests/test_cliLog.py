@@ -49,6 +49,8 @@ class CliLogTestCase(CliLogTestBase, unittest.TestCase):
 
 @unittest.skipIf(lsstLog is None, "lsst.log is not available.")
 class ConvertLsstLogLevelTestCase(unittest.TestCase):
+    """Test ability to handle lsst.log loggers."""
+
     def test_convertToLsstLogLevel(self):
         """Test that the log levels accepted by the log_level_option are
         translated to lsst.log levels correctly.

@@ -84,9 +84,7 @@ class CameraTests:
         return kwargs
 
     def test_iterable(self):
-        """Simplest camera test: can we get a Camera instance, and does
-        iterating return Detectors?
-        """
+        """Get a camera instance and check it is an iterable."""
         camera = self.butler.get("camera", **self._butler_args())
         self.assertIsInstance(camera, lsst.afw.cameraGeom.Camera)
         for detector in camera:
@@ -101,7 +99,7 @@ class CameraTests:
         self.assertEqual(next(iter(camera)).getName(), self.camera_data.first_detector_name)
 
     def test_plate_scale(self):
-        """Check the plate scale at center of focal plane
+        """Check the plate scale at center of focal plane.
 
         Check plate_scale using the FOCAL_PLANE to FIELD_ANGLE transform
         from the camera.

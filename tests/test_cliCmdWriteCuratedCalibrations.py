@@ -29,6 +29,8 @@ from lsst.obs.base.cli.cmd import write_curated_calibrations
 
 
 class WriteCuratedCalibrationsTest(CliCmdTestBase, unittest.TestCase):
+    """Test write-curated-calibrations command-line tool."""
+
     mockFuncName = "lsst.obs.base.cli.cmd.commands.script.writeCuratedCalibrations"
 
     @staticmethod
@@ -47,7 +49,7 @@ class WriteCuratedCalibrationsTest(CliCmdTestBase, unittest.TestCase):
         )
 
     def test_missing(self):
-        """Test a missing argument"""
+        """Test a missing argument."""
         self.run_missing(["write-curated-calibrations"], "Missing argument ['\"]REPO['\"]")
         self.run_missing(["write-curated-calibrations", "here"], "Missing argument ['\"]INSTRUMENT['\"]")
 

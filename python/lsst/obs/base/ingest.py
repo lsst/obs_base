@@ -461,7 +461,8 @@ class RawIngestTask(Task):
 
     @classmethod
     def getObservationInfoSubsets(cls) -> tuple[set, set]:
-        """Return subsets of fields in the `ObservationInfo` that we care about
+        """Return subsets of fields in the `ObservationInfo` that we care
+        about.
 
         These fields will be used in constructing an exposure record.
 
@@ -797,7 +798,7 @@ class RawIngestTask(Task):
     def makeExposureRecord(
         self, obsInfo: ObservationInfo, universe: DimensionUniverse, **kwargs: Any
     ) -> DimensionRecord:
-        """Construct a registry record for an exposure
+        """Construct a registry record for an exposure.
 
         This is a method that subclasses will often want to customize. This can
         often be done by calling this base class implementation with additional
@@ -823,7 +824,7 @@ class RawIngestTask(Task):
     def makeDependencyRecords(
         self, obsInfo: ObservationInfo, universe: DimensionUniverse
     ) -> dict[str, DimensionRecord]:
-        """Construct dependency records
+        """Construct dependency records.
 
         These dependency records will be inserted into the
         `~lsst.daf.butler.Registry` before the exposure records, because they
