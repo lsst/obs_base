@@ -47,6 +47,7 @@ from lsst.afw.math import BoundedField  # noqa: F401
 from lsst.daf.base import PropertySet
 from lsst.daf.butler import Formatter
 from lsst.utils.classes import cached_getter
+from lsst.utils.introspection import find_outside_stacklevel
 
 
 class FitsImageFormatterBase(Formatter):
@@ -627,7 +628,13 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
                 warnings.warn(
                     f"Data ID {self.dataId} is missing (implied) value(s) for {missing}; "
                     "the correctness of this Exposure's FilterLabel cannot be guaranteed. "
-                    "Call Registry.expandDataId before Butler.get to avoid this."
+                    "Call Registry.expandDataId before Butler.get to avoid this.",
+                    # It is not entirely obvious what the correct stacklevel
+                    # should be for a formatter. Outside of obs_base will be
+                    # the butler datastore. Outside of daf_butler might be
+                    # the right answer and could be the caller using butler.get
+                    # or could be a runQuantum method.
+                    stacklevel=find_outside_stacklevel("lsst.obs.base"),
                 )
             return file_filter_label
         if band is None and physical_filter is None:
@@ -642,6 +649,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
             warnings.warn(
                 f"Reading {self.fileDescriptor.location} with data ID {self.dataId}: "
                 f"filter label mismatch (file is {file_filter_label}, data ID is "
-                f"{data_id_filter_label}).  This is probably a bug in the code that produced it."
+                f"{data_id_filter_label}).  This is probably a bug in the code that produced it.",
+                stacklevel=find_outside_stacklevel("lsst.obs.base"),
             )
         return data_id_filter_label
