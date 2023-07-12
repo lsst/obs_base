@@ -91,7 +91,7 @@ class ObsTests(butler_tests.ButlerGetTests, camera_tests.CameraTests):
 
     def tearDown(self):
         del self.butler
-        super(ObsTests, self).tearDown()
+        super().tearDown()
 
 
 def make_ramp_array(bbox, pedestal):

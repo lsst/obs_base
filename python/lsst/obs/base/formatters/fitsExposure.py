@@ -459,7 +459,7 @@ def standardizeAmplifierParameters(parameters, on_disk_detector):
         return None, on_disk_detector, False
     if "bbox" in parameters or "origin" in parameters:
         raise ValueError("Cannot pass 'amp' with 'bbox' or 'origin'.")
-    if isinstance(amplifier, (int, str)):
+    if isinstance(amplifier, int | str):
         amp_key = amplifier
         target_amplifier = None
     else:

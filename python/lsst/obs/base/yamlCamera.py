@@ -31,7 +31,7 @@ from lsst.afw.cameraGeom import Amplifier, Camera, ReadoutCorner
 __all__ = ["makeCamera"]
 
 
-@lru_cache()
+@lru_cache
 def makeCamera(cameraFile):
     """An imaging camera (e.g. the LSST 3Gpix camera)
 

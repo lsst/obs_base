@@ -380,7 +380,7 @@ datastore:
         """
         config = RawIngestTask.ConfigClass(failFast=True)
         task = RawIngestTask(config=config, butler=self.butler)
-        with open(os.path.join(INGESTDIR, "sidecar_data", "dataset_1.json"), "r") as file:
+        with open(os.path.join(INGESTDIR, "sidecar_data", "dataset_1.json")) as file:
             metadata = json.load(file)
         # Modify unique identifiers to avoid clashes with ingests from
         # other test methods in this test case, because those share a a

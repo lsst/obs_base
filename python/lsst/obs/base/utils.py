@@ -125,6 +125,6 @@ def bboxFromIraf(irafBBoxStr):
     mat = re.search(r"^\[([-\d]+):([-\d]+),([-\d]+):([-\d]+)\]$", irafBBoxStr)
     if not mat:
         raise RuntimeError('Unable to parse IRAF-style bbox "%s"' % irafBBoxStr)
-    x0, x1, y0, y1 = [int(_) for _ in mat.groups()]
+    x0, x1, y0, y1 = (int(_) for _ in mat.groups())
 
     return geom.BoxI(geom.PointI(x0 - 1, y0 - 1), geom.PointI(x1 - 1, y1 - 1))
