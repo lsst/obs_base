@@ -389,7 +389,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     def testFailOnConflict(self):
         """Re-ingesting the same data into the repository should fail."""
         self._ingestRaws(transfer="symlink")
-        with self.assertRaises(Exception):
+        with self.assertRaises(AssertionError):
             self._ingestRaws(transfer="symlink")
 
     def testWriteCuratedCalibrations(self):
