@@ -25,7 +25,7 @@ import logging
 from typing import Any, Dict, Iterable, Mapping, Optional, Set, Tuple, Type
 
 # Need to enable PSFs to be instantiated
-import lsst.afw.detection  # noqa: F401
+import lsst.afw.detection
 from lsst.afw.image import Exposure, makeExposure, makeMaskedImage
 from lsst.daf.butler import DatasetComponent, StorageClassDelegate
 
