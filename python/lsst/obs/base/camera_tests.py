@@ -91,7 +91,7 @@ class CameraTests(metaclass=abc.ABCMeta):
         camera = self.butler.get("camera", **self._butler_args())
         self.assertIsInstance(camera, lsst.afw.cameraGeom.Camera)
         for detector in camera:
-            msg = "Failed for detector={}".format(detector)
+            msg = f"Failed for detector={detector}"
             self.assertIsInstance(detector, lsst.afw.cameraGeom.Detector, msg=msg)
 
     def test_camera_butler(self):

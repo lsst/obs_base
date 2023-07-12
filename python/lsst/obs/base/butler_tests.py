@@ -212,7 +212,7 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
                 # This means one of the dataId values does not exist.
                 subset = {}
 
-            self.assertEqual(len(subset), expect, msg="Failed for kwargs: {}".format(kwargs))
+            self.assertEqual(len(subset), expect, msg=f"Failed for kwargs: {kwargs}")
 
     def test_get_linearizer(self):
         """Test that we can get a linearizer for good detectorIds."""

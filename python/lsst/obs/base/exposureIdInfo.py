@@ -94,7 +94,7 @@ class ExposureIdInfo:
         expBits = int(expBits)
 
         if expId.bit_length() > expBits:
-            raise RuntimeError("expId=%s uses %s bits > expBits=%s" % (expId, expId.bit_length(), expBits))
+            raise RuntimeError(f"expId={expId} uses {expId.bit_length()} bits > expBits={expBits}")
 
         self.expId = expId
         self.expBits = expBits
@@ -102,7 +102,7 @@ class ExposureIdInfo:
         if maxBits is not None:
             maxBits = int(maxBits)
             if maxBits < expBits:
-                raise RuntimeError("expBits=%s > maxBits=%s" % (expBits, maxBits))
+                raise RuntimeError(f"expBits={expBits} > maxBits={maxBits}")
         self.maxBits = maxBits
 
     def __repr__(self) -> str:
