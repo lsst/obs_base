@@ -33,7 +33,7 @@ class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
 
     @staticmethod
     def defaultExpected():
-        return dict(config_file=None, collections=())
+        return {"config_file": None, "collections": ()}
 
     @staticmethod
     def command():

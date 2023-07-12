@@ -231,7 +231,7 @@ def makeTransformDict(nativeSys, transformDict, plateScale):
     # it's assumed
     assert nativeSys == cameraGeom.FOCAL_PLANE, "Cameras with nativeSys != FOCAL_PLANE are not supported."
 
-    resMap = dict()
+    resMap = {}
 
     for key, transform in transformDict.items():
         transformType = transform["transformType"]

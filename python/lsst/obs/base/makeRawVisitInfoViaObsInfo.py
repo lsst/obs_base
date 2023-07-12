@@ -122,7 +122,7 @@ class MakeRawVisitInfoViaObsInfo:
             `~lsst.afw.image.VisitInfo` derived from the supplied
             `~astro_metadata_translator.ObservationInfo`.
         """
-        argDict = dict()
+        argDict = {}
 
         # Map the translated information into a form suitable for VisitInfo
         if obsInfo.exposure_time is not None:

@@ -47,7 +47,7 @@ class RawIngestTestCase(IngestTestBase, unittest.TestCase):
     ingestDir = TESTDIR
     instrumentClassName = "lsst.obs.base.instrument_tests.DummyCam"
     file = os.path.join(INGESTDIR, "sidecar_data", "dataset_1.yaml")
-    dataIds = [dict(instrument="DummyCam", exposure=100, detector=0)]
+    dataIds = [{"instrument": "DummyCam", "exposure": 100, "detector": 0}]
     seed_config = os.path.join(TESTDIR, "data", "curated", "seed.yaml")
 
     @property

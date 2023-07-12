@@ -510,7 +510,7 @@ class Instrument(InstrumentBase):
 
         datasetRecords = []
         for path in calibsDict:
-            times = sorted([k for k in calibsDict[path]])
+            times = sorted(calibsDict[path])
             calibs = [calibsDict[path][time] for time in times]
             atimes: list[astropy.time.Time | None] = [
                 astropy.time.Time(t, format="datetime", scale="utc") for t in times

@@ -82,7 +82,7 @@ class CameraTests(metaclass=abc.ABCMeta):
         """
         kwargs = {}
         if isinstance(self.butler, Butler):
-            kwargs = dict(instrument=self.camera_data.camera_name)
+            kwargs = {"instrument": self.camera_data.camera_name}
         return kwargs
 
     def test_iterable(self):

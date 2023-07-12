@@ -83,7 +83,7 @@ class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
                 repo="repo",
                 locations=("resources",),
                 output_run="out",
-                config=dict(foo="1", bar="2", baz="3"),
+                config={"foo": "1", "bar": "2", "baz": "3"},
             ),
         )
 

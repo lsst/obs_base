@@ -34,22 +34,20 @@ log = logging.getLogger(__name__)
 
 
 class ExposureAssembler(StorageClassDelegate):
-    EXPOSURE_COMPONENTS = set(("image", "variance", "mask", "wcs", "psf"))
-    EXPOSURE_INFO_COMPONENTS = set(
-        (
-            "apCorrMap",
-            "coaddInputs",
-            "photoCalib",
-            "metadata",
-            "filter",
-            "transmissionCurve",
-            "visitInfo",
-            "detector",
-            "validPolygon",
-            "summaryStats",
-            "id",
-        )
-    )
+    EXPOSURE_COMPONENTS = {"image", "variance", "mask", "wcs", "psf"}
+    EXPOSURE_INFO_COMPONENTS = {
+        "apCorrMap",
+        "coaddInputs",
+        "photoCalib",
+        "metadata",
+        "filter",
+        "transmissionCurve",
+        "visitInfo",
+        "detector",
+        "validPolygon",
+        "summaryStats",
+        "id",
+    }
     EXPOSURE_READ_COMPONENTS = {
         "bbox",
         "dimensions",

@@ -321,7 +321,7 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
 
         # Full Exposure with parameters
         inBBox = Box2I(minimum=Point2I(3, 3), maximum=Point2I(21, 16))
-        parameters = dict(bbox=inBBox, origin=LOCAL)
+        parameters = {"bbox": inBBox, "origin": LOCAL}
         subset = self.butler.get(datasetTypeName, dataId, parameters=parameters)
         outBBox = subset.getBBox()
         self.assertEqual(inBBox, outBBox)
