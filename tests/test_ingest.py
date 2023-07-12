@@ -208,7 +208,6 @@ datastore:
         This is the only test that uses the bad definition of dataset 4
         because exposure definitions are defined globally in a butler registry.
         """
-
         # Ingest 3 files. 2 of them will implicitly find an index and one
         # will use a sidecar.
         files = [os.path.join(INGESTDIR, "indexed_data", f"dataset_{n}.yaml") for n in (1, 2, 3)]
@@ -286,7 +285,6 @@ datastore:
 
     def testCallbacks(self):
         """Test the callbacks for failures."""
-
         # Define the callbacks.
         metadata_failures = []
         successes = []

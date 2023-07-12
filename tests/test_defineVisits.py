@@ -39,7 +39,8 @@ DATADIR = os.path.join(TESTDIR, "data", "visits")
 class DefineVisitsTestCase(unittest.TestCase):
     def setUp(self):
         """Create a new butler for each test since we are changing dimension
-        records."""
+        records.
+        """
         self.root = tempfile.mkdtemp(dir=TESTDIR)
         self.creatorButler = butlerTests.makeTestRepo(self.root, [])
         self.butler = butlerTests.makeTestCollection(self.creatorButler)

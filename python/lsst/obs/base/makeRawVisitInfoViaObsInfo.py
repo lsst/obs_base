@@ -93,7 +93,6 @@ class MakeRawVisitInfoViaObsInfo:
             `~lsst.afw.image.VisitInfo` derived from the header using
             a `~astro_metadata_translator.MetadataTranslator`.
         """
-
         obsInfo = ObservationInfo(md, translator_class=self.metadataTranslator)
 
         if self.doStripHeader:

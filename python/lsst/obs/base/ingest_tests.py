@@ -247,7 +247,8 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     @classmethod
     def _createRepo(cls):
         """Use the Click `testing` module to call the butler command line api
-        to create a repository."""
+        to create a repository.
+        """
         runner = LogCliRunner()
         args = []
         if cls.seed_config:
@@ -290,7 +291,8 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     @classmethod
     def _registerInstrument(cls):
         """Use the Click `testing` module to call the butler command line api
-        to register the instrument."""
+        to register the instrument.
+        """
         runner = LogCliRunner()
         result = runner.invoke(butlerCli, ["register-instrument", cls.root, cls.instrumentClassName])
         # Classmethod so assertEqual does not work.
@@ -298,7 +300,8 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
     def _writeCuratedCalibrations(self):
         """Use the Click `testing` module to call the butler command line api
-        to write curated calibrations."""
+        to write curated calibrations.
+        """
         runner = LogCliRunner()
         result = runner.invoke(butlerCli, ["write-curated-calibrations", self.root, self.instrumentName])
         self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")

@@ -116,7 +116,8 @@ class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
 
     def test_locations(self):
         """Test that the locations argument accepts multiple inputs and splits
-        commas."""
+        commas.
+        """
         self.run_test(
             ["ingest-raws", "repo", "in/directory/,in/another/dir/", "other/file.fits"],
             self.makeExpected(repo="repo", locations=("in/directory/", "in/another/dir/", "other/file.fits")),

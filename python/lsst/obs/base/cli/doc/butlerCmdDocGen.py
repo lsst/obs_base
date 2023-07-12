@@ -20,7 +20,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """Accessor for sphinx documentation generator that accesses the butler
-subcommand plugins that are provided by this package."""
+subcommand plugins that are provided by this package.
+"""
 
 import click
 from lsst.utils import doImport

@@ -47,7 +47,6 @@ class CameraTests:
 
         Parameters
         ----------
-
         camera_name : `str`
             name of this camera
         n_detectors : `int`
@@ -86,7 +85,8 @@ class CameraTests:
 
     def test_iterable(self):
         """Simplest camera test: can we get a Camera instance, and does
-        iterating return Detectors?"""
+        iterating return Detectors?
+        """
         camera = self.butler.get("camera", **self._butler_args())
         self.assertIsInstance(camera, lsst.afw.cameraGeom.Camera)
         for detector in camera:

@@ -45,7 +45,6 @@ def makeCamera(cameraFile):
     camera : `lsst.afw.cameraGeom.Camera`
         The desired Camera
     """
-
     with open(cameraFile) as fd:
         cameraParams = yaml.load(fd, Loader=yaml.CLoader)
 
@@ -304,11 +303,10 @@ def makeCameraFromCatalogs(
         New Camera instance.
 
     Notes
-    ------
+    -----
     Copied from `lsst.afw.cameraGeom.cameraFactory` with permission and
     encouragement from Jim Bosch.
     """
-
     # nativeSys=FOCAL_PLANE seems to be assumed in various places in this file
     # (e.g. the definition of TAN_PIXELS), despite CameraConfig providing the
     # illusion that it's configurable.

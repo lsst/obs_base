@@ -103,7 +103,6 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
     @classmethod
     def setUpClass(cls):
         """Create a new butler once only."""
-
         cls.storageClassFactory = StorageClassFactory()
 
         cls.root = tempfile.mkdtemp(dir=TESTDIR)

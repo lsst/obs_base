@@ -88,7 +88,6 @@ def _log_msg_counter(noun: int | Sized) -> tuple[int, str]:
 
     Examples
     --------
-
     .. code-block:: python
 
        log.warning("Found %d file%s", *_log_msg_counter(nfiles))
@@ -1137,7 +1136,6 @@ class RawIngestTask(Task):
         n_ingests_failed : `int`
             Number of exposures that failed when ingesting raw datasets.
         """
-
         created_pool = False
         if pool is None and processes > 1:
             pool = Pool(processes)
@@ -1341,7 +1339,6 @@ class RawIngestTask(Task):
         primary key does not already exist.  This allows different files within
         the same exposure to be ingested in different runs.
         """
-
         refs = []
         bad_files = []
         n_exposures = 0

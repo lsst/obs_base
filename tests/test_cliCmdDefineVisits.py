@@ -82,7 +82,7 @@ class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
         )
 
     def test_missing(self):
-        """test a missing argument"""
+        """Test a missing argument"""
         self.run_missing(["define-visits"], "Missing argument ['\"]REPO['\"]")
         self.run_missing(["define-visits", "here"], "Missing argument ['\"]INSTRUMENT['\"]")
 

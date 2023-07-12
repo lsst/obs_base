@@ -60,7 +60,6 @@ class ButlerGetTests:
 
         Parameters
         ----------
-
         ccdExposureId_bits : `int`
             expected value of ccdExposureId_bits
         exposureIds : `dict`
@@ -95,7 +94,6 @@ class ButlerGetTests:
             The SkyWcs object that should be returned by
             ``butler.get("raw_header_wcs", dataId=self.dataIds["raw"])``
         """
-
         fields = [
             "ccdExposureId_bits",
             "exposureIds",
@@ -184,7 +182,8 @@ class ButlerGetTests:
 
     def test_raw_header_wcs(self):
         """Test that `raw_header_wcs` returns the unmodified header of the raw
-        image."""
+        image.
+        """
         if self.butler_get_data.raw_header_wcs is None:
             self.skipTest("Skipping raw header WCS test since no reference provided.")
         # Gen3 will not understand this at the moment (DM-35031).

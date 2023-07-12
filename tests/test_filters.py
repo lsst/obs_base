@@ -73,7 +73,7 @@ class TestFilterDefinition(lsst.utils.tests.TestCase):
         self.assertEqual(self.afw_name.makeFilterLabel(), lsst.afw.image.FilterLabel(physical="afw_name"))
 
     def test_abstract_only(self):
-        """band is the Filter name, physical_filter is an alias."""
+        """Band is the Filter name, physical_filter is an alias."""
         self.assertEqual(
             self.abstract.makeFilterLabel(),
             lsst.afw.image.FilterLabel(band="abstract only", physical="abstract"),

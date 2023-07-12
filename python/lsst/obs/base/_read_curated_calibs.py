@@ -38,7 +38,8 @@ if TYPE_CHECKING:
 
 class CuratedCalibration(Protocol):
     """Protocol that describes the methods needed by this class when dealing
-    with curated calibration datasets."""
+    with curated calibration datasets.
+    """
 
     @classmethod
     def readText(cls, path: str) -> CuratedCalibration:

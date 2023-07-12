@@ -153,7 +153,6 @@ class Instrument(InstrumentBase):
         is present in the Butler repository, simply that these are the
         dataset types that are handled by ``writeCuratedCalibrations``.
         """
-
         # Camera is a special dataset type that is also handled as a
         # curated calibration.
         curated = {"camera"}
@@ -183,7 +182,7 @@ class Instrument(InstrumentBase):
         """The root of the obs data package that provides specializations for
         this instrument.
 
-        returns
+        Returns
         -------
         dir : `str` or `None`
             The root of the relevant obs data package, or `None` if this
