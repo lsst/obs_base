@@ -516,7 +516,7 @@ class Instrument(InstrumentBase):
                 astropy.time.Time(t, format="datetime", scale="utc") for t in times
             ]
             atimes += [None]
-            for calib, beginTime, endTime in zip(calibs, atimes[:-1], atimes[1:]):
+            for calib, beginTime, endTime in zip(calibs, atimes[:-1], atimes[1:], strict=True):
                 md = calib.getMetadata()
                 run = self.makeCuratedCalibrationRunName(md["CALIBDATE"], *labels)
                 if run not in runs:

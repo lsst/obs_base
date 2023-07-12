@@ -469,7 +469,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         self.assertCountEqual(visits, self.visits.keys())
         instr = Instrument.from_string(self.instrumentName, butler.registry)
         camera = instr.getCamera()
-        for foundVisit, (expectedVisit, expectedExposures) in zip(visits, self.visits.items()):
+        for foundVisit, (expectedVisit, expectedExposures) in zip(visits, self.visits.items(), strict=True):
             # Test that this visit is associated with the expected exposures.
             foundExposures = (
                 butler.registry.queryDataIds(["exposure"], dataId=expectedVisit).expanded().toSet()
