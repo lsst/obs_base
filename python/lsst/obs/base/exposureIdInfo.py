@@ -23,7 +23,6 @@ from __future__ import annotations
 
 __all__ = ["ExposureIdInfo"]
 
-from typing import Optional
 
 from deprecated.sphinx import deprecated
 from lsst.afw.table import IdFactory
@@ -86,7 +85,7 @@ class ExposureIdInfo:
     exposure ID, for reasons that are not entirely clear (this is DM-6664).
     """
 
-    def __init__(self, expId: int = 0, expBits: int = 1, maxBits: Optional[int] = None):
+    def __init__(self, expId: int = 0, expBits: int = 1, maxBits: int | None = None):
         """Construct an ExposureIdInfo
 
         See the class doc string for an explanation of the arguments.
@@ -113,7 +112,7 @@ class ExposureIdInfo:
 
     @classmethod
     def fromDataId(
-        cls, dataId: DataCoordinate, name: str = "visit_detector", maxBits: Optional[int] = None
+        cls, dataId: DataCoordinate, name: str = "visit_detector", maxBits: int | None = None
     ) -> ExposureIdInfo:
         """Construct an instance from a fully-expanded data ID.
 

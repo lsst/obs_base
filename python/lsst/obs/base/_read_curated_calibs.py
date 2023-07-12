@@ -26,7 +26,7 @@ __all__ = ["CuratedCalibration", "read_all"]
 import glob
 import os
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Protocol, Type, Union
+from typing import TYPE_CHECKING, Any, Protocol
 
 import dateutil.parser
 
@@ -50,9 +50,9 @@ class CuratedCalibration(Protocol):
 
 def read_one_calib(
     path: tuple[str, ...],
-    chip_id: Union[int, None],
-    filter_name: Union[str, None],
-    calib_class: Type[CuratedCalibration],
+    chip_id: int | None,
+    filter_name: str | None,
+    calib_class: type[CuratedCalibration],
 ) -> tuple[dict[datetime.datetime, CuratedCalibration], str]:
     """Read data for a particular path from the standard format at a
     particular root.
@@ -123,8 +123,8 @@ def check_metadata(
     obj: Any,
     valid_start: datetime.datetime,
     instrument: str,
-    chip_id: Union[int, None],
-    filter_name: Union[str, None],
+    chip_id: int | None,
+    filter_name: str | None,
     filepath: str,
     data_name: str,
 ) -> None:
@@ -187,7 +187,7 @@ def check_metadata(
 def read_all(
     root: str,
     camera: lsst.afw.cameraGeom.Camera,
-    calib_class: Type[CuratedCalibration],
+    calib_class: type[CuratedCalibration],
     required_dimensions: list[str],
     filters: set[str],
 ) -> tuple[dict[tuple[str, ...], dict[datetime.datetime, CuratedCalibration]], str]:

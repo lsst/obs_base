@@ -37,21 +37,8 @@ import math
 import operator
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
-from typing import (
-    Any,
-    Callable,
-    ClassVar,
-    Dict,
-    FrozenSet,
-    Iterable,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    Type,
-    TypeVar,
-    cast,
-)
+from collections.abc import Callable, Iterable
+from typing import Any, ClassVar, TypeVar, cast
 
 import lsst.geom
 from lsst.afw.cameraGeom import FOCAL_PLANE, PIXELS
@@ -88,7 +75,7 @@ class VisitSystem(enum.Enum):
     """
 
     @classmethod
-    def all(cls) -> FrozenSet[VisitSystem]:
+    def all(cls) -> frozenset[VisitSystem]:
         """Return a `frozenset` containing all members."""
         return frozenset(cls.__members__.values())
 
@@ -103,7 +90,7 @@ class VisitSystem(enum.Enum):
             raise KeyError(f"Visit system named '{external_name}' not known.") from None
 
     @classmethod
-    def from_names(cls, names: Optional[Iterable[str]]) -> FrozenSet[VisitSystem]:
+    def from_names(cls, names: Iterable[str] | None) -> frozenset[VisitSystem]:
         """Return a `frozenset` of all the visit systems matching the supplied
         names.
 
@@ -151,10 +138,10 @@ class VisitDefinitionData:
     This must be unique across all visit systems for the instrument.
     """
 
-    visit_systems: Set[VisitSystem]
+    visit_systems: set[VisitSystem]
     """All the visit systems associated with this visit."""
 
-    exposures: List[DimensionRecord] = dataclasses.field(default_factory=list)
+    exposures: list[DimensionRecord] = dataclasses.field(default_factory=list)
     """Dimension records for the exposures that are part of this visit.
     """
 
@@ -167,16 +154,16 @@ class _VisitRecords:
     """Record for the 'visit' dimension itself.
     """
 
-    visit_definition: List[DimensionRecord]
+    visit_definition: list[DimensionRecord]
     """Records for 'visit_definition', which relates 'visit' to 'exposure'.
     """
 
-    visit_detector_region: List[DimensionRecord]
+    visit_detector_region: list[DimensionRecord]
     """Records for 'visit_detector_region', which associates the combination
     of a 'visit' and a 'detector' with a region on the sky.
     """
 
-    visit_system_membership: List[DimensionRecord]
+    visit_system_membership: list[DimensionRecord]
     """Records relating visits to an associated visit system."""
 
 
@@ -259,7 +246,7 @@ class GroupExposuresTask(Task, metaclass=ABCMeta):
         raise NotImplementedError()
 
     @abstractmethod
-    def group(self, exposures: List[DimensionRecord]) -> Iterable[VisitDefinitionData]:
+    def group(self, exposures: list[DimensionRecord]) -> Iterable[VisitDefinitionData]:
         """Group the given exposures into visits.
 
         Parameters
@@ -276,7 +263,7 @@ class GroupExposuresTask(Task, metaclass=ABCMeta):
         """
         raise NotImplementedError()
 
-    def getVisitSystems(self) -> Set[VisitSystem]:
+    def getVisitSystems(self) -> set[VisitSystem]:
         """Return identifiers for the 'visit_system' dimension this
         algorithm implements.
 
@@ -323,7 +310,7 @@ class ComputeVisitRegionsTask(Task, metaclass=ABCMeta):
     def __init__(self, config: ComputeVisitRegionsConfig, *, butler: Butler, **kwargs: Any):
         Task.__init__(self, config=config, **kwargs)
         self.butler = butler
-        self.instrumentMap: Dict[str, Instrument] = {}
+        self.instrumentMap: dict[str, Instrument] = {}
 
     ConfigClass = ComputeVisitRegionsConfig
 
@@ -361,7 +348,7 @@ class ComputeVisitRegionsTask(Task, metaclass=ABCMeta):
     @abstractmethod
     def compute(
         self, visit: VisitDefinitionData, *, collections: Any = None
-    ) -> Tuple[Region, Dict[int, Region]]:
+    ) -> tuple[Region, dict[int, Region]]:
         """Compute regions for the given visit and all detectors in that visit.
 
         Parameters
@@ -470,7 +457,7 @@ class DefineVisitsTask(Task):
         # Add extra parameters to pickle
         return dict(**super()._reduce_kwargs(), butler=self.butler)
 
-    ConfigClass: ClassVar[Type[Config]] = DefineVisitsConfig
+    ConfigClass: ClassVar[type[Config]] = DefineVisitsConfig
 
     _DefaultName: ClassVar[str] = "defineVisits"
 
@@ -538,7 +525,7 @@ class DefineVisitsTask(Task):
             zenith_angle /= len(definition.exposures)
 
         # New records that may not be supported.
-        extras: Dict[str, Any] = {}
+        extras: dict[str, Any] = {}
         if "seq_num" in supported:
             extras["seq_num"] = _reduceOrNone(min, (e.seq_num for e in definition.exposures))
         if "azimuth" in supported:
@@ -638,7 +625,7 @@ class DefineVisitsTask(Task):
         self,
         dataIds: Iterable[DataId],
         *,
-        collections: Optional[str] = None,
+        collections: str | None = None,
         update_records: bool = False,
         incremental: bool = False,
     ) -> None:
@@ -677,7 +664,7 @@ class DefineVisitsTask(Task):
         # Normalize, expand, and deduplicate data IDs.
         self.log.info("Preprocessing data IDs.")
         dimensions = DimensionGraph(self.universe, names=["exposure"])
-        data_id_set: Set[DataCoordinate] = {
+        data_id_set: set[DataCoordinate] = {
             self.butler.registry.expandDataId(d, graph=dimensions) for d in dataIds
         }
         if not data_id_set:
@@ -799,12 +786,12 @@ class DefineVisitsTask(Task):
 _T = TypeVar("_T")
 
 
-def _reduceOrNone(func: Callable[[_T, _T], Optional[_T]], iterable: Iterable[Optional[_T]]) -> Optional[_T]:
+def _reduceOrNone(func: Callable[[_T, _T], _T | None], iterable: Iterable[_T | None]) -> _T | None:
     """Apply a binary function to pairs of elements in an iterable until a
     single value is returned, but return `None` if any element is `None` or
     there are no elements.
     """
-    r: Optional[_T] = None
+    r: _T | None = None
     for v in iterable:
         if v is None:
             return None
@@ -815,12 +802,12 @@ def _reduceOrNone(func: Callable[[_T, _T], Optional[_T]], iterable: Iterable[Opt
     return r
 
 
-def _value_if_equal(a: _T, b: _T) -> Optional[_T]:
+def _value_if_equal(a: _T, b: _T) -> _T | None:
     """Return either argument if they are equal, or `None` if they are not."""
     return a if a == b else None
 
 
-def _calc_mean_angle(angles: List[float]) -> float:
+def _calc_mean_angle(angles: list[float]) -> float:
     """Calculate the mean angle, taking into account 0/360 wrapping.
 
     Parameters
@@ -876,7 +863,7 @@ class _GroupExposuresOneToOneTask(GroupExposuresTask, metaclass=ABCMeta):
         # No grouping.
         return {exposure.id: [exposure] for exposure in exposures}
 
-    def group(self, exposures: List[DimensionRecord]) -> Iterable[VisitDefinitionData]:
+    def group(self, exposures: list[DimensionRecord]) -> Iterable[VisitDefinitionData]:
         # Docstring inherited from GroupExposuresTask.
         visit_systems = {VisitSystem.from_name("one-to-one")}
         for exposure in exposures:
@@ -888,7 +875,7 @@ class _GroupExposuresOneToOneTask(GroupExposuresTask, metaclass=ABCMeta):
                 visit_systems=visit_systems,
             )
 
-    def getVisitSystems(self) -> Set[VisitSystem]:
+    def getVisitSystems(self) -> set[VisitSystem]:
         # Docstring inherited from GroupExposuresTask.
         return set(VisitSystem.from_names(["one-to-one"]))
 
@@ -949,7 +936,7 @@ class _GroupExposuresByGroupMetadataTask(GroupExposuresTask, metaclass=ABCMeta):
             groups[exposure.group_name].append(exposure)
         return groups
 
-    def group(self, exposures: List[DimensionRecord]) -> Iterable[VisitDefinitionData]:
+    def group(self, exposures: list[DimensionRecord]) -> Iterable[VisitDefinitionData]:
         # Docstring inherited from GroupExposuresTask.
         visit_systems = {VisitSystem.from_name("by-group-metadata")}
         groups = self.group_exposures(exposures)
@@ -967,7 +954,7 @@ class _GroupExposuresByGroupMetadataTask(GroupExposuresTask, metaclass=ABCMeta):
                 visit_systems=visit_systems,
             )
 
-    def getVisitSystems(self) -> Set[VisitSystem]:
+    def getVisitSystems(self) -> set[VisitSystem]:
         # Docstring inherited from GroupExposuresTask.
         return set(VisitSystem.from_names(["by-group-metadata"]))
 
@@ -1037,7 +1024,7 @@ class _GroupExposuresByCounterAndExposuresTask(GroupExposuresTask, metaclass=ABC
             groups[exposure.day_obs, exposure.seq_start, exposure.seq_end].append(exposure)
         return groups
 
-    def group(self, exposures: List[DimensionRecord]) -> Iterable[VisitDefinitionData]:
+    def group(self, exposures: list[DimensionRecord]) -> Iterable[VisitDefinitionData]:
         # Docstring inherited from GroupExposuresTask.
         system_one_to_one = VisitSystem.from_name("one-to-one")
         system_seq_start_end = VisitSystem.from_name("by-seq-start-end")
@@ -1112,7 +1099,7 @@ class _GroupExposuresByCounterAndExposuresTask(GroupExposuresTask, metaclass=ABC
                     visit_systems={system_seq_start_end},
                 )
 
-    def getVisitSystems(self) -> Set[VisitSystem]:
+    def getVisitSystems(self) -> set[VisitSystem]:
         # Docstring inherited from GroupExposuresTask.
         # Using a Config for this is difficult because what this grouping
         # algorithm is doing is using two visit systems.
@@ -1131,7 +1118,7 @@ class _ComputeVisitRegionsFromSingleRawWcsConfig(ComputeVisitRegionsConfig):
         dtype=bool,
         default=False,
     )
-    detectorId: Field[Optional[int]] = Field(
+    detectorId: Field[int | None] = Field(
         doc=(
             "Load the WCS for the detector with this ID.  If None, use an "
             "arbitrary detector (the first found in a query of the data "
@@ -1175,7 +1162,7 @@ class _ComputeVisitRegionsFromSingleRawWcsTask(ComputeVisitRegionsTask):
 
     def computeExposureBounds(
         self, exposure: DimensionRecord, *, collections: Any = None
-    ) -> Dict[int, List[UnitVector3d]]:
+    ) -> dict[int, list[UnitVector3d]]:
         """Compute the lists of unit vectors on the sphere that correspond to
         the sky positions of detector corners.
 
@@ -1264,10 +1251,10 @@ class _ComputeVisitRegionsFromSingleRawWcsTask(ComputeVisitRegionsTask):
 
     def compute(
         self, visit: VisitDefinitionData, *, collections: Any = None
-    ) -> Tuple[Region, Dict[int, Region]]:
+    ) -> tuple[Region, dict[int, Region]]:
         # Docstring inherited from ComputeVisitRegionsTask.
         if self.config.mergeExposures:
-            detectorBounds: Dict[int, List[UnitVector3d]] = defaultdict(list)
+            detectorBounds: dict[int, list[UnitVector3d]] = defaultdict(list)
             for exposure in visit.exposures:
                 exposureDetectorBounds = self.computeExposureBounds(exposure, collections=collections)
                 for detectorId, bounds in exposureDetectorBounds.items():

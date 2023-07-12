@@ -28,7 +28,8 @@ from __future__ import annotations
 __all__ = ("FilterDefinition", "FilterDefinitionCollection")
 
 import dataclasses
-from typing import AbstractSet, Any, Dict, Optional, Sequence, Set, overload
+from collections.abc import Sequence, Set
+from typing import Any, overload
 
 import lsst.afw.image.utils
 
@@ -56,7 +57,7 @@ class FilterDefinition:
     list of `~lsst.afw.image.Filter` aliases.
     """
 
-    band: Optional[str] = None
+    band: str | None = None
     """The generic name of a filter not associated with a particular instrument
     (e.g. `r` for the SDSS Gunn r-band, which could be on SDSS, LSST, or HSC).
 
@@ -68,12 +69,12 @@ class FilterDefinition:
     of `~lsst.afw.image.Filter` aliases.
     """
 
-    doc: Optional[str] = None
+    doc: str | None = None
     """A short description of this filter, possibly with a link to more
     information.
     """
 
-    afw_name: Optional[str] = None
+    afw_name: str | None = None
     """If not None, the name of the `~lsst.afw.image.Filter` object.
 
     This is distinct from physical_filter and band to maintain
@@ -82,7 +83,7 @@ class FilterDefinition:
     ``r/r2`` and ``i/i2``.
     """
 
-    alias: AbstractSet[str] = frozenset()
+    alias: Set[str] = frozenset()
     """Alternate names for this filter. These are added to the
     `~lsst.afw.image.Filter` alias list.
     """
@@ -116,7 +117,7 @@ class FilterDefinitionCollection(Sequence[FilterDefinition]):
         The filters in this collection.
     """
 
-    physical_to_band: Dict[str, Optional[str]]
+    physical_to_band: dict[str, str | None]
     """A mapping from physical filter name to band name.
     This is a convenience feature to allow file readers to create a FilterLabel
     when reading a raw file that only has a physical filter name, without
@@ -144,7 +145,7 @@ class FilterDefinitionCollection(Sequence[FilterDefinition]):
     def __str__(self) -> str:
         return "FilterDefinitions(" + ", ".join(str(f) for f in self._filters) + ")"
 
-    def findAll(self, name: str) -> Set[FilterDefinition]:
+    def findAll(self, name: str) -> set[FilterDefinition]:
         """Return the FilterDefinitions that match a particular name.
 
         This method makes no attempt to prioritize, e.g., band names over

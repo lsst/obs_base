@@ -23,7 +23,7 @@ __all__ = ["MakeRawVisitInfoViaObsInfo"]
 
 import logging
 import warnings
-from typing import ClassVar, Optional
+from typing import ClassVar
 
 import astropy.units
 import astropy.utils.exceptions
@@ -68,7 +68,7 @@ class MakeRawVisitInfoViaObsInfo:
         Strip header keywords from the metadata as they are used?
     """
 
-    metadataTranslator: ClassVar[Optional[MetadataTranslator]] = None
+    metadataTranslator: ClassVar[MetadataTranslator | None] = None
     """Header translator to use to construct VisitInfo, defaulting to
     automatic determination."""
 

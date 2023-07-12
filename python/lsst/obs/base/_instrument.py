@@ -27,20 +27,9 @@ import logging
 import os.path
 from abc import abstractmethod
 from collections import defaultdict
+from collections.abc import Sequence, Set
 from functools import lru_cache
-from typing import (
-    TYPE_CHECKING,
-    AbstractSet,
-    Any,
-    Dict,
-    FrozenSet,
-    Optional,
-    Sequence,
-    Set,
-    Tuple,
-    Type,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, cast
 
 import astropy.time
 from lsst.afw.cameraGeom import Camera
@@ -107,16 +96,16 @@ class Instrument(InstrumentBase):
     the base class.
     """
 
-    policyName: Optional[str] = None
+    policyName: str | None = None
     """Instrument specific name to use when locating a policy or configuration
     file in the file system."""
 
-    obsDataPackage: Optional[str] = None
+    obsDataPackage: str | None = None
     """Name of the package containing the text curated calibration files.
     Usually a obs _data package.  If `None` no curated calibration files
     will be read. (`str`)"""
 
-    standardCuratedDatasetTypes: AbstractSet[str] = frozenset(StandardCuratedCalibrationDatasetTypes)
+    standardCuratedDatasetTypes: Set[str] = frozenset(StandardCuratedCalibrationDatasetTypes)
     """The dataset types expected to be obtained from the obsDataPackage.
 
     These dataset types are all required to have standard definitions and
@@ -126,7 +115,7 @@ class Instrument(InstrumentBase):
     since the data package is the source of truth. (`set` of `str`)
     """
 
-    additionalCuratedDatasetTypes: AbstractSet[str] = frozenset()
+    additionalCuratedDatasetTypes: Set[str] = frozenset()
     """Curated dataset types specific to this particular instrument that do
     not follow the standard organization found in obs data packages.
 
@@ -143,12 +132,12 @@ class Instrument(InstrumentBase):
         """
         raise NotImplementedError()
 
-    def __init__(self, collection_prefix: Optional[str] = None):
+    def __init__(self, collection_prefix: str | None = None):
         super().__init__(collection_prefix=collection_prefix)
 
     @classmethod
-    @lru_cache()
-    def getCuratedCalibrationNames(cls) -> FrozenSet[str]:
+    @lru_cache
+    def getCuratedCalibrationNames(cls) -> frozenset[str]:
         """Return the names of all the curated calibration dataset types.
 
         Returns
@@ -189,8 +178,8 @@ class Instrument(InstrumentBase):
         raise NotImplementedError()
 
     @classmethod
-    @lru_cache()
-    def getObsDataPackageDir(cls) -> Optional[str]:
+    @lru_cache
+    def getObsDataPackageDir(cls) -> str | None:
         """The root of the obs data package that provides specializations for
         this instrument.
 
@@ -232,7 +221,7 @@ class Instrument(InstrumentBase):
             )
 
     def writeCuratedCalibrations(
-        self, butler: Butler, collection: Optional[str] = None, labels: Sequence[str] = ()
+        self, butler: Butler, collection: str | None = None, labels: Sequence[str] = ()
     ) -> None:
         """Write human-curated calibration Datasets to the given Butler with
         the appropriate validity ranges.
@@ -279,7 +268,7 @@ class Instrument(InstrumentBase):
         self.writeAdditionalCuratedCalibrations(butler, collection, labels=labels)
 
     def writeAdditionalCuratedCalibrations(
-        self, butler: Butler, collection: Optional[str] = None, labels: Sequence[str] = ()
+        self, butler: Butler, collection: str | None = None, labels: Sequence[str] = ()
     ) -> None:
         """Write additional curated calibrations that might be instrument
         specific and are not part of the standard set.
@@ -314,7 +303,7 @@ class Instrument(InstrumentBase):
         return
 
     def writeCameraGeom(
-        self, butler: Butler, collection: Optional[str] = None, labels: Sequence[str] = ()
+        self, butler: Butler, collection: str | None = None, labels: Sequence[str] = ()
     ) -> None:
         """Write the default camera geometry to the butler repository and
         associate it with the appropriate validity range in a calibration
@@ -359,7 +348,7 @@ class Instrument(InstrumentBase):
         butler.registry.certify(collection, [ref], Timespan(begin=None, end=None))
 
     def writeStandardTextCuratedCalibrations(
-        self, butler: Butler, collection: Optional[str] = None, labels: Sequence[str] = ()
+        self, butler: Butler, collection: str | None = None, labels: Sequence[str] = ()
     ) -> None:
         """Write the set of standardized curated text calibrations to
         the repository.
@@ -392,7 +381,7 @@ class Instrument(InstrumentBase):
         if collection is None:
             collection = self.makeCalibrationCollectionName(*labels)
         butler.registry.registerCollection(collection, type=CollectionType.CALIBRATION)
-        runs: Set[str] = set()
+        runs: set[str] = set()
         for datasetTypeName in self.standardCuratedDatasetTypes:
             # We need to define the dataset types.
             if datasetTypeName not in StandardCuratedCalibrationDatasetTypes:
@@ -414,7 +403,7 @@ class Instrument(InstrumentBase):
             )
 
     @classmethod
-    def _getSpecificCuratedCalibrationPath(cls, datasetTypeName: str) -> Optional[str]:
+    def _getSpecificCuratedCalibrationPath(cls, datasetTypeName: str) -> str | None:
         """Return the path of the curated calibration directory.
 
         Parameters
@@ -445,7 +434,7 @@ class Instrument(InstrumentBase):
         return None
 
     def _writeSpecificCuratedCalibrationDatasets(
-        self, butler: Butler, datasetType: DatasetType, collection: str, runs: Set[str], labels: Sequence[str]
+        self, butler: Butler, datasetType: DatasetType, collection: str, runs: set[str], labels: Sequence[str]
     ) -> None:
         """Write standardized curated calibration datasets for this specific
         dataset type from an obs data package.
@@ -498,7 +487,7 @@ class Instrument(InstrumentBase):
             # parent can identify the correct one to use.
             calib_class = doImport("lsst.ip.isr.IsrCalib")
 
-        calib_class = cast(Type[CuratedCalibration], calib_class)
+        calib_class = cast(type[CuratedCalibration], calib_class)
 
         # Read calibs, registering a new run for each CALIBDATE as needed.
         # We try to avoid registering runs multiple times as an optimization
@@ -523,7 +512,7 @@ class Instrument(InstrumentBase):
         for path in calibsDict:
             times = sorted([k for k in calibsDict[path]])
             calibs = [calibsDict[path][time] for time in times]
-            atimes: list[Optional[astropy.time.Time]] = [
+            atimes: list[astropy.time.Time | None] = [
                 astropy.time.Time(t, format="datetime", scale="utc") for t in times
             ]
             atimes += [None]
@@ -600,7 +589,7 @@ def makeExposureRecordFromObsInfo(
         zenith_angle = obsInfo.altaz_begin.zen.degree
         azimuth = obsInfo.altaz_begin.az.degree
 
-    extras: Dict[str, Any] = {}
+    extras: dict[str, Any] = {}
     for meta_key, info_key in (
         ("has_simulated", "has_simulated_content"),
         ("seq_start", "group_counter_start"),
@@ -639,7 +628,7 @@ def makeExposureRecordFromObsInfo(
     )
 
 
-def loadCamera(butler: Butler, dataId: DataId, *, collections: Any = None) -> Tuple[Camera, bool]:
+def loadCamera(butler: Butler, dataId: DataId, *, collections: Any = None) -> tuple[Camera, bool]:
     """Attempt to load versioned camera geometry from a butler, but fall back
     to obtaining a nominal camera from the `Instrument` class if that fails.
 

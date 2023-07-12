@@ -22,7 +22,8 @@
 """Support for assembling and disassembling afw Exposures."""
 
 import logging
-from typing import Any, Dict, Iterable, Mapping, Optional, Set, Tuple, Type
+from collections.abc import Iterable, Mapping
+from typing import Any
 
 # Need to enable PSFs to be instantiated
 import lsst.afw.detection
@@ -58,7 +59,7 @@ class ExposureAssembler(StorageClassDelegate):
     COMPONENT_MAP = {"bbox": "BBox", "xy0": "XY0"}
     """Map component name to actual getter name."""
 
-    def _groupRequestedComponents(self) -> Tuple[Set[str], Set[str]]:
+    def _groupRequestedComponents(self) -> tuple[set[str], set[str]]:
         """Group requested components into top level and ExposureInfo.
 
         Returns
@@ -121,8 +122,8 @@ class ExposureAssembler(StorageClassDelegate):
             )
 
     def disassemble(
-        self, composite: Any, subset: Optional[Iterable] = None, override: Optional[Any] = None
-    ) -> Dict[str, DatasetComponent]:
+        self, composite: Any, subset: Iterable | None = None, override: Any | None = None
+    ) -> dict[str, DatasetComponent]:
         """Disassemble an afw Exposure.
 
         This implementation attempts to extract components from the parent
@@ -174,7 +175,7 @@ class ExposureAssembler(StorageClassDelegate):
             )
 
         # Only look for components that are defined by the StorageClass
-        components: Dict[str, DatasetComponent] = {}
+        components: dict[str, DatasetComponent] = {}
         expItems, expInfoItems = self._groupRequestedComponents()
 
         fromExposure = super().disassemble(composite, subset=expItems)
@@ -194,7 +195,7 @@ class ExposureAssembler(StorageClassDelegate):
 
         return components
 
-    def assemble(self, components: Dict[str, Any], pytype: Optional[Type] = None) -> Exposure:
+    def assemble(self, components: dict[str, Any], pytype: type | None = None) -> Exposure:
         """Construct an Exposure from components.
 
         Parameters
@@ -271,7 +272,7 @@ class ExposureAssembler(StorageClassDelegate):
 
         return exposure
 
-    def handleParameters(self, inMemoryDataset: Any, parameters: Optional[Mapping[str, Any]] = None) -> Any:
+    def handleParameters(self, inMemoryDataset: Any, parameters: Mapping[str, Any] | None = None) -> Any:
         """Modify the in-memory dataset using the supplied parameters,
         returning a possibly new object.
 
@@ -302,7 +303,7 @@ class ExposureAssembler(StorageClassDelegate):
         return inMemoryDataset
 
     @classmethod
-    def selectResponsibleComponent(cls, readComponent: str, fromComponents: Set[Optional[str]]) -> str:
+    def selectResponsibleComponent(cls, readComponent: str, fromComponents: set[str | None]) -> str:
         # Docstring inherited.
         imageComponents = ["mask", "image", "variance"]
         forwarderMap = {

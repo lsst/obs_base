@@ -29,7 +29,8 @@ __all__ = (
 
 import warnings
 from abc import abstractmethod
-from typing import AbstractSet, ClassVar
+from collections.abc import Set
+from typing import ClassVar
 
 from lsst.afw.cameraGeom import AmplifierGeometryComparison, AmplifierIsolator
 from lsst.afw.image import (
@@ -63,11 +64,9 @@ class FitsImageFormatterBase(Formatter):
     """
 
     extension = ".fits"
-    supportedExtensions: ClassVar[AbstractSet[str]] = frozenset(
-        {".fits", ".fits.gz", ".fits.fz", ".fz", ".fit"}
-    )
+    supportedExtensions: ClassVar[Set[str]] = frozenset({".fits", ".fits.gz", ".fits.fz", ".fz", ".fit"})
 
-    unsupportedParameters: ClassVar[AbstractSet[str]] = frozenset()
+    unsupportedParameters: ClassVar[Set[str]] = frozenset()
     """Support all parameters."""
 
     @property
