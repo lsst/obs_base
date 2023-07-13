@@ -37,7 +37,7 @@ def ingestRaws(
     ingest_task="lsst.obs.base.RawIngestTask",
     track_file_attrs=True,
 ):
-    """Ingests raw frames into the butler registry.
+    """Ingest raw frames into the butler registry.
 
     Parameters
     ----------
