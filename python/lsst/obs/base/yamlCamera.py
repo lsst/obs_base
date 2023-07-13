@@ -276,7 +276,7 @@ def makeCameraFromCatalogs(
     pupilFactoryClass=cameraGeom.pupil.PupilFactory,
 ):
     """Construct a Camera instance from a dictionary of
-    detector name and `lsst.afw.cameraGeom.amplifier`.
+    detector name and `lsst.afw.cameraGeom.Amplifier`.
 
     Parameters
     ----------

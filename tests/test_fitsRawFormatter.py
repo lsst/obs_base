@@ -88,7 +88,7 @@ class MakeTestingRawVisitInfo(MakeRawVisitInfoViaObsInfo):
 
 
 class SimpleFitsRawFormatter(FitsRawFormatterBase):
-    """Simple test formatter for datastore interaction,."""
+    """Simple test formatter for datastore interaction."""
 
     filterDefinitions = FilterDefinitionCollection(FilterDefinition(physical_filter="u", band="u"))
 
