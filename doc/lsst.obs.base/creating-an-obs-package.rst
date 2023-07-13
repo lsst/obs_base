@@ -107,16 +107,18 @@ The `set` of ``physical_filters`` you provide here will be checked to ensure tha
 
     class TestExampleCam(InstrumentTests, lsst.utils.tests.TestCase):
         def setUp(self):
-            physical_filters = {"example g filter",
-                                "example z filter"}
+            physical_filters = {"example g filter", "example z filter"}
 
-            self.data = InstrumentTestData(name="Example",
-                                           nDetectors=4,
-                                           firstDetectorName="1_1",
-                                           physical_filters=physical_filters)
+            self.data = InstrumentTestData(
+                name="Example",
+                nDetectors=4,
+                firstDetectorName="1_1",
+                physical_filters=physical_filters,
+            )
             self.instrument = lsst.obs.example.ExampleCam()
 
-    if __name__ == '__main__':
+
+    if __name__ == "__main__":
         lsst.utils.tests.init()
         unittest.main()
 
@@ -167,7 +169,9 @@ This is how our system tests that your ``Formatter`` works correctly and that th
         def setUp(self):
             self.ingestdir = os.path.dirname(__file__)
             self.instrument = Examplecam()
-            self.file = os.path.join(testDataDirectory, "example", "raw", "somefile.fits.gz")
+            self.file = os.path.join(
+                testDataDirectory, "example", "raw", "somefile.fits.gz"
+            )
             self.dataId = dict(instrument="Example", exposure=12345, detector=123)
 
             super().setUp()

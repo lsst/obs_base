@@ -63,8 +63,9 @@ class ExposureIdInfo:
     .. code-block:: python
 
         from lsst.afw.table import SourceTable
+
         schema = SourceTable.makeMinimalSchema()
-        #...add fields to schema as desired, then...
+        # ...add fields to schema as desired, then...
         sourceTable = SourceTable.make(self.schema, info.makeSourceIdFactory())
 
     An `ExposureIdInfo` instance can be obtained from a
