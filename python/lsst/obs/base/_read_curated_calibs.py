@@ -245,7 +245,7 @@ def read_all(
             if dir_name not in detector_map:
                 # Top level directories must be detectors if they're
                 # required.
-                detectors = list(detector_map.keys())
+                detectors = list(detector_map)
                 max_detectors = 10
                 note_str = "knows"
                 if len(detectors) > max_detectors:
