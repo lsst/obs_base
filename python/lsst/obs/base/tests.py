@@ -79,11 +79,12 @@ class ObsTests(butler_tests.ButlerGetTests, camera_tests.CameraTests):
             valid 'raw' dataId, in addition to 'bias','flat','dark', which may
             be set to SkipTest. For example::
 
-                self.dataIds = {'raw': {'visit': 1, 'filter': 'g'},
-                                'bias': {'visit': 1},
-                                'flat': {'visit': 1},
-                                'dark': unittest.SkipTest
-                            }
+                self.dataIds = {
+                    "raw": {"visit": 1, "filter": "g"},
+                    "bias": {"visit": 1},
+                    "flat": {"visit": 1},
+                    "dark": unittest.SkipTest,
+                }
         """
         self.butler = butler
         self.dataIds = dataIds
