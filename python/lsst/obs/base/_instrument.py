@@ -636,7 +636,7 @@ def loadCamera(butler: Butler, dataId: DataId, *, collections: Any = None) -> tu
     butler : `lsst.daf.butler.Butler`
         Butler instance to attempt to query for and load a ``camera`` dataset
         from.
-    dataId : `dict` or `DataCoordinate`
+    dataId : `dict` or `~lsst.daf.butler.DataCoordinate`
         Data ID that identifies at least the ``instrument`` and ``exposure``
         dimensions.
     collections : Any, optional

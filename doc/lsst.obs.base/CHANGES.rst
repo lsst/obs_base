@@ -62,10 +62,10 @@ API Changes
 An API Removal or Deprecation
 -----------------------------
 
-- `~lsst.obs.base.FilterDefinition` no longer supports `~lsst.afw.image.Filter`.
+- `~lsst.obs.base.FilterDefinition` no longer supports ``lsst.afw.image.Filter``.
   The ``defineFilters`` and ``reset`` methods have been removed, as have all wavelength parameters to the `~lsst.obs.base.FilterDefinition` constructor.
 
-  The old ``filter`` component for exposures has been removed, and replaced with a new ``filter`` component backed by `~lsst.afw.image.FilterLabel`.
+  The old ``filter`` component for exposures has been removed, and replaced with a new ``filter`` component backed by ``lsst.afw.image.FilterLabel``.
   It functions identically to the ``filterLabel`` component, which has been deprecated. (`DM-27177 <https://jira.lsstcorp.org/browse/DM-27177>`_)
 - Remove the ``processes`` and ``pool`` arguments and the ``--processes`` command-line argument from `lsst.obs.base.DefineVisitsTask.run` and ``butler define-visits`` (respectively).
   These were already broken for ``processes > 1``, and internal parallelization here is no longer useful now that this task just does database I/O, not raw metadata reads. (`DM-33783 <https://jira.lsstcorp.org/browse/DM-33783>`_)

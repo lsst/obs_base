@@ -285,8 +285,8 @@ class ExposureAssembler(StorageClassDelegate):
         parameters : `dict`, optional
             Parameters to apply. Values are specific to the parameter.
             Supported parameters are defined in the associated
-            `StorageClass`.  If no relevant parameters are specified the
-            inMemoryDataset will be return unchanged.
+            `~lsst.daf.butler.StorageClass`.  If no relevant parameters are
+            specified the ``inMemoryDataset`` will be return unchanged.
 
         Returns
         -------

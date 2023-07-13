@@ -637,7 +637,7 @@ class DefineVisitsTask(Task):
 
         Parameters
         ----------
-        dataIds : `Iterable` [ `dict` or `DataCoordinate` ]
+        dataIds : `Iterable` [ `dict` or `~lsst.daf.butler.DataCoordinate` ]
             Exposure-level data IDs.  These must all correspond to the same
             instrument, and are expected to be on-sky science exposures.
         collections : Any, optional

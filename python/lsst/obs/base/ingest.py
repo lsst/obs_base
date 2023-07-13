@@ -129,7 +129,7 @@ class RawFileData:
 
     FormatterClass: type[Formatter]
     """Formatter class that should be used to ingest this file (`type`; as
-    subclass of `Formatter`).
+    subclass of `~lsst.daf.butler.Formatter`).
     """
 
     instrument: Instrument | None
@@ -155,7 +155,8 @@ class RawExposureData:
 
     record: DimensionRecord
     """The exposure `DimensionRecord` that must be inserted into the
-    `~lsst.daf.butler.Registry` prior to file-level ingest (`DimensionRecord`).
+    `~lsst.daf.butler.Registry` prior to file-level ingest
+    (`~lsst.daf.butler.DimensionRecord`).
     """
 
     dependencyRecords: dict[str, DimensionRecord]

@@ -79,11 +79,11 @@ class ObsTests(butler_tests.ButlerGetTests, camera_tests.CameraTests):
             valid 'raw' dataId, in addition to 'bias','flat','dark', which may
             be set to SkipTest. For example::
 
-                  self.dataIds = {'raw': {'visit': 1, 'filter': 'g'},
-                                  'bias': {'visit': 1},
-                                  'flat': {'visit': 1},
-                                  'dark': unittest.SkipTest
-                                 }
+                self.dataIds = {'raw': {'visit': 1, 'filter': 'g'},
+                                'bias': {'visit': 1},
+                                'flat': {'visit': 1},
+                                'dark': unittest.SkipTest
+                            }
         """
         self.butler = butler
         self.dataIds = dataIds
@@ -106,7 +106,7 @@ def make_ramp_array(bbox, pedestal):
 
     Returns
     -------
-    ramp : `np.ndarray`
+    ramp : `numpy.ndarray`
         A 2-d array with shape ``(bbox.getHeight(), bbox.getWidth())``.
     end : `int`
         One past the maximum value in the ramp (for use as the
@@ -126,7 +126,7 @@ def make_ramp_exposure_untrimmed(detector, dtype=None):
         Detector object that the new exposure should match.  Must have all amp
         flips and offsets set to False/zero (i.e. represent an already-
         assembled image).
-    dtype : `np.dtype`, optional
+    dtype : `numpy.dtype`, optional
         Type of the new exposure.  Defaults to ``int32``.
 
     Returns
@@ -155,7 +155,7 @@ def make_ramp_exposure_trimmed(detector, dtype=None):
     ----------
     detector : `lsst.afw.cameraGeom.Detector`
         Detector object that the new exposure should match.
-    dtype : `np.dtype`, optional
+    dtype : `numpy.dtype`, optional
         Type of the new exposure.  Defaults to ``int32``.
 
     Returns
