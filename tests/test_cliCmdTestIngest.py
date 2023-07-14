@@ -35,6 +35,8 @@ from lsst.obs.base.ingest import RawIngestConfig
 
 
 class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
+    """Test the ingest-raws command-line tool."""
+
     mockFuncName = "lsst.obs.base.cli.cmd.commands.script.ingestRaws"
 
     @staticmethod
@@ -57,14 +59,14 @@ class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
         return ingest_raws
 
     def test_repoAndOutput(self):
-        """Test the most basic required arguments, repo and output run"""
+        """Test the most basic required arguments, repo and output run."""
         self.run_test(
             ["ingest-raws", "repo", "resources", "--output-run", "out"],
             self.makeExpected(repo="repo", locations=("resources",), output_run="out"),
         )
 
     def test_configMulti(self):
-        """Test config overrides"""
+        """Test config overrides."""
         self.run_test(
             [
                 "ingest-raws",
@@ -83,12 +85,12 @@ class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
                 repo="repo",
                 locations=("resources",),
                 output_run="out",
-                config=dict(foo="1", bar="2", baz="3"),
+                config={"foo": "1", "bar": "2", "baz": "3"},
             ),
         )
 
     def test_configFile(self):
-        """Test config file override"""
+        """Test config file override."""
         configFile = "path/to/file.txt"
         self.run_test(
             ["ingest-raws", "repo", "resources", "--output-run", "out", "--config-file", configFile],
@@ -99,14 +101,14 @@ class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
         )
 
     def test_transfer(self):
-        """Test the transfer argument"""
+        """Test the transfer argument."""
         self.run_test(
             ["ingest-raws", "repo", "resources", "--output-run", "out", "--transfer", "symlink"],
             self.makeExpected(repo="repo", locations=("resources",), output_run="out", transfer="symlink"),
         )
 
     def test_ingestTask(self):
-        """Test the ingest task argument"""
+        """Test the ingest task argument."""
         self.run_test(
             ["ingest-raws", "repo", "resources", "--output-run", "out", "--ingest-task", "foo.bar.baz"],
             self.makeExpected(
@@ -116,7 +118,8 @@ class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
 
     def test_locations(self):
         """Test that the locations argument accepts multiple inputs and splits
-        commas."""
+        commas.
+        """
         self.run_test(
             ["ingest-raws", "repo", "in/directory/,in/another/dir/", "other/file.fits"],
             self.makeExpected(repo="repo", locations=("in/directory/", "in/another/dir/", "other/file.fits")),
@@ -124,6 +127,8 @@ class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
 
 
 class PatchRawIngestTask(lsst.obs.base.RawIngestTask):
+    """Ingest task with run() method disabled."""
+
     init_args = []
 
     def __init__(self, *args, **kwargs):
@@ -135,6 +140,8 @@ class PatchRawIngestTask(lsst.obs.base.RawIngestTask):
 
 
 class RawIngestMockTest(unittest.TestCase):
+    """Run ingest tests with mock."""
+
     def setUp(self):
         self.runner = LogCliRunner()
 

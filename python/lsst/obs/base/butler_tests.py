@@ -19,7 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import abc
 import collections
 import inspect
 import unittest
@@ -29,7 +28,7 @@ from lsst.daf.butler.registry import DataIdValueError
 __all__ = ["ButlerGetTests"]
 
 
-class ButlerGetTests(metaclass=abc.ABCMeta):
+class ButlerGetTests:
     """Tests of obs_* Butler get() functionality.
 
     In the subclasses's setUp():
@@ -61,7 +60,6 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-
         ccdExposureId_bits : `int`
             expected value of ccdExposureId_bits
         exposureIds : `dict`
@@ -96,7 +94,6 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
             The SkyWcs object that should be returned by
             ``butler.get("raw_header_wcs", dataId=self.dataIds["raw"])``
         """
-
         fields = [
             "ccdExposureId_bits",
             "exposureIds",
@@ -185,7 +182,8 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
 
     def test_raw_header_wcs(self):
         """Test that `raw_header_wcs` returns the unmodified header of the raw
-        image."""
+        image.
+        """
         if self.butler_get_data.raw_header_wcs is None:
             self.skipTest("Skipping raw header WCS test since no reference provided.")
         # Gen3 will not understand this at the moment (DM-35031).
@@ -212,7 +210,7 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
                 # This means one of the dataId values does not exist.
                 subset = {}
 
-            self.assertEqual(len(subset), expect, msg="Failed for kwargs: {}".format(kwargs))
+            self.assertEqual(len(subset), expect, msg=f"Failed for kwargs: {kwargs}")
 
     def test_get_linearizer(self):
         """Test that we can get a linearizer for good detectorIds."""
@@ -228,7 +226,7 @@ class ButlerGetTests(metaclass=abc.ABCMeta):
             linearizer.checkDetector(detector)
 
     def test_get_linearizer_bad_detectorIds(self):
-        """Do bad detectorIds raise?"""
+        """Check that bad detectorIds raise."""
         if self.butler_get_data.linearizer_type is unittest.SkipTest:
             self.skipTest("Skipping %s as requested" % (inspect.currentframe().f_code.co_name))
 

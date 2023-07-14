@@ -242,12 +242,13 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         files : `list` [`str`], or None
             List of files to be ingested, or None to use ``self.file``
         """
-        pass
+        return
 
     @classmethod
     def _createRepo(cls):
         """Use the Click `testing` module to call the butler command line api
-        to create a repository."""
+        to create a repository.
+        """
         runner = LogCliRunner()
         args = []
         if cls.seed_config:
@@ -290,7 +291,8 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     @classmethod
     def _registerInstrument(cls):
         """Use the Click `testing` module to call the butler command line api
-        to register the instrument."""
+        to register the instrument.
+        """
         runner = LogCliRunner()
         result = runner.invoke(butlerCli, ["register-instrument", cls.root, cls.instrumentClassName])
         # Classmethod so assertEqual does not work.
@@ -298,7 +300,8 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
     def _writeCuratedCalibrations(self):
         """Use the Click `testing` module to call the butler command line api
-        to write curated calibrations."""
+        to write curated calibrations.
+        """
         runner = LogCliRunner()
         result = runner.invoke(butlerCli, ["write-curated-calibrations", self.root, self.instrumentName])
         self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
@@ -389,7 +392,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     def testFailOnConflict(self):
         """Re-ingesting the same data into the repository should fail."""
         self._ingestRaws(transfer="symlink")
-        with self.assertRaises(Exception):
+        with self.assertRaises(AssertionError):
             self._ingestRaws(transfer="symlink")
 
     def testWriteCuratedCalibrations(self):
@@ -469,7 +472,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         self.assertCountEqual(visits, self.visits.keys())
         instr = Instrument.from_string(self.instrumentName, butler.registry)
         camera = instr.getCamera()
-        for foundVisit, (expectedVisit, expectedExposures) in zip(visits, self.visits.items()):
+        for foundVisit, (expectedVisit, expectedExposures) in zip(visits, self.visits.items(), strict=True):
             # Test that this visit is associated with the expected exposures.
             foundExposures = (
                 butler.registry.queryDataIds(["exposure"], dataId=expectedVisit).expanded().toSet()

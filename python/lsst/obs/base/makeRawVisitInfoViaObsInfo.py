@@ -23,7 +23,7 @@ __all__ = ["MakeRawVisitInfoViaObsInfo"]
 
 import logging
 import warnings
-from typing import ClassVar, Optional
+from typing import ClassVar
 
 import astropy.units
 import astropy.utils.exceptions
@@ -68,7 +68,7 @@ class MakeRawVisitInfoViaObsInfo:
         Strip header keywords from the metadata as they are used?
     """
 
-    metadataTranslator: ClassVar[Optional[MetadataTranslator]] = None
+    metadataTranslator: ClassVar[MetadataTranslator | None] = None
     """Header translator to use to construct VisitInfo, defaulting to
     automatic determination."""
 
@@ -93,7 +93,6 @@ class MakeRawVisitInfoViaObsInfo:
             `~lsst.afw.image.VisitInfo` derived from the header using
             a `~astro_metadata_translator.MetadataTranslator`.
         """
-
         obsInfo = ObservationInfo(md, translator_class=self.metadataTranslator)
 
         if self.doStripHeader:
@@ -106,7 +105,7 @@ class MakeRawVisitInfoViaObsInfo:
     @staticmethod
     def observationInfo2visitInfo(obsInfo, log=None):
         """Construct a `~lsst.afw.image.VisitInfo` from an
-        `~astro_metadata_translator.ObservationInfo`
+        `~astro_metadata_translator.ObservationInfo`.
 
         Parameters
         ----------
@@ -122,7 +121,7 @@ class MakeRawVisitInfoViaObsInfo:
             `~lsst.afw.image.VisitInfo` derived from the supplied
             `~astro_metadata_translator.ObservationInfo`.
         """
-        argDict = dict()
+        argDict = {}
 
         # Map the translated information into a form suitable for VisitInfo
         if obsInfo.exposure_time is not None:

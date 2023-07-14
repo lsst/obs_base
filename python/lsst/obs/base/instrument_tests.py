@@ -38,8 +38,9 @@ __all__ = [
 import abc
 import dataclasses
 import json
+from collections.abc import Sequence
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, Sequence, Set
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from lsst.daf.butler import CollectionType, DatasetType, Registry, RegistryConfig
 from lsst.daf.butler.formatters.yaml import YamlFormatter
@@ -100,10 +101,12 @@ class CuratedCalibration(BaseModel):
 
 
 class DummyCam(Instrument):
+    """Instrument class used for testing."""
+
     filterDefinitions = DUMMY_FILTER_DEFINITIONS
     additionalCuratedDatasetTypes = frozenset(["testCalib"])
     policyName = "dummycam"
-    dataPackageDir: Optional[str] = ""
+    dataPackageDir: str | None = ""
     raw_definition = (
         "raw_dict",
         ("instrument", "detector", "exposure"),
@@ -115,8 +118,8 @@ class DummyCam(Instrument):
         return "DummyCam"
 
     @classmethod
-    @lru_cache()  # For mypy
-    def getObsDataPackageDir(cls) -> Optional[str]:
+    @lru_cache  # For mypy
+    def getObsDataPackageDir(cls) -> str | None:
         return cls.dataPackageDir
 
     def getCamera(self):
@@ -159,7 +162,7 @@ class DummyCam(Instrument):
         pass
 
     def writeAdditionalCuratedCalibrations(
-        self, butler: Butler, collection: Optional[str] = None, labels: Sequence[str] = ()
+        self, butler: Butler, collection: str | None = None, labels: Sequence[str] = ()
     ) -> None:
         # We want to test the standard curated calibration ingest
         # but we do not have a standard class to use. There is no way
@@ -177,7 +180,7 @@ class DummyCam(Instrument):
             dimensions=("instrument", "detector"),
             storageClass="CuratedCalibration",
         )
-        runs: Set[str] = set()
+        runs: set[str] = set()
         self._writeSpecificCuratedCalibrationDatasets(
             butler, datasetType, collection, runs=runs, labels=labels
         )
@@ -196,7 +199,7 @@ class InstrumentTestData:
     firstDetectorName: str
     """The name of the first detector in the Camera."""
 
-    physical_filters: Set[str]
+    physical_filters: set[str]
     """A subset of the physical filters should be registered."""
 
 
@@ -207,10 +210,10 @@ class InstrumentTests(metaclass=abc.ABCMeta):
     ``data`` and ``instrument``.
     """
 
-    data: ClassVar[Optional[InstrumentTestData]] = None
+    data: ClassVar[InstrumentTestData | None] = None
     """`InstrumentTestData` containing the values to test against."""
 
-    instrument: ClassVar[Optional[Instrument]] = None
+    instrument: ClassVar[Instrument | None] = None
     """The `~lsst.obs.base.Instrument` to be tested."""
 
     def test_name(self):

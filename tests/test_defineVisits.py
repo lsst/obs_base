@@ -37,9 +37,12 @@ DATADIR = os.path.join(TESTDIR, "data", "visits")
 
 
 class DefineVisitsTestCase(unittest.TestCase):
+    """Test visit definition."""
+
     def setUp(self):
         """Create a new butler for each test since we are changing dimension
-        records."""
+        records.
+        """
         self.root = tempfile.mkdtemp(dir=TESTDIR)
         self.creatorButler = butlerTests.makeTestRepo(self.root, [])
         self.butler = butlerTests.makeTestCollection(self.creatorButler)
@@ -90,17 +93,17 @@ class DefineVisitsTestCase(unittest.TestCase):
         for records in exposures:
             self.butler.registry.insertDimensionData("exposure", *ensure_iterable(records))
             # Include all records so far in definition.
-            dataIds = [d for d in self.butler.registry.queryDataIds("exposure", instrument="DummyCam")]
+            dataIds = list(self.butler.registry.queryDataIds("exposure", instrument="DummyCam"))
             self.task.run(dataIds, incremental=incremental)
 
     def test_defineVisits(self):
         # Test visit definition with all the records.
-        self.define_visits([[r for r in self.records.values()]], incremental=False)  # list inside a list
+        self.define_visits([list(self.records.values())], incremental=False)  # list inside a list
         self.assertVisits()
 
     def test_incremental_cumulative(self):
         # Define the visits after each exposure.
-        self.define_visits([exp for exp in self.records.values()], incremental=True)
+        self.define_visits(list(self.records.values()), incremental=True)
         self.assertVisits()
 
     def test_incremental_cumulative_reverse(self):

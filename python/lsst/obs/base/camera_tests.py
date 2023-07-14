@@ -19,7 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import abc
 import collections
 import math
 
@@ -30,7 +29,7 @@ from lsst.daf.butler import Butler
 __all__ = ["CameraTests"]
 
 
-class CameraTests(metaclass=abc.ABCMeta):
+class CameraTests:
     """Tests that the butler returns a useable Camera.
 
     In the subclasses's setUp():
@@ -48,7 +47,6 @@ class CameraTests(metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-
         camera_name : `str`
             name of this camera
         n_detectors : `int`
@@ -82,16 +80,15 @@ class CameraTests(metaclass=abc.ABCMeta):
         """
         kwargs = {}
         if isinstance(self.butler, Butler):
-            kwargs = dict(instrument=self.camera_data.camera_name)
+            kwargs = {"instrument": self.camera_data.camera_name}
         return kwargs
 
     def test_iterable(self):
-        """Simplest camera test: can we get a Camera instance, and does
-        iterating return Detectors?"""
+        """Get a camera instance and check it is an iterable."""
         camera = self.butler.get("camera", **self._butler_args())
         self.assertIsInstance(camera, lsst.afw.cameraGeom.Camera)
         for detector in camera:
-            msg = "Failed for detector={}".format(detector)
+            msg = f"Failed for detector={detector}"
             self.assertIsInstance(detector, lsst.afw.cameraGeom.Detector, msg=msg)
 
     def test_camera_butler(self):
@@ -102,7 +99,7 @@ class CameraTests(metaclass=abc.ABCMeta):
         self.assertEqual(next(iter(camera)).getName(), self.camera_data.first_detector_name)
 
     def test_plate_scale(self):
-        """Check the plate scale at center of focal plane
+        """Check the plate scale at center of focal plane.
 
         Check plate_scale using the FOCAL_PLANE to FIELD_ANGLE transform
         from the camera.

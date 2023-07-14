@@ -22,7 +22,8 @@
 """Unit tests for the daf_butler CliLog utility. Code is implemented in
 daf_butler but some only runs if lsst.log.Log can be imported so these parts of
 it can't be tested there because daf_butler does not directly depend on
-lsst.log, and only uses it if it has been setup by another package."""
+lsst.log, and only uses it if it has been setup by another package.
+"""
 
 import unittest
 
@@ -40,16 +41,20 @@ class CliLogTestCase(CliLogTestBase, unittest.TestCase):
     `logging` and `lsst.log`.
 
     This test also runs in daf_butler but will not test `lsst.log` in CI
-    because daf_butler does not directly depend on that package."""
+    because daf_butler does not directly depend on that package.
+    """
 
     pass
 
 
 @unittest.skipIf(lsstLog is None, "lsst.log is not available.")
 class ConvertLsstLogLevelTestCase(unittest.TestCase):
+    """Test ability to handle lsst.log loggers."""
+
     def test_convertToLsstLogLevel(self):
         """Test that the log levels accepted by the log_level_option are
-        translated to lsst.log levels correctly."""
+        translated to lsst.log levels correctly.
+        """
         self.assertEqual(lsstLog.Log.FATAL, CliLog._getLsstLogLevel("CRITICAL"))
         self.assertEqual(lsstLog.ERROR, CliLog._getLsstLogLevel("ERROR"))
         self.assertEqual(lsstLog.WARN, CliLog._getLsstLogLevel("WARNING"))

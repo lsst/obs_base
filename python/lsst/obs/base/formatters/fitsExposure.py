@@ -29,7 +29,8 @@ __all__ = (
 
 import warnings
 from abc import abstractmethod
-from typing import AbstractSet, ClassVar
+from collections.abc import Set
+from typing import ClassVar
 
 from lsst.afw.cameraGeom import AmplifierGeometryComparison, AmplifierIsolator
 from lsst.afw.image import (
@@ -46,6 +47,7 @@ from lsst.afw.math import BoundedField  # noqa: F401
 from lsst.daf.base import PropertySet
 from lsst.daf.butler import Formatter
 from lsst.utils.classes import cached_getter
+from lsst.utils.introspection import find_outside_stacklevel
 
 
 class FitsImageFormatterBase(Formatter):
@@ -63,11 +65,9 @@ class FitsImageFormatterBase(Formatter):
     """
 
     extension = ".fits"
-    supportedExtensions: ClassVar[AbstractSet[str]] = frozenset(
-        {".fits", ".fits.gz", ".fits.fz", ".fz", ".fit"}
-    )
+    supportedExtensions: ClassVar[Set[str]] = frozenset({".fits", ".fits.gz", ".fits.fz", ".fz", ".fit"})
 
-    unsupportedParameters: ClassVar[AbstractSet[str]] = frozenset()
+    unsupportedParameters: ClassVar[Set[str]] = frozenset()
     """Support all parameters."""
 
     @property
@@ -358,7 +358,7 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
             return recipes
 
         def checkUnrecognized(entry, allowed, description):
-            """Check to see if the entry contains unrecognised keywords"""
+            """Check to see if the entry contains unrecognised keywords."""
             unrecognized = set(entry) - set(allowed)
             if unrecognized:
                 raise RuntimeError(
@@ -426,7 +426,7 @@ class FitsMaskedImageFormatter(StandardFitsImageFormatterBase):
 
 
 def standardizeAmplifierParameters(parameters, on_disk_detector):
-    """Preprocess the Exposure storage class's "amp" and "detector" parameters
+    """Preprocess the Exposure storage class's "amp" and "detector" parameters.
 
     This checks the given objects for consistency with the on-disk geometry and
     converts amplifier IDs/names to Amplifier instances.
@@ -460,7 +460,7 @@ def standardizeAmplifierParameters(parameters, on_disk_detector):
         return None, on_disk_detector, False
     if "bbox" in parameters or "origin" in parameters:
         raise ValueError("Cannot pass 'amp' with 'bbox' or 'origin'.")
-    if isinstance(amplifier, (int, str)):
+    if isinstance(amplifier, int | str):
         amp_key = amplifier
         target_amplifier = None
     else:
@@ -628,7 +628,14 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
                 warnings.warn(
                     f"Data ID {self.dataId} is missing (implied) value(s) for {missing}; "
                     "the correctness of this Exposure's FilterLabel cannot be guaranteed. "
-                    "Call Registry.expandDataId before Butler.get to avoid this."
+                    "Call Registry.expandDataId before Butler.get to avoid this.",
+                    # It is not entirely obvious what the correct stacklevel
+                    # should be for a formatter. Outside of obs_base will be
+                    # the butler datastore. Outside of daf_butler might be
+                    # the right answer and could be the caller using butler.get
+                    # or could be a runQuantum method.
+                    # TODO: DM-40032
+                    stacklevel=find_outside_stacklevel("lsst.obs.base"),
                 )
             return file_filter_label
         if band is None and physical_filter is None:
@@ -643,6 +650,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
             warnings.warn(
                 f"Reading {self.fileDescriptor.location} with data ID {self.dataId}: "
                 f"filter label mismatch (file is {file_filter_label}, data ID is "
-                f"{data_id_filter_label}).  This is probably a bug in the code that produced it."
+                f"{data_id_filter_label}).  This is probably a bug in the code that produced it.",
+                stacklevel=find_outside_stacklevel("lsst.obs.base"),
             )
         return data_id_filter_label

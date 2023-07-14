@@ -49,7 +49,7 @@ class ButlerCmdTestBase(metaclass=abc.ABCMeta):
         pass
 
     @property
-    def secondInstrumentClassName(self):
+    def secondInstrumentClassName(self) -> str | None:
         """Optional; if provided the register-instrument test will try to
         register two instruments.
 
@@ -58,6 +58,7 @@ class ButlerCmdTestBase(metaclass=abc.ABCMeta):
         `str` or `None`
             The fully qualified instrument class name.
         """
+        return None
 
     @property
     def instrument(self):

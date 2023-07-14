@@ -295,7 +295,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
 
     def readComponent(self, component):
         # Docstring inherited.
-        self.checked_parameters  # just for checking; no supported parameters.
+        _ = self.checked_parameters  # just for checking; no supported parameters.
         if component == "image":
             return self.readImage()
         elif component == "filter":

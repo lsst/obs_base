@@ -154,7 +154,7 @@ def define_visits(*args, **kwargs):
 @failfast_option()
 @options_file_option()
 def ingest_raws(*args, **kwargs):
-    """Ingest raw frames into from a directory into the butler registry"""
+    """Ingest raw frames into from a directory into the butler registry."""
     script.ingestRaws(*args, **kwargs)
 
 

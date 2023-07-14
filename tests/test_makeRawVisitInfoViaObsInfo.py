@@ -31,6 +31,8 @@ from lsst.obs.base import MakeRawVisitInfoViaObsInfo
 
 
 class NewTranslator(FitsTranslator, StubTranslator):
+    """Metadata translator to use for tests."""
+
     _trivial_map = {
         "exposure_time": "EXPTIME",
         "exposure_id": "EXP-ID",
@@ -52,10 +54,14 @@ class NewTranslator(FitsTranslator, StubTranslator):
 
 
 class MakeTestableVisitInfo(MakeRawVisitInfoViaObsInfo):
+    """Test class for VisitInfo construction."""
+
     metadataTranslator = NewTranslator
 
 
 class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
+    """Test VisitInfo construction."""
+
     def setUp(self):
         # Reference values
         self.exposure_time = 6.2 * u.s

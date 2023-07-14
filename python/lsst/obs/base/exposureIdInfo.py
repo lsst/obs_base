@@ -23,7 +23,6 @@ from __future__ import annotations
 
 __all__ = ["ExposureIdInfo"]
 
-from typing import Optional
 
 from deprecated.sphinx import deprecated
 from lsst.afw.table import IdFactory
@@ -64,8 +63,9 @@ class ExposureIdInfo:
     .. code-block:: python
 
         from lsst.afw.table import SourceTable
+
         schema = SourceTable.makeMinimalSchema()
-        #...add fields to schema as desired, then...
+        # ...add fields to schema as desired, then...
         sourceTable = SourceTable.make(self.schema, info.makeSourceIdFactory())
 
     An `ExposureIdInfo` instance can be obtained from a
@@ -86,8 +86,8 @@ class ExposureIdInfo:
     exposure ID, for reasons that are not entirely clear (this is DM-6664).
     """
 
-    def __init__(self, expId: int = 0, expBits: int = 1, maxBits: Optional[int] = None):
-        """Construct an ExposureIdInfo
+    def __init__(self, expId: int = 0, expBits: int = 1, maxBits: int | None = None):
+        """Construct an ExposureIdInfo.
 
         See the class doc string for an explanation of the arguments.
         """
@@ -95,7 +95,7 @@ class ExposureIdInfo:
         expBits = int(expBits)
 
         if expId.bit_length() > expBits:
-            raise RuntimeError("expId=%s uses %s bits > expBits=%s" % (expId, expId.bit_length(), expBits))
+            raise RuntimeError(f"expId={expId} uses {expId.bit_length()} bits > expBits={expBits}")
 
         self.expId = expId
         self.expBits = expBits
@@ -103,7 +103,7 @@ class ExposureIdInfo:
         if maxBits is not None:
             maxBits = int(maxBits)
             if maxBits < expBits:
-                raise RuntimeError("expBits=%s > maxBits=%s" % (expBits, maxBits))
+                raise RuntimeError(f"expBits={expBits} > maxBits={maxBits}")
         self.maxBits = maxBits
 
     def __repr__(self) -> str:
@@ -113,7 +113,7 @@ class ExposureIdInfo:
 
     @classmethod
     def fromDataId(
-        cls, dataId: DataCoordinate, name: str = "visit_detector", maxBits: Optional[int] = None
+        cls, dataId: DataCoordinate, name: str = "visit_detector", maxBits: int | None = None
     ) -> ExposureIdInfo:
         """Construct an instance from a fully-expanded data ID.
 

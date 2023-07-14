@@ -26,7 +26,7 @@ __all__ = ["CuratedCalibration", "read_all"]
 import glob
 import os
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Protocol, Type, Union
+from typing import TYPE_CHECKING, Any, Protocol
 
 import dateutil.parser
 
@@ -38,7 +38,8 @@ if TYPE_CHECKING:
 
 class CuratedCalibration(Protocol):
     """Protocol that describes the methods needed by this class when dealing
-    with curated calibration datasets."""
+    with curated calibration datasets.
+    """
 
     @classmethod
     def readText(cls, path: str) -> CuratedCalibration:
@@ -50,9 +51,9 @@ class CuratedCalibration(Protocol):
 
 def read_one_calib(
     path: tuple[str, ...],
-    chip_id: Union[int, None],
-    filter_name: Union[str, None],
-    calib_class: Type[CuratedCalibration],
+    chip_id: int | None,
+    filter_name: str | None,
+    calib_class: type[CuratedCalibration],
 ) -> tuple[dict[datetime.datetime, CuratedCalibration], str]:
     """Read data for a particular path from the standard format at a
     particular root.
@@ -123,12 +124,12 @@ def check_metadata(
     obj: Any,
     valid_start: datetime.datetime,
     instrument: str,
-    chip_id: Union[int, None],
-    filter_name: Union[str, None],
+    chip_id: int | None,
+    filter_name: str | None,
     filepath: str,
     data_name: str,
 ) -> None:
-    """Check that the metadata is complete and self consistent
+    """Check that the metadata is complete and self consistent.
 
     Parameters
     ----------
@@ -187,7 +188,7 @@ def check_metadata(
 def read_all(
     root: str,
     camera: lsst.afw.cameraGeom.Camera,
-    calib_class: Type[CuratedCalibration],
+    calib_class: type[CuratedCalibration],
     required_dimensions: list[str],
     filters: set[str],
 ) -> tuple[dict[tuple[str, ...], dict[datetime.datetime, CuratedCalibration]], str]:
@@ -244,7 +245,7 @@ def read_all(
             if dir_name not in detector_map:
                 # Top level directories must be detectors if they're
                 # required.
-                detectors = [det for det in detector_map.keys()]
+                detectors = list(detector_map)
                 max_detectors = 10
                 note_str = "knows"
                 if len(detectors) > max_detectors:

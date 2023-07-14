@@ -100,10 +100,11 @@ READ_COMPONENTS = {
 
 
 class ButlerFitsTests(lsst.utils.tests.TestCase):
+    """Tests for butler interaction with FITS files."""
+
     @classmethod
     def setUpClass(cls):
         """Create a new butler once only."""
-
         cls.storageClassFactory = StorageClassFactory()
 
         cls.root = tempfile.mkdtemp(dir=TESTDIR)
@@ -215,7 +216,7 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
         self.runFundamentalTypeTest("pl", pl)
 
     def testFitsCatalog(self) -> None:
-        """Test reading of a FITS catalog"""
+        """Test reading of a FITS catalog."""
         catalog = self.makeExampleCatalog()
         dataId = {"visit": 42, "instrument": "DummyCam", "physical_filter": "d-r"}
         ref = self.butler.put(catalog, "testCatalog", dataId)
@@ -228,14 +229,14 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
         self.assertEqual(len(astropy_table), len(stored))
 
     def testExposureCompositePutGetConcrete(self) -> None:
-        """Test composite with no disassembly"""
+        """Test composite with no disassembly."""
         ref = self.runExposureCompositePutGetTest("calexp")
 
         uri = self.butler.getURI(ref)
         self.assertTrue(uri.exists(), f"Checking URI {uri} existence")
 
     def testExposureCompositePutGetVirtual(self) -> None:
-        """Testing composite disassembly"""
+        """Testing composite disassembly."""
         ref = self.runExposureCompositePutGetTest("unknown")
 
         primary, components = self.butler.getURIs(ref)
@@ -321,7 +322,7 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
 
         # Full Exposure with parameters
         inBBox = Box2I(minimum=Point2I(3, 3), maximum=Point2I(21, 16))
-        parameters = dict(bbox=inBBox, origin=LOCAL)
+        parameters = {"bbox": inBBox, "origin": LOCAL}
         subset = self.butler.get(datasetTypeName, dataId, parameters=parameters)
         outBBox = subset.getBBox()
         self.assertEqual(inBBox, outBBox)

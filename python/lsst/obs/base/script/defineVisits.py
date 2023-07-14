@@ -37,7 +37,7 @@ def defineVisits(
     incremental=False,
     raw_name="raw",
 ):
-    """Implements the command line interface `butler define-visits` subcommand,
+    """Implement the command line interface `butler define-visits` subcommand,
     should only be called by command line tools and unit test code that tests
     this function.
 

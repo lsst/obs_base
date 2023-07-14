@@ -9,7 +9,7 @@ How to create a new LSST obs package
 These instructions describe how to create a package that allows the LSST Science Pipelines to read raw data from a telescope and instrument using the gen3 middleware and ingest it into an LSST repository.
 "Ingestion" is the process of reading raw files, interpreting their metadata, and formatting the data in a way the :py:mod:`Data Butler <lsst.daf.butler>` can read.
 
-This guide describes how to create an interface between the :py:mod:`Data Butler <lsst.daf.butler>` and your raw files, so that users do not have to know any details about a particular instrument.
+This guide describes how to create an interface between the :ref:`Data Butler <lsst.daf.butler>` and your raw files, so that users do not have to know any details about a particular instrument.
 These instructions are necessary, but not sufficient: camera geometry, config overrides for tasks, and defects and other curated calibration are other necessary components not described here.
 You will have successfully made an obs package when an :ref:`ingestion test <testing>` passes.
 This demonstrates that the butler can read data ingested from your instrument.
@@ -23,11 +23,11 @@ Here we put the code in a ``lsst.obs`` module hierarchy but this is not required
 MetadataTranslator
 ==================
 
-The `astro_metadata_translator` package abstracts away reading metadata from raw images of a given telescope+instrument.
+The :ref:`astro_metadata_translator` package abstracts away reading metadata from raw images of a given telescope+instrument.
 For example, the time of the observation, temperature, and filter for a given observation might each be stored in each raw file's FITS header as ``"OBSTIME"``, ``"TEMP_W"``, ``"FILTOBS"``.
 The translator knows how to get all of this relevant metadata out of the raw files, so that they can be loaded into the :py:mod:`Data Butler <lsst.daf.butler>`.
 
-Creating a ``MetadataTranslator`` derived from `~astro_metadata_translator.translators.MetadataTranslator` or `~astro_metadata_translator.translators.FitsTranslator` is the first step in building an obs_package.
+Creating a ``MetadataTranslator`` derived from `~astro_metadata_translator.MetadataTranslator` or `~astro_metadata_translator.FitsTranslator` is the first step in building an obs_package.
 Your new metadata translator can live in a separate package as you are developing it, but you should eventually make a pull request to `astro_metadata_translator` itself, so that other people can readily use it.
 You will call your new translator ``ExampleTranslator`` from here on.
 
@@ -107,16 +107,18 @@ The `set` of ``physical_filters`` you provide here will be checked to ensure tha
 
     class TestExampleCam(InstrumentTests, lsst.utils.tests.TestCase):
         def setUp(self):
-            physical_filters = {"example g filter",
-                                "example z filter"}
+            physical_filters = {"example g filter", "example z filter"}
 
-            self.data = InstrumentTestData(name="Example",
-                                           nDetectors=4,
-                                           firstDetectorName="1_1",
-                                           physical_filters=physical_filters)
+            self.data = InstrumentTestData(
+                name="Example",
+                nDetectors=4,
+                firstDetectorName="1_1",
+                physical_filters=physical_filters,
+            )
             self.instrument = lsst.obs.example.ExampleCam()
 
-    if __name__ == '__main__':
+
+    if __name__ == "__main__":
         lsst.utils.tests.init()
         unittest.main()
 
@@ -167,7 +169,9 @@ This is how our system tests that your ``Formatter`` works correctly and that th
         def setUp(self):
             self.ingestdir = os.path.dirname(__file__)
             self.instrument = Examplecam()
-            self.file = os.path.join(testDataDirectory, "example", "raw", "somefile.fits.gz")
+            self.file = os.path.join(
+                testDataDirectory, "example", "raw", "somefile.fits.gz"
+            )
             self.dataId = dict(instrument="Example", exposure=12345, detector=123)
 
             super().setUp()
