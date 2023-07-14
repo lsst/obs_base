@@ -634,6 +634,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
                     # the butler datastore. Outside of daf_butler might be
                     # the right answer and could be the caller using butler.get
                     # or could be a runQuantum method.
+                    # TODO: DM-40032
                     stacklevel=find_outside_stacklevel("lsst.obs.base"),
                 )
             return file_filter_label
