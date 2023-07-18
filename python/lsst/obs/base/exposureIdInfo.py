@@ -29,6 +29,7 @@ from lsst.afw.table import IdFactory
 from lsst.daf.butler import DataCoordinate
 
 
+# TODO: remove on DM-38687.
 @deprecated(
     "Deprecated in favor of `lsst.meas.base.IdGenerator`; will be removed after v26.",
     version="v26",
