@@ -629,13 +629,11 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
                     f"Data ID {self.dataId} is missing (implied) value(s) for {missing}; "
                     "the correctness of this Exposure's FilterLabel cannot be guaranteed. "
                     "Call Registry.expandDataId before Butler.get to avoid this.",
-                    # It is not entirely obvious what the correct stacklevel
-                    # should be for a formatter. Outside of obs_base will be
-                    # the butler datastore. Outside of daf_butler might be
-                    # the right answer and could be the caller using butler.get
-                    # or could be a runQuantum method.
-                    # TODO: DM-40032
-                    stacklevel=find_outside_stacklevel("lsst.obs.base"),
+                    # Report the warning from outside of middleware or the
+                    # relevant runQuantum method.
+                    stacklevel=find_outside_stacklevel(
+                        "lsst.obs.base", "lsst.pipe.base", "lsst.daf.butler", allow_methods={"runQuantum"}
+                    ),
                 )
             return file_filter_label
         if band is None and physical_filter is None:
@@ -651,6 +649,8 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
                 f"Reading {self.fileDescriptor.location} with data ID {self.dataId}: "
                 f"filter label mismatch (file is {file_filter_label}, data ID is "
                 f"{data_id_filter_label}).  This is probably a bug in the code that produced it.",
-                stacklevel=find_outside_stacklevel("lsst.obs.base"),
+                stacklevel=find_outside_stacklevel(
+                    "lsst.obs.base", "lsst.pipe.base", "lsst.daf.butler", allow_methods={"runQuantum"}
+                ),
             )
         return data_id_filter_label
