@@ -76,9 +76,13 @@ def read_one_calib(
 
     Returns
     -------
-    `dict`
-        A dictionary of objects constructed from the appropriate factory class.
-        The key is the validity start time as a `datetime` object.
+    data_dict : `dict`
+        A dictionary of calibration objects constructed from the
+        appropriate factory class.  The key is the validity start time
+        as a `datetime.datetime` object.
+    calib_type : `str`
+        The type of calibrations that have been read and are included
+        in the ``data_dict``.
 
     Notes
     -----
@@ -110,14 +114,14 @@ def read_one_calib(
 
     parts = os.path.split(path[0])
     instrument = os.path.split(parts[0])[1]  # convention is that these reside at <instrument>/<data_name>
-    data_name = parts[1]
+    calib_type = parts[1]
     data_dict: dict[datetime.datetime, Any] = {}
     for f in files:
         date_str = os.path.splitext(os.path.basename(f))[0]
         valid_start = dateutil.parser.parse(date_str)
         data_dict[valid_start] = calib_class.readText(f)
         check_metadata(data_dict[valid_start], valid_start, instrument, chip_id, filter_name, f, data_name)
-    return data_dict, data_name
+    return data_dict, calib_type
 
 
 def check_metadata(
@@ -213,10 +217,14 @@ def read_all(
 
     Returns
     -------
-    dict
-        A dictionary of dictionaries of objects constructed with the
-        appropriate factory class. The first key is the sensor name lowered,
-        and the second is the validity start time as a `datetime` object.
+    calibration_data : `dict`
+        A dictionary of dictionaries of calibration objects
+        constructed with the appropriate factory class. The first key
+        is the sensor name in lower case, and the second is the
+        validity start time as a `datetime.datetime` object.
+    calib_type : `str`
+        The type of calibrations that have been read and are included
+        in the ``data_dict``.
 
     Notes
     -----
