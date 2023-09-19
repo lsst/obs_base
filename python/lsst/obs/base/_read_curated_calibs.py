@@ -113,14 +113,14 @@ def read_one_calib(
         files.extend(glob.glob(os.path.join(*path, f"*{ext}")))
 
     parts = os.path.split(path[0])
-    instrument = os.path.split(parts[0])[1]  # convention is that these reside at <instrument>/<data_name>
+    instrument = os.path.split(parts[0])[1]  # convention is that these reside at <instrument>/<calib_type>
     calib_type = parts[1]
     data_dict: dict[datetime.datetime, Any] = {}
     for f in files:
         date_str = os.path.splitext(os.path.basename(f))[0]
         valid_start = dateutil.parser.parse(date_str)
         data_dict[valid_start] = calib_class.readText(f)
-        check_metadata(data_dict[valid_start], valid_start, instrument, chip_id, filter_name, f, data_name)
+        check_metadata(data_dict[valid_start], valid_start, instrument, chip_id, filter_name, f, calib_type)
     return data_dict, calib_type
 
 
@@ -131,7 +131,7 @@ def check_metadata(
     chip_id: int | None,
     filter_name: str | None,
     filepath: str,
-    data_name: str,
+    calib_type: str,
 ) -> None:
     """Check that the metadata is complete and self consistent.
 
@@ -150,7 +150,7 @@ def check_metadata(
         Identifier of the filter in question.
     filepath : `str`
         Path of the file read to construct the data.
-    data_name : `str`
+    calib_type : `str`
         Name of the type of data being read.
 
     Returns
@@ -166,7 +166,7 @@ def check_metadata(
     md = obj.getMetadata()
     # It is an error if these two do not exist.
     finst = md["INSTRUME"]
-    fdata_name = md["OBSTYPE"]
+    fcalib_type = md["OBSTYPE"]
     # These may optionally not exist.
     fchip_id = md.get("DETECTOR", None)
     ffilter_name = md.get("FILTER", None)
@@ -178,13 +178,13 @@ def check_metadata(
         filter_name = filter_name.lower()
 
     if not (
-        (finst.lower(), fchip_id, ffilter_name, fdata_name.lower())
-        == (instrument.lower(), chip_id, filter_name, data_name.lower())
+        (finst.lower(), fchip_id, ffilter_name, fcalib_type.lower())
+        == (instrument.lower(), chip_id, filter_name, calib_type.lower())
     ):
         raise ValueError(
             "Path and file metadata do not agree:\n"
-            f"Path metadata: {instrument} {chip_id} {filter_name} {data_name}\n"
-            f"File metadata: {finst} {fchip_id} {ffilter_name} {fdata_name}\n"
+            f"Path metadata: {instrument} {chip_id} {filter_name} {calib_type}\n"
+            f"File metadata: {finst} {fchip_id} {ffilter_name} {fcalib_type}\n"
             f"File read from : {filepath}\n"
         )
 
