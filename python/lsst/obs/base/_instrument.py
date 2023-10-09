@@ -199,7 +199,7 @@ class Instrument(InstrumentBase):
 
         Parameters
         ----------
-        registry : `lsst.daf.butler.core.Registry`
+        registry : `lsst.daf.butler.Registry`
             The registry to add dimensions to.
         update : `bool`, optional
             If `True` (`False` is default), update existing records if they
