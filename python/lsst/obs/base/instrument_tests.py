@@ -42,8 +42,9 @@ from collections.abc import Sequence
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from lsst.daf.butler import CollectionType, DatasetType, Registry, RegistryConfig
+from lsst.daf.butler import CollectionType, DatasetType, RegistryConfig
 from lsst.daf.butler.formatters.yaml import YamlFormatter
+from lsst.daf.butler.registry.sql_registry import SqlRegistry
 from lsst.obs.base import FilterDefinition, FilterDefinitionCollection, Instrument
 from lsst.obs.base.yamlCamera import makeCamera
 from lsst.resources import ResourcePath
@@ -230,7 +231,7 @@ class InstrumentTests(metaclass=abc.ABCMeta):
         """Test that register() sets appropriate Dimensions."""
         registryConfig = RegistryConfig()
         registryConfig["db"] = "sqlite://"
-        registry = Registry.createFromConfig(registryConfig)
+        registry = SqlRegistry.createFromConfig(registryConfig)
         # Check that the registry starts out empty.
         self.assertFalse(registry.queryDataIds(["instrument"]).toSequence())
         self.assertFalse(registry.queryDataIds(["detector"]).toSequence())
