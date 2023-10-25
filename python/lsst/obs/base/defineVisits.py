@@ -424,7 +424,7 @@ class DefineVisitsTask(Task):
     -----
     Each instance of `DefineVisitsTask` reads from / writes to the same Butler.
     Each invocation of `DefineVisitsTask.run` processes an independent group of
-    exposures into one or more new vists, all belonging to the same visit
+    exposures into one or more new visits, all belonging to the same visit
     system and instrument.
 
     The actual work of grouping exposures and computing regions is delegated
@@ -435,7 +435,7 @@ class DefineVisitsTask(Task):
     implementations can be created and configured for instruments for which
     these choices are unsuitable (e.g. because visits and exposures are not
     one-to-one, or because ``raw.wcs`` datasets for different detectors may not
-    be consistent with camera geomery).
+    be consistent with camera geometry).
 
     It is not necessary in general to ingest all raws for an exposure before
     defining a visit that includes the exposure; this depends entirely on the

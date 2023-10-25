@@ -62,7 +62,7 @@ class FilterDefinition:
     (e.g. `r` for the SDSS Gunn r-band, which could be on SDSS, LSST, or HSC).
 
     Not all filters have an abstract filter: engineering or test filters may
-    not have a genericly-termed filter name.
+    not have a generically-termed filter name.
 
     If specified and if `afw_name` is None, this is used as the
     `~lsst.afw.image.Filter` ``name`` field, otherwise it is added to the list
