@@ -230,6 +230,7 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
                             self.assertImagesEqual(subexp.image, full[amp.getRawBBox()].image)
                             self.assertEqual(len(subexp.getDetector()), 1)
                             self.assertAmplifiersEqual(subexp.getDetector()[0], amp)
+                            self.assertEqual(subexp.visitInfo.id, 2)
                 # We could try transformed amplifiers here that involve flips
                 # and offsets, but:
                 # - we already test the low-level code that does that in afw;

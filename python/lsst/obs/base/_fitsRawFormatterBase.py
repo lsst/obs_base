@@ -179,7 +179,17 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         visitInfo : `~lsst.afw.image.VisitInfo`
             Structured metadata about the observation.
         """
-        return MakeRawVisitInfoViaObsInfo.observationInfo2visitInfo(self.observationInfo)
+        visit_info = MakeRawVisitInfoViaObsInfo.observationInfo2visitInfo(self.observationInfo)
+        if self.dataId and "exposure" in self.dataId:
+            # Special case exposure existing for this dataset type.
+            # Want to ensure that the id stored in the visitInfo matches that
+            # from the dataId from butler, regardless of what may have come
+            # from the ObservationInfo. In some edge cases they might differ.
+            exposure_id = self.dataId["exposure"]
+            if exposure_id != visit_info.id:
+                visit_info = visit_info.copyWith(id=exposure_id)
+
+        return visit_info
 
     @abstractmethod
     def getDetector(self, id):
