@@ -37,7 +37,7 @@ def writeCuratedCalibrations(repo, instrument, collection, labels):
     instrument : `str`
         The name or the fully qualified class name of an instrument.
     collection : `str` or `None`
-        The path to the collection that assocaites datasets with validity
+        The path to the collection that associates datasets with validity
         ranges.
         Can be `None` in which case the collection name will be determined
         automatically.

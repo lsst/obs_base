@@ -1123,7 +1123,7 @@ class RawIngestTask(Task):
         track_file_attrs : `bool`, optional
             Control whether file attributes such as the size or checksum should
             be tracked by the datastore. Whether this parameter is honored
-            depends on the specific datastore implentation.
+            depends on the specific datastore implementation.
 
         Returns
         -------
@@ -1325,7 +1325,7 @@ class RawIngestTask(Task):
         track_file_attrs : `bool`, optional
             Control whether file attributes such as the size or checksum should
             be tracked by the datastore. Whether this parameter is honored
-            depends on the specific datastore implentation.
+            depends on the specific datastore implementation.
 
         Returns
         -------

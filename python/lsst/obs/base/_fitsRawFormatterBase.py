@@ -263,7 +263,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         orientation : `lsst.geom.Angle`
             The rotation angle of the focal plane on the sky.
         detector : `lsst.afw.cameraGeom.Detector`
-            Where to get the camera geomtry from.
+            Where to get the camera geometry from.
 
         Returns
         -------

@@ -85,10 +85,10 @@ class Instrument(InstrumentBase):
     Parameters
     ----------
     collection_prefix : `str`, optional
-        Prefix for collection names to use instead of the intrument's own name.
-        This is primarily for use in simulated-data repositories, where the
-        instrument name may not be necessary and/or sufficient to distinguish
-        between collections.
+        Prefix for collection names to use instead of the instrument's own
+        name. This is primarily for use in simulated-data repositories, where
+        the instrument name may not be necessary and/or sufficient to
+        distinguish between collections.
 
     Notes
     -----
@@ -242,7 +242,7 @@ class Instrument(InstrumentBase):
             calibrations are ingested).
         labels : `Sequence` [ `str` ], optional
             Extra strings to include in collection names, after concatenating
-            them with the standard collection name delimeter.  If provided,
+            them with the standard collection name delimiter.  If provided,
             these are inserted into the names of the `~CollectionType.RUN`
             collections that datasets are inserted directly into, as well the
             `~CollectionType.CALIBRATION` collection if it is generated
@@ -254,7 +254,7 @@ class Instrument(InstrumentBase):
         -----
         Expected to be called from subclasses.  The base method calls
         ``writeCameraGeom``, ``writeStandardTextCuratedCalibrations``,
-        and ``writeAdditionalCuratdCalibrations``.
+        and ``writeAdditionalCuratedCalibrations``.
         """
         # Delegate registration of collections (and creating names for them)
         # to other methods so they can be called independently with the same
@@ -291,7 +291,7 @@ class Instrument(InstrumentBase):
             calibrations are ingested).
         labels : `Sequence` [ `str` ], optional
             Extra strings to include in collection names, after concatenating
-            them with the standard collection name delimeter.  If provided,
+            them with the standard collection name delimiter.  If provided,
             these are inserted into the names of the `~CollectionType.RUN`
             collections that datasets are inserted directly into, as well the
             `~CollectionType.CALIBRATION` collection if it is generated
@@ -325,7 +325,7 @@ class Instrument(InstrumentBase):
             calibrations are ingested).
         labels : `Sequence` [ `str` ], optional
             Extra strings to include in collection names, after concatenating
-            them with the standard collection name delimeter.  If provided,
+            them with the standard collection name delimiter.  If provided,
             these are inserted into the names of the `~CollectionType.RUN`
             collections that datasets are inserted directly into, as well the
             `~CollectionType.CALIBRATION` collection if it is generated
@@ -369,7 +369,7 @@ class Instrument(InstrumentBase):
             calibrations are ingested).
         labels : `Sequence` [ `str` ], optional
             Extra strings to include in collection names, after concatenating
-            them with the standard collection name delimeter.  If provided,
+            them with the standard collection name delimiter.  If provided,
             these are inserted into the names of the `~CollectionType.RUN`
             collections that datasets are inserted directly into, as well the
             `~CollectionType.CALIBRATION` collection if it is generated

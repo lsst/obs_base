@@ -43,7 +43,7 @@ class InitialSkyWcsError(Exception):
 def createInitialSkyWcs(visitInfo, detector, flipX=False):
     """Create a SkyWcs from the visit information and detector geometry.
 
-    A typical usecase for this is to create the initial WCS for a newly-read
+    A typical use case for this is to create the initial WCS for a newly-read
     raw exposure.
 
 
@@ -52,7 +52,7 @@ def createInitialSkyWcs(visitInfo, detector, flipX=False):
     visitInfo : `lsst.afw.image.VisitInfo`
         Where to get the telescope boresight and rotator angle from.
     detector : `lsst.afw.cameraGeom.Detector`
-        Where to get the camera geomtry from.
+        Where to get the camera geometry from.
     flipX : `bool`, optional
         If False, +X is along W, if True +X is along E.
 
@@ -91,7 +91,7 @@ def createInitialSkyWcsFromBoresight(boresight, orientation, detector, flipX=Fal
     orientation : `lsst.geom.Angle`
         The rotation angle of the focal plane on the sky.
     detector : `lsst.afw.cameraGeom.Detector`
-        Where to get the camera geomtry from.
+        Where to get the camera geometry from.
     flipX : `bool`, optional
         If False, +X is along W, if True +X is along E.
 
