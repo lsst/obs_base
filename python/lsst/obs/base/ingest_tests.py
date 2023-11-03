@@ -180,7 +180,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         self.assertIsNotNone(datasetUri.relative_to(self.datastore_root))
 
         # Get the relevant dataset type.
-        datasetType = butler.registry.getDatasetType(self.ingestDatasetTypeName)
+        datasetType = butler.get_dataset_type(self.ingestDatasetTypeName)
 
         for dataId in self.dataIds:
             # For testing we only read the entire dataset the first time
