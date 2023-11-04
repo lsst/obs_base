@@ -42,15 +42,7 @@ from typing import Any, ClassVar, TypeVar, cast
 
 import lsst.geom
 from lsst.afw.cameraGeom import FOCAL_PLANE, PIXELS
-from lsst.daf.butler import (
-    Butler,
-    DataCoordinate,
-    DataId,
-    DimensionGraph,
-    DimensionRecord,
-    Progress,
-    Timespan,
-)
+from lsst.daf.butler import Butler, DataCoordinate, DataId, DimensionRecord, Progress, Timespan
 from lsst.geom import Box2D
 from lsst.pex.config import Config, Field, makeRegistry, registerConfigurable
 from lsst.pipe.base import Instrument, Task
@@ -664,9 +656,9 @@ class DefineVisitsTask(Task):
         """
         # Normalize, expand, and deduplicate data IDs.
         self.log.info("Preprocessing data IDs.")
-        dimensions = DimensionGraph(self.universe, names=["exposure"])
+        dimensions = self.universe.conform(["exposure"])
         data_id_set: set[DataCoordinate] = {
-            self.butler.registry.expandDataId(d, graph=dimensions) for d in dataIds
+            self.butler.registry.expandDataId(d, dimensions=dimensions) for d in dataIds
         }
         if not data_id_set:
             raise RuntimeError("No exposures given.")
