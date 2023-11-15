@@ -148,7 +148,7 @@ class DummyCam(Instrument):
                 registry.syncDimensionData(
                     "detector",
                     dict(
-                        dataId,
+                        instrument=self.getName(),
                         id=d,
                         full_name=f"RXX_S0{d}",
                     ),
