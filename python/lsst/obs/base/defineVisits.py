@@ -518,10 +518,7 @@ class DefineVisitsTask(Task):
         )
         if observation_reason is None:
             # Be explicit about there being multiple reasons
-            # MyPy can't really handle DimensionRecord fields as
-            # DimensionRecord classes are dynamically defined; easiest to just
-            # shush it when it complains.
-            observation_reason = "various"  # type: ignore
+            observation_reason = "various"
 
         # Use the mean zenith angle as an approximation
         zenith_angle = _reduceOrNone(operator.add, (e.zenith_angle for e in definition.exposures))
