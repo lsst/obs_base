@@ -887,7 +887,8 @@ class RawIngestTask(Task):
         for file in data.files:
             for dataset in file.datasets:
                 dataset.dataId = self.butler.registry.expandDataId(
-                    dataset.dataId, records=data.dataId.records
+                    dataset.dataId,
+                    records={k: data.dataId.records[k] for k in data.dataId.dimensions.elements},
                 )
         return data
 

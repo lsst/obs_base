@@ -493,7 +493,7 @@ class Instrument(InstrumentBase):
         # by putting them in the ``runs`` set that was passed in.
         camera = self.getCamera()
         filters = set(self.filterDefinitions.physical_to_band.keys())
-        calib_dimensions: list[Any]
+        calib_dimensions: list[str]
         if datasetType.name in StandardCuratedCalibrationDatasetTypes:
             calib_dimensions = list(StandardCuratedCalibrationDatasetTypes[datasetType.name]["dimensions"])
         else:
@@ -503,7 +503,7 @@ class Instrument(InstrumentBase):
                 "Unknown curated calibration type %s.  Attempting to use supplied definition.",
                 datasetType.name,
             )
-            calib_dimensions = list(datasetType.dimensions)
+            calib_dimensions = list(datasetType.dimensions.names)
 
         calibsDict, calib_type = read_all(calibPath, camera, calib_class, calib_dimensions, filters)
 
@@ -667,7 +667,7 @@ def loadCamera(butler: Butler, dataId: DataId, *, collections: Any = None) -> tu
     # to ensure it only happens once.
     # This will also catch problems with the data ID not having keys we need.
     try:
-        dataId = butler.registry.expandDataId(dataId, graph=butler.dimensions["exposure"].graph)
+        dataId = butler.registry.expandDataId(dataId, dimensions=butler.dimensions["exposure"].minimal_group)
     except DataIdError as exc:
         raise LookupError(str(exc)) from exc
     try:

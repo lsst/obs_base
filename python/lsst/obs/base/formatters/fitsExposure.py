@@ -300,7 +300,7 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
         recipe = self.writeRecipes[recipeName]
 
         # Set the seed based on dataId
-        seed = hash(tuple(self.dataId.items())) % 2**31
+        seed = hash(tuple(self.dataId.required.items())) % 2**31
         for plane in ("image", "mask", "variance"):
             if plane in recipe and "scaling" in recipe[plane]:
                 scaling = recipe[plane]["scaling"]
@@ -599,20 +599,20 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         missing = []
         band = None
         physical_filter = None
-        if "band" in self.dataId.graph.dimensions.names:
+        if "band" in self.dataId.dimensions.names:
             band = self.dataId.get("band")
             # band isn't in the data ID; is that just because this data ID
             # hasn't been filled in with everything the Registry knows, or
             # because this dataset is never associated with a band?
-            if band is None and not self.dataId.hasFull() and "band" in self.dataId.graph.implied.names:
+            if band is None and not self.dataId.hasFull() and "band" in self.dataId.dimensions.implied:
                 missing.append("band")
-        if "physical_filter" in self.dataId.graph.dimensions.names:
+        if "physical_filter" in self.dataId.dimensions.names:
             physical_filter = self.dataId.get("physical_filter")
             # Same check as above for band, but for physical_filter.
             if (
                 physical_filter is None
                 and not self.dataId.hasFull()
-                and "physical_filter" in self.dataId.graph.implied.names
+                and "physical_filter" in self.dataId.dimensions.implied
             ):
                 missing.append("physical_filter")
         if should_be_standardized is None:
