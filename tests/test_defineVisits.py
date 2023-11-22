@@ -45,7 +45,7 @@ class DefineVisitsTestCase(unittest.TestCase):
         """
         self.root = tempfile.mkdtemp(dir=TESTDIR)
         self.creatorButler = butlerTests.makeTestRepo(self.root, [])
-        self.butler = butlerTests.makeTestCollection(self.creatorButler)
+        self.butler = butlerTests.makeTestCollection(self.creatorButler, uniqueId=self.id())
 
         self.config = DefineVisitsTask.ConfigClass()
         self.task = DefineVisitsTask(config=self.config, butler=self.butler)

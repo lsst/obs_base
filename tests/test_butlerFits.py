@@ -150,7 +150,7 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
             shutil.rmtree(cls.root, ignore_errors=True)
 
     def setUp(self):
-        self.butler = makeTestCollection(self.creatorButler)
+        self.butler = makeTestCollection(self.creatorButler, uniqueId=self.id())
 
     def makeExampleCatalog(self) -> lsst.afw.table.SourceCatalog:
         catalogPath = os.path.join(TESTDIR, "data", "source_catalog.fits")
