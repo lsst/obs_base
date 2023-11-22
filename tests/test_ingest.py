@@ -111,7 +111,7 @@ datastore:
             shutil.rmtree(cls.root, ignore_errors=True)
 
     def setUp(self):
-        self.butler = butlerTests.makeTestCollection(self.creatorButler)
+        self.butler = butlerTests.makeTestCollection(self.creatorButler, uniqueId=self.id())
         self.outputRun = self.butler.run
 
         config = RawIngestTask.ConfigClass()
