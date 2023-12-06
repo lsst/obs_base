@@ -33,7 +33,7 @@ import lsst.afw.image
 import lsst.pex.config
 import lsst.utils.tests
 from lsst.afw.fits import readMetadata
-from lsst.afw.image import LOCAL, ExposureFitsReader
+from lsst.afw.image import LOCAL, ExposureFitsReader, MaskedImageFitsReader
 from lsst.afw.math import flipImage
 from lsst.daf.base import PropertyList, PropertySet
 from lsst.daf.butler import Config, DatasetType, StorageClassFactory
@@ -125,6 +125,7 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
         # Create dataset types used by the tests
         for datasetTypeName, storageClassName in (
             ("calexp", "ExposureF"),
+            ("noise", "MaskedImageF"),
             ("unknown", "ExposureCompositeF"),
             ("testCatalog", "SourceCatalog"),
             ("lossless", "ExposureF"),
@@ -430,6 +431,53 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
             test_t3_untrimmed = self.butler.get(untrimmed_ref, parameters={"amp": amp_t3})
             self.assertImagesEqual(test_t3_untrimmed.image, untrimmed_full[amp.getRawBBox()].image)
             self.assertAmplifiersEqual(test_t3_trimmed.getDetector()[0], amp_t3)
+
+    def testMaskedImageFormatter(self):
+        """Test that a MaskedImage can be persisted and read from a Butler."""
+        # Read in an Exposure as MaskedImage using MaskedImageFitsReader.
+        reader = MaskedImageFitsReader(os.path.join(TESTDIR, "data", "calexp.fits"))
+        mi = reader.read()
+
+        # Put the MaskedImage into the Butler and get a reference to it.
+        dataId = {"visit": 42, "instrument": "DummyCam", "physical_filter": "d-r"}
+        ref = self.butler.put(mi, "noise", dataId)
+
+        # Check that the MaskedImage can be retrieved from the butler.
+        maskedImage = self.butler.get(ref)
+        self.assertImagesEqual(maskedImage.image, mi.image)
+        self.assertImagesEqual(maskedImage.mask, mi.mask)
+        self.assertImagesEqual(maskedImage.variance, mi.variance)
+
+        # Get a DeferredDatasetHandle to load parts of the MaskedImage.
+        handle = self.butler.getDeferred(ref)
+
+        for parameters in (
+            {},
+            {"bbox": reader.readBBox()},
+            {"bbox": Box2I(minimum=Point2I(3, 3), maximum=Point2I(21, 16))},
+            {"bbox": Box2I(minimum=Point2I(3, 3), maximum=Point2I(21, 16)), "origin": LOCAL},
+        ):
+            bbox = parameters.get("bbox", reader.readBBox())
+            with self.subTest(parameters=parameters):
+                # Check that the reader supports reading sub-regions.
+                subMaskedImage = reader.read(**parameters)
+                self.assertImagesEqual(subMaskedImage.image, mi.image[bbox])
+                self.assertImagesEqual(subMaskedImage.mask, mi.mask[bbox])
+                self.assertImagesEqual(subMaskedImage.variance, mi.variance[bbox])
+
+                # Get a maskedImage within a bounding box from the butler.
+                subMaskedImage = handle.get(parameters=parameters)
+                self.assertImagesEqual(subMaskedImage.image, mi.image[bbox])
+                self.assertImagesEqual(subMaskedImage.mask, mi.mask[bbox])
+                self.assertImagesEqual(subMaskedImage.variance, mi.variance[bbox])
+
+                # Get one component at a time from the butler.
+                subImage = handle.get(parameters=parameters, component="image")
+                subMask = handle.get(parameters=parameters, component="mask")
+                subVariance = handle.get(parameters=parameters, component="variance")
+                self.assertImagesEqual(subImage, mi.image[bbox])
+                self.assertImagesEqual(subMask, mi.mask[bbox])
+                self.assertImagesEqual(subVariance, mi.variance[bbox])
 
 
 if __name__ == "__main__":
