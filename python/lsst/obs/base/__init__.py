@@ -22,7 +22,6 @@
 from ._fitsRawFormatterBase import *
 from ._instrument import *
 from .defineVisits import *
-from .exposureIdInfo import *
 from .filters import *
 from .ingest import *
 from .makeRawVisitInfoViaObsInfo import *
