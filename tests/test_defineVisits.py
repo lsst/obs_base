@@ -56,7 +56,8 @@ class DefineVisitsTestCase(unittest.TestCase):
         # Read the exposure records.
         self.records: dict[int, DimensionRecord] = {}
         for i in (347, 348, 349):
-            simple = SerializedDimensionRecord.parse_file(os.path.join(DATADIR, f"exp_{i}.json"))
+            with open(os.path.join(DATADIR, f"exp_{i}.json")) as fh:
+                simple = SerializedDimensionRecord.model_validate_json(fh.read())
             self.records[i] = DimensionRecord.from_simple(simple, registry=self.butler.registry)
 
     def tearDown(self):
