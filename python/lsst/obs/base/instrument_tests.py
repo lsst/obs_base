@@ -37,7 +37,6 @@ __all__ = [
 
 import abc
 import dataclasses
-import json
 from collections.abc import Sequence
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, ClassVar
@@ -91,11 +90,11 @@ class CuratedCalibration(BaseModel):
     def readText(cls, path: str) -> CuratedCalibration:
         with open(path) as f:
             data = f.read()
-        return cls.parse_obj(json.loads(data))
+        return cls.model_validate_json(data)
 
     def writeText(self, path: str) -> None:
         with open(path, "w") as f:
-            print(self.json(), file=f)
+            print(self.model_dump_json(), file=f)
 
     def getMetadata(self) -> dict[str, Any]:
         return self.metadata
