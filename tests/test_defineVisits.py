@@ -53,10 +53,16 @@ class DefineVisitsTestCase(unittest.TestCase):
         # Need to register the instrument.
         DummyCam().register(self.butler.registry)
 
+        # Choose serializations based on universe.
+        if "group" in self.butler.dimensions["exposure"].implied:
+            v = "_v6"
+        else:
+            v = ""
+
         # Read the exposure records.
         self.records: dict[int, DimensionRecord] = {}
         for i in (347, 348, 349):
-            with open(os.path.join(DATADIR, f"exp_{i}.json")) as fh:
+            with open(os.path.join(DATADIR, f"exp{v}_{i}.json")) as fh:
                 simple = SerializedDimensionRecord.model_validate_json(fh.read())
             self.records[i] = DimensionRecord.from_simple(simple, registry=self.butler.registry)
 
@@ -92,7 +98,18 @@ class DefineVisitsTestCase(unittest.TestCase):
         self, exposures: list[DimensionRecord | list[DimensionRecord]], incremental: bool
     ) -> None:
         for records in exposures:
-            self.butler.registry.insertDimensionData("exposure", *ensure_iterable(records))
+            records = list(ensure_iterable(records))
+            if "group" in self.butler.dimensions["exposure"].implied:
+                # This is a group + day_obs universe.
+                for rec in records:
+                    self.butler.registry.syncDimensionData(
+                        "group", dict(instrument=rec.instrument, name=rec.group)
+                    )
+                    self.butler.registry.syncDimensionData(
+                        "day_obs", dict(instrument=rec.instrument, id=rec.day_obs)
+                    )
+
+            self.butler.registry.insertDimensionData("exposure", *records)
             # Include all records so far in definition.
             dataIds = list(self.butler.registry.queryDataIds("exposure", instrument="DummyCam"))
             self.task.run(dataIds, incremental=incremental)
@@ -116,6 +133,17 @@ class DefineVisitsTestCase(unittest.TestCase):
         self.assertVisits()
 
     def define_visits_incrementally(self, exposure: DimensionRecord) -> None:
+        if "group" in self.butler.dimensions["exposure"].implied:
+            self.butler.registry.syncDimensionData(
+                "group", dict(instrument=exposure.instrument, name=exposure.group)
+            )
+            self.butler.registry.syncDimensionData(
+                "day_obs",
+                dict(
+                    instrument=exposure.instrument,
+                    id=exposure.day_obs,
+                ),
+            )
         self.butler.registry.insertDimensionData("exposure", exposure)
         dataIds = [
             DataCoordinate.standardize(
