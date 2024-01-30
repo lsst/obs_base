@@ -484,6 +484,7 @@ class RawIngestTask(Task):
             "datetime_begin",
             "datetime_end",
             "detector_num",
+            "exposure_group",
             "exposure_id",
             "exposure_time",
             "group_counter_end",
@@ -492,6 +493,7 @@ class RawIngestTask(Task):
             "instrument",
             "observation_id",
             "observation_type",
+            "observing_day",
             "physical_filter",
         }
         optional = {
@@ -499,12 +501,10 @@ class RawIngestTask(Task):
             "boresight_rotation_coord",
             "boresight_rotation_angle",
             "dark_time",
-            "exposure_group",
             "tracking_radec",
             "object",
             "observation_counter",
             "observation_reason",
-            "observing_day",
             "science_program",
             "visit_id",
         }
@@ -848,7 +848,19 @@ class RawIngestTask(Task):
         records : `dict` [`str`, `DimensionRecord`]
             The records to insert, indexed by dimension name.
         """
-        return {}
+        records = {}
+        exposure = universe["exposure"]
+        if "group" in exposure.implied:
+            records["group"] = universe["group"].RecordClass(
+                name=obsInfo.exposure_group,
+                instrument=obsInfo.instrument,
+            )
+        if "day_obs" in exposure.implied:
+            records["day_obs"] = universe["day_obs"].RecordClass(
+                instrument=obsInfo.instrument,
+                id=obsInfo.observing_day,
+            )
+        return records
 
     def expandDataIds(self, data: RawExposureData) -> RawExposureData:
         """Expand the data IDs associated with a raw exposure.
