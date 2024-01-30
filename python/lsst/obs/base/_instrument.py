@@ -600,12 +600,18 @@ def makeExposureRecordFromObsInfo(
     if (k := "azimuth") in supported:
         extras[k] = azimuth
 
+    if "group" in dimension.implied:
+        extras["group"] = obsInfo.exposure_group
+    elif "group_name" in supported:
+        extras["group_name"] = obsInfo.exposure_group
+        extras["group_id"] = obsInfo.visit_id
+    else:
+        raise RuntimeError(f"Unable to determine where to put group metadata in exposure record: {supported}")
+
     return dimension.RecordClass(
         instrument=obsInfo.instrument,
         id=obsInfo.exposure_id,
         obs_id=obsInfo.observation_id,
-        group_name=obsInfo.exposure_group,
-        group_id=obsInfo.visit_id,
         datetime_begin=obsInfo.datetime_begin,
         datetime_end=obsInfo.datetime_end,
         exposure_time=obsInfo.exposure_time.to_value("s"),
