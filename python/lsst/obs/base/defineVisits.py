@@ -59,7 +59,8 @@ class VisitSystem(enum.Enum):
     """Each exposure is assigned to its own visit."""
 
     BY_GROUP_METADATA = 1
-    """Visit membership is defined by the value of the exposure.group_id."""
+    """Visit membership is defined by the value of the group dimension or, for
+    older dimension universes, exposure.group_id."""
 
     BY_SEQ_START_END = 2
     """Visit membership is defined by the values of the ``exposure.day_obs``,
@@ -238,7 +239,9 @@ class GroupExposuresTask(Task, metaclass=ABCMeta):
         raise NotImplementedError()
 
     @abstractmethod
-    def group(self, exposures: list[DimensionRecord]) -> Iterable[VisitDefinitionData]:
+    def group(
+        self, exposures: list[DimensionRecord], instrument: Instrument
+    ) -> Iterable[VisitDefinitionData]:
         """Group the given exposures into visits.
 
         Parameters
@@ -246,6 +249,9 @@ class GroupExposuresTask(Task, metaclass=ABCMeta):
         exposures : `list` [ `DimensionRecord` ]
             DimensionRecords (for the 'exposure' dimension) describing the
             exposures to group.
+        instrument : `~lsst.pipe.base.Instrument`
+            Instrument specification that can be used to optionally support
+            some visit ID definitions.
 
         Returns
         -------
@@ -668,6 +674,7 @@ class DefineVisitsTask(Task):
         # instrument in play, and check for non-science exposures.
         exposures = []
         instruments = set()
+        instrument_cls_name: str | None = None
         for dataId in data_id_set:
             record = dataId.records["exposure"]
             assert record is not None, "Guaranteed by expandDataIds call earlier."
@@ -680,6 +687,9 @@ class DefineVisitsTask(Task):
                         f"{record.observation_type}, but is not on sky."
                     )
             instruments.add(dataId["instrument"])
+            instrument_record = dataId.records["instrument"]
+            if instrument_record is not None:
+                instrument_cls_name = instrument_record.class_name
             exposures.append(record)
         if not exposures:
             self.log.info("No on-sky exposures found after filtering.")
@@ -690,6 +700,12 @@ class DefineVisitsTask(Task):
                 f"from the same instrument; got {instruments}."
             )
         (instrument,) = instruments
+
+        # Might need the instrument class for later depending on universe
+        # and grouping scheme.
+        assert instrument_cls_name is not None, "Instrument must be defined in this dataId"
+        instrument_helper = Instrument.from_string(instrument_cls_name)
+
         # Ensure the visit_system our grouping algorithm uses is in the
         # registry, if it wasn't already.
         visitSystems = self.groupExposures.getVisitSystems()
@@ -709,7 +725,7 @@ class DefineVisitsTask(Task):
 
         # Group exposures into visits, delegating to subtask.
         self.log.info("Grouping %d exposure(s) into visits.", len(exposures))
-        definitions = list(self.groupExposures.group(exposures))
+        definitions = list(self.groupExposures.group(exposures, instrument_helper))
         # Iterate over visits, compute regions, and insert dimension data, one
         # transaction per visit.  If a visit already exists, we skip all other
         # inserts.
@@ -856,7 +872,9 @@ class _GroupExposuresOneToOneTask(GroupExposuresTask, metaclass=ABCMeta):
         # No grouping.
         return {exposure.id: [exposure] for exposure in exposures}
 
-    def group(self, exposures: list[DimensionRecord]) -> Iterable[VisitDefinitionData]:
+    def group(
+        self, exposures: list[DimensionRecord], instrument: Instrument
+    ) -> Iterable[VisitDefinitionData]:
         # Docstring inherited from GroupExposuresTask.
         visit_systems = {VisitSystem.from_name("one-to-one")}
         for exposure in exposures:
@@ -890,10 +908,12 @@ class _GroupExposuresByGroupMetadataConfig(GroupExposuresConfig):
 
 @registerConfigurable("by-group-metadata", GroupExposuresTask.registry)
 class _GroupExposuresByGroupMetadataTask(GroupExposuresTask, metaclass=ABCMeta):
-    """An exposure grouping algorithm that uses exposure.group_name and
-    exposure.group_id.
+    """An exposure grouping algorithm that uses the exposure group.
 
-    This algorithm _assumes_ exposure.group_id (generally populated from
+    This algorithm uses the ``group`` dimension for modern universes and the
+    ``exposure.group_id`` for older universes.
+
+    This algorithm *assumes* group ID (generally populated from
     `astro_metadata_translator.ObservationInfo.visit_id`) is not just unique,
     but disjoint from all `ObservationInfo.exposure_id` values - if it isn't,
     it will be impossible to ever use both this grouping algorithm and the
@@ -906,6 +926,11 @@ class _GroupExposuresByGroupMetadataTask(GroupExposuresTask, metaclass=ABCMeta):
         self, exposures: list[DimensionRecord], registry: lsst.daf.butler.Registry
     ) -> list[DimensionRecord]:
         groups = self.group_exposures(exposures)
+        # Determine which group implementation we are using.
+        if "group" in registry.dimensions["exposure"].implied:
+            group_key = "group"
+        else:
+            group_key = "group_name"
         missing_exposures: list[DimensionRecord] = []
         for exposures_in_group in groups.values():
             # We can not tell how many exposures are expected to be in the
@@ -914,8 +939,8 @@ class _GroupExposuresByGroupMetadataTask(GroupExposuresTask, metaclass=ABCMeta):
             records = set(
                 registry.queryDimensionRecords(
                     "exposure",
-                    where="exposure.group_name = group",
-                    bind={"group": first.group_name},
+                    where=f"exposure.{group_key} = groupnam",
+                    bind={"groupnam": getattr(first, group_key)},
                     instrument=first.instrument,
                 )
             )
@@ -925,23 +950,34 @@ class _GroupExposuresByGroupMetadataTask(GroupExposuresTask, metaclass=ABCMeta):
 
     def group_exposures(self, exposures: list[DimensionRecord]) -> dict[Any, list[DimensionRecord]]:
         groups = defaultdict(list)
+        group_key = "group"
+        if exposures and hasattr(exposures[0], "group_name"):
+            group_key = "group_name"
         for exposure in exposures:
-            groups[exposure.group_name].append(exposure)
+            groups[getattr(exposure, group_key)].append(exposure)
         return groups
 
-    def group(self, exposures: list[DimensionRecord]) -> Iterable[VisitDefinitionData]:
+    def group(
+        self, exposures: list[DimensionRecord], instrument: Instrument
+    ) -> Iterable[VisitDefinitionData]:
         # Docstring inherited from GroupExposuresTask.
         visit_systems = {VisitSystem.from_name("by-group-metadata")}
         groups = self.group_exposures(exposures)
+        has_group_dimension: bool | None = None
         for visitName, exposuresInGroup in groups.items():
-            instrument = exposuresInGroup[0].instrument
-            visitId = exposuresInGroup[0].group_id
-            assert all(
-                e.group_id == visitId for e in exposuresInGroup
-            ), "Grouping by exposure.group_name does not yield consistent group IDs"
+            instrument_name = exposuresInGroup[0].instrument
+            assert instrument_name == instrument.getName(), "Inconsistency in instrument name"
+            visit_ids: set[int] = set()
+            if has_group_dimension is None:
+                has_group_dimension = hasattr(exposuresInGroup[0], "group")
+            if has_group_dimension:
+                visit_ids = {instrument.group_name_to_group_id(e.group) for e in exposuresInGroup}
+            else:
+                visit_ids = {e.group_id for e in exposuresInGroup}
+            assert len(visit_ids) == 1, "Grouping by exposure group does not yield consistent group IDs"
             yield VisitDefinitionData(
-                instrument=instrument,
-                id=visitId,
+                instrument=instrument_name,
+                id=visit_ids.pop(),
                 name=visitName,
                 exposures=exposuresInGroup,
                 visit_systems=visit_systems,
@@ -1017,14 +1053,16 @@ class _GroupExposuresByCounterAndExposuresTask(GroupExposuresTask, metaclass=ABC
             groups[exposure.day_obs, exposure.seq_start, exposure.seq_end].append(exposure)
         return groups
 
-    def group(self, exposures: list[DimensionRecord]) -> Iterable[VisitDefinitionData]:
+    def group(
+        self, exposures: list[DimensionRecord], instrument: Instrument
+    ) -> Iterable[VisitDefinitionData]:
         # Docstring inherited from GroupExposuresTask.
         system_one_to_one = VisitSystem.from_name("one-to-one")
         system_seq_start_end = VisitSystem.from_name("by-seq-start-end")
 
         groups = self.group_exposures(exposures)
         for visit_key, exposures_in_group in groups.items():
-            instrument = exposures_in_group[0].instrument
+            instrument_name = exposures_in_group[0].instrument
 
             # It is possible that the first exposure in a visit has not
             # been ingested. This can be determined and if that is the case
@@ -1071,7 +1109,7 @@ class _GroupExposuresByCounterAndExposuresTask(GroupExposuresTask, metaclass=ABC
                     visit_id = int(f"9{visit_id}")
 
                 yield VisitDefinitionData(
-                    instrument=instrument,
+                    instrument=instrument_name,
                     id=visit_id,
                     name=visit_name,
                     exposures=[exposure],
@@ -1085,7 +1123,7 @@ class _GroupExposuresByCounterAndExposuresTask(GroupExposuresTask, metaclass=ABC
                 visit_id = first.id
 
                 yield VisitDefinitionData(
-                    instrument=instrument,
+                    instrument=instrument_name,
                     id=visit_id,
                     name=visit_name,
                     exposures=exposures_in_group,

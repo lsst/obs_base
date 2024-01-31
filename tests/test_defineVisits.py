@@ -210,7 +210,14 @@ class DefineVisitsGroupingTestCase(unittest.TestCase, DefineVisitsBase):
         """Check that the visits were registered as expected."""
         visits = list(self.butler.registry.queryDimensionRecords("visit"))
         self.assertEqual(len(visits), 2)
-        self.assertEqual({visit.id for visit in visits}, {2291434132550000, 2291434871810000})
+
+        # The visit ID itself depends on which universe we are using.
+        # It is either calculated or comes from the JSON record.
+        if "group" in self.butler.dimensions["exposure"].implied:
+            visit_ids = [20220406025653255, 20220406025807181]
+        else:
+            visit_ids = [2291434132550000, 2291434871810000]
+        self.assertEqual({visit.id for visit in visits}, set(visit_ids))
 
         # Ensure that the definitions are correct (ignoring order).
         defmap = defaultdict(set)
@@ -221,8 +228,8 @@ class DefineVisitsGroupingTestCase(unittest.TestCase, DefineVisitsBase):
         self.assertEqual(
             dict(defmap),
             {
-                2291434132550000: {2022040500347},
-                2291434871810000: {2022040500348, 2022040500349},
+                visit_ids[0]: {2022040500347},
+                visit_ids[1]: {2022040500348, 2022040500349},
             },
         )
 
