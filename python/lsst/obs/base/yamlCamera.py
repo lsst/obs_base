@@ -246,8 +246,8 @@ def makeTransformDict(nativeSys, transformDict, plateScale):
 
             transform = afwGeom.makeTransform(affine)
         elif transformType == "radial":
-            # radial coefficients of the form [0, 1 (no units), C2 (rad),
-            # usually 0, C3 (rad^2), ...]
+            # radial coefficients of the form
+            #   [0, 1 (no units), C2 (mm^-1), usually 0, C4 (mm^-3), ...]
             # Radial distortion is modeled as a radial polynomial that converts
             # from focal plane radius (in mm) to field angle (in radians).
             # The provided coefficients are divided by the plate
