@@ -45,6 +45,7 @@ from lsst.daf.butler import (
     FileDataset,
     Formatter,
     Progress,
+    Timespan,
 )
 from lsst.pex.config import ChoiceField, Config, Field
 from lsst.pipe.base import Instrument, Task
@@ -306,6 +307,12 @@ class RawIngestTask(Task):
         # have all the relevant metadata translators loaded.
         Instrument.importAll(self.butler.registry)
 
+        # Read all the instrument records into a cache since they will be
+        # needed later to calculate day_obs timespans, if appropriate.
+        self._instrument_records = {
+            rec.name: rec for rec in butler.registry.queryDimensionRecords("instrument")
+        }
+
     def _reduce_kwargs(self) -> dict[str, Any]:
         # Add extra parameters to pickle.
         return dict(
@@ -505,6 +512,7 @@ class RawIngestTask(Task):
             "object",
             "observation_counter",
             "observation_reason",
+            "observing_day_offset",
             "science_program",
             "visit_id",
         }
@@ -856,9 +864,15 @@ class RawIngestTask(Task):
                 instrument=obsInfo.instrument,
             )
         if "day_obs" in exposure.implied:
+            if (offset := getattr(obsInfo, "observing_day_offset")) is not None:
+                offset_int = round(offset.to_value("s"))
+                timespan = Timespan.from_day_obs(obsInfo.observing_day, offset_int)
+            else:
+                timespan = None
             records["day_obs"] = universe["day_obs"].RecordClass(
                 instrument=obsInfo.instrument,
                 id=obsInfo.observing_day,
+                timespan=timespan,
             )
         return records
 
