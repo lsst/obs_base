@@ -42,11 +42,9 @@ class CuratedCalibration(Protocol):
     """
 
     @classmethod
-    def readText(cls, path: str) -> CuratedCalibration:
-        ...
+    def readText(cls, path: str) -> CuratedCalibration: ...
 
-    def getMetadata(self) -> Mapping:
-        ...
+    def getMetadata(self) -> Mapping: ...
 
 
 def read_one_calib(
