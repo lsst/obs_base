@@ -860,7 +860,9 @@ class RawIngestTask(Task):
         records : `dict` [`str`, `DimensionRecord`]
             The records to insert, indexed by dimension name.
         """
-        records = {}
+        records: dict[str, DimensionRecord] = {}
+        if "exposure" not in universe:
+            return records
         exposure = universe["exposure"]
         if "group" in exposure.implied:
             records["group"] = universe["group"].RecordClass(
