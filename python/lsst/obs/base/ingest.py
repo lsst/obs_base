@@ -416,6 +416,7 @@ class RawIngestTask(Task):
                 with filename.as_local() as local_file:
                     # Read the primary. This might be sufficient.
                     header = readMetadata(local_file.ospath, 0)
+                    translator_class = None
 
                     try:
                         # Try to work out a translator class early.
@@ -430,7 +431,10 @@ class RawIngestTask(Task):
 
                     # Try again to work out a translator class, letting this
                     # fail.
-                    translator_class = MetadataTranslator.determine_translator(header, filename=str(filename))
+                    if translator_class is None:
+                        translator_class = MetadataTranslator.determine_translator(
+                            header, filename=str(filename)
+                        )
 
                     # Request the headers to use for ingest
                     headers = list(translator_class.determine_translatable_headers(local_file.ospath, header))
