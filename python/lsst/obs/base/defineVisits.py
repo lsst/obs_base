@@ -45,11 +45,11 @@ from lsst.afw.cameraGeom import FOCAL_PLANE, PIXELS
 from lsst.daf.butler import Butler, DataCoordinate, DataId, DimensionRecord, Progress, Timespan
 from lsst.geom import Box2D
 from lsst.pex.config import Config, Field, makeRegistry, registerConfigurable
-from lsst.pipe.base import Instrument, Task
+from lsst.pipe.base import Task
 from lsst.sphgeom import ConvexPolygon, Region, UnitVector3d
 from lsst.utils.introspection import get_full_type_name
 
-from ._instrument import loadCamera
+from ._instrument import Instrument, loadCamera
 
 
 class VisitSystem(enum.Enum):
@@ -249,7 +249,7 @@ class GroupExposuresTask(Task, metaclass=ABCMeta):
         exposures : `list` [ `DimensionRecord` ]
             DimensionRecords (for the 'exposure' dimension) describing the
             exposures to group.
-        instrument : `~lsst.pipe.base.Instrument`
+        instrument : `~lsst.obs.base.Instrument`
             Instrument specification that can be used to optionally support
             some visit ID definitions.
 
