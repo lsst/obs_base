@@ -25,6 +25,7 @@ __all__ = ("Instrument", "makeExposureRecordFromObsInfo", "loadCamera")
 
 import logging
 import os.path
+import re
 from abc import abstractmethod
 from collections import defaultdict
 from collections.abc import Sequence, Set
@@ -548,6 +549,30 @@ class Instrument(InstrumentBase):
                 refsByTimespan[timespan].append(butler.put(calib, datasetType, dataId, run=run))
             for timespan, refs in refsByTimespan.items():
                 butler.registry.certify(collection, refs, timespan)
+
+    @classmethod
+    def group_name_to_group_id(cls, group_name: str) -> int:
+        """Translate the exposure group name to an integer.
+
+        Parameters
+        ----------
+        group_name : `str`
+            The name of the exposure group.
+
+        Returns
+        -------
+        id : `int`
+            The exposure group name in integer form. This integer might be
+            used as an ID to uniquely identify the group in contexts where
+            a string can not be used.
+
+        Notes
+        -----
+        The default implementation removes all non numeric characters and casts
+        to an integer.
+        """
+        cleaned = re.sub(r"\D", "", group_name)
+        return int(cleaned)
 
 
 def makeExposureRecordFromObsInfo(
