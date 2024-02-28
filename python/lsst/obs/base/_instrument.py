@@ -51,7 +51,7 @@ from lsst.utils import doImport, getPackageDir
 from ._read_curated_calibs import CuratedCalibration, read_all
 
 if TYPE_CHECKING:
-    from astro_metadata_translator import ObservationInfo
+    from astro_metadata_translator import MetadataTranslator, ObservationInfo
     from lsst.daf.butler import Registry
 
     from .filters import FilterDefinitionCollection
@@ -124,6 +124,13 @@ class Instrument(InstrumentBase):
     `writeAdditionalCuratedCalibrations` in addition to the calibrations
     found in obs data packages that follow the standard scheme.
     (`set` of `str`)"""
+
+    translatorClass: MetadataTranslator | None = None
+    """Class to use when extracting information from metadata. If `None`
+    the metadata extraction system will determine the translator class itself.
+    This class can also be used to calculate the observing day offset in some
+    scenarios.
+    """
 
     @property
     @abstractmethod
