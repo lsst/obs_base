@@ -140,6 +140,7 @@ class DummyCam(Instrument):
             "visit_max": 1_000_000,
             "exposure_max": 1_000_000,
         }
+
         with registry.transaction():
             registry.syncDimensionData("instrument", dataId, update=update)
             self._registerFilters(registry, update=update)

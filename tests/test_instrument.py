@@ -64,6 +64,12 @@ class InstrumentTestCase(InstrumentTests, unittest.TestCase):
         datetimeThen1 = datetime.datetime.strptime(formattedNow, "%Y%m%dT%H%M%S%z")
         self.assertEqual(datetimeThen1.tzinfo, datetime.timezone.utc)
 
+    def test_group_name(self):
+        """Test group name to ID conversion."""
+        self.assertEqual(self.instrument.group_name_to_group_id("1:234-5.6"), 123456)
+        with self.assertRaises(ValueError):
+            self.instrument.group_name_to_group_id("no_int")
+
 
 if __name__ == "__main__":
     unittest.main()

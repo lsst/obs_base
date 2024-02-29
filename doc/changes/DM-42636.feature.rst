@@ -1,0 +1,5 @@
+* Added support for ingesting raw data into a version 6 dimension universe.
+  This universe includes ``day_obs`` and ``group`` as dimensions.
+* Modified visit definition to allow a visit to be defined by ``group`` dimension.
+* Added ``Instrument.translatorClass`` class property that can be used to specify the relevant ``astro_metadata_translator.MetadataTranslator`` to use.
+* Added ``Instrument.group_name_to_group_id`` method to convert a group name string to an integer suitable for use as a visit ID.

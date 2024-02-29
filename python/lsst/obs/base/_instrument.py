@@ -25,6 +25,7 @@ __all__ = ("Instrument", "makeExposureRecordFromObsInfo", "loadCamera")
 
 import logging
 import os.path
+import re
 from abc import abstractmethod
 from collections import defaultdict
 from collections.abc import Sequence, Set
@@ -50,7 +51,7 @@ from lsst.utils import doImport, getPackageDir
 from ._read_curated_calibs import CuratedCalibration, read_all
 
 if TYPE_CHECKING:
-    from astro_metadata_translator import ObservationInfo
+    from astro_metadata_translator import MetadataTranslator, ObservationInfo
     from lsst.daf.butler import Registry
 
     from .filters import FilterDefinitionCollection
@@ -123,6 +124,13 @@ class Instrument(InstrumentBase):
     `writeAdditionalCuratedCalibrations` in addition to the calibrations
     found in obs data packages that follow the standard scheme.
     (`set` of `str`)"""
+
+    translatorClass: MetadataTranslator | None = None
+    """Class to use when extracting information from metadata. If `None`
+    the metadata extraction system will determine the translator class itself.
+    This class can also be used to calculate the observing day offset in some
+    scenarios.
+    """
 
     @property
     @abstractmethod
@@ -549,6 +557,30 @@ class Instrument(InstrumentBase):
             for timespan, refs in refsByTimespan.items():
                 butler.registry.certify(collection, refs, timespan)
 
+    @classmethod
+    def group_name_to_group_id(cls, group_name: str) -> int:
+        """Translate the exposure group name to an integer.
+
+        Parameters
+        ----------
+        group_name : `str`
+            The name of the exposure group.
+
+        Returns
+        -------
+        id : `int`
+            The exposure group name in integer form. This integer might be
+            used as an ID to uniquely identify the group in contexts where
+            a string can not be used.
+
+        Notes
+        -----
+        The default implementation removes all non numeric characters and casts
+        to an integer.
+        """
+        cleaned = re.sub(r"\D", "", group_name)
+        return int(cleaned)
+
 
 def makeExposureRecordFromObsInfo(
     obsInfo: ObservationInfo, universe: DimensionUniverse, **kwargs: Any
@@ -600,12 +632,18 @@ def makeExposureRecordFromObsInfo(
     if (k := "azimuth") in supported:
         extras[k] = azimuth
 
+    if "group" in dimension.implied:
+        extras["group"] = obsInfo.exposure_group
+    elif "group_name" in supported:
+        extras["group_name"] = obsInfo.exposure_group
+        extras["group_id"] = obsInfo.visit_id
+    else:
+        raise RuntimeError(f"Unable to determine where to put group metadata in exposure record: {supported}")
+
     return dimension.RecordClass(
         instrument=obsInfo.instrument,
         id=obsInfo.exposure_id,
         obs_id=obsInfo.observation_id,
-        group_name=obsInfo.exposure_group,
-        group_id=obsInfo.visit_id,
         datetime_begin=obsInfo.datetime_begin,
         datetime_end=obsInfo.datetime_end,
         exposure_time=obsInfo.exposure_time.to_value("s"),
