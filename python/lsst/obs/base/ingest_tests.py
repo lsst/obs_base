@@ -174,6 +174,22 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         datasets = list(butler.registry.queryDatasets(self.ingestDatasetTypeName, collections=self.outputRun))
         self.assertEqual(len(datasets), len(self.dataIds))
 
+        # Can check that the timespan in the day_obs matches the exposure
+        # record.
+        if "day_obs" in butler.dimensions:
+            days = {
+                (rec.instrument, rec.id): rec.timespan
+                for rec in butler.registry.queryDimensionRecords("day_obs")
+            }
+
+            exp_records = list(butler.registry.queryDimensionRecords("exposure"))
+            for exp in exp_records:
+                day_span = days[exp.instrument, exp.day_obs]
+                if day_span is not None:
+                    self.assertTrue(
+                        day_span.contains(exp.timespan.begin), f"Timespan mismatch of {exp} and {day_span}"
+                    )
+
         # Get the URI to the first dataset and check it is inside the
         # datastore.
         datasetUri = butler.getURI(datasets[0])
