@@ -1,0 +1,3 @@
+Added a ``--update-records`` option to the ``butler ingest-raws`` command-line tool.
+This can be used if there has been a change in the metadata translator resulting in a change of definition of the ``exposure`` record.
+Only use this option if you understand why a change has occurred.
