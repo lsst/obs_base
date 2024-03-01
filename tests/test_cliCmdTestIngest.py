@@ -51,6 +51,7 @@ class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
             regex=fits_re,
             transfer="auto",
             track_file_attrs=True,
+            update_records=False,
             fail_fast=False,
         )
 
