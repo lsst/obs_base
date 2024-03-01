@@ -152,6 +152,13 @@ def define_visits(*args, **kwargs):
     " depends on the specific datastore implentation.",
 )
 @failfast_option()
+@click.option(
+    "--update-records/--no-update-records",
+    default=False,
+    help="Use this option to force updates to the exposure records. "
+    "Should only be used if you know that there has been a change to the "
+    "exposure records, such as a change to the metadata translator.",
+)
 @options_file_option()
 def ingest_raws(*args, **kwargs):
     """Ingest raw frames into from a directory into the butler registry."""

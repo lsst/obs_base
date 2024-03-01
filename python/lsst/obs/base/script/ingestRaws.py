@@ -36,6 +36,7 @@ def ingestRaws(
     processes=1,
     ingest_task="lsst.obs.base.RawIngestTask",
     track_file_attrs=True,
+    update_records=False,
 ):
     """Ingest raw frames into the butler registry.
 
@@ -69,6 +70,9 @@ def ingestRaws(
         Control whether file attributes such as the size or checksum should
         be tracked by the datastore. Whether this parameter is honored
         depends on the specific datastore implementation.
+    update_records : `bool`, optional
+        Control whether recalculated exposure definitions will be accepted or
+        not.
 
     Raises
     ------
@@ -90,5 +94,10 @@ def ingestRaws(
     configOverrides.applyTo(ingestConfig)
     ingester = TaskClass(config=ingestConfig, butler=butler)
     ingester.run(
-        locations, run=output_run, processes=processes, file_filter=regex, track_file_attrs=track_file_attrs
+        locations,
+        run=output_run,
+        processes=processes,
+        file_filter=regex,
+        track_file_attrs=track_file_attrs,
+        update_exposure_records=update_records,
     )
