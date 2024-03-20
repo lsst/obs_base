@@ -625,6 +625,7 @@ def makeExposureRecordFromObsInfo(
         ("has_simulated", "has_simulated_content"),
         ("seq_start", "group_counter_start"),
         ("seq_end", "group_counter_end"),
+        ("can_see_sky", "can_see_sky"),
     ):
         if meta_key in supported:
             extras[meta_key] = getattr(obsInfo, info_key)

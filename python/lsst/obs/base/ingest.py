@@ -519,6 +519,7 @@ class RawIngestTask(Task):
             "observing_day_offset",
             "science_program",
             "visit_id",
+            "can_see_sky",
         }
         return required, optional
 
