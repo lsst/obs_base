@@ -1,0 +1,31 @@
+{
+    "definition": "exposure",
+    "record": {
+      "instrument": "DummyCam",
+      "id": 2022040500347,
+      "physical_filter": "dummy_u",
+      "obs_id": "AT_O_20220405_000347",
+      "exposure_time": 30.0,
+      "dark_time": 30.6038341522217,
+      "observation_type": "science",
+      "observation_reason": "object",
+      "day_obs": 20220405,
+      "seq_num": 347,
+      "seq_start": 347,
+      "seq_end": 347,
+      "group": "2022-04-06T02:56:53.255",
+      "target_name": "LATISS_E6A_00000027",
+      "science_program": "LATISS_E6A",
+      "tracking_ra": 221.548879575131,
+      "tracking_dec": -44.9667044639895,
+      "sky_angle": 358.536486388154,
+      "azimuth": 125.098359365453,
+      "zenith_angle": 44.1117566243774,
+      "has_simulated": false,
+      "can_see_sky": true,
+      "timespan": [
+        1649213928006500400,
+        1649213958233000000
+      ]
+    }
+  }
