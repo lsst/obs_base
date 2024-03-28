@@ -24,6 +24,7 @@ import pickle
 import shutil
 import tempfile
 import unittest
+import warnings
 from collections import defaultdict
 
 import lsst.daf.butler.tests as butlerTests
@@ -54,15 +55,30 @@ class DefineVisitsBase:
         DummyCam().register(self.butler.registry)
 
         # Choose serializations based on universe.
-        if "group" in self.butler.dimensions["exposure"].implied:
-            v = "_v6"
-        else:
-            v = ""
+        universe = self.butler.dimensions
+        uversion = universe.version
+        # Not all universe changes result in visible changes.
+        match uversion:
+            case uversion if uversion < 2:
+                raise unittest.SkipTest(f"Universe {uversion} is not compatible with these test files.")
+            case 2 | 3 | 4 | 5:
+                # has_simulated, azimuth, seq_start, seq_end.
+                v = 2
+            case 6:
+                # group not group_name, group_id dropped.
+                v = 6
+            case 7:
+                # can_see_sky.
+                v = 7
+            case _:
+                # Might work.
+                warnings.warn(f"Universe {uversion} has not been validated.")
+                v = 7
 
         # Read the exposure records.
         self.records: dict[int, DimensionRecord] = {}
         for i in (347, 348, 349):
-            with open(os.path.join(DATADIR, f"exp{v}_{i}.json")) as fh:
+            with open(os.path.join(DATADIR, f"exp_v{v}_{i}.json")) as fh:
                 simple = SerializedDimensionRecord.model_validate_json(fh.read())
             self.records[i] = DimensionRecord.from_simple(simple, registry=self.butler.registry)
 
