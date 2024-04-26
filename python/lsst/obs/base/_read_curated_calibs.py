@@ -303,7 +303,7 @@ def read_all(
         if len(calib_types) != 1:  # set.add(None) has length 1 so None is OK here.
             raise ValueError(f"Error mixing calib types: {calib_types}")
 
-    no_data = all([v == {} for v in calibration_data.values()])
+    no_data = all(v == {} for v in calibration_data.values())
     if no_data:
         raise RuntimeError("No data to ingest")
 
