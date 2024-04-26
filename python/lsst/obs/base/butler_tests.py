@@ -131,7 +131,7 @@ class ButlerGetTests:
 
     def _test_exposure(self, name):
         if self.dataIds[name] is unittest.SkipTest:
-            self.skipTest("Skipping %s as requested" % (inspect.currentframe().f_code.co_name))
+            self.skipTest(f"Skipping {inspect.currentframe().f_code.co_name} as requested")
         exp = self.butler.get(name, self.dataIds[name])
 
         md_component = ".metadata"
@@ -215,7 +215,7 @@ class ButlerGetTests:
     def test_get_linearizer(self):
         """Test that we can get a linearizer for good detectorIds."""
         if self.butler_get_data.linearizer_type is unittest.SkipTest:
-            self.skipTest("Skipping %s as requested" % (inspect.currentframe().f_code.co_name))
+            self.skipTest(f"Skipping {inspect.currentframe().f_code.co_name} as requested")
 
         camera = self.butler.get("camera")
         for detectorId in self.butler_get_data.good_detectorIds:
@@ -228,7 +228,7 @@ class ButlerGetTests:
     def test_get_linearizer_bad_detectorIds(self):
         """Check that bad detectorIds raise."""
         if self.butler_get_data.linearizer_type is unittest.SkipTest:
-            self.skipTest("Skipping %s as requested" % (inspect.currentframe().f_code.co_name))
+            self.skipTest(f"Skipping {inspect.currentframe().f_code.co_name} as requested")
 
         for badccd in self.butler_get_data.bad_detectorIds:
             kwargs = {"detector": badccd}
