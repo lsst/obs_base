@@ -641,12 +641,25 @@ def makeExposureRecordFromObsInfo(
     else:
         raise RuntimeError(f"Unable to determine where to put group metadata in exposure record: {supported}")
 
+    # In some bad observations, the end time is before the begin time. We
+    # can not let that be ingested as-is because it becomes an unbounded
+    # timespan that will not work correctly with calibration lookups. Instead
+    # force the end time to be the begin time.
+    datetime_end = obsInfo.datetime_end
+    if datetime_end < obsInfo.datetime_begin:
+        datetime_end = obsInfo.datetime_begin
+        _LOG.warning(
+            "Exposure %s:%s has end time before begin time. Forcing it to use the begin time.",
+            obsInfo.instrument,
+            obsInfo.observation_id,
+        )
+
     return dimension.RecordClass(
         instrument=obsInfo.instrument,
         id=obsInfo.exposure_id,
         obs_id=obsInfo.observation_id,
         datetime_begin=obsInfo.datetime_begin,
-        datetime_end=obsInfo.datetime_end,
+        datetime_end=datetime_end,
         exposure_time=obsInfo.exposure_time.to_value("s"),
         # we are not mandating that dark_time be calculable
         dark_time=obsInfo.dark_time.to_value("s") if obsInfo.dark_time is not None else None,

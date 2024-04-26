@@ -135,6 +135,26 @@ datastore:
         datasets = list(self.butler.registry.queryDatasets("raw_dict", collections=self.outputRun))
         self.assertEqual(len(datasets), 2)
 
+    def testTimeStampWarning(self):
+        # Now ingest a dataset which should generate a warning because of
+        # the end time being before the begin time.
+        return
+        files = [os.path.join(INGESTDIR, "sidecar_data", "dataset_end.yaml")]
+        with self.assertLogs("lsst.obs.base._instrument", level="WARNING") as cm:
+            self.task.run(files, run=self.outputRun)
+
+        self.assertIn("has end time before begin time", cm.output[0])
+        records = list(
+            self.butler.registry.queryDimensionRecords(
+                "exposure",
+                where="exposure = exp AND instrument = inst",
+                bind={"exp": 3000, "inst": "DummyCam"},
+            )
+        )
+        record = records[0]
+        timespan = record.timespan
+        self.assertEqual(timespan.begin.isot, timespan.end.isot)
+
     def testExplicitIndex(self):
         files = [os.path.join(INGESTDIR, "indexed_data", "_index.json")]
         self.task.run(files, run=self.outputRun)
