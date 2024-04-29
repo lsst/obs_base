@@ -237,8 +237,9 @@ def makeTransformDict(nativeSys, transformDict, plateScale):
         knownTransformTypes = ["affine", "radial"]
         if transformType not in knownTransformTypes:
             raise RuntimeError(
-                "Saw unknown transform type for %s: %s (known types are: [%s])"
-                % (key, transform["transformType"], ", ".join(knownTransformTypes))
+                "Saw unknown transform type for {}: {} (known types are: [{}])".format(
+                    key, transform["transformType"], ", ".join(knownTransformTypes)
+                )
             )
 
         if transformType == "affine":
@@ -258,8 +259,9 @@ def makeTransformDict(nativeSys, transformDict, plateScale):
             transform = afwGeom.makeRadialTransform(radialCoeffs)
         else:
             raise RuntimeError(
-                'Impossible condition "%s" is not in: [%s])'
-                % (transform["transformType"], ", ".join(knownTransformTypes))
+                'Impossible condition "{}" is not in: [{}])'.format(
+                    transform["transformType"], ", ".join(knownTransformTypes)
+                )
             )
 
         resMap[cameraGeom.CameraSys(key)] = transform
