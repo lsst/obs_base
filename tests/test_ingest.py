@@ -92,25 +92,22 @@ class RawIngestImpliedIndexTestCase(RawIngestTestCase):
 
 
 class RawIngestEdgeCaseTestCase(unittest.TestCase):
-    """Test ingest using non-standard approaches including failures."""
+    """Test ingest using non-standard approaches including failures.
 
-    @classmethod
-    def setUpClass(cls):
+    Must create a new butler for each test because dimension records are
+    globals.
+    """
+
+    def setUp(self):
         butlerConfig = """
 datastore:
   # Want to ingest real files so can't use in-memory datastore
   cls: lsst.daf.butler.datastores.fileDatastore.FileDatastore
 """
-        cls.root = tempfile.mkdtemp(dir=TESTDIR)
-        cls.creatorButler = butlerTests.makeTestRepo(cls.root, {}, config=Config.fromYaml(butlerConfig))
-        DummyCam().register(cls.creatorButler.registry)
+        self.root = tempfile.mkdtemp(dir=TESTDIR)
+        self.creatorButler = butlerTests.makeTestRepo(self.root, {}, config=Config.fromYaml(butlerConfig))
+        DummyCam().register(self.creatorButler.registry)
 
-    @classmethod
-    def tearDownClass(cls):
-        if cls.root is not None:
-            shutil.rmtree(cls.root, ignore_errors=True)
-
-    def setUp(self):
         self.butler = butlerTests.makeTestCollection(self.creatorButler, uniqueId=self.id())
         self.outputRun = self.butler.run
 
@@ -121,6 +118,10 @@ datastore:
         self.bad_metadata_file = os.path.join(TESTDIR, "data", "small.fits")
         self.good_file = os.path.join(INGESTDIR, "sidecar_data", "dataset_2.yaml")
         self.bad_instrument_file = os.path.join(TESTDIR, "data", "calexp.fits")
+
+    def tearDown(self):
+        if self.root is not None:
+            shutil.rmtree(self.root, ignore_errors=True)
 
     def testSimpleIngest(self):
         # Use the default per-instrument run for this.
