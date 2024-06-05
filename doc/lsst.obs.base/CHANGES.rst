@@ -1,3 +1,36 @@
+obs_base v26.0.0 (2023-08-03)
+=============================
+
+New Features
+------------
+
+- Added support for defining visits incrementally as exposures are ingested.
+  This allows files from the telescope to be ingested one at a time whilst redefining the existing visits.
+  Additionally ``--update-records`` and ``--incremental`` have been added to the ``butler define-visits`` command-line. (`DM-36395 <https://rubinobs.atlassian.net/browse/DM-36395>`_)
+- * Add ``transmission_`` curve dataset types to the set of curated calibrations.
+  * Update the curated calibration code in the ``Instrument`` definition to allow for flexibility in required dimensions.
+  * Update the read curated calibration code to allow for the same flexibility in dimensions. (`DM-36597 <https://rubinobs.atlassian.net/browse/DM-36597>`_)
+- Raw ingest can now ask the ``Instrument`` class for the raw dataset type definition.
+  This means it is no longer required to subclass the ``getDatasetType`` method and allows various instruments to be ingested with the base class implementation. (`DM-37950 <https://rubinobs.atlassian.net/browse/DM-37950>`_)
+- `DefineVisitsTask` now calls ObsCore table manager to update exposure regions after visit is defined.
+  New configuration field `updateObsCoreTable` for that task can be set to `False` to disable exposure updates. (`DM-38205 <https://rubinobs.atlassian.net/browse/DM-38205>`_)
+
+An API Removal or Deprecation
+-----------------------------
+
+- Deprecate `ExposureIdInfo` in favor of `lsst.meas.base.IdGenerator`. (`DM-31924 <https://rubinobs.atlassian.net/browse/DM-31924>`_)
+- * Remove deprecated `getInstrument` function from `lsst.obs.base.utils`. (`DM-37534 <https://rubinobs.atlassian.net/browse/DM-37534>`_)
+
+Bug Fixes
+---------
+
+- Fix curated calibration reading to check parent directory if there are no sub-directories. (`DM-36598 <https://rubinobs.atlassian.net/browse/DM-36598>`_)
+
+Other Changes and Additions
+---------------------------
+
+- Modified the raw ingest task to use resolved ``DatasetRef``. (`DM-38779 <https://rubinobs.atlassian.net/browse/DM-38779>`_)
+
 obs_base v25.0.0 (2023-03-02)
 =============================
 

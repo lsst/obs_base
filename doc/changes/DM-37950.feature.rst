@@ -1,2 +1,0 @@
-Raw ingest can now ask the ``Instrument`` class for the raw dataset type definition.
-This means it is no longer required to subclass the ``getDatasetType`` method and allows various instruments to be ingested with the base class implementation.
