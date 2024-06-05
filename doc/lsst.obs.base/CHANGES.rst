@@ -1,3 +1,21 @@
+obs_base v27.0.0 (2024-06-05)
+=============================
+
+New Features
+------------
+
+- * Added support for ingesting raw data into a version 6 dimension universe.
+    This universe includes ``day_obs`` and ``group`` as dimensions.
+  * Modified visit definition to allow a visit to be defined by ``group`` dimension.
+  * Added ``Instrument.translatorClass`` class property that can be used to specify the relevant ``astro_metadata_translator.MetadataTranslator`` to use.
+  * Added ``Instrument.group_name_to_group_id`` method to convert a group name string to an integer suitable for use as a visit ID. (`DM-42636 <https://rubinobs.atlassian.net/browse/DM-42636>`_)
+- Added a ``--update-records`` option to the ``butler ingest-raws`` command-line tool.
+  This can be used if there has been a change in the metadata translator resulting in a change of definition of the ``exposure`` record.
+  Only use this option if you understand why a change has occurred. (`DM-43135 <https://rubinobs.atlassian.net/browse/DM-43135>`_)
+
+
+- Corrected and clarified docstrings for ``read_curated_calibs``, ``read_one_calib`` and ``read_all`` functions, ensuring variable name consistency between these two and ``check_metadata``. (`DM-22465 <https://rubinobs.atlassian.net/browse/DM-22465>`_)
+
 obs_base v26.0.0 (2023-08-03)
 =============================
 
@@ -7,9 +25,9 @@ New Features
 - Added support for defining visits incrementally as exposures are ingested.
   This allows files from the telescope to be ingested one at a time whilst redefining the existing visits.
   Additionally ``--update-records`` and ``--incremental`` have been added to the ``butler define-visits`` command-line. (`DM-36395 <https://rubinobs.atlassian.net/browse/DM-36395>`_)
-- * Add ``transmission_`` curve dataset types to the set of curated calibrations.
-  * Update the curated calibration code in the ``Instrument`` definition to allow for flexibility in required dimensions.
-  * Update the read curated calibration code to allow for the same flexibility in dimensions. (`DM-36597 <https://rubinobs.atlassian.net/browse/DM-36597>`_)
+- * Added ``transmission_`` curve dataset types to the set of curated calibrations.
+  * Updated the curated calibration code in the ``Instrument`` definition to allow for flexibility in required dimensions.
+  * Updated the read curated calibration code to allow for the same flexibility in dimensions. (`DM-36597 <https://rubinobs.atlassian.net/browse/DM-36597>`_)
 - Raw ingest can now ask the ``Instrument`` class for the raw dataset type definition.
   This means it is no longer required to subclass the ``getDatasetType`` method and allows various instruments to be ingested with the base class implementation. (`DM-37950 <https://rubinobs.atlassian.net/browse/DM-37950>`_)
 - `DefineVisitsTask` now calls ObsCore table manager to update exposure regions after visit is defined.
@@ -18,13 +36,13 @@ New Features
 An API Removal or Deprecation
 -----------------------------
 
-- Deprecate `ExposureIdInfo` in favor of `lsst.meas.base.IdGenerator`. (`DM-31924 <https://rubinobs.atlassian.net/browse/DM-31924>`_)
-- * Remove deprecated `getInstrument` function from `lsst.obs.base.utils`. (`DM-37534 <https://rubinobs.atlassian.net/browse/DM-37534>`_)
+- Deprecated ``ExposureIdInfo`` in favor of ``lsst.meas.base.IdGenerator``. (`DM-31924 <https://rubinobs.atlassian.net/browse/DM-31924>`_)
+- Removed deprecated ``getInstrument`` function from ``lsst.obs.base.utils``. (`DM-37534 <https://rubinobs.atlassian.net/browse/DM-37534>`_)
 
 Bug Fixes
 ---------
 
-- Fix curated calibration reading to check parent directory if there are no sub-directories. (`DM-36598 <https://rubinobs.atlassian.net/browse/DM-36598>`_)
+- Fixed curated calibration reading to check parent directory if there are no sub-directories. (`DM-36598 <https://rubinobs.atlassian.net/browse/DM-36598>`_)
 
 Other Changes and Additions
 ---------------------------

@@ -1,1 +1,0 @@
-* Correct and clarify docstrings for read_curated_calibs ``read_one_calib`` and ``read_all`` functions, ensuring variable name consistency between these two and ``check_metadata``.
