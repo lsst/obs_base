@@ -4,7 +4,7 @@
     filename = "doc/lsst.obs.base/CHANGES.rst"
     directory = "doc/changes"
     title_format = "obs_base {version} ({project_date})"
-    issue_format = "`{issue} <https://jira.lsstcorp.org/browse/{issue}>`_"
+    issue_format = "`{issue} <https://rubinobs.atlassian.net/browse/{issue}>`_"
 
 
     [[tool.towncrier.type]]
