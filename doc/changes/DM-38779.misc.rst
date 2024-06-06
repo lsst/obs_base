@@ -1,1 +1,0 @@
-* Modified the raw ingest task to use resolved ``DatasetRef``.
