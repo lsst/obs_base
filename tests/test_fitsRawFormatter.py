@@ -159,7 +159,7 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
 
         # We have no file in these tests, so make an empty descriptor.
         fileDescriptor = lsst.daf.butler.FileDescriptor(None, None)
-        self.formatter = SimpleFitsRawFormatter(fileDescriptor, dataId)
+        self.formatter = SimpleFitsRawFormatter(fileDescriptor, dataId=dataId)
         # Force the formatter's metadata to be what we've created above.
         self.formatter._metadata = self.metadata
 
@@ -224,7 +224,7 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
                                     lsst.daf.butler.StorageClassFactory().getStorageClass("ExposureI"),
                                     parameters=parameters,
                                 ),
-                                self.formatter.dataId,
+                                dataId=self.formatter.dataId,
                             )
                             subexp = formatter.read()
                             self.assertImagesEqual(subexp.image, full[amp.getRawBBox()].image)
