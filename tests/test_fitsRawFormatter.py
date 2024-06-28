@@ -151,15 +151,22 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
         # set this to `contextlib.nullcontext()` to print the log warnings
         self.warnContext = self.assertLogs(level="WARNING")
 
-        # Make a data ID to pass to the formatter.
+        # Make a ref to pass to the formatter.
         universe = lsst.daf.butler.DimensionUniverse()
         dataId = lsst.daf.butler.DataCoordinate.standardize(
             instrument="Cam1", exposure=2, detector=10, physical_filter="u", band="u", universe=universe
         )
+        datasetType = lsst.daf.butler.DatasetType(
+            "dummy",
+            dimensions=("instrument", "exposure", "detector"),
+            storageClass=lsst.daf.butler.StorageClass(),
+            universe=universe,
+        )
+        ref = lsst.daf.butler.DatasetRef(dataId=dataId, datasetType=datasetType, run="test")
 
         # We have no file in these tests, so make an empty descriptor.
         fileDescriptor = lsst.daf.butler.FileDescriptor(None, None)
-        self.formatter = SimpleFitsRawFormatter(fileDescriptor, dataId=dataId)
+        self.formatter = SimpleFitsRawFormatter(fileDescriptor, ref=ref)
         # Force the formatter's metadata to be what we've created above.
         self.formatter._metadata = self.metadata
 
@@ -224,7 +231,7 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
                                     lsst.daf.butler.StorageClassFactory().getStorageClass("ExposureI"),
                                     parameters=parameters,
                                 ),
-                                dataId=self.formatter.dataId,
+                                ref=self.formatter.dataset_ref,
                             )
                             subexp = formatter.read()
                             self.assertImagesEqual(subexp.image, full[amp.getRawBBox()].image)
