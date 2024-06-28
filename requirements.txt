@@ -1,7 +1,7 @@
 pyyaml >= 5.1
 numpy
-lsst-daf-butler @ git+https://github.com/lsst/daf_butler@main
+lsst-daf-butler @ git+https://github.com/lsst/daf_butler@tickets/DM-26658
 lsst-utils @ git+https://github.com/lsst/utils@main
-lsst-resources @ git+https://github.com/lsst/resources@main
-lsst-pipe-base @ git+https://github.com/lsst/pipe_base@main
+lsst-resources @ git+https://github.com/lsst/resources@tickets/DM-44762
+lsst-pipe-base @ git+https://github.com/lsst/pipe_base@tickets/DM-26658
 lsst-pex-config @ git+https://github.com/lsst/pex_config@main
