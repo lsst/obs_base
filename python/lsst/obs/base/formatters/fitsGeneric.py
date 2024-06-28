@@ -21,56 +21,34 @@
 
 __all__ = ("FitsGenericFormatter",)
 
-import os.path
+from typing import Any
 
-from lsst.daf.butler.formatters.file import FileFormatter
+from lsst.daf.butler import FormatterV2
+from lsst.resources import ResourcePath
 
 
-class FitsGenericFormatter(FileFormatter):
+class FitsGenericFormatter(FormatterV2):
     """Interface for reading and writing objects that support the standard
     afw I/O readFits/writeFits methods.
     """
 
-    supportedExtensions = frozenset({".fits", ".fits.gz", ".fits.fz", ".fz", ".fit"})
-    extension = ".fits"
+    supported_extensions = frozenset({".fits", ".fits.gz", ".fits.fz", ".fz", ".fit"})
+    default_extension = ".fits"
+    can_read_from_local_file = True
 
-    def _readFile(self, path, pytype):
-        """Read a file from the path in FITS format.
-
-        Parameters
-        ----------
-        path : `str`
-            Path to use to open the file.
-        pytype : `class`
-            Class to use to read the FITS file.
-
-        Returns
-        -------
-        data : `object`
-            Instance of class `pytype` read from FITS file. None
-            if the file could not be opened.
-        """
-        if not os.path.exists(path):
-            return None
-        if self.fileDescriptor.parameters:
+    def read_from_local_file(
+        self, local_uri: ResourcePath, component: str | None = None, expected_size: int = -1
+    ) -> Any:
+        pytype = self.file_descriptor.storageClass.pytype
+        if self.file_descriptor.parameters:
             try:
-                return pytype.readFitsWithOptions(path, options=self.fileDescriptor.parameters)
+                return pytype.readFitsWithOptions(  # type: ignore
+                    local_uri.ospath, options=self.file_descriptor.parameters
+                )
             except AttributeError:
                 pass
 
-        return pytype.readFits(path)
+        return pytype.readFits(local_uri.ospath)  # type: ignore
 
-    def _writeFile(self, inMemoryDataset):
-        """Write the in memory dataset to file on disk.
-
-        Parameters
-        ----------
-        inMemoryDataset : `object`
-            Object to serialize.
-
-        Raises
-        ------
-        Exception
-            The file could not be written.
-        """
-        inMemoryDataset.writeFits(self.fileDescriptor.location.path)
+    def write_local_file(self, in_memory_dataset: Any, uri: ResourcePath) -> None:
+        in_memory_dataset.writeFits(uri.ospath)
