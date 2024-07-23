@@ -73,7 +73,7 @@ class FitsImageFormatterBase(FormatterV2):
     """Support all parameters."""
 
     _reader = None
-    _reader_uri: ResourcePath | None = None
+    _reader_path: str | None = None
 
     ReaderClass: type  # must be set by concrete subclasses
 
@@ -85,7 +85,7 @@ class FitsImageFormatterBase(FormatterV2):
         accessed when writing. Currently assumes a local file.
         """
         if self._reader is None:
-            self._reader = self.ReaderClass(self._reader_uri.ospath)
+            self._reader = self.ReaderClass(self._reader_path)
         return self._reader
 
     @property
@@ -105,15 +105,13 @@ class FitsImageFormatterBase(FormatterV2):
         self.file_descriptor.storageClass.validateParameters(parameters)
         return parameters
 
-    def read_from_local_file(
-        self, local_uri: ResourcePath, component: str | None = None, expected_size: int = -1
-    ) -> Any:
+    def read_from_local_file(self, path: str, component: str | None = None, expected_size: int = -1) -> Any:
         # Docstring inherited.
         # The methods doing the reading all currently assume local file
         # and assume that the file descriptor refers to a local file.
         # With FormatterV2 that file descriptor does not refer to a local
         # file.
-        self._reader_uri = local_uri
+        self._reader_path = path
         self._reader = None  # Reset any cache.
         if component is not None:
             return self.readComponent(component)

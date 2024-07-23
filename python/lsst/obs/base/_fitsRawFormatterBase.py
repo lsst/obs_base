@@ -124,7 +124,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         image : `~lsst.afw.image.Image`
             In-memory image component.
         """
-        return lsst.afw.image.ImageU(self._reader_uri.ospath)
+        return lsst.afw.image.ImageU(self._reader_path)
 
     def isOnSky(self):
         """Boolean to determine if the exposure is thought to be on the sky.

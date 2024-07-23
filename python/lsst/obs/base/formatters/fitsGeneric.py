@@ -36,19 +36,17 @@ class FitsGenericFormatter(FormatterV2):
     default_extension = ".fits"
     can_read_from_local_file = True
 
-    def read_from_local_file(
-        self, local_uri: ResourcePath, component: str | None = None, expected_size: int = -1
-    ) -> Any:
+    def read_from_local_file(self, path: str, component: str | None = None, expected_size: int = -1) -> Any:
         pytype = self.file_descriptor.storageClass.pytype
         if self.file_descriptor.parameters:
             try:
                 return pytype.readFitsWithOptions(  # type: ignore
-                    local_uri.ospath, options=self.file_descriptor.parameters
+                    path, options=self.file_descriptor.parameters
                 )
             except AttributeError:
                 pass
 
-        return pytype.readFits(local_uri.ospath)  # type: ignore
+        return pytype.readFits(path)  # type: ignore
 
     def write_local_file(self, in_memory_dataset: Any, uri: ResourcePath) -> None:
         in_memory_dataset.writeFits(uri.ospath)
