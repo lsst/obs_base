@@ -790,7 +790,7 @@ class RawIngestTask(Task):
             `RawExposureData.dataId` attributes will be minimal (unexpanded)
             `~lsst.daf.butler.DataCoordinate` instances.
         """
-        exposureDimensions = self.universe["exposure"].graph
+        exposureDimensions = self.universe["exposure"].minimal_group
         byExposure = defaultdict(list)
         for f in files:
             # Assume that the first dataset is representative for the file.
