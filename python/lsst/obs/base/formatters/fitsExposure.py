@@ -30,7 +30,7 @@ __all__ = (
 import warnings
 from abc import abstractmethod
 from collections.abc import Set
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from lsst.afw.cameraGeom import AmplifierGeometryComparison, AmplifierIsolator
 from lsst.afw.image import (
@@ -45,12 +45,13 @@ from lsst.afw.image import (
 # Needed for ApCorrMap to resolve properly
 from lsst.afw.math import BoundedField  # noqa: F401
 from lsst.daf.base import PropertySet
-from lsst.daf.butler import Formatter
+from lsst.daf.butler import FormatterV2
+from lsst.resources import ResourcePath
 from lsst.utils.classes import cached_getter
 from lsst.utils.introspection import find_outside_stacklevel
 
 
-class FitsImageFormatterBase(Formatter):
+class FitsImageFormatterBase(FormatterV2):
     """Base class formatter for image-like storage classes stored via FITS.
 
     Notes
@@ -64,11 +65,28 @@ class FitsImageFormatterBase(Formatter):
     (even if just to disable them by raising an exception).
     """
 
-    extension = ".fits"
-    supportedExtensions: ClassVar[Set[str]] = frozenset({".fits", ".fits.gz", ".fits.fz", ".fz", ".fit"})
+    can_read_from_local_file = True
+    default_extension = ".fits"
+    supported_extensions: ClassVar[Set[str]] = frozenset({".fits", ".fits.gz", ".fits.fz", ".fz", ".fit"})
 
-    unsupportedParameters: ClassVar[Set[str]] = frozenset()
+    unsupported_parameters: ClassVar[Set[str]] = frozenset()
     """Support all parameters."""
+
+    _reader = None
+    _reader_path: str | None = None
+
+    ReaderClass: type  # must be set by concrete subclasses
+
+    @property
+    def reader(self):
+        """The reader object that backs this formatter's read operations.
+
+        This is computed on first use and then cached.  It should never be
+        accessed when writing. Currently assumes a local file.
+        """
+        if self._reader is None:
+            self._reader = self.ReaderClass(self._reader_path)
+        return self._reader
 
     @property
     @cached_getter
@@ -81,14 +99,20 @@ class FitsImageFormatterBase(Formatter):
         accessed when writing.  Subclasses that need additional checking should
         delegate to `super` and then check the result before returning it.
         """
-        parameters = self.fileDescriptor.parameters
+        parameters = self.file_descriptor.parameters
         if parameters is None:
             parameters = {}
-        self.fileDescriptor.storageClass.validateParameters(parameters)
+        self.file_descriptor.storageClass.validateParameters(parameters)
         return parameters
 
-    def read(self, component=None):
+    def read_from_local_file(self, path: str, component: str | None = None, expected_size: int = -1) -> Any:
         # Docstring inherited.
+        # The methods doing the reading all currently assume local file
+        # and assume that the file descriptor refers to a local file.
+        # With FormatterV2 that file descriptor does not refer to a local
+        # file.
+        self._reader_path = path
+        self._reader = None  # Reset any cache.
         if component is not None:
             return self.readComponent(component)
         return self.readFull()
@@ -219,18 +243,7 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
 
     """
 
-    supportedWriteParameters = frozenset({"recipe"})
-    ReaderClass: type  # must be set by concrete subclasses
-
-    @property
-    @cached_getter
-    def reader(self):
-        """The reader object that backs this formatter's read operations.
-
-        This is computed on first use and then cached.  It should never be
-        accessed when writing.
-        """
-        return self.ReaderClass(self.fileDescriptor.location.path)
+    supported_write_parameters = frozenset({"recipe"})
 
     def readComponent(self, component):
         # Docstring inherited.
@@ -249,31 +262,20 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
         # Docstring inherited.
         return self.reader.read(**self.checked_parameters)
 
-    def write(self, inMemoryDataset):
-        """Write a Python object to a file.
-
-        Parameters
-        ----------
-        inMemoryDataset : `object`
-            The Python object to store.
-        """
-        # Update the location with the formatter-preferred file extension
-        self.fileDescriptor.location.updateExtension(self.extension)
-        outputPath = self.fileDescriptor.location.path
-
+    def write_local_file(self, in_memory_dataset: Any, uri: ResourcePath) -> None:
         # check to see if we have a recipe requested
-        recipeName = self.writeParameters.get("recipe")
-        recipe = self.getImageCompressionSettings(recipeName)
+        recipeName = self.write_parameters.get("recipe")
+        recipe = self.get_image_compression_settings(recipeName)
         if recipe:
             # Can not construct a PropertySet from a hierarchical
             # dict but can update one.
             ps = PropertySet()
             ps.update(recipe)
-            inMemoryDataset.writeFitsWithOptions(outputPath, options=ps)
+            in_memory_dataset.writeFitsWithOptions(uri.ospath, options=ps)
         else:
-            inMemoryDataset.writeFits(outputPath)
+            in_memory_dataset.writeFits(uri.ospath)
 
-    def getImageCompressionSettings(self, recipeName):
+    def get_image_compression_settings(self, recipeName):
         """Retrieve the relevant compression settings for this recipe.
 
         Parameters
@@ -290,17 +292,17 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
         # if no recipe has been provided and there is no default
         # return immediately
         if not recipeName:
-            if "default" not in self.writeRecipes:
+            if "default" not in self.write_recipes:
                 return {}
             recipeName = "default"
 
-        if recipeName not in self.writeRecipes:
+        if recipeName not in self.write_recipes:
             raise RuntimeError(f"Unrecognized recipe option given for compression: {recipeName}")
 
-        recipe = self.writeRecipes[recipeName]
+        recipe = self.write_recipes[recipeName]
 
         # Set the seed based on dataId
-        seed = hash(tuple(self.dataId.required.items())) % 2**31
+        seed = hash(tuple(self.data_id.required.items())) % 2**31
         for plane in ("image", "mask", "variance"):
             if plane in recipe and "scaling" in recipe[plane]:
                 scaling = recipe[plane]["scaling"]
@@ -310,7 +312,7 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
         return recipe
 
     @classmethod
-    def validateWriteRecipes(cls, recipes):
+    def validate_write_recipes(cls, recipes):
         """Validate supplied recipes for this formatter.
 
         The recipes are supplemented with default values where appropriate.
@@ -599,20 +601,20 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         missing = []
         band = None
         physical_filter = None
-        if "band" in self.dataId.dimensions.names:
-            band = self.dataId.get("band")
+        if "band" in self.data_id.dimensions.names:
+            band = self.data_id.get("band")
             # band isn't in the data ID; is that just because this data ID
             # hasn't been filled in with everything the Registry knows, or
             # because this dataset is never associated with a band?
-            if band is None and not self.dataId.hasFull() and "band" in self.dataId.dimensions.implied:
+            if band is None and not self.data_id.hasFull() and "band" in self.data_id.dimensions.implied:
                 missing.append("band")
-        if "physical_filter" in self.dataId.dimensions.names:
-            physical_filter = self.dataId.get("physical_filter")
+        if "physical_filter" in self.data_id.dimensions.names:
+            physical_filter = self.data_id.get("physical_filter")
             # Same check as above for band, but for physical_filter.
             if (
                 physical_filter is None
-                and not self.dataId.hasFull()
-                and "physical_filter" in self.dataId.dimensions.implied
+                and not self.data_id.hasFull()
+                and "physical_filter" in self.data_id.dimensions.implied
             ):
                 missing.append("physical_filter")
         if should_be_standardized is None:
@@ -626,7 +628,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
             # predates filter standardization.
             if not should_be_standardized:
                 warnings.warn(
-                    f"Data ID {self.dataId} is missing (implied) value(s) for {missing}; "
+                    f"Data ID {self.data_id} is missing (implied) value(s) for {missing}; "
                     "the correctness of this Exposure's FilterLabel cannot be guaranteed. "
                     "Call Registry.expandDataId before Butler.get to avoid this.",
                     # Report the warning from outside of middleware or the
@@ -646,7 +648,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
             # in whatever code produced the Exposure (though it may be one that
             # has been fixed since the file was written).
             warnings.warn(
-                f"Reading {self.fileDescriptor.location} with data ID {self.dataId}: "
+                f"Reading {self.file_descriptor.location} with data ID {self.data_id}: "
                 f"filter label mismatch (file is {file_filter_label}, data ID is "
                 f"{data_id_filter_label}).  This is probably a bug in the code that produced it.",
                 stacklevel=find_outside_stacklevel(

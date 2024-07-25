@@ -23,12 +23,14 @@ __all__ = ("FitsRawFormatterBase",)
 
 import logging
 from abc import abstractmethod
+from typing import Any
 
 import lsst.afw.fits
 import lsst.afw.geom
 import lsst.afw.image
 from astro_metadata_translator import ObservationInfo, fix_header
-from lsst.daf.butler import FileDescriptor
+from lsst.daf.butler import FileDescriptor, FormatterNotImplementedError
+from lsst.resources import ResourcePath
 from lsst.utils.classes import cached_getter
 
 from .formatters.fitsExposure import FitsImageFormatterBase, standardizeAmplifierParameters
@@ -42,6 +44,8 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
     """Abstract base class for reading and writing raw data to and from
     FITS files.
     """
+
+    ReaderClass = lsst.afw.image.ImageFitsReader
 
     # This has to be explicit until we fix camera geometry in DM-20746
     wcsFlipX = False
@@ -120,7 +124,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         image : `~lsst.afw.image.Image`
             In-memory image component.
         """
-        return lsst.afw.image.ImageU(self.fileDescriptor.location.path)
+        return lsst.afw.image.ImageU(self._reader_path)
 
     def isOnSky(self):
         """Boolean to determine if the exposure is thought to be on the sky.
@@ -160,7 +164,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         metadata : `~lsst.daf.base.PropertyList`
             Header metadata.
         """
-        md = lsst.afw.fits.readMetadata(self.fileDescriptor.location.path)
+        md = self.reader.readMetadata()
         fix_header(md, translator_class=self.translatorClass)
         return md
 
@@ -180,12 +184,12 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             Structured metadata about the observation.
         """
         visit_info = MakeRawVisitInfoViaObsInfo.observationInfo2visitInfo(self.observationInfo)
-        if self.dataId and "exposure" in self.dataId:
+        if self.data_id and "exposure" in self.data_id:
             # Special case exposure existing for this dataset type.
             # Want to ensure that the id stored in the visitInfo matches that
             # from the dataId from butler, regardless of what may have come
             # from the ObservationInfo. In some edge cases they might differ.
-            exposure_id = self.dataId["exposure"]
+            exposure_id = self.data_id["exposure"]
             if exposure_id != visit_info.id:
                 visit_info = visit_info.copyWith(id=exposure_id)
 
@@ -330,14 +334,13 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             self.getDetector(self.observationInfo.detector_num),
         )
         if amplifier is not None:
-            reader = lsst.afw.image.ImageFitsReader(self.fileDescriptor.location.path)
             amplifier_isolator = lsst.afw.cameraGeom.AmplifierIsolator(
                 amplifier,
-                reader.readBBox(),
+                self.reader.readBBox(),
                 detector,
             )
             subimage = amplifier_isolator.transform_subimage(
-                reader.read(bbox=amplifier_isolator.subimage_bbox)
+                self.reader.read(bbox=amplifier_isolator.subimage_bbox)
             )
             exposure = lsst.afw.image.makeExposure(lsst.afw.image.makeMaskedImage(subimage))
             exposure.setDetector(amplifier_isolator.make_detector())
@@ -347,20 +350,8 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         self.attachComponentsFromMetadata(exposure)
         return exposure
 
-    def write(self, inMemoryDataset):
-        """Write a Python object to a file.
-
-        Parameters
-        ----------
-        inMemoryDataset : `object`
-            The Python object to store.
-
-        Returns
-        -------
-        path : `str`
-            The `URI` where the primary file is stored.
-        """
-        raise NotImplementedError("Raw data cannot be `put`.")
+    def write_local_file(self, in_memory_dataset: Any, uri: ResourcePath) -> None:
+        raise FormatterNotImplementedError("Raw data cannot be `put`.")
 
     @property
     def observationInfo(self):
@@ -369,7 +360,9 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         read-only).
         """
         if self._observationInfo is None:
-            location = self.fileDescriptor.location
+            # Use the primary path rather than any local variant that the
+            # formatter might be using.
+            location = self.file_descriptor.location
             path = location.path if location is not None else None
             self._observationInfo = ObservationInfo(
                 self.metadata, translator_class=self.translatorClass, filename=path
