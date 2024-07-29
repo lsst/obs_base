@@ -112,10 +112,15 @@ class FitsImageFormatterBase(FormatterV2):
         # With FormatterV2 that file descriptor does not refer to a local
         # file.
         self._reader_path = path
-        self._reader = None  # Reset any cache.
-        if component is not None:
-            return self.readComponent(component)
-        return self.readFull()
+        self._reader = None  # Ensure the reader class is reset.
+        try:
+            if component is not None:
+                in_memory_dataset = self.readComponent(component)
+            else:
+                in_memory_dataset = self.readFull()
+        finally:
+            self._reader = None  # Release the file handle.
+        return in_memory_dataset
 
     @abstractmethod
     def readComponent(self, component):
