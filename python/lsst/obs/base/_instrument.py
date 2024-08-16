@@ -713,7 +713,7 @@ def loadCamera(butler: Butler, dataId: DataId, *, collections: Any = None) -> tu
         Raised when ``dataId`` does not specify a valid data ID.
     """
     if collections is None:
-        collections = butler.collections
+        collections = list(butler.collections)
     # Registry would do data ID expansion internally if we didn't do it first,
     # but we might want an expanded data ID ourselves later, so we do it here
     # to ensure it only happens once.
