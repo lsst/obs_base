@@ -1214,7 +1214,7 @@ class _ComputeVisitRegionsFromSingleRawWcsTask(ComputeVisitRegionsTask):
             sphere representing that detector's corners projected onto the sky.
         """
         if collections is None:
-            collections = self.butler.collections
+            collections = list(self.butler.collections)
         camera, versioned = loadCamera(self.butler, exposure.dataId, collections=collections)
         if not versioned and self.config.requireVersionedCamera:
             raise LookupError(f"No versioned camera found for exposure {exposure.dataId}.")
