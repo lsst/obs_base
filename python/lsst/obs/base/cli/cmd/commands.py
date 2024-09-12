@@ -36,7 +36,7 @@ from lsst.daf.butler.cli.utils import ButlerCommand, split_commas, typeStrAccept
 from lsst.pipe.base.cli.opt import instrument_argument
 
 from ... import script
-from ..opt import failfast_option
+from ..opt import failfast_option, labels_argument
 
 # regular expression that can be used to find supported fits file extensions.
 fits_re = r"\.fit[s]?\b"
@@ -168,6 +168,7 @@ def ingest_raws(*args, **kwargs):
 @click.command(short_help="Add an instrument's curated calibrations.", cls=ButlerCommand)
 @repo_argument(required=True)
 @instrument_argument(required=True)
+@labels_argument()
 @click.option(
     "--collection",
     required=False,
@@ -179,10 +180,15 @@ def ingest_raws(*args, **kwargs):
     multiple=True,
     help=(
         "Extra strings to include (with automatic delimiters) in all RUN collection names, "
-        "as well as the calibration collection name if it is not provided via --collection."
+        "as well as the calibration collection name if it is not provided via --collection. "
+        "May be provided as a positional argument instead of or in addition to this option, "
+        "as long as at least one label is provided.  Positional-argument labels appear before "
+        "those provided by this option."
     ),
 )
 @options_file_option()
-def write_curated_calibrations(*args, **kwargs):
+def write_curated_calibrations(*, repo, instrument, collection, labels, labels_arg):
     """Add an instrument's curated calibrations to the data repository."""
-    script.writeCuratedCalibrations(*args, **kwargs)
+    script.writeCuratedCalibrations(
+        repo=repo, instrument=instrument, collection=collection, labels=labels_arg + labels
+    )

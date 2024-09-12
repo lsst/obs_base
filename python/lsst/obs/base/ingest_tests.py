@@ -319,7 +319,9 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         to write curated calibrations.
         """
         runner = LogCliRunner()
-        result = runner.invoke(butlerCli, ["write-curated-calibrations", self.root, self.instrumentName])
+        result = runner.invoke(
+            butlerCli, ["write-curated-calibrations", self.root, self.instrumentName, "test"]
+        )
         self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
 
     def testLink(self):
@@ -419,7 +421,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             raise unittest.SkipTest("Class requests disabling of writeCuratedCalibrations test")
 
         butler = Butler(self.root, writeable=False)
-        collection = self.instrumentClass().makeCalibrationCollectionName()
+        collection = self.instrumentClass().makeCalibrationCollectionName("test")
 
         # Trying to load a camera with a data ID not known to the registry
         # is an error, because we can't get any temporal information.

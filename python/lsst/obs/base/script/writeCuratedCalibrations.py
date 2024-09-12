@@ -57,6 +57,8 @@ def writeCuratedCalibrations(repo, instrument, collection, labels):
     """
     butler = Butler(repo, writeable=True)
     instr = Instrument.from_string(instrument, butler.registry)
-    if not labels:
+    if collection is None and not labels:
         labels = instr.get_curated_calibration_labels()
+        if not labels:
+            raise ValueError("At least one label or --collection must be provided.")
     instr.writeCuratedCalibrations(butler, collection=collection, labels=labels)

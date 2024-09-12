@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from lsst.daf.butler.cli.utils import MWOptionDecorator
+from lsst.daf.butler.cli.utils import MWArgumentDecorator, MWOptionDecorator
 
 failfast_option = MWOptionDecorator(
     "--fail-fast",
@@ -28,4 +28,11 @@ failfast_option = MWOptionDecorator(
         "Otherwise problem files will be skipped and logged and a report issued at completion."
     ),
     is_flag=True,
+)
+
+labels_argument = MWArgumentDecorator(
+    "labels_arg",
+    metavar="LBL",
+    nargs=-1,
+    help="LBL: One or more extra strings to include in the collection name (see --label).",
 )
