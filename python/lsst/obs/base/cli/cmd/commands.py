@@ -186,9 +186,17 @@ def ingest_raws(*args, **kwargs):
         "those provided by this option."
     ),
 )
+@click.option(
+    "--prefix",
+    required=False,
+    help=(
+        "Prefix for the collection name.  Default is the instrument name. "
+        "This is ignored if --collection is passed."
+    ),
+)
 @options_file_option()
-def write_curated_calibrations(*, repo, instrument, collection, labels, labels_arg):
+def write_curated_calibrations(*, repo, instrument, collection, labels, labels_arg, prefix):
     """Add an instrument's curated calibrations to the data repository."""
     script.writeCuratedCalibrations(
-        repo=repo, instrument=instrument, collection=collection, labels=labels_arg + labels
+        repo=repo, instrument=instrument, collection=collection, labels=labels_arg + labels, prefix=prefix
     )

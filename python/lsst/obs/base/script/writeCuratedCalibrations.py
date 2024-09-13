@@ -27,7 +27,7 @@ from lsst.pipe.base import Instrument
 log = logging.getLogger(__name__)
 
 
-def writeCuratedCalibrations(repo, instrument, collection, labels):
+def writeCuratedCalibrations(repo, instrument, collection, labels, prefix=None):
     """Add an instrument's curated calibrations to the data repository.
 
     Parameters
@@ -45,6 +45,9 @@ def writeCuratedCalibrations(repo, instrument, collection, labels):
         Extra strings to include in the names of collections that datasets are
         inserted directly into, and if ``collection`` is `None`, the automatic
         calibration collection name as well.
+    prefix : `str`, optional
+        Prefix for the collection name to use instead of the instrument name.
+        Ignored if ``collection`` is passed.
 
     Raises
     ------
@@ -56,7 +59,7 @@ def writeCuratedCalibrations(repo, instrument, collection, labels):
         `lsst.obs.base.Instrument`.
     """
     butler = Butler(repo, writeable=True)
-    instr = Instrument.from_string(instrument, butler.registry)
+    instr = Instrument.from_string(instrument, butler.registry, collection_prefix=prefix)
     if collection is None and not labels:
         labels = instr.get_curated_calibration_labels()
         if not labels:
