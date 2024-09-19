@@ -581,6 +581,15 @@ class Instrument(InstrumentBase):
         cleaned = re.sub(r"\D", "", group_name)
         return int(cleaned)
 
+    def get_curated_calibration_labels(self) -> list[str]:
+        """Return appropriate labels (pieces of a collection name) for a
+        collection populated by `writeCuratedCalibrations`.
+
+        If this returns an empty list (as the default implementation does),
+        the user will be required to provide a label.
+        """
+        return []
+
 
 def makeExposureRecordFromObsInfo(
     obsInfo: ObservationInfo, universe: DimensionUniverse, **kwargs: Any
