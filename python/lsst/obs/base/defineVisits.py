@@ -357,7 +357,7 @@ class ComputeVisitRegionsTask(Task, metaclass=ABCMeta):
             Struct describing the visit and the exposures associated with it.
         collections : Any, optional
             Collections to be searched for raws and camera geometry, overriding
-            ``self.butler.collections``.
+            ``self.butler.collections.defaults``.
             Can be any of the types supported by the ``collections`` argument
             to butler construction.
 
@@ -479,7 +479,7 @@ class DefineVisitsTask(Task):
             constituent exposures.
         collections : Any, optional
             Collections to be searched for raws and camera geometry, overriding
-            ``self.butler.collections``.
+            ``self.butler.collections.defaults``.
             Can be any of the types supported by the ``collections`` argument
             to butler construction.
 
@@ -637,7 +637,7 @@ class DefineVisitsTask(Task):
             instrument, and are expected to be on-sky science exposures.
         collections : Any, optional
             Collections to be searched for raws and camera geometry, overriding
-            ``self.butler.collections``.
+            ``self.butler.collections.defaults``.
             Can be any of the types supported by the ``collections`` argument
             to butler construction.
         update_records : `bool`, optional
@@ -1203,7 +1203,7 @@ class _ComputeVisitRegionsFromSingleRawWcsTask(ComputeVisitRegionsTask):
             Dimension record for the exposure.
         collections : Any, optional
             Collections to be searched for raws and camera geometry, overriding
-            ``self.butler.collections``.
+            ``self.butler.collections.defaults``.
             Can be any of the types supported by the ``collections`` argument
             to butler construction.
 
@@ -1214,7 +1214,7 @@ class _ComputeVisitRegionsFromSingleRawWcsTask(ComputeVisitRegionsTask):
             sphere representing that detector's corners projected onto the sky.
         """
         if collections is None:
-            collections = list(self.butler.collections)
+            collections = list(self.butler.collections.defaults)
         camera, versioned = loadCamera(self.butler, exposure.dataId, collections=collections)
         if not versioned and self.config.requireVersionedCamera:
             raise LookupError(f"No versioned camera found for exposure {exposure.dataId}.")
