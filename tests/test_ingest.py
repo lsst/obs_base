@@ -467,7 +467,7 @@ class TestRawIngestTaskPickle(unittest.TestCase):
         self.assertEqual(self.task.log.name, copy.log.name)
         self.assertEqual(self.task.config, copy.config)
         self.assertEqual(self.task.butler._config, copy.butler._config)
-        self.assertEqual(list(self.task.butler.collections), list(copy.butler.collections))
+        self.assertEqual(list(self.task.butler.collections.defaults), list(copy.butler.collections.defaults))
         self.assertEqual(self.task.butler.run, copy.butler.run)
         self.assertEqual(self.task.universe, copy.universe)
         self.assertEqual(self.task.datasetType, copy.datasetType)

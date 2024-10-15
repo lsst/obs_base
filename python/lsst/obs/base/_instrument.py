@@ -701,9 +701,9 @@ def loadCamera(butler: Butler, dataId: DataId, *, collections: Any = None) -> tu
         Data ID that identifies at least the ``instrument`` and ``exposure``
         dimensions.
     collections : Any, optional
-        Collections to be searched, overriding ``self.butler.collections``.
-        Can be any of the types supported by the ``collections`` argument
-        to butler construction.
+        Collections to be searched, overriding
+        ``self.butler.collections.defaults``.  Can be any of the types
+        supported by the ``collections`` argument to butler construction.
 
     Returns
     -------
@@ -722,7 +722,7 @@ def loadCamera(butler: Butler, dataId: DataId, *, collections: Any = None) -> tu
         Raised when ``dataId`` does not specify a valid data ID.
     """
     if collections is None:
-        collections = list(butler.collections)
+        collections = list(butler.collections.defaults)
     # Registry would do data ID expansion internally if we didn't do it first,
     # but we might want an expanded data ID ourselves later, so we do it here
     # to ensure it only happens once.
