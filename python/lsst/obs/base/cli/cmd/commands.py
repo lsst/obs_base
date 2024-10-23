@@ -173,7 +173,7 @@ def ingest_raws(*args, **kwargs):
 @click.option(
     "--collection",
     required=False,
-    help="Name of the calibration collection that associates datasets with validity ranges.",
+    help="Backwards-compatibility alias for --prefix.",
 )
 @click.option(
     "--label",
