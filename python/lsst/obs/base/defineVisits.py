@@ -37,7 +37,7 @@ import math
 import operator
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from typing import Any, ClassVar, TypeVar, cast
 
 import lsst.geom
@@ -347,7 +347,10 @@ class ComputeVisitRegionsTask(Task, metaclass=ABCMeta):
 
     @abstractmethod
     def compute(
-        self, visit: VisitDefinitionData, *, collections: Any = None
+        self,
+        visit: VisitDefinitionData,
+        *,
+        collections: Sequence[str] | str | None = None,
     ) -> tuple[Region, dict[int, Region]]:
         """Compute regions for the given visit and all detectors in that visit.
 
@@ -355,7 +358,7 @@ class ComputeVisitRegionsTask(Task, metaclass=ABCMeta):
         ----------
         visit : `VisitDefinitionData`
             Struct describing the visit and the exposures associated with it.
-        collections : Any, optional
+        collections : `Sequence` [ `str` ] or `str` or `None`
             Collections to be searched for raws and camera geometry, overriding
             ``self.butler.collections.defaults``.
             Can be any of the types supported by the ``collections`` argument
@@ -468,7 +471,7 @@ class DefineVisitsTask(Task):
     computeVisitRegions: ComputeVisitRegionsTask
 
     def _buildVisitRecords(
-        self, definition: VisitDefinitionData, *, collections: Any = None
+        self, definition: VisitDefinitionData, *, collections: Sequence[str] | str | None = None
     ) -> _VisitRecords:
         """Build the DimensionRecords associated with a visit.
 
@@ -477,7 +480,7 @@ class DefineVisitsTask(Task):
         definition : `VisitDefinitionData`
             Struct with identifiers for the visit and records for its
             constituent exposures.
-        collections : Any, optional
+        collections : `Sequence` [ `str` ] or `str` or `None`
             Collections to be searched for raws and camera geometry, overriding
             ``self.butler.collections.defaults``.
             Can be any of the types supported by the ``collections`` argument
@@ -624,7 +627,7 @@ class DefineVisitsTask(Task):
         self,
         dataIds: Iterable[DataId],
         *,
-        collections: str | None = None,
+        collections: Sequence[str] | str | None = None,
         update_records: bool = False,
         incremental: bool = False,
     ) -> None:
@@ -635,7 +638,7 @@ class DefineVisitsTask(Task):
         dataIds : `Iterable` [ `dict` or `~lsst.daf.butler.DataCoordinate` ]
             Exposure-level data IDs.  These must all correspond to the same
             instrument, and are expected to be on-sky science exposures.
-        collections : Any, optional
+        collections : `Sequence` [ `str` ] or `str` or `None`
             Collections to be searched for raws and camera geometry, overriding
             ``self.butler.collections.defaults``.
             Can be any of the types supported by the ``collections`` argument
