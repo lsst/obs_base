@@ -37,7 +37,7 @@ import math
 import operator
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from typing import Any, ClassVar, TypeVar, cast
 
 import lsst.geom
@@ -624,7 +624,7 @@ class DefineVisitsTask(Task):
         self,
         dataIds: Iterable[DataId],
         *,
-        collections: str | None = None,
+        collections: Sequence[str] | str | None = None,
         update_records: bool = False,
         incremental: bool = False,
     ) -> None:
@@ -635,7 +635,7 @@ class DefineVisitsTask(Task):
         dataIds : `Iterable` [ `dict` or `~lsst.daf.butler.DataCoordinate` ]
             Exposure-level data IDs.  These must all correspond to the same
             instrument, and are expected to be on-sky science exposures.
-        collections : Any, optional
+        collections : `Sequence` [ `str` ] or `str` or `None`
             Collections to be searched for raws and camera geometry, overriding
             ``self.butler.collections.defaults``.
             Can be any of the types supported by the ``collections`` argument
