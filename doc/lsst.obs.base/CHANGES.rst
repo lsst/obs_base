@@ -1,3 +1,14 @@
+obs_base v28.0.0 (2024-11-21)
+=============================
+
+API Changes
+-----------
+
+- The ``butler write-curated-calibrations`` command now requires at least one "label" to be included for the collection name.
+
+  This prevents the common mistake of setting up ``<instrument>/calib`` as a ``CALIBRATION`` collection rather than a more maintainable ``CHAINED`` collection. (`DM-46297 <https://rubinobs.atlassian.net/browse/DM-46297>`_)
+
+
 obs_base v27.0.0 (2024-06-05)
 =============================
 
