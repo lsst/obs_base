@@ -62,6 +62,7 @@ _LOG = logging.getLogger(__name__)
 # standard definition for the corresponding DatasetType.
 StandardCuratedCalibrationDatasetTypes = {
     "defects": {"dimensions": ("instrument", "detector"), "storageClass": "Defects"},
+    "manual_defects": {"dimensions": ("instrument", "detector"), "storageClass": "Defects"},
     "qe_curve": {"dimensions": ("instrument", "detector"), "storageClass": "QECurve"},
     "crosstalk": {"dimensions": ("instrument", "detector"), "storageClass": "CrosstalkCalib"},
     "linearizer": {"dimensions": ("instrument", "detector"), "storageClass": "Linearizer"},
