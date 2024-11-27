@@ -1,3 +1,9 @@
+[project]
+name = "lsst-obs-base"
+
+[project.entry-points.'butler.cli']
+obs_base = "lsst.obs.base.cli:get_cli_subcommands"
+
 [tool.towncrier]
     package = "lsst.obs.base"
     package_dir = "python"
