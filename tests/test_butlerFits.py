@@ -223,6 +223,7 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
         ref = self.butler.put(catalog, "testCatalog", dataId)
         stored = self.butler.get(ref)
         self.assertCatalogEqual(catalog, stored)
+        self.assertEqual(stored.metadata["LSST BUTLER ID"], str(ref.id))
 
         # Override the storage class.
         astropy_table = self.butler.get(ref, storageClass="AstropyTable")
@@ -255,6 +256,9 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
 
         # Get the full thing
         composite = self.butler.get(datasetTypeName, dataId)
+
+        # Check that provenance has been written.
+        self.assertEqual(composite.metadata["LSST BUTLER ID"], str(ref.id))
 
         # There is no assert for Exposure so just look at maskedImage
         self.assertMaskedImagesEqual(composite.maskedImage, exposure.maskedImage)

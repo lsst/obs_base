@@ -29,7 +29,7 @@ __all__ = (
 
 import warnings
 from abc import abstractmethod
-from collections.abc import Set
+from collections.abc import MutableMapping, Set
 from typing import Any, ClassVar
 
 from lsst.afw.cameraGeom import AmplifierGeometryComparison, AmplifierIsolator
@@ -44,11 +44,41 @@ from lsst.afw.image import (
 
 # Needed for ApCorrMap to resolve properly
 from lsst.afw.math import BoundedField  # noqa: F401
-from lsst.daf.base import PropertySet
-from lsst.daf.butler import FormatterV2
+from lsst.daf.base import PropertyList, PropertySet
+from lsst.daf.butler import DatasetRef, FormatterV2
 from lsst.resources import ResourcePath
 from lsst.utils.classes import cached_getter
 from lsst.utils.introspection import find_outside_stacklevel
+
+
+def add_provenance_to_fits_header(hdr: PropertyList | MutableMapping, ref: DatasetRef) -> None:
+    """Modify the given header to include provenance headers.
+
+    Parameters
+    ----------
+    hdr : `lsst.daf.base.PropertyList` or `collections.abc.MutableMapping`
+        The FITS header to modify. Assumes ``HIERARCH`` will be handled
+        implicitly by the writer.
+    ref : `lsst.daf.butler.DatasetRef`
+        The butler dataset associated with this FITS file.
+    """
+    # Use property list here so that we have the option of including comments.
+    extras = PropertyList()
+    hierarch = "LSST BUTLER"
+    extras.set(f"{hierarch} ID", str(ref.id), comment="Dataset ID")
+    extras.set(f"{hierarch} RUN", ref.run, comment="Run collection")
+    extras.set(f"{hierarch} DATASETTYPE", ref.datasetType.name, comment="Dataset type")
+    for k, v in sorted(ref.dataId.required.items()):
+        extras.set(f"{hierarch} DATAID {k.upper()}", v, comment="Data identifier")
+
+    # Purge old headers from metadata (important for data ID headers and to
+    # prevent headers accumulating in a PropertyList).
+    for k in hdr:
+        if k.startswith(hierarch):
+            del hdr[k]
+
+    # Update the header.
+    hdr.update(extras)
 
 
 class FitsImageFormatterBase(FormatterV2):
@@ -515,6 +545,11 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
     """
 
     ReaderClass = ExposureFitsReader
+
+    def add_provenance(self, in_memory_dataset: Any) -> Any:
+        # Add provenance via FITS headers.
+        add_provenance_to_fits_header(in_memory_dataset.metadata, self.dataset_ref)
+        return in_memory_dataset
 
     def readComponent(self, component):
         # Docstring inherited.

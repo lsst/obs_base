@@ -26,6 +26,8 @@ from typing import Any
 from lsst.daf.butler import FormatterV2
 from lsst.resources import ResourcePath
 
+from .fitsExposure import add_provenance_to_fits_header
+
 
 class FitsGenericFormatter(FormatterV2):
     """Interface for reading and writing objects that support the standard
@@ -50,3 +52,14 @@ class FitsGenericFormatter(FormatterV2):
 
     def write_local_file(self, in_memory_dataset: Any, uri: ResourcePath) -> None:
         in_memory_dataset.writeFits(uri.ospath)
+
+    def add_provenance(self, in_memory_dataset: Any) -> Any:
+        if hasattr(in_memory_dataset, "getMetadata"):
+            metadata = in_memory_dataset.getMetadata()
+        elif hasattr(in_memory_dataset, "metadata"):
+            metadata = in_memory_dataset.metadata
+        else:
+            # Unable to find compliant metadata attribute.
+            return in_memory_dataset
+        add_provenance_to_fits_header(metadata, self.dataset_ref)
+        return in_memory_dataset
