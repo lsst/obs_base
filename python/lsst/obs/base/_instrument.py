@@ -591,6 +591,30 @@ class Instrument(InstrumentBase):
         """
         return []
 
+    def get_ref_cat_filter_map(self, ref_cat: str) -> str | dict[str, str]:
+        """Return a mapping from band to reference catalog filter name.
+
+        Parameters
+        ----------
+        ref_cat : `str`
+            Full name of a reference catalog.
+
+        Returns
+        -------
+        filter_map : `str` or `dict` [ `str`, `str` ]
+            If a `dict`, a mapping from ``band`` to the corresponding reference
+            catalog filter name.  If a `str`, a reference catalog filter name
+            that corresponds to all ``bands``.  Identity mapping are implicit
+            and do not need to be included (e.g. ``'r'-> 'r'``).
+
+        Notes
+        -----
+        When a mapping is returned, it may also include ``physical_filter``
+        keys for backwards compatibility with tasks that have not been updated
+        to expect ``band`` as the key.
+        """
+        raise NotImplementedError("This instrument does not have reference catalog information.")
+
 
 def makeExposureRecordFromObsInfo(
     obsInfo: ObservationInfo, universe: DimensionUniverse, **kwargs: Any
