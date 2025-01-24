@@ -61,5 +61,5 @@ class FitsGenericFormatter(FormatterV2):
         else:
             # Unable to find compliant metadata attribute.
             return in_memory_dataset
-        add_provenance_to_fits_header(metadata, self.dataset_ref)
+        add_provenance_to_fits_header(metadata, self.dataset_ref, self._provenance)
         return in_memory_dataset

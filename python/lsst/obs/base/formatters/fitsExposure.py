@@ -45,13 +45,15 @@ from lsst.afw.image import (
 # Needed for ApCorrMap to resolve properly
 from lsst.afw.math import BoundedField  # noqa: F401
 from lsst.daf.base import PropertyList, PropertySet
-from lsst.daf.butler import DatasetRef, FormatterV2
+from lsst.daf.butler import DatasetProvenance, DatasetRef, FormatterV2
 from lsst.resources import ResourcePath
 from lsst.utils.classes import cached_getter
 from lsst.utils.introspection import find_outside_stacklevel
 
 
-def add_provenance_to_fits_header(hdr: PropertyList | MutableMapping, ref: DatasetRef) -> None:
+def add_provenance_to_fits_header(
+    hdr: PropertyList | MutableMapping, ref: DatasetRef, provenance: DatasetProvenance | None = None
+) -> None:
     """Modify the given header to include provenance headers.
 
     Parameters
@@ -61,18 +63,32 @@ def add_provenance_to_fits_header(hdr: PropertyList | MutableMapping, ref: Datas
         implicitly by the writer.
     ref : `lsst.daf.butler.DatasetRef`
         The butler dataset associated with this FITS file.
+    provenance : `lsst.daf.butler.DatasetProvenance` or `None`, optional
+        Provenance for this dataset.
     """
     # Use property list here so that we have the option of including comments.
     extras = PropertyList()
     hierarch = "LSST BUTLER"
+
+    # Add the information about this dataset.
     extras.set(f"{hierarch} ID", str(ref.id), comment="Dataset ID")
     extras.set(f"{hierarch} RUN", ref.run, comment="Run collection")
     extras.set(f"{hierarch} DATASETTYPE", ref.datasetType.name, comment="Dataset type")
     for k, v in sorted(ref.dataId.required.items()):
         extras.set(f"{hierarch} DATAID {k.upper()}", v, comment="Data identifier")
 
-    # Purge old headers from metadata (important for data ID headers and to
-    # prevent headers accumulating in a PropertyList).
+    # Add information about any inputs to the quantum that generated
+    # this dataset.
+    if provenance is not None:
+        for i, input in enumerate(provenance.inputs):
+            input_key = f"{hierarch} INPUT {i}"
+            # Comments can make the strings too long and need CONTINUE.
+            extras.set(f"{input_key} ID", str(input.id))
+            extras.set(f"{input_key} RUN", input.run)
+            extras.set(f"{input_key} DATASETTYPE", input.datasetType.name)
+
+    # Purge old headers from metadata (important for data ID and input headers
+    # and to prevent headers accumulating in a PropertyList).
     for k in hdr:
         if k.startswith(hierarch):
             del hdr[k]
@@ -548,7 +564,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
 
     def add_provenance(self, in_memory_dataset: Any) -> Any:
         # Add provenance via FITS headers.
-        add_provenance_to_fits_header(in_memory_dataset.metadata, self.dataset_ref)
+        add_provenance_to_fits_header(in_memory_dataset.metadata, self.dataset_ref, self._provenance)
         return in_memory_dataset
 
     def readComponent(self, component):

@@ -28,7 +28,7 @@ from typing import Any
 # Need to enable PSFs to be instantiated
 import lsst.afw.detection
 from lsst.afw.image import Exposure, makeExposure, makeMaskedImage
-from lsst.daf.butler import DatasetComponent, DatasetRef, StorageClassDelegate
+from lsst.daf.butler import DatasetComponent, DatasetProvenance, DatasetRef, StorageClassDelegate
 
 from .formatters.fitsExposure import add_provenance_to_fits_header
 
@@ -322,7 +322,9 @@ class ExposureAssembler(StorageClassDelegate):
                     return c
         raise ValueError(f"Can not calculate read component {readComponent} from {fromComponents}")
 
-    def add_provenance(self, inMemoryDataset: Any, ref: DatasetRef) -> Any:
+    def add_provenance(
+        self, inMemoryDataset: Any, ref: DatasetRef, provenance: DatasetProvenance | None = None
+    ) -> Any:
         # Add provenance via FITS headers.
-        add_provenance_to_fits_header(inMemoryDataset.metadata, ref)
+        add_provenance_to_fits_header(inMemoryDataset.metadata, ref, provenance)
         return inMemoryDataset
