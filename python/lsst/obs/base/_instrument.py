@@ -49,6 +49,7 @@ from lsst.pipe.base import Instrument as InstrumentBase
 from lsst.utils import doImport, getPackageDir
 
 from ._read_curated_calibs import CuratedCalibration, read_all
+from .instrument_ref_cat_data import ColortermModel
 
 if TYPE_CHECKING:
     from astro_metadata_translator import MetadataTranslator, ObservationInfo
@@ -614,6 +615,25 @@ class Instrument(InstrumentBase):
         to expect ``band`` as the key.
         """
         raise NotImplementedError("This instrument does not have reference catalog information.")
+
+    def get_ref_cat_colorterm(self, ref_cat: str, physical_filter: str) -> ColortermModel | None:
+        """Return the colorterm that maps a physical filter to a pair of
+        reference catalog filters.
+
+        Parameters
+        ----------
+        ref_cat : `str`
+            Full name of a reference catalog.
+        physical_filter : `str`
+            Name of a physical filter for this instrument.
+
+        Returns
+        -------
+        colorterm : `ColortermModel` or `None`
+            Colorterm for the given filter and reference catalog, or `None` if
+            not colorterm is defined.
+        """
+        return None
 
 
 def makeExposureRecordFromObsInfo(
