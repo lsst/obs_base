@@ -90,6 +90,10 @@ def add_provenance_to_fits_header(
             extras.set(f"{input_key} RUN", input.run)
             extras.set(f"{input_key} DATASETTYPE", input.datasetType.name)
 
+            if input.id in provenance.extras:
+                for k, v in provenance.extras[input.id].items():
+                    extras.set(f"{input_key} {k.upper()}", v)
+
     # Purge old headers from metadata (important for data ID and input headers
     # and to prevent headers accumulating in a PropertyList).
     for k in hdr:
