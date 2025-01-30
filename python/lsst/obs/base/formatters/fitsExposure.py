@@ -88,11 +88,12 @@ def add_provenance_to_fits_header(
             # Comments can make the strings too long and need CONTINUE.
             extras.set(f"{input_key} ID", str(input.id))
             extras.set(f"{input_key} RUN", input.run)
-            extras.set(f"{input_key} DATASETTYPE", input.datasetType.name)
+            if input.datasetType is not None:  # appease mypy.
+                extras.set(f"{input_key} DATASETTYPE", input.datasetType.name)
 
             if input.id in provenance.extras:
-                for k, v in provenance.extras[input.id].items():
-                    extras.set(f"{input_key} {k.upper()}", v)
+                for xk, xv in provenance.extras[input.id].items():
+                    extras.set(f"{input_key} {xk.upper()}", xv)
 
     # Purge old headers from metadata (important for data ID and input headers
     # and to prevent headers accumulating in a PropertyList).
