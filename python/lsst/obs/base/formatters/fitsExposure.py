@@ -52,7 +52,7 @@ from lsst.utils.introspection import find_outside_stacklevel
 
 
 def add_provenance_to_fits_header(
-    hdr: PropertyList | MutableMapping, ref: DatasetRef, provenance: DatasetProvenance | None = None
+    hdr: PropertyList | MutableMapping | None, ref: DatasetRef, provenance: DatasetProvenance | None = None
 ) -> None:
     """Modify the given header to include provenance headers.
 
@@ -66,6 +66,9 @@ def add_provenance_to_fits_header(
     provenance : `lsst.daf.butler.DatasetProvenance` or `None`, optional
         Provenance for this dataset.
     """
+    # Some datasets do not define a header.
+    if hdr is None:
+        return
     # Use property list here so that we have the option of including comments.
     extras = PropertyList()
     hierarch = "LSST BUTLER"
