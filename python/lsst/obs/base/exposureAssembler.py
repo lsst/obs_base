@@ -21,6 +21,7 @@
 
 """Support for assembling and disassembling afw Exposures."""
 
+import contextlib
 import logging
 from collections.abc import Iterable, Mapping
 from typing import Any
@@ -325,6 +326,9 @@ class ExposureAssembler(StorageClassDelegate):
     def add_provenance(
         self, inMemoryDataset: Any, ref: DatasetRef, provenance: DatasetProvenance | None = None
     ) -> Any:
-        # Add provenance via FITS headers.
-        add_provenance_to_fits_header(inMemoryDataset.metadata, ref, provenance)
+        # Add provenance via FITS headers. This delegate is reused by
+        # MaskedImage as well as Exposure so no guarantee that metadata
+        # is present.
+        with contextlib.suppress(AttributeError):
+            add_provenance_to_fits_header(inMemoryDataset.metadata, ref, provenance)
         return inMemoryDataset
