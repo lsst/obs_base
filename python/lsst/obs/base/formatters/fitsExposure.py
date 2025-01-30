@@ -80,6 +80,9 @@ def add_provenance_to_fits_header(
     # Add information about any inputs to the quantum that generated
     # this dataset.
     if provenance is not None:
+        if provenance.quantum_id is not None:
+            extras.set(f"{hierarch} QUANTUM", str(provenance.quantum_id))
+
         for i, input in enumerate(provenance.inputs):
             input_key = f"{hierarch} INPUT {i}"
             # Comments can make the strings too long and need CONTINUE.
