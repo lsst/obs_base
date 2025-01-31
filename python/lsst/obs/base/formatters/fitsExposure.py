@@ -100,7 +100,7 @@ def add_provenance_to_fits_header(
 
     # Purge old headers from metadata (important for data ID and input headers
     # and to prevent headers accumulating in a PropertyList).
-    for k in hdr:
+    for k in list(hdr):
         if k.startswith(hierarch):
             del hdr[k]
 
