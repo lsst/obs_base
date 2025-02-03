@@ -25,6 +25,7 @@ __all__ = (
     "createInitialSkyWcsFromBoresight",
     "bboxFromIraf",
     "add_provenance_to_fits_header",
+    "strip_provenance_from_fits_header",
 )
 
 import re
@@ -37,6 +38,9 @@ from lsst.afw.geom.skyWcs import makeSkyWcs
 from lsst.afw.image import RotType
 from lsst.daf.base import PropertyList
 from lsst.daf.butler import DatasetProvenance, DatasetRef
+
+_PROVENANCE_PREFIX = "LSST BUTLER"
+"""The prefix used in FITS headers for butler provenance."""
 
 
 class InitialSkyWcsError(Exception):
@@ -158,7 +162,7 @@ def add_provenance_to_fits_header(
         return
     # Use property list here so that we have the option of including comments.
     extras = PropertyList()
-    hierarch = "LSST BUTLER"
+    hierarch = _PROVENANCE_PREFIX
 
     # Add the information about this dataset.
     extras.set(f"{hierarch} ID", str(ref.id), comment="Dataset ID")
@@ -187,9 +191,26 @@ def add_provenance_to_fits_header(
 
     # Purge old headers from metadata (important for data ID and input headers
     # and to prevent headers accumulating in a PropertyList).
-    for k in list(hdr):
-        if k.startswith(hierarch):
-            del hdr[k]
+    strip_provenance_from_fits_header(hdr)
 
     # Update the header.
     hdr.update(extras)
+
+
+def strip_provenance_from_fits_header(hdr: MutableMapping | PropertyList) -> None:
+    """Remove all FITS headers relating to butler provenance.
+
+    Parameters
+    ----------
+    hdr : `lsst.daf.base.PropertyList` or `collections.abc.MutableMapping`
+        The FITS header to modify. Assumes ``HIERARCH`` will be handled
+        implicitly by the writer.
+
+    Notes
+    -----
+    These headers will have been added by, for example, the butler formatter
+    via a call to `add_provenance_to_fits_header`.
+    """
+    for k in list(hdr):
+        if k.startswith(_PROVENANCE_PREFIX):
+            del hdr[k]
