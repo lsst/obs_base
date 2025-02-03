@@ -26,7 +26,7 @@ from typing import Any
 from lsst.daf.butler import FormatterV2
 from lsst.resources import ResourcePath
 
-from .fitsExposure import add_provenance_to_fits_header
+from ..utils import add_provenance_to_fits_header
 
 
 class FitsGenericFormatter(FormatterV2):

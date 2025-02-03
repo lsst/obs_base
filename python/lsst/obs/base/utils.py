@@ -19,15 +19,24 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ("InitialSkyWcsError", "createInitialSkyWcs", "createInitialSkyWcsFromBoresight", "bboxFromIraf")
+__all__ = (
+    "InitialSkyWcsError",
+    "createInitialSkyWcs",
+    "createInitialSkyWcsFromBoresight",
+    "bboxFromIraf",
+    "add_provenance_to_fits_header",
+)
 
 import re
+from collections.abc import MutableMapping
 
 import lsst.geom as geom
 import lsst.pex.exceptions
 from lsst.afw.cameraGeom import FIELD_ANGLE, PIXELS
 from lsst.afw.geom.skyWcs import makeSkyWcs
 from lsst.afw.image import RotType
+from lsst.daf.base import PropertyList
+from lsst.daf.butler import DatasetProvenance, DatasetRef
 
 
 class InitialSkyWcsError(Exception):
@@ -127,3 +136,60 @@ def bboxFromIraf(irafBBoxStr):
     x0, x1, y0, y1 = (int(_) for _ in mat.groups())
 
     return geom.BoxI(geom.PointI(x0 - 1, y0 - 1), geom.PointI(x1 - 1, y1 - 1))
+
+
+def add_provenance_to_fits_header(
+    hdr: PropertyList | MutableMapping | None, ref: DatasetRef, provenance: DatasetProvenance | None = None
+) -> None:
+    """Modify the given header to include provenance headers.
+
+    Parameters
+    ----------
+    hdr : `lsst.daf.base.PropertyList` or `collections.abc.MutableMapping`
+        The FITS header to modify. Assumes ``HIERARCH`` will be handled
+        implicitly by the writer.
+    ref : `lsst.daf.butler.DatasetRef`
+        The butler dataset associated with this FITS file.
+    provenance : `lsst.daf.butler.DatasetProvenance` or `None`, optional
+        Provenance for this dataset.
+    """
+    # Some datasets do not define a header.
+    if hdr is None:
+        return
+    # Use property list here so that we have the option of including comments.
+    extras = PropertyList()
+    hierarch = "LSST BUTLER"
+
+    # Add the information about this dataset.
+    extras.set(f"{hierarch} ID", str(ref.id), comment="Dataset ID")
+    extras.set(f"{hierarch} RUN", ref.run, comment="Run collection")
+    extras.set(f"{hierarch} DATASETTYPE", ref.datasetType.name, comment="Dataset type")
+    for k, v in sorted(ref.dataId.required.items()):
+        extras.set(f"{hierarch} DATAID {k.upper()}", v, comment="Data identifier")
+
+    # Add information about any inputs to the quantum that generated
+    # this dataset.
+    if provenance is not None:
+        if provenance.quantum_id is not None:
+            extras.set(f"{hierarch} QUANTUM", str(provenance.quantum_id))
+
+        for i, input in enumerate(provenance.inputs):
+            input_key = f"{hierarch} INPUT {i}"
+            # Comments can make the strings too long and need CONTINUE.
+            extras.set(f"{input_key} ID", str(input.id))
+            extras.set(f"{input_key} RUN", input.run)
+            if input.datasetType is not None:  # appease mypy.
+                extras.set(f"{input_key} DATASETTYPE", input.datasetType.name)
+
+            if input.id in provenance.extras:
+                for xk, xv in provenance.extras[input.id].items():
+                    extras.set(f"{input_key} {xk.upper()}", xv)
+
+    # Purge old headers from metadata (important for data ID and input headers
+    # and to prevent headers accumulating in a PropertyList).
+    for k in list(hdr):
+        if k.startswith(hierarch):
+            del hdr[k]
+
+    # Update the header.
+    hdr.update(extras)

@@ -31,7 +31,7 @@ import lsst.afw.detection
 from lsst.afw.image import Exposure, makeExposure, makeMaskedImage
 from lsst.daf.butler import DatasetComponent, DatasetProvenance, DatasetRef, StorageClassDelegate
 
-from .formatters.fitsExposure import add_provenance_to_fits_header
+from .utils import add_provenance_to_fits_header
 
 log = logging.getLogger(__name__)
 

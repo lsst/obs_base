@@ -29,7 +29,7 @@ __all__ = (
 
 import warnings
 from abc import abstractmethod
-from collections.abc import MutableMapping, Set
+from collections.abc import Set
 from typing import Any, ClassVar
 
 from lsst.afw.cameraGeom import AmplifierGeometryComparison, AmplifierIsolator
@@ -44,68 +44,13 @@ from lsst.afw.image import (
 
 # Needed for ApCorrMap to resolve properly
 from lsst.afw.math import BoundedField  # noqa: F401
-from lsst.daf.base import PropertyList, PropertySet
-from lsst.daf.butler import DatasetProvenance, DatasetRef, FormatterV2
+from lsst.daf.base import PropertySet
+from lsst.daf.butler import FormatterV2
 from lsst.resources import ResourcePath
 from lsst.utils.classes import cached_getter
 from lsst.utils.introspection import find_outside_stacklevel
 
-
-def add_provenance_to_fits_header(
-    hdr: PropertyList | MutableMapping | None, ref: DatasetRef, provenance: DatasetProvenance | None = None
-) -> None:
-    """Modify the given header to include provenance headers.
-
-    Parameters
-    ----------
-    hdr : `lsst.daf.base.PropertyList` or `collections.abc.MutableMapping`
-        The FITS header to modify. Assumes ``HIERARCH`` will be handled
-        implicitly by the writer.
-    ref : `lsst.daf.butler.DatasetRef`
-        The butler dataset associated with this FITS file.
-    provenance : `lsst.daf.butler.DatasetProvenance` or `None`, optional
-        Provenance for this dataset.
-    """
-    # Some datasets do not define a header.
-    if hdr is None:
-        return
-    # Use property list here so that we have the option of including comments.
-    extras = PropertyList()
-    hierarch = "LSST BUTLER"
-
-    # Add the information about this dataset.
-    extras.set(f"{hierarch} ID", str(ref.id), comment="Dataset ID")
-    extras.set(f"{hierarch} RUN", ref.run, comment="Run collection")
-    extras.set(f"{hierarch} DATASETTYPE", ref.datasetType.name, comment="Dataset type")
-    for k, v in sorted(ref.dataId.required.items()):
-        extras.set(f"{hierarch} DATAID {k.upper()}", v, comment="Data identifier")
-
-    # Add information about any inputs to the quantum that generated
-    # this dataset.
-    if provenance is not None:
-        if provenance.quantum_id is not None:
-            extras.set(f"{hierarch} QUANTUM", str(provenance.quantum_id))
-
-        for i, input in enumerate(provenance.inputs):
-            input_key = f"{hierarch} INPUT {i}"
-            # Comments can make the strings too long and need CONTINUE.
-            extras.set(f"{input_key} ID", str(input.id))
-            extras.set(f"{input_key} RUN", input.run)
-            if input.datasetType is not None:  # appease mypy.
-                extras.set(f"{input_key} DATASETTYPE", input.datasetType.name)
-
-            if input.id in provenance.extras:
-                for xk, xv in provenance.extras[input.id].items():
-                    extras.set(f"{input_key} {xk.upper()}", xv)
-
-    # Purge old headers from metadata (important for data ID and input headers
-    # and to prevent headers accumulating in a PropertyList).
-    for k in list(hdr):
-        if k.startswith(hierarch):
-            del hdr[k]
-
-    # Update the header.
-    hdr.update(extras)
+from ..utils import add_provenance_to_fits_header
 
 
 class FitsImageFormatterBase(FormatterV2):
