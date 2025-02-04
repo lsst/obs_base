@@ -25,7 +25,7 @@ import os
 import shutil
 import tempfile
 import unittest
-from typing import TYPE_CHECKING
+import uuid
 
 import astropy.table
 import lsst.afw.cameraGeom.testUtils  # for test asserts injected into TestCase
@@ -36,14 +36,11 @@ from lsst.afw.fits import readMetadata
 from lsst.afw.image import LOCAL, ExposureFitsReader, MaskedImageFitsReader
 from lsst.afw.math import flipImage
 from lsst.daf.base import PropertyList, PropertySet
-from lsst.daf.butler import Config, DatasetType, StorageClassFactory
+from lsst.daf.butler import Config, DatasetProvenance, DatasetRef, DatasetType, StorageClassFactory
 from lsst.daf.butler.tests import addDatasetType, makeTestCollection, makeTestRepo
 from lsst.geom import Box2I, Extent2I, Point2I
 from lsst.obs.base.exposureAssembler import ExposureAssembler
 from lsst.obs.base.tests import make_ramp_exposure_trimmed, make_ramp_exposure_untrimmed
-
-if TYPE_CHECKING:
-    from lsst.daf.butler import DatasetRef
 
 TESTDIR = os.path.dirname(__file__)
 
@@ -216,13 +213,30 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
         pl.setComment("B", "A string comment")
         self.runFundamentalTypeTest("pl", pl)
 
+    def _make_provenance(self):
+        """Return provenance information for testing."""
+        prov = DatasetProvenance(quantum_id=uuid.uuid4())
+        ref = DatasetRef(
+            datasetType=self.butler.get_dataset_type("ps"),
+            dataId=[],
+            run="run",
+        )
+        prov.add_input(ref)
+        prov.add_extra_provenance(ref.id, {"EXTRA": 42})
+        return prov
+
     def testFitsCatalog(self) -> None:
         """Test reading of a FITS catalog."""
         catalog = self.makeExampleCatalog()
         dataId = {"visit": 42, "instrument": "DummyCam", "physical_filter": "d-r"}
-        ref = self.butler.put(catalog, "testCatalog", dataId)
+        prov = self._make_provenance()
+        ref = self.butler.put(catalog, "testCatalog", dataId, provenance=prov)
         stored = self.butler.get(ref)
         self.assertCatalogEqual(catalog, stored)
+        self.assertEqual(stored.metadata["LSST BUTLER ID"], str(ref.id))
+        self.assertEqual(stored.metadata["LSST BUTLER QUANTUM"], str(prov.quantum_id))
+        self.assertEqual(stored.metadata["LSST BUTLER INPUT 0 RUN"], "run")
+        self.assertEqual(stored.metadata["LSST BUTLER INPUT 0 EXTRA"], 42)
 
         # Override the storage class.
         astropy_table = self.butler.get(ref, storageClass="AstropyTable")
@@ -250,11 +264,18 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
         example = os.path.join(TESTDIR, "data", "calexp.fits")
         exposure = lsst.afw.image.ExposureF(example)
 
+        prov = self._make_provenance()
         dataId = {"visit": 42, "instrument": "DummyCam", "physical_filter": "d-r"}
-        ref = self.butler.put(exposure, datasetTypeName, dataId)
+        ref = self.butler.put(exposure, datasetTypeName, dataId, provenance=prov)
 
         # Get the full thing
         composite = self.butler.get(datasetTypeName, dataId)
+
+        # Check that provenance has been written.
+        self.assertEqual(composite.metadata["LSST BUTLER ID"], str(ref.id))
+        self.assertEqual(composite.metadata["LSST BUTLER QUANTUM"], str(prov.quantum_id))
+        self.assertEqual(composite.metadata["LSST BUTLER INPUT 0 RUN"], "run")
+        self.assertEqual(composite.metadata["LSST BUTLER INPUT 0 EXTRA"], 42)
 
         # There is no assert for Exposure so just look at maskedImage
         self.assertMaskedImagesEqual(composite.maskedImage, exposure.maskedImage)

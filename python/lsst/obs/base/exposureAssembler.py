@@ -21,6 +21,7 @@
 
 """Support for assembling and disassembling afw Exposures."""
 
+import contextlib
 import logging
 from collections.abc import Iterable, Mapping
 from typing import Any
@@ -28,7 +29,9 @@ from typing import Any
 # Need to enable PSFs to be instantiated
 import lsst.afw.detection
 from lsst.afw.image import Exposure, makeExposure, makeMaskedImage
-from lsst.daf.butler import DatasetComponent, StorageClassDelegate
+from lsst.daf.butler import DatasetComponent, DatasetProvenance, DatasetRef, StorageClassDelegate
+
+from .utils import add_provenance_to_fits_header
 
 log = logging.getLogger(__name__)
 
@@ -319,3 +322,13 @@ class ExposureAssembler(StorageClassDelegate):
                 if c in fromComponents:
                     return c
         raise ValueError(f"Can not calculate read component {readComponent} from {fromComponents}")
+
+    def add_provenance(
+        self, inMemoryDataset: Any, ref: DatasetRef, provenance: DatasetProvenance | None = None
+    ) -> Any:
+        # Add provenance via FITS headers. This delegate is reused by
+        # MaskedImage as well as Exposure so no guarantee that metadata
+        # is present.
+        with contextlib.suppress(AttributeError):
+            add_provenance_to_fits_header(inMemoryDataset.metadata, ref, provenance)
+        return inMemoryDataset

@@ -45,10 +45,12 @@ from lsst.afw.image import (
 # Needed for ApCorrMap to resolve properly
 from lsst.afw.math import BoundedField  # noqa: F401
 from lsst.daf.base import PropertySet
-from lsst.daf.butler import FormatterV2
+from lsst.daf.butler import DatasetProvenance, FormatterV2
 from lsst.resources import ResourcePath
 from lsst.utils.classes import cached_getter
 from lsst.utils.introspection import find_outside_stacklevel
+
+from ..utils import add_provenance_to_fits_header
 
 
 class FitsImageFormatterBase(FormatterV2):
@@ -515,6 +517,13 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
     """
 
     ReaderClass = ExposureFitsReader
+
+    def add_provenance(
+        self, in_memory_dataset: Any, /, *, provenance: DatasetProvenance | None = None
+    ) -> Any:
+        # Add provenance via FITS headers.
+        add_provenance_to_fits_header(in_memory_dataset.metadata, self.dataset_ref, provenance)
+        return in_memory_dataset
 
     def readComponent(self, component):
         # Docstring inherited.

@@ -23,8 +23,10 @@ __all__ = ("FitsGenericFormatter",)
 
 from typing import Any
 
-from lsst.daf.butler import FormatterV2
+from lsst.daf.butler import DatasetProvenance, FormatterV2
 from lsst.resources import ResourcePath
+
+from ..utils import add_provenance_to_fits_header
 
 
 class FitsGenericFormatter(FormatterV2):
@@ -50,3 +52,16 @@ class FitsGenericFormatter(FormatterV2):
 
     def write_local_file(self, in_memory_dataset: Any, uri: ResourcePath) -> None:
         in_memory_dataset.writeFits(uri.ospath)
+
+    def add_provenance(
+        self, in_memory_dataset: Any, /, *, provenance: DatasetProvenance | None = None
+    ) -> Any:
+        if hasattr(in_memory_dataset, "getMetadata"):
+            metadata = in_memory_dataset.getMetadata()
+        elif hasattr(in_memory_dataset, "metadata"):
+            metadata = in_memory_dataset.metadata
+        else:
+            # Unable to find compliant metadata attribute.
+            return in_memory_dataset
+        add_provenance_to_fits_header(metadata, self.dataset_ref, provenance)
+        return in_memory_dataset
