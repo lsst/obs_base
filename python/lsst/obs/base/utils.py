@@ -142,8 +142,58 @@ def bboxFromIraf(irafBBoxStr):
     return geom.BoxI(geom.PointI(x0 - 1, y0 - 1), geom.PointI(x1 - 1, y1 - 1))
 
 
+def _store_str_header(
+    hdr: PropertyList, key: str, value: str, comment: str | None = None, allow_long_headers: bool = True
+) -> None:
+    """Examine string header and return value that can be used.
+
+    Parameters
+    ----------
+    key : `str`
+        The key to use in the FITS header (without HIERARCH).
+    value : `str`
+        The value that is to be stored in the header.
+    allow_long_headers : `bool`, optional
+        If `True` the value will be used unchanged. If `False` the value
+        could have some content elided and a modified version used that will
+        fit in a FITS header. If `False` the maximum length of ``key`` is
+        58 characters to prevent inconsistency where a very short string will
+        fit in 80 characters with ``HIERARCH`` but a very long string will
+        not.
+    """
+    if not allow_long_headers:
+        # Declare that we do not allow keys longer than a fixed number of
+        # characters in this mode. This is enough to allow
+        # HIERARCH {key} = 'abc     '
+        # to fit into 80 characters.
+        max_card_length = 80
+        if len(key) > 58:
+            raise ValueError(
+                f"Given keyword {key} is too long when requiring {max_card_length}-character header cards"
+            )
+
+        # FITS pads strings to 8 characters.
+        min_len = 8
+        formatted = f"HIERARCH {key} = '{value:{min_len}s}'"
+        if (n_over := len(formatted) - max_card_length) > 0:
+            # Elide some content.
+            # Remove the over run + 3 for the ... and 1 for rounding.
+            n_remove = n_over + 1 + 3
+            middle = len(value) // 2
+            half_remove = n_remove // 2
+            value = f"{value[:middle-half_remove]}...{value[middle+half_remove:]}"
+
+            # Do not forward comment if we have elided.
+            comment = None
+
+    hdr.set(key, value, comment)
+
+
 def add_provenance_to_fits_header(
-    hdr: PropertyList | MutableMapping | None, ref: DatasetRef, provenance: DatasetProvenance | None = None
+    hdr: PropertyList | MutableMapping | None,
+    ref: DatasetRef,
+    provenance: DatasetProvenance | None = None,
+    allow_long_headers: bool = True,
 ) -> None:
     """Modify the given header to include provenance headers.
 
@@ -156,6 +206,10 @@ def add_provenance_to_fits_header(
         The butler dataset associated with this FITS file.
     provenance : `lsst.daf.butler.DatasetProvenance` or `None`, optional
         Provenance for this dataset.
+    allow_long_headers : `bool`, optional
+        If `True` it is assumed that there is no limit to the length of the
+        values being stored. If `False`, assumes that FITS header cards must be
+        kept within 80 characters including quoting, ``HIERARCH``, and `=`.
     """
     # Some datasets do not define a header.
     if hdr is None:
@@ -166,10 +220,31 @@ def add_provenance_to_fits_header(
 
     # Add the information about this dataset.
     extras.set(f"{hierarch} ID", str(ref.id), comment="Dataset ID")
-    extras.set(f"{hierarch} RUN", ref.run, comment="Run collection")
-    extras.set(f"{hierarch} DATASETTYPE", ref.datasetType.name, comment="Dataset type")
+    _store_str_header(
+        extras,
+        f"{hierarch} RUN",
+        ref.run,
+        comment="Run collection",
+        allow_long_headers=allow_long_headers,
+    )
+    _store_str_header(
+        extras,
+        f"{hierarch} DATASETTYPE",
+        ref.datasetType.name,
+        comment="Dataset type",
+        allow_long_headers=allow_long_headers,
+    )
     for k, v in sorted(ref.dataId.required.items()):
-        extras.set(f"{hierarch} DATAID {k.upper()}", v, comment="Data identifier")
+        if isinstance(v, str):
+            _store_str_header(
+                extras,
+                f"{hierarch} DATAID {k.upper()}",
+                v,
+                comment="Data identifier",
+                allow_long_headers=allow_long_headers,
+            )
+        else:
+            extras.set(f"{hierarch} DATAID {k.upper()}", v, comment="Data identifier")
 
     # Add information about any inputs to the quantum that generated
     # this dataset.
@@ -181,13 +256,23 @@ def add_provenance_to_fits_header(
             input_key = f"{hierarch} INPUT {i}"
             # Comments can make the strings too long and need CONTINUE.
             extras.set(f"{input_key} ID", str(input.id))
-            extras.set(f"{input_key} RUN", input.run)
+            assert input.run is not None  # for mypy.
+            _store_str_header(extras, f"{input_key} RUN", input.run, allow_long_headers=allow_long_headers)
             if input.datasetType is not None:  # appease mypy.
-                extras.set(f"{input_key} DATASETTYPE", input.datasetType.name)
+                _store_str_header(
+                    extras,
+                    f"{input_key} DATASETTYPE",
+                    input.datasetType.name,
+                    allow_long_headers=allow_long_headers,
+                )
 
             if input.id in provenance.extras:
                 for xk, xv in provenance.extras[input.id].items():
-                    extras.set(f"{input_key} {xk.upper()}", xv)
+                    key = f"{input_key} {xk.upper()}"
+                    if isinstance(xv, str):
+                        _store_str_header(extras, key, xv, allow_long_headers=allow_long_headers)
+                    else:
+                        extras.set(f"{input_key} {xk.upper()}", xv)
 
     # Purge old headers from metadata (important for data ID and input headers
     # and to prevent headers accumulating in a PropertyList).

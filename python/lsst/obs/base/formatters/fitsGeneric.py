@@ -63,5 +63,8 @@ class FitsGenericFormatter(FormatterV2):
         else:
             # Unable to find compliant metadata attribute.
             return in_memory_dataset
-        add_provenance_to_fits_header(metadata, self.dataset_ref, provenance)
+        # Sometimes astropy is used to write FITS headers and astropy
+        # cannot write long HIERARCH values. Therefore always elide some
+        # of the provenance just in case astropy is used.
+        add_provenance_to_fits_header(metadata, self.dataset_ref, provenance, allow_long_headers=False)
         return in_memory_dataset
