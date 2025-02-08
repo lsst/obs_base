@@ -24,6 +24,7 @@ subcommand plugins that are provided by this package.
 """
 
 import click
+
 from lsst.utils import doImport
 
 from .. import cmd

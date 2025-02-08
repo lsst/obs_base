@@ -28,11 +28,11 @@ to get a functional test of an Instrument.
 from __future__ import annotations
 
 __all__ = [
+    "CuratedCalibration",
     "DummyCam",
+    "DummyCamYamlWcsFormatter",
     "InstrumentTestData",
     "InstrumentTests",
-    "DummyCamYamlWcsFormatter",
-    "CuratedCalibration",
 ]
 
 import abc
@@ -41,6 +41,8 @@ from collections.abc import Sequence
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, ClassVar
 
+from pydantic import BaseModel
+
 from lsst.daf.butler import CollectionType, DatasetType, RegistryConfig
 from lsst.daf.butler.formatters.yaml import YamlFormatter
 from lsst.daf.butler.registry.sql_registry import SqlRegistry
@@ -48,7 +50,6 @@ from lsst.obs.base import FilterDefinition, FilterDefinitionCollection, Instrume
 from lsst.obs.base.yamlCamera import makeCamera
 from lsst.resources import ResourcePath
 from lsst.utils.introspection import get_full_type_name
-from pydantic import BaseModel
 
 from .utils import createInitialSkyWcsFromBoresight
 

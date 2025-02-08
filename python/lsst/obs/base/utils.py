@@ -21,10 +21,10 @@
 
 __all__ = (
     "InitialSkyWcsError",
+    "add_provenance_to_fits_header",
+    "bboxFromIraf",
     "createInitialSkyWcs",
     "createInitialSkyWcsFromBoresight",
-    "bboxFromIraf",
-    "add_provenance_to_fits_header",
     "strip_provenance_from_fits_header",
 )
 
@@ -181,7 +181,7 @@ def _store_str_header(
             n_remove = n_over + 1 + 3
             middle = len(value) // 2
             half_remove = n_remove // 2
-            value = f"{value[:middle-half_remove]}...{value[middle+half_remove:]}"
+            value = f"{value[: middle - half_remove]}...{value[middle + half_remove :]}"
 
             # Do not forward comment if we have elided.
             comment = None

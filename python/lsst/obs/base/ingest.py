@@ -20,7 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-__all__ = ("RawIngestTask", "RawIngestConfig", "makeTransferChoiceField")
+__all__ = ("RawIngestConfig", "RawIngestTask", "makeTransferChoiceField")
 
 import json
 import re
@@ -32,6 +32,7 @@ from typing import Any, ClassVar
 
 from astro_metadata_translator import MetadataTranslator, ObservationInfo, merge_headers
 from astro_metadata_translator.indexing import process_index_data, process_sidecar_data
+
 from lsst.afw.fits import readMetadata
 from lsst.daf.butler import (
     Butler,
@@ -1242,9 +1243,9 @@ class RawIngestTask(Task):
 
             # Determine the instrument so we can work out the dataset type.
             instrument = exposure.files[0].instrument
-            assert (
-                instrument is not None
-            ), "file should have been removed from this list by prep if instrument could not be found"
+            assert instrument is not None, (
+                "file should have been removed from this list by prep if instrument could not be found"
+            )
 
             if raw_definition := getattr(instrument, "raw_definition", None):
                 datasetTypeName, dimensions, storageClass = raw_definition

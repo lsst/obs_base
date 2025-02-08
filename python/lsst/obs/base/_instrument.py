@@ -21,7 +21,7 @@
 
 from __future__ import annotations
 
-__all__ = ("Instrument", "makeExposureRecordFromObsInfo", "loadCamera")
+__all__ = ("Instrument", "loadCamera", "makeExposureRecordFromObsInfo")
 
 import logging
 import os.path
@@ -33,6 +33,7 @@ from functools import lru_cache
 from typing import TYPE_CHECKING, Any, cast
 
 import astropy.time
+
 from lsst.afw.cameraGeom import Camera
 from lsst.daf.butler import (
     Butler,
@@ -52,6 +53,7 @@ from ._read_curated_calibs import CuratedCalibration, read_all
 
 if TYPE_CHECKING:
     from astro_metadata_translator import MetadataTranslator, ObservationInfo
+
     from lsst.daf.butler import Registry
 
     from .filters import FilterDefinitionCollection

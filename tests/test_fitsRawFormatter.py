@@ -22,6 +22,10 @@
 import unittest
 
 import astropy.units as u
+from astro_metadata_translator import FitsTranslator, StubTranslator
+from astro_metadata_translator.translators.helpers import tracking_from_degree_headers
+from astropy.coordinates import Angle
+
 import lsst.afw.geom
 import lsst.afw.math
 import lsst.daf.base
@@ -29,9 +33,6 @@ import lsst.daf.butler
 import lsst.geom
 import lsst.resources
 import lsst.utils.tests
-from astro_metadata_translator import FitsTranslator, StubTranslator
-from astro_metadata_translator.translators.helpers import tracking_from_degree_headers
-from astropy.coordinates import Angle
 from lsst.afw.cameraGeom import makeUpdatedDetector
 from lsst.afw.cameraGeom.testUtils import CameraWrapper, DetectorWrapper
 from lsst.obs.base import (
