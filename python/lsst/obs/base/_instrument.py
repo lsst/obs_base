@@ -21,7 +21,7 @@
 
 from __future__ import annotations
 
-__all__ = ("Instrument", "makeExposureRecordFromObsInfo", "loadCamera")
+__all__ = ("Instrument", "loadCamera", "makeExposureRecordFromObsInfo")
 
 import logging
 import os.path

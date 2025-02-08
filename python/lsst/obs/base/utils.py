@@ -21,10 +21,10 @@
 
 __all__ = (
     "InitialSkyWcsError",
+    "add_provenance_to_fits_header",
+    "bboxFromIraf",
     "createInitialSkyWcs",
     "createInitialSkyWcsFromBoresight",
-    "bboxFromIraf",
-    "add_provenance_to_fits_header",
     "strip_provenance_from_fits_header",
 )
 

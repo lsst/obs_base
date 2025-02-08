@@ -20,7 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-__all__ = ("RawIngestTask", "RawIngestConfig", "makeTransferChoiceField")
+__all__ = ("RawIngestConfig", "RawIngestTask", "makeTransferChoiceField")
 
 import json
 import re

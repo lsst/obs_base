@@ -28,11 +28,11 @@ to get a functional test of an Instrument.
 from __future__ import annotations
 
 __all__ = [
+    "CuratedCalibration",
     "DummyCam",
+    "DummyCamYamlWcsFormatter",
     "InstrumentTestData",
     "InstrumentTests",
-    "DummyCamYamlWcsFormatter",
-    "CuratedCalibration",
 ]
 
 import abc
