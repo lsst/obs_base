@@ -21,11 +21,12 @@
 
 from functools import lru_cache
 
+import numpy as np
+import yaml
+
 import lsst.afw.cameraGeom as cameraGeom
 import lsst.afw.geom as afwGeom
 import lsst.geom as geom
-import numpy as np
-import yaml
 from lsst.afw.cameraGeom import Amplifier, Camera, ReadoutCorner
 
 __all__ = ["makeCamera"]

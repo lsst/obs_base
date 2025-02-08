@@ -32,6 +32,7 @@ from typing import Any, ClassVar
 
 from astro_metadata_translator import MetadataTranslator, ObservationInfo, merge_headers
 from astro_metadata_translator.indexing import process_index_data, process_sidecar_data
+
 from lsst.afw.fits import readMetadata
 from lsst.daf.butler import (
     Butler,

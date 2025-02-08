@@ -20,6 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import click
+
 from lsst.daf.butler.cli.opt import (
     config_file_option,
     config_option,

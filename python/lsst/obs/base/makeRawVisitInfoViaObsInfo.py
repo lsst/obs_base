@@ -40,6 +40,7 @@ except ImportError:
     ErfaWarning = None
 
 from astro_metadata_translator import MetadataTranslator, ObservationInfo
+
 from lsst.afw.coord import Observatory, Weather
 from lsst.afw.image import RotType, VisitInfo
 from lsst.daf.base import DateTime

@@ -33,6 +33,7 @@ __all__ = (
 import logging
 
 import numpy as np
+
 from lsst.afw.cameraGeom.utils import calcRawCcdBBox
 from lsst.afw.image import Exposure
 

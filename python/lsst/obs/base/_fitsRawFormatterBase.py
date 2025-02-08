@@ -25,10 +25,11 @@ import logging
 from abc import abstractmethod
 from typing import Any
 
+from astro_metadata_translator import ObservationInfo, fix_header
+
 import lsst.afw.fits
 import lsst.afw.geom
 import lsst.afw.image
-from astro_metadata_translator import ObservationInfo, fix_header
 from lsst.daf.butler import FileDescriptor, FormatterNotImplementedError
 from lsst.resources import ResourcePath
 from lsst.utils.classes import cached_getter

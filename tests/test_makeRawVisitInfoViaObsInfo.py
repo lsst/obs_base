@@ -22,10 +22,11 @@
 import unittest
 
 import astropy.units as u
-import lsst.afw.image
 import numpy as np
 from astro_metadata_translator import FitsTranslator, ObservationInfo, StubTranslator
 from astropy.time import Time
+
+import lsst.afw.image
 from lsst.daf.base import DateTime
 from lsst.obs.base import MakeRawVisitInfoViaObsInfo
 

@@ -28,6 +28,7 @@ import unittest
 import uuid
 
 import astropy.table
+
 import lsst.afw.cameraGeom.testUtils  # for test asserts injected into TestCase
 import lsst.afw.image
 import lsst.pex.config
