@@ -1243,9 +1243,9 @@ class RawIngestTask(Task):
 
             # Determine the instrument so we can work out the dataset type.
             instrument = exposure.files[0].instrument
-            assert (
-                instrument is not None
-            ), "file should have been removed from this list by prep if instrument could not be found"
+            assert instrument is not None, (
+                "file should have been removed from this list by prep if instrument could not be found"
+            )
 
             if raw_definition := getattr(instrument, "raw_definition", None):
                 datasetTypeName, dimensions, storageClass = raw_definition

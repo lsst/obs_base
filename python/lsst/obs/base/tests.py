@@ -49,7 +49,9 @@ class ObsTests(butler_tests.ButlerGetTests, camera_tests.CameraTests):
 
     .. code-block:: python
 
-        class TestObs(lsst.obs.base.tests.ObsTests, lsst.utils.tests.TestCase):
+        class TestObs(
+            lsst.obs.base.tests.ObsTests, lsst.utils.tests.TestCase
+        ):
             def setUp(self):
                 self.setUp_tests(...)
                 self.setUp_butler_get(...)
