@@ -24,6 +24,8 @@ import unittest
 import lsst.geom as geom
 import lsst.obs.base as obsBase
 import lsst.utils.tests
+from lsst.daf.base import PropertyList
+from lsst.obs.base.utils import _store_str_header
 
 
 class BboxFromIrafTestCase(lsst.utils.tests.TestCase):
@@ -45,6 +47,36 @@ class BboxFromIrafTestCase(lsst.utils.tests.TestCase):
         }
         for val, err in test_data.items():
             self.assertRaises(err, obsBase.bboxFromIraf, val)
+
+
+class TestProvenanceAdd(unittest.TestCase):
+    """Tests relating to provenance infrastructure."""
+
+    def test_truncation(self):
+        """Test that long headers can be truncated."""
+        pl = PropertyList()
+
+        _store_str_header(pl, "LSST BUTLER RUN", "short")
+        self.assertEqual(pl["LSST BUTLER RUN"], "short")
+
+        _store_str_header(pl, "LSST BUTLER RUN", "short", allow_long_headers=False)
+        self.assertEqual(pl["LSST BUTLER RUN"], "short")
+
+        long = "a123456789b123456789c123456789d123456789e123456789f123456789"
+        _store_str_header(pl, "LSST BUTLER INPUT 0 RUN", long)
+        self.assertEqual(pl["LSST BUTLER INPUT 0 RUN"], long)
+
+        _store_str_header(pl, "LSST BUTLER INPUT 1 RUN", long, allow_long_headers=False)
+        self.assertEqual(pl["LSST BUTLER INPUT 1 RUN"], "a123456789b123456789...e123456789f123456789")
+
+        key = "LSSTX BUTLER VERY LONG KEYWORD THAT IS AT THE LIMIT OF ALL"
+        _store_str_header(pl, key, "abc", allow_long_headers=False)
+        self.assertEqual(pl[key], "abc")
+        _store_str_header(pl, key, "abcdefghi", allow_long_headers=False)
+        self.assertEqual(pl[key], "ab...ghi")
+
+        with self.assertRaises(ValueError):
+            _store_str_header(pl, key + "0", "abcdef", allow_long_headers=False)
 
 
 class MemoryTester(lsst.utils.tests.MemoryTestCase):
