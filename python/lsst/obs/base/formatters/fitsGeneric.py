@@ -21,12 +21,21 @@
 
 __all__ = ("FitsGenericFormatter",)
 
+import importlib.metadata
 from typing import Any
+
+from packaging import version
 
 from lsst.daf.butler import DatasetProvenance, FormatterV2
 from lsst.resources import ResourcePath
 
 from ..utils import add_provenance_to_fits_header
+
+_astropy_version = version.Version(importlib.metadata.version("astropy"))
+_ALLOW_LONG_FITS_STRINGS = True
+if _astropy_version < version.Version("7.1.0"):
+    # Astropy cannot handle long values for HIERARCH strings.
+    _ALLOW_LONG_FITS_STRINGS = False
 
 
 class FitsGenericFormatter(FormatterV2):
@@ -66,5 +75,7 @@ class FitsGenericFormatter(FormatterV2):
         # Sometimes astropy is used to write FITS headers and astropy
         # cannot write long HIERARCH values. Therefore always elide some
         # of the provenance just in case astropy is used.
-        add_provenance_to_fits_header(metadata, self.dataset_ref, provenance, allow_long_headers=False)
+        add_provenance_to_fits_header(
+            metadata, self.dataset_ref, provenance, allow_long_headers=_ALLOW_LONG_FITS_STRINGS
+        )
         return in_memory_dataset
