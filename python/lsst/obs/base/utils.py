@@ -214,65 +214,35 @@ def add_provenance_to_fits_header(
     # Some datasets do not define a header.
     if hdr is None:
         return
-    # Use property list here so that we have the option of including comments.
+
+    if provenance is None:
+        provenance = DatasetProvenance()
+
+    # Get the flat dict in form suitable for FITS.
+    prov_dict = provenance.to_flat_dict(ref, prefix="LSST BUTLER", sep=" ", simple_types=True)
+
+    # Copy keys into a PropertyList so we have the option of including
+    # comments.
     extras = PropertyList()
-    hierarch = _PROVENANCE_PREFIX
 
-    # Add the information about this dataset.
-    extras.set(f"{hierarch} ID", str(ref.id), comment="Dataset ID")
-    _store_str_header(
-        extras,
-        f"{hierarch} RUN",
-        ref.run,
-        comment="Run collection",
-        allow_long_headers=allow_long_headers,
-    )
-    _store_str_header(
-        extras,
-        f"{hierarch} DATASETTYPE",
-        ref.datasetType.name,
-        comment="Dataset type",
-        allow_long_headers=allow_long_headers,
-    )
-    for k, v in sorted(ref.dataId.required.items()):
-        if isinstance(v, str):
-            _store_str_header(
-                extras,
-                f"{hierarch} DATAID {k.upper()}",
-                v,
-                comment="Data identifier",
-                allow_long_headers=allow_long_headers,
-            )
+    for k, v in prov_dict.items():
+        if not allow_long_headers and isinstance(v, str):
+            _store_str_header(extras, k, v, allow_long_headers=allow_long_headers)
         else:
-            extras.set(f"{hierarch} DATAID {k.upper()}", v, comment="Data identifier")
-
-    # Add information about any inputs to the quantum that generated
-    # this dataset.
-    if provenance is not None:
-        if provenance.quantum_id is not None:
-            extras.set(f"{hierarch} QUANTUM", str(provenance.quantum_id))
-
-        for i, input in enumerate(provenance.inputs):
-            input_key = f"{hierarch} INPUT {i}"
-            # Comments can make the strings too long and need CONTINUE.
-            extras.set(f"{input_key} ID", str(input.id))
-            assert input.run is not None  # for mypy.
-            _store_str_header(extras, f"{input_key} RUN", input.run, allow_long_headers=allow_long_headers)
-            if input.datasetType is not None:  # appease mypy.
-                _store_str_header(
-                    extras,
-                    f"{input_key} DATASETTYPE",
-                    input.datasetType.name,
-                    allow_long_headers=allow_long_headers,
-                )
-
-            if input.id in provenance.extras:
-                for xk, xv in provenance.extras[input.id].items():
-                    key = f"{input_key} {xk.upper()}"
-                    if isinstance(xv, str):
-                        _store_str_header(extras, key, xv, allow_long_headers=allow_long_headers)
-                    else:
-                        extras.set(f"{input_key} {xk.upper()}", xv)
+            extras.set(k, v)
+        # Only add comments if we think it's safe.
+        if allow_long_headers:
+            comment = ""
+            if re.search(r"\bRUN\b", k):
+                comment = "Run collection"
+            elif re.search(r"\bID\b", k):
+                comment = "Dataset ID"
+            elif re.search(r"\bDATAID\b", k):
+                comment = "Data identifier"
+            elif re.search(r"\bDATASETTYPE\b", k):
+                comment = "Dataset type"
+            if comment:
+                extras.setComment(k, comment)
 
     # Purge old headers from metadata (important for data ID and input headers
     # and to prevent headers accumulating in a PropertyList).
