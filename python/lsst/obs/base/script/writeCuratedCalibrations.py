@@ -37,10 +37,7 @@ def writeCuratedCalibrations(repo, instrument, collection, labels, prefix=None):
     instrument : `str`
         The name or the fully qualified class name of an instrument.
     collection : `str` or `None`
-        The path to the collection that associates datasets with validity
-        ranges.
-        Can be `None` in which case the collection name will be determined
-        automatically.
+        Backwards-compatibility alias for ``prefix``.
     labels : `Sequence` [ `str` ]
         Extra strings to include in the names of collections that datasets are
         inserted directly into, and if ``collection`` is `None`, the automatic
@@ -58,10 +55,13 @@ def writeCuratedCalibrations(repo, instrument, collection, labels, prefix=None):
         Raised if the instrument is not a subclass of
         `lsst.obs.base.Instrument`.
     """
+    if prefix is None and collection is not None:
+        prefix = collection
+        collection = None
     butler = Butler(repo, writeable=True)
     instr = Instrument.from_string(instrument, butler.registry, collection_prefix=prefix)
-    if collection is None and not labels:
+    if prefix is None and not labels:
         labels = instr.get_curated_calibration_labels()
         if not labels:
-            raise ValueError("At least one label or --collection must be provided.")
+            raise ValueError("At least one of label or --prefix must be provided.")
     instr.writeCuratedCalibrations(butler, collection=collection, labels=labels)
