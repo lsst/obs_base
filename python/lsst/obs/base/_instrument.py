@@ -672,9 +672,9 @@ def makeExposureRecordFromObsInfo(
         obs_id=obsInfo.observation_id,
         datetime_begin=obsInfo.datetime_begin,
         datetime_end=datetime_end,
-        exposure_time=obsInfo.exposure_time.to_value("s"),
+        exposure_time=float(obsInfo.exposure_time.to_value("s")),
         # we are not mandating that dark_time be calculable
-        dark_time=obsInfo.dark_time.to_value("s") if obsInfo.dark_time is not None else None,
+        dark_time=float(obsInfo.dark_time.to_value("s")) if obsInfo.dark_time is not None else None,
         observation_type=obsInfo.observation_type,
         observation_reason=obsInfo.observation_reason,
         day_obs=obsInfo.observing_day,

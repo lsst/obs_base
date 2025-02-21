@@ -126,13 +126,13 @@ class MakeRawVisitInfoViaObsInfo:
 
         # Map the translated information into a form suitable for VisitInfo
         if obsInfo.exposure_time is not None:
-            argDict["exposureTime"] = obsInfo.exposure_time.to_value("s")
+            argDict["exposureTime"] = float(obsInfo.exposure_time.to_value("s"))
         if obsInfo.dark_time is not None:
-            argDict["darkTime"] = obsInfo.dark_time.to_value("s")
+            argDict["darkTime"] = float(obsInfo.dark_time.to_value("s"))
         argDict["id"] = obsInfo.exposure_id
         argDict["instrumentLabel"] = obsInfo.instrument
         if obsInfo.focus_z is not None:
-            argDict["focusZ"] = obsInfo.focus_z.to_value("mm")
+            argDict["focusZ"] = float(obsInfo.focus_z.to_value("mm"))
         if obsInfo.observation_type is not None:
             argDict["observationType"] = obsInfo.observation_type
         if obsInfo.science_program is not None:
@@ -203,10 +203,10 @@ class MakeRawVisitInfoViaObsInfo:
         # Weather and Observatory Location
         temperature = float("nan")
         if obsInfo.temperature is not None:
-            temperature = obsInfo.temperature.to_value("deg_C", astropy.units.temperature())
+            temperature = float(obsInfo.temperature.to_value("deg_C", astropy.units.temperature()))
         pressure = float("nan")
         if obsInfo.pressure is not None:
-            pressure = obsInfo.pressure.to_value("Pa")
+            pressure = float(obsInfo.pressure.to_value("Pa"))
         relative_humidity = float("nan")
         if obsInfo.relative_humidity is not None:
             relative_humidity = obsInfo.relative_humidity
@@ -217,7 +217,7 @@ class MakeRawVisitInfoViaObsInfo:
             argDict["observatory"] = Observatory(
                 geolocation.lon.degree * degrees,
                 geolocation.lat.degree * degrees,
-                geolocation.height.to_value("m"),
+                float(geolocation.height.to_value("m")),
             )
 
         for key in list(argDict.keys()):  # use a copy because we may delete items
