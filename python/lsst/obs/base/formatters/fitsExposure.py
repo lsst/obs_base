@@ -27,6 +27,7 @@ __all__ = (
     "standardizeAmplifierParameters",
 )
 
+import uuid
 import warnings
 from abc import abstractmethod
 from collections.abc import Set
@@ -523,6 +524,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
 
     can_read_from_uri = True
     ReaderClass = ExposureFitsReader
+    _cached_fits: tuple[uuid.UUID | None, MemFileManager | None] = (None, None)
 
     def read_from_uri(self, uri: ResourcePath, component: str | None = None, expected_size: int = -1) -> Any:
         # For now only support small non-pixel components. In future
@@ -534,10 +536,17 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         if not component or component in pixel_components:
             # For pixel access download the whole file.
             return NotImplemented
+
+        cached_id, cached_mem = type(self)._cached_fits
+        if self.dataset_ref.id == cached_id:
+            self._reader = self.ReaderClass(cached_mem)
+            return self.readComponent(component)
+
         try:
             fs, fspath = uri.to_fsspec()
             hdul = []
             with fs.open(fspath) as f, astropy.io.fits.open(f) as fits_obj:
+                # Read all non-pixel components and cache.
                 for hdu in fits_obj:
                     hdr = hdu.header
                     extname = hdr.get("EXTNAME")
@@ -566,6 +575,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         fits_data = buffer.getvalue()
         mem = MemFileManager(len(fits_data))
         mem.setData(fits_data, len(fits_data))
+        type(self)._cached_fits = (self.dataset_ref.id, mem)
         self._reader = self.ReaderClass(mem)
         return self.readComponent(component)
 
