@@ -30,9 +30,14 @@ __all__ = (
 import warnings
 from abc import abstractmethod
 from collections.abc import Set
+from io import BytesIO
 from typing import Any, ClassVar
 
+import astropy.io.fits
+import numpy as np
+
 from lsst.afw.cameraGeom import AmplifierGeometryComparison, AmplifierIsolator
+from lsst.afw.fits import MemFileManager
 from lsst.afw.image import (
     ExposureFitsReader,
     ExposureInfo,
@@ -516,7 +521,53 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
     type covariance violation ever becomes a practical problem.
     """
 
+    can_read_from_uri = True
     ReaderClass = ExposureFitsReader
+
+    def read_from_uri(self, uri: ResourcePath, component: str | None = None, expected_size: int = -1) -> Any:
+        # For now only support small non-pixel components. In future
+        # could work with cutouts.
+        if uri.isLocal:
+            # For a local URI allow afw to read it directly.
+            return NotImplemented
+        pixel_components = ("mask", "image", "variance")
+        if not component or component in pixel_components:
+            # For pixel access download the whole file.
+            return NotImplemented
+        try:
+            fs, fspath = uri.to_fsspec()
+            hdul = []
+            with fs.open(fspath) as f, astropy.io.fits.open(f) as fits_obj:
+                for hdu in fits_obj:
+                    hdr = hdu.header
+                    extname = hdr.get("EXTNAME")
+                    # Older files have IMAGE in EXTNAME in PRIMARY so check
+                    # for EXTEND=T.
+                    extend = hdr.get("EXTEND")
+                    if not extend and extname and extname.lower() in pixel_components:
+                        # Skip pixel data but retain header.
+                        stripped_hdu = astropy.io.fits.ImageHDU(
+                            data=np.zeros([1, 1], dtype=np.int32), header=hdr
+                        )
+                        hdul.append(stripped_hdu)
+                    else:
+                        hdul.append(hdu)
+                stripped_fits = astropy.io.fits.HDUList(hdus=hdul)
+                # Write the FITS file to in-memory FITS.
+                buffer = BytesIO()
+                stripped_fits.writeto(buffer)
+        except Exception:
+            # For some reason we can't open the remote file so fall back.
+            return NotImplemented
+
+        # Pass the new FITS buffer to the reader class without going through
+        # a temporary file. We can assume this is relatively small for
+        # components.
+        fits_data = buffer.getvalue()
+        mem = MemFileManager(len(fits_data))
+        mem.setData(fits_data, len(fits_data))
+        self._reader = self.ReaderClass(mem)
+        return self.readComponent(component)
 
     def add_provenance(
         self, in_memory_dataset: Any, /, *, provenance: DatasetProvenance | None = None
