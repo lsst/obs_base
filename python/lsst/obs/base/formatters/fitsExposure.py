@@ -27,12 +27,18 @@ __all__ = (
     "standardizeAmplifierParameters",
 )
 
+import uuid
 import warnings
 from abc import abstractmethod
 from collections.abc import Set
+from io import BytesIO
 from typing import Any, ClassVar
 
+import astropy.io.fits
+import numpy as np
+
 from lsst.afw.cameraGeom import AmplifierGeometryComparison, AmplifierIsolator
+from lsst.afw.fits import MemFileManager
 from lsst.afw.image import (
     ExposureFitsReader,
     ExposureInfo,
@@ -516,7 +522,162 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
     type covariance violation ever becomes a practical problem.
     """
 
+    can_read_from_uri = True
     ReaderClass = ExposureFitsReader
+    _cached_fits: tuple[uuid.UUID | None, MemFileManager | None] = (None, None)
+
+    def read_from_uri(self, uri: ResourcePath, component: str | None = None, expected_size: int = -1) -> Any:
+        # Targeted optimization for simple components.
+        if uri.isLocal:
+            # For a local URI allow afw to read it directly.
+            return NotImplemented
+
+        # Map butler component to EXTNAME (some come from primary HDU)
+        supported = {"bbox": "", "metadata": "", "wcs": "SkyWcs", "visitInfo": "VisitInfo"}
+        if component not in supported:
+            return NotImplemented
+
+        try:
+            fs, fspath = uri.to_fsspec()
+            with fs.open(fspath) as f, astropy.io.fits.open(f) as fits_obj:
+                hdul = []
+                found_primary = False
+                for hdu in fits_obj:
+                    # Always need the primary.
+                    if not found_primary:
+                        hdul.append(hdu)
+                        found_primary = True
+                        continue
+
+                    extname = hdu.header.get("EXTNAME")
+                    if extname == supported[component]:
+                        hdul.append(hdu)
+                    elif extname in ("IMAGE", "VARIANCE", "MASK"):
+                        data = np.zeros([1, 1], dtype=np.float32)
+
+                        # Construct a new HDU and copy the header.
+                        stripped_hdu = astropy.io.fits.ImageHDU(data=data, header=hdu.header)
+                        hdul.append(stripped_hdu)
+
+                stripped_fits = astropy.io.fits.HDUList(hdus=hdul)
+                # Write the FITS file to in-memory FITS.
+                buffer = BytesIO()
+                stripped_fits.writeto(buffer)
+
+        except Exception:
+            # For some reason we can't open the remote file so fall back.
+            return NotImplemented
+
+        # Pass the new FITS buffer to the reader class without going through
+        # a temporary file. We can assume this is relatively small for
+        # components.
+        fits_data = buffer.getvalue()
+        mem = MemFileManager(len(fits_data))
+        mem.setData(fits_data, len(fits_data))
+        self._reader = self.ReaderClass(mem)
+        return self.readComponent(component)
+
+    def x_read_from_uri(
+        self, uri: ResourcePath, component: str | None = None, expected_size: int = -1
+    ) -> Any:
+        # Experimental code for reading components and cutouts using
+        # Astropy for remote URIs. This is faster than downloading the whole
+        # file so long as the size of the extensions is small compared to
+        # the size of the file. This is true for calexp but is not true
+        # for coadds where some of the extensions are comparable to the
+        # pixel data in size and downloading HDUs one at a time is slower than
+        # downloading the whole file.
+
+        # For now only support small non-pixel components. In future
+        # could work with cutouts.
+        if uri.isLocal:
+            # For a local URI allow afw to read it directly.
+            return NotImplemented
+        pixel_components = ("mask", "image", "variance")
+
+        if component in pixel_components:
+            # For pixel access currently this can not be cached in memory
+            # and the performance gains are unclear. Assume local file
+            # read with file caching for now.
+            return NotImplemented
+
+        # Cutouts can be optimized. For now only use this optimization
+        # if bbox is the only parameter and the number of pixels in the
+        # bounding box is reasonable.
+        bbox = None
+        if not component:
+            # Only support PARENT origin (as a default).
+            if {"bbox"} != self.checked_parameters.keys():
+                return NotImplemented
+            bbox = self.checked_parameters["bbox"]
+
+        # We only cache component reads since those are small.
+        if component:
+            cached_id, cached_mem = type(self)._cached_fits
+            if self.dataset_ref.id == cached_id:
+                self._reader = self.ReaderClass(cached_mem)
+                return self.readComponent(component)
+
+        try:
+            fs, fspath = uri.to_fsspec()
+            hdul = []
+            with fs.open(fspath) as f, astropy.io.fits.open(f) as fits_obj:
+                # Read all non-pixel components and cache.
+                for hdu in fits_obj:
+                    hdr = hdu.header
+                    extname = hdr.get("EXTNAME")
+                    # Older files have IMAGE in EXTNAME in PRIMARY so check
+                    # for EXTEND=T.
+                    extend = hdr.get("EXTEND")
+                    if not extend and extname and extname.lower() in pixel_components:
+                        if bbox:
+                            data = hdu.section[
+                                bbox.getBeginX() : bbox.getEndX(), bbox.getBeginY() : bbox.getEndY()
+                            ]
+
+                            # Must correct the header to take into account the
+                            # offset.
+                            for x, y in (("CRPIX1", "CRPIX2"), ("LTV1", "LTV2")):
+                                if x in hdr:
+                                    hdr[x] -= bbox.getBeginX()
+                                if y in hdr:
+                                    hdr[y] -= bbox.getBeginY()
+                            if "CRVAL1A" in hdr:
+                                hdr["CRVAL1A"] += bbox.getBeginX()
+                            if "CRVAL2A" in hdr:
+                                hdr["CRVAL2A"] += bbox.getBeginY()
+
+                        else:
+                            data = np.zeros([1, 1], dtype=np.int32)
+
+                        # Construct a new HDU and copy the header.
+                        stripped_hdu = astropy.io.fits.ImageHDU(data=data, header=hdr)
+                        hdul.append(stripped_hdu)
+                    else:
+                        hdul.append(hdu)
+                stripped_fits = astropy.io.fits.HDUList(hdus=hdul)
+                # Write the FITS file to in-memory FITS.
+                buffer = BytesIO()
+                stripped_fits.writeto(buffer)
+        except Exception:
+            # For some reason we can't open the remote file so fall back.
+            return NotImplemented
+
+        # Pass the new FITS buffer to the reader class without going through
+        # a temporary file. We can assume this is relatively small for
+        # components.
+        fits_data = buffer.getvalue()
+        mem = MemFileManager(len(fits_data))
+        mem.setData(fits_data, len(fits_data))
+        self._reader = self.ReaderClass(mem)
+
+        if component:
+            type(self)._cached_fits = (self.dataset_ref.id, mem)
+            return self.readComponent(component)
+        else:
+            # Must be a cutout. We have applied the bbox parameter so no
+            # parameters should be passed here.
+            return self.reader.read()
 
     def add_provenance(
         self, in_memory_dataset: Any, /, *, provenance: DatasetProvenance | None = None
