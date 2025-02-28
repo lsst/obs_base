@@ -526,7 +526,17 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
     ReaderClass = ExposureFitsReader
     _cached_fits: tuple[uuid.UUID | None, MemFileManager | None] = (None, None)
 
-    def read_from_uri(self, uri: ResourcePath, component: str | None = None, expected_size: int = -1) -> Any:
+    def x_read_from_uri(
+        self, uri: ResourcePath, component: str | None = None, expected_size: int = -1
+    ) -> Any:
+        # Experimental code for reading components and cutouts using
+        # Astropy for remote URIs. This is faster than downloading the whole
+        # file so long as the size of the extensions is small compared to
+        # the size of the file. This is true for calexp but is not true
+        # for coadds where some of the extensions are comparable to the
+        # pixel data in size and downloading HDUs one at a time is slower than
+        # downloading the whole file.
+
         # For now only support small non-pixel components. In future
         # could work with cutouts.
         if uri.isLocal:
