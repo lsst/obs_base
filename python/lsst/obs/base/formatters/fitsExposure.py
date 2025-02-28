@@ -533,14 +533,29 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
             # For a local URI allow afw to read it directly.
             return NotImplemented
         pixel_components = ("mask", "image", "variance")
-        if not component or component in pixel_components:
-            # For pixel access download the whole file.
+
+        if component in pixel_components:
+            # For pixel access currently this can not be cached in memory
+            # and the performance gains are unclear. Assume local file
+            # read with file caching for now.
             return NotImplemented
 
-        cached_id, cached_mem = type(self)._cached_fits
-        if self.dataset_ref.id == cached_id:
-            self._reader = self.ReaderClass(cached_mem)
-            return self.readComponent(component)
+        # Cutouts can be optimized. For now only use this optimization
+        # if bbox is the only parameter and the number of pixels in the
+        # bounding box is reasonable.
+        bbox = None
+        if not component:
+            # Only support PARENT origin (as a default).
+            if {"bbox"} != self.checked_parameters.keys():
+                return NotImplemented
+            bbox = self.checked_parameters["bbox"]
+
+        # We only cache component reads since those are small.
+        if component:
+            cached_id, cached_mem = type(self)._cached_fits
+            if self.dataset_ref.id == cached_id:
+                self._reader = self.ReaderClass(cached_mem)
+                return self.readComponent(component)
 
         try:
             fs, fspath = uri.to_fsspec()
@@ -554,10 +569,28 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
                     # for EXTEND=T.
                     extend = hdr.get("EXTEND")
                     if not extend and extname and extname.lower() in pixel_components:
-                        # Skip pixel data but retain header.
-                        stripped_hdu = astropy.io.fits.ImageHDU(
-                            data=np.zeros([1, 1], dtype=np.int32), header=hdr
-                        )
+                        if bbox:
+                            data = hdu.section[
+                                bbox.getBeginX() : bbox.getEndX(), bbox.getBeginY() : bbox.getEndY()
+                            ]
+
+                            # Must correct the header to take into account the
+                            # offset.
+                            for x, y in (("CRPIX1", "CRPIX2"), ("LTV1", "LTV2")):
+                                if x in hdr:
+                                    hdr[x] -= bbox.getBeginX()
+                                if y in hdr:
+                                    hdr[y] -= bbox.getBeginY()
+                            if "CRVAL1A" in hdr:
+                                hdr["CRVAL1A"] += bbox.getBeginX()
+                            if "CRVAL2A" in hdr:
+                                hdr["CRVAL2A"] += bbox.getBeginY()
+
+                        else:
+                            data = np.zeros([1, 1], dtype=np.int32)
+
+                        # Construct a new HDU and copy the header.
+                        stripped_hdu = astropy.io.fits.ImageHDU(data=data, header=hdr)
                         hdul.append(stripped_hdu)
                     else:
                         hdul.append(hdu)
@@ -575,9 +608,15 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         fits_data = buffer.getvalue()
         mem = MemFileManager(len(fits_data))
         mem.setData(fits_data, len(fits_data))
-        type(self)._cached_fits = (self.dataset_ref.id, mem)
         self._reader = self.ReaderClass(mem)
-        return self.readComponent(component)
+
+        if component:
+            type(self)._cached_fits = (self.dataset_ref.id, mem)
+            return self.readComponent(component)
+        else:
+            # Must be a cutout. We have applied the bbox parameter so no
+            # parameters should be passed here.
+            return self.reader.read()
 
     def add_provenance(
         self, in_memory_dataset: Any, /, *, provenance: DatasetProvenance | None = None
