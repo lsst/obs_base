@@ -526,6 +526,57 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
     ReaderClass = ExposureFitsReader
     _cached_fits: tuple[uuid.UUID | None, MemFileManager | None] = (None, None)
 
+    def read_from_uri(self, uri: ResourcePath, component: str | None = None, expected_size: int = -1) -> Any:
+        # Targeted optimization for simple components.
+        if uri.isLocal:
+            # For a local URI allow afw to read it directly.
+            return NotImplemented
+
+        # Map butler component to EXTNAME (some come from primary HDU)
+        supported = {"bbox": "", "metadata": "", "wcs": "SkyWcs", "visitInfo": "VisitInfo"}
+        if component not in supported:
+            return NotImplemented
+
+        try:
+            fs, fspath = uri.to_fsspec()
+            with fs.open(fspath) as f, astropy.io.fits.open(f) as fits_obj:
+                hdul = []
+                found_primary = False
+                for hdu in fits_obj:
+                    # Always need the primary.
+                    if not found_primary:
+                        hdul.append(hdu)
+                        found_primary = True
+                        continue
+
+                    extname = hdu.header.get("EXTNAME")
+                    if extname == supported[component]:
+                        hdul.append(hdu)
+                    elif extname in ("IMAGE", "VARIANCE", "MASK"):
+                        data = np.zeros([1, 1], dtype=np.float32)
+
+                        # Construct a new HDU and copy the header.
+                        stripped_hdu = astropy.io.fits.ImageHDU(data=data, header=hdu.header)
+                        hdul.append(stripped_hdu)
+
+                stripped_fits = astropy.io.fits.HDUList(hdus=hdul)
+                # Write the FITS file to in-memory FITS.
+                buffer = BytesIO()
+                stripped_fits.writeto(buffer)
+
+        except Exception:
+            # For some reason we can't open the remote file so fall back.
+            return NotImplemented
+
+        # Pass the new FITS buffer to the reader class without going through
+        # a temporary file. We can assume this is relatively small for
+        # components.
+        fits_data = buffer.getvalue()
+        mem = MemFileManager(len(fits_data))
+        mem.setData(fits_data, len(fits_data))
+        self._reader = self.ReaderClass(mem)
+        return self.readComponent(component)
+
     def x_read_from_uri(
         self, uri: ResourcePath, component: str | None = None, expected_size: int = -1
     ) -> Any:
