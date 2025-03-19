@@ -540,6 +540,12 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
             # read with file caching for now.
             return NotImplemented
 
+        # With current file layouts the non-pixel extensions account for 1/3
+        # of the file size and it is more efficient to download the entire
+        # file.
+        if {"tract", "patch"} & self._dataset_ref.dataId.mapping.keys():
+            return NotImplemented
+
         # Cutouts can be optimized. For now only use this optimization
         # if bbox is the only parameter and the number of pixels in the
         # bounding box is reasonable.
