@@ -27,6 +27,7 @@ __all__ = (
     "standardizeAmplifierParameters",
 )
 
+import logging
 import uuid
 import warnings
 from abc import abstractmethod
@@ -57,6 +58,8 @@ from lsst.utils.classes import cached_getter
 from lsst.utils.introspection import find_outside_stacklevel
 
 from ..utils import add_provenance_to_fits_header
+
+_LOG = logging.getLogger()
 
 
 class FitsImageFormatterBase(FormatterV2):
@@ -575,6 +578,11 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
 
         try:
             fs, fspath = uri.to_fsspec()
+        except Exception:
+            # fsspec cannot be initialized, fall back to downloading the file.
+            return NotImplemented
+
+        try:
             hdul = []
             with fs.open(fspath) as f, astropy.io.fits.open(f) as fits_obj:
                 # Read all non-pixel components and cache.
@@ -614,8 +622,13 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
                 # Write the FITS file to in-memory FITS.
                 buffer = BytesIO()
                 stripped_fits.writeto(buffer)
-        except Exception:
+        except Exception as e:
             # For some reason we can't open the remote file so fall back.
+            _LOG.debug(
+                "Attempted remote read of components but encountered an error. "
+                "Falling back to file download. Error: %s",
+                str(e),
+            )
             return NotImplemented
 
         # Pass the new FITS buffer to the reader class without going through
