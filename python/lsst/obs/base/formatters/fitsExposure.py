@@ -33,7 +33,7 @@ import warnings
 from abc import abstractmethod
 from collections.abc import Set
 from io import BytesIO
-from typing import Any, ClassVar
+from typing import Any, ClassVar, NamedTuple
 
 import astropy.io.fits
 import numpy as np
@@ -513,6 +513,15 @@ def standardizeAmplifierParameters(parameters, on_disk_detector):
     return target_amplifier, detector, comparison & comparison.REGIONS_DIFFER
 
 
+class _ComponentCache(NamedTuple):
+    id_: uuid.UUID | None = None
+    reader: ExposureFitsReader | None = None
+    xy0: lsst.geom.Point2I | None = None
+    dimensions: lsst.geom.Extent2I | None = None
+    bbox: lsst.geom.Box2I | None = None
+    mem: MemFileManager | None = None
+
+
 class FitsExposureFormatter(FitsMaskedImageFormatter):
     """Concrete formatter for reading/writing `~lsst.afw.image.Exposure`
     from/to FITS.
@@ -530,21 +539,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
     can_read_from_uri = True
     ReaderClass = ExposureFitsReader
     # TODO: Remove MemFileManager from cache when DM-49640 is fixed.
-    _cached_fits: tuple[
-        uuid.UUID | None,
-        ExposureFitsReader | None,
-        MemFileManager | None,
-        lsst.geom.Point2I | None,
-        lsst.geom.Extent2I | None,
-        lsst.geom.Box2I | None,
-    ] = (
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-    )
+    _cached_fits: _ComponentCache = _ComponentCache()
 
     def read_from_uri(self, uri: ResourcePath, component: str | None = None, expected_size: int = -1) -> Any:
         # For now only support small non-pixel components. In future
@@ -583,16 +578,16 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
 
         # We only cache component reads since those are small.
         if component:
-            cached_id, cached_reader, _, xy0, dimensions, bbox_component = type(self)._cached_fits
-            if self.dataset_ref.id == cached_id:
-                if component == "xy0" and xy0 is not None:
-                    return xy0
-                elif component == "dimensions" and dimensions is not None:
-                    return dimensions
-                elif component == "bbox" and bbox_component is not None:
-                    return bbox_component
+            cache = type(self)._cached_fits
+            if self.dataset_ref.id == cache.id_:
+                if component == "xy0" and cache.xy0 is not None:
+                    return cache.xy0
+                elif component == "dimensions" and cache.dimensions is not None:
+                    return cache.dimensions
+                elif component == "bbox" and cache.bbox is not None:
+                    return cache.bbox
                 else:
-                    self._reader = cached_reader
+                    self._reader = cache.reader
                     return self.readComponent(component)
 
         try:
@@ -677,13 +672,13 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         self._reader = self.ReaderClass(mem)
 
         if component:
-            type(self)._cached_fits = (
-                self.dataset_ref.id,
-                self._reader,
-                mem,
-                xy0,
-                dimensions,
-                bbox_component,
+            type(self)._cached_fits = _ComponentCache(
+                id_=self.dataset_ref.id,
+                reader=self._reader,
+                mem=mem,
+                xy0=xy0,
+                dimensions=dimensions,
+                bbox=bbox_component,
             )
             if component == "bbox":
                 return bbox_component
