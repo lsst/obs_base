@@ -913,7 +913,7 @@ class RawIngestTask(Task):
             # looked up from the database.  We do expect instrument and filter
             # records to be retrieved from the database here (though the
             # Registry may cache them so there isn't a lookup every time).
-            records={"exposure": data.record},
+            records={"exposure": data.record, **data.dependencyRecords},
         )
         # Now we expand the per-file (exposure+detector) data IDs.  This time
         # we pass in the records we just retrieved from the exposure data ID
