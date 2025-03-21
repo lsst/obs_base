@@ -524,11 +524,12 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
 
     can_read_from_uri = True
     ReaderClass = ExposureFitsReader
-    _cached_fits: tuple[uuid.UUID | None, MemFileManager | None] = (None, None)
+    _cached_fits: tuple[uuid.UUID | None, ExposureFitsReader | None] = (None, None)
 
     def read_from_uri(self, uri: ResourcePath, component: str | None = None, expected_size: int = -1) -> Any:
         # For now only support small non-pixel components. In future
         # could work with cutouts.
+        self._reader = None  # Guarantee things are reset.
         if uri.isLocal:
             # For a local URI allow afw to read it directly.
             return NotImplemented
@@ -558,9 +559,9 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
 
         # We only cache component reads since those are small.
         if component:
-            cached_id, cached_mem = type(self)._cached_fits
+            cached_id, cached_reader = type(self)._cached_fits
             if self.dataset_ref.id == cached_id:
-                self._reader = self.ReaderClass(cached_mem)
+                self._reader = cached_reader
                 return self.readComponent(component)
 
         try:
@@ -617,7 +618,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         self._reader = self.ReaderClass(mem)
 
         if component:
-            type(self)._cached_fits = (self.dataset_ref.id, mem)
+            type(self)._cached_fits = (self.dataset_ref.id, self._reader)
             return self.readComponent(component)
         else:
             # Must be a cutout. We have applied the bbox parameter so no
