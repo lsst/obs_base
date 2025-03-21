@@ -524,7 +524,12 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
 
     can_read_from_uri = True
     ReaderClass = ExposureFitsReader
-    _cached_fits: tuple[uuid.UUID | None, ExposureFitsReader | None] = (None, None)
+    # TODO: Remove MemFileManager from cache when DM-49640 is fixed.
+    _cached_fits: tuple[uuid.UUID | None, ExposureFitsReader | None, MemFileManager | None] = (
+        None,
+        None,
+        None,
+    )
 
     def read_from_uri(self, uri: ResourcePath, component: str | None = None, expected_size: int = -1) -> Any:
         # For now only support small non-pixel components. In future
@@ -563,7 +568,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
 
         # We only cache component reads since those are small.
         if component:
-            cached_id, cached_reader = type(self)._cached_fits
+            cached_id, cached_reader, _ = type(self)._cached_fits
             if self.dataset_ref.id == cached_id:
                 self._reader = cached_reader
                 return self.readComponent(component)
@@ -622,7 +627,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         self._reader = self.ReaderClass(mem)
 
         if component:
-            type(self)._cached_fits = (self.dataset_ref.id, self._reader)
+            type(self)._cached_fits = (self.dataset_ref.id, self._reader, mem)
             return self.readComponent(component)
         else:
             # Must be a cutout. We have applied the bbox parameter so no
