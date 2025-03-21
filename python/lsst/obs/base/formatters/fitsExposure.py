@@ -38,8 +38,10 @@ from typing import Any, ClassVar
 import astropy.io.fits
 import numpy as np
 
+import lsst.geom
 from lsst.afw.cameraGeom import AmplifierGeometryComparison, AmplifierIsolator
 from lsst.afw.fits import MemFileManager
+from lsst.afw.geom.wcsUtils import getImageXY0FromMetadata
 from lsst.afw.image import (
     ExposureFitsReader,
     ExposureInfo,
@@ -51,7 +53,7 @@ from lsst.afw.image import (
 
 # Needed for ApCorrMap to resolve properly
 from lsst.afw.math import BoundedField  # noqa: F401
-from lsst.daf.base import PropertySet
+from lsst.daf.base import PropertyList, PropertySet
 from lsst.daf.butler import DatasetProvenance, FormatterV2
 from lsst.resources import ResourcePath
 from lsst.utils.classes import cached_getter
@@ -528,7 +530,17 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
     can_read_from_uri = True
     ReaderClass = ExposureFitsReader
     # TODO: Remove MemFileManager from cache when DM-49640 is fixed.
-    _cached_fits: tuple[uuid.UUID | None, ExposureFitsReader | None, MemFileManager | None] = (
+    _cached_fits: tuple[
+        uuid.UUID | None,
+        ExposureFitsReader | None,
+        MemFileManager | None,
+        lsst.geom.Point2I | None,
+        lsst.geom.Extent2I | None,
+        lsst.geom.Box2I | None,
+    ] = (
+        None,
+        None,
+        None,
         None,
         None,
         None,
@@ -571,10 +583,17 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
 
         # We only cache component reads since those are small.
         if component:
-            cached_id, cached_reader, _ = type(self)._cached_fits
+            cached_id, cached_reader, _, xy0, dimensions, bbox_component = type(self)._cached_fits
             if self.dataset_ref.id == cached_id:
-                self._reader = cached_reader
-                return self.readComponent(component)
+                if component == "xy0" and xy0 is not None:
+                    return xy0
+                elif component == "dimensions" and dimensions is not None:
+                    return dimensions
+                elif component == "bbox" and bbox_component is not None:
+                    return bbox_component
+                else:
+                    self._reader = cached_reader
+                    return self.readComponent(component)
 
         try:
             fs, fspath = uri.to_fsspec()
@@ -582,6 +601,9 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
             # fsspec cannot be initialized, fall back to downloading the file.
             return NotImplemented
 
+        dimensions = None
+        xy0 = None
+        bbox_component = None
         try:
             hdul = []
             with fs.open(fspath) as f, astropy.io.fits.open(f) as fits_obj:
@@ -609,9 +631,24 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
                                 hdr["CRVAL1A"] += bbox.getBeginX()
                             if "CRVAL2A" in hdr:
                                 hdr["CRVAL2A"] += bbox.getBeginY()
-
                         else:
                             data = np.zeros([1, 1], dtype=np.int32)
+
+                        # Calculate the dimensional components for later
+                        # caching. Do not derive from cached FITS reader
+                        # because they depend on the dimensionality of the
+                        # pixel data and we do not want to cache the pixel
+                        # data.
+                        if dimensions is None:
+                            shape = hdu.shape
+                            dimensions = lsst.geom.Extent2I(shape[1], shape[0])
+                        if xy0 is None:
+                            # XY0 is defined in the A WCS.
+                            pl = PropertyList()
+                            pl.update(hdr)
+                            xy0 = getImageXY0FromMetadata(pl, "A", strip=False)
+                        if bbox_component is None:
+                            bbox_component = lsst.geom.Box2I(xy0, dimensions)
 
                         # Construct a new HDU and copy the header.
                         stripped_hdu = astropy.io.fits.ImageHDU(data=data, header=hdr)
@@ -640,7 +677,20 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         self._reader = self.ReaderClass(mem)
 
         if component:
-            type(self)._cached_fits = (self.dataset_ref.id, self._reader, mem)
+            type(self)._cached_fits = (
+                self.dataset_ref.id,
+                self._reader,
+                mem,
+                xy0,
+                dimensions,
+                bbox_component,
+            )
+            if component == "bbox":
+                return bbox_component
+            if component == "xy0":
+                return xy0
+            if component == "dimensions":
+                return dimensions
             return self.readComponent(component)
         else:
             # Must be a cutout. We have applied the bbox parameter so no
