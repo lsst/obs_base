@@ -544,7 +544,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         # With current file layouts the non-pixel extensions account for 1/3
         # of the file size and it is more efficient to download the entire
         # file.
-        if {"tract", "patch"} & self._dataset_ref.dataId.mapping.keys():
+        if not self._dataset_ref.dataId.mapping.keys().isdisjoint({"tract", "patch"}):
             return NotImplemented
 
         # Cutouts can be optimized. For now only use this optimization
