@@ -623,7 +623,9 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         else:
             # Must be a cutout. We have applied the bbox parameter so no
             # parameters should be passed here.
-            return self.reader.read()
+            cutout = self.reader.read()
+            cutout.getInfo().setFilter(self._fixFilterLabels(cutout.getInfo().getFilter()))
+            return cutout
 
     def add_provenance(
         self, in_memory_dataset: Any, /, *, provenance: DatasetProvenance | None = None
