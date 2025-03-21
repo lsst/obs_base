@@ -556,6 +556,10 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
             if {"bbox"} != self.checked_parameters.keys():
                 return NotImplemented
             bbox = self.checked_parameters["bbox"]
+            # For larger cutouts use the full file.
+            max_cutout_size = 500 * 500
+            if bbox.width * bbox.height > max_cutout_size:
+                return NotImplemented
 
         # We only cache component reads since those are small.
         if component:
