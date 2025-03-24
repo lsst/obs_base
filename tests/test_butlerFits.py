@@ -25,6 +25,7 @@ import os
 import shutil
 import tempfile
 import unittest
+import unittest.mock
 import uuid
 
 import astropy.table
@@ -250,6 +251,13 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
 
         uri = self.butler.getURI(ref)
         self.assertTrue(uri.exists(), f"Checking URI {uri} existence")
+
+    def testExposureCompositePutGetConcreteAstropy(self) -> None:
+        """Test composite with no disassembly and astropy component read."""
+        with unittest.mock.patch(
+            "lsst.obs.base.formatters.fitsExposure._ALWAYS_USE_ASTROPY_FOR_COMPONENT_READ", True
+        ):
+            self.runExposureCompositePutGetTest("calexp")
 
     def testExposureCompositePutGetVirtual(self) -> None:
         """Testing composite disassembly."""

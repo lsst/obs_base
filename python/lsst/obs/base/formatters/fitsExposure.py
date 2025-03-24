@@ -62,6 +62,11 @@ from lsst.utils.introspection import find_outside_stacklevel
 from ..utils import add_provenance_to_fits_header
 
 _LOG = logging.getLogger()
+_ALWAYS_USE_ASTROPY_FOR_COMPONENT_READ = False
+"""If True, the astropy code will always be used to read component and cutouts
+even if the file is local, the cutout is too large, or the dataset type is
+wrong. This should mostly be used for testing.
+"""
 
 
 class FitsImageFormatterBase(FormatterV2):
@@ -545,7 +550,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         # For now only support small non-pixel components. In future
         # could work with cutouts.
         self._reader = None  # Guarantee things are reset.
-        if uri.isLocal:
+        if not _ALWAYS_USE_ASTROPY_FOR_COMPONENT_READ and uri.isLocal:
             # For a local URI allow afw to read it directly.
             return NotImplemented
         pixel_components = ("mask", "image", "variance")
@@ -559,7 +564,10 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         # With current file layouts the non-pixel extensions account for 1/3
         # of the file size and it is more efficient to download the entire
         # file.
-        if not self._dataset_ref.dataId.mapping.keys().isdisjoint({"tract", "patch"}):
+        if not (
+            _ALWAYS_USE_ASTROPY_FOR_COMPONENT_READ
+            or self._dataset_ref.dataId.mapping.keys().isdisjoint({"tract", "patch"})
+        ):
             return NotImplemented
 
         # Cutouts can be optimized. For now only use this optimization
@@ -573,7 +581,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
             bbox = self.checked_parameters["bbox"]
             # For larger cutouts use the full file.
             max_cutout_size = 500 * 500
-            if bbox.width * bbox.height > max_cutout_size:
+            if not _ALWAYS_USE_ASTROPY_FOR_COMPONENT_READ and bbox.width * bbox.height > max_cutout_size:
                 return NotImplemented
 
         # We only cache component reads since those are small.
