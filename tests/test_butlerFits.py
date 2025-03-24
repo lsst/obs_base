@@ -35,7 +35,7 @@ import lsst.afw.image
 import lsst.pex.config
 import lsst.utils.tests
 from lsst.afw.fits import readMetadata
-from lsst.afw.image import LOCAL, ExposureFitsReader, MaskedImageFitsReader
+from lsst.afw.image import LOCAL, PARENT, ExposureFitsReader, MaskedImageFitsReader
 from lsst.afw.math import flipImage
 from lsst.daf.base import PropertyList, PropertySet
 from lsst.daf.butler import Config, DatasetProvenance, DatasetRef, DatasetType, StorageClassFactory
@@ -354,12 +354,13 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
                 raise RuntimeError(f"Unexpected component '{compName}' encountered in test")
 
         # Full Exposure with parameters
-        inBBox = Box2I(minimum=Point2I(3, 3), maximum=Point2I(21, 16))
-        parameters = {"bbox": inBBox, "origin": LOCAL}
-        subset = self.butler.get(datasetTypeName, dataId, parameters=parameters)
-        outBBox = subset.getBBox()
-        self.assertEqual(inBBox, outBBox)
-        self.assertImagesEqual(subset.getImage(), exposure.subset(inBBox, origin=LOCAL).getImage())
+        for origin in (LOCAL, PARENT):
+            inBBox = Box2I(minimum=Point2I(5, 3), maximum=Point2I(42, 16))
+            parameters = {"bbox": inBBox, "origin": origin}
+            subset = self.butler.get(datasetTypeName, dataId, parameters=parameters)
+            outBBox = subset.getBBox()
+            self.assertEqual(inBBox, outBBox)
+            self.assertImagesEqual(subset.getImage(), exposure.subset(inBBox, origin=LOCAL).getImage())
 
         return ref
 

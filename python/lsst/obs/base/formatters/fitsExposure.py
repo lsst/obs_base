@@ -574,11 +574,14 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         # if bbox is the only parameter and the number of pixels in the
         # bounding box is reasonable.
         bbox = None
+        origin = lsst.afw.image.PARENT
         if not component:
-            # Only support PARENT origin (as a default).
-            if {"bbox"} != self.checked_parameters.keys():
+            # Try to support PARENT and LOCAL origin but if there are any
+            # other parameters do not attempt a cutout.
+            if self.checked_parameters.keys() - {"bbox", "origin"}:
                 return NotImplemented
             bbox = self.checked_parameters["bbox"]
+            origin = self.checked_parameters.get("origin", lsst.afw.image.PARENT)
             # For larger cutouts use the full file.
             max_cutout_size = 500 * 500
             if not _ALWAYS_USE_ASTROPY_FOR_COMPONENT_READ and bbox.width * bbox.height > max_cutout_size:
@@ -618,25 +621,6 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
                     # for EXTEND=T.
                     extend = hdr.get("EXTEND")
                     if not extend and extname and extname.lower() in pixel_components:
-                        if bbox:
-                            data = hdu.section[
-                                bbox.getBeginX() : bbox.getEndX(), bbox.getBeginY() : bbox.getEndY()
-                            ]
-
-                            # Must correct the header to take into account the
-                            # offset.
-                            for x, y in (("CRPIX1", "CRPIX2"), ("LTV1", "LTV2")):
-                                if x in hdr:
-                                    hdr[x] -= bbox.getBeginX()
-                                if y in hdr:
-                                    hdr[y] -= bbox.getBeginY()
-                            if "CRVAL1A" in hdr:
-                                hdr["CRVAL1A"] += bbox.getBeginX()
-                            if "CRVAL2A" in hdr:
-                                hdr["CRVAL2A"] += bbox.getBeginY()
-                        else:
-                            data = np.zeros([1, 1], dtype=np.int32)
-
                         # Calculate the dimensional components for later
                         # caching. Do not derive from cached FITS reader
                         # because they depend on the dimensionality of the
@@ -651,7 +635,34 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
                             pl.update(hdr)
                             xy0 = getImageXY0FromMetadata(pl, "A", strip=False)
                         if bbox_component is None:
+                            # This is the PARENT bbox.
                             bbox_component = lsst.geom.Box2I(xy0, dimensions)
+
+                        # Handle cutout request.
+                        if bbox:
+                            if origin == lsst.afw.image.PARENT:
+                                full_bbox = bbox_component
+                            else:
+                                full_bbox = lsst.geom.Box2I(lsst.geom.Point2I(0, 0), dimensions)
+                            minX = bbox.getBeginX() - full_bbox.getBeginX()
+                            maxX = bbox.getEndX() - full_bbox.getBeginX()
+                            minY = bbox.getBeginY() - full_bbox.getBeginY()
+                            maxY = bbox.getEndY() - full_bbox.getBeginY()
+                            data = hdu.section[minY:maxY, minX:maxX]
+
+                            # Must correct the header to take into account the
+                            # offset.
+                            for x, y in (("CRPIX1", "CRPIX2"), ("LTV1", "LTV2")):
+                                if x in hdr:
+                                    hdr[x] -= bbox.getBeginX()
+                                if y in hdr:
+                                    hdr[y] -= bbox.getBeginY()
+                            if "CRVAL1A" in hdr:
+                                hdr["CRVAL1A"] += bbox.getBeginX()
+                            if "CRVAL2A" in hdr:
+                                hdr["CRVAL2A"] += bbox.getBeginY()
+                        else:
+                            data = np.zeros([1, 1], dtype=np.int32)
 
                         # Construct a new HDU and copy the header.
                         stripped_hdu = astropy.io.fits.ImageHDU(data=data, header=hdr)
