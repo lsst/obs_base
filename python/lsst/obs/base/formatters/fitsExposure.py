@@ -27,12 +27,22 @@ __all__ = (
     "standardizeAmplifierParameters",
 )
 
+import logging
+import threading
+import uuid
 import warnings
 from abc import abstractmethod
 from collections.abc import Set
-from typing import Any, ClassVar
+from io import BytesIO
+from typing import Any, ClassVar, NamedTuple
 
+import astropy.io.fits
+import numpy as np
+
+import lsst.geom
 from lsst.afw.cameraGeom import AmplifierGeometryComparison, AmplifierIsolator
+from lsst.afw.fits import MemFileManager
+from lsst.afw.geom.wcsUtils import getImageXY0FromMetadata
 from lsst.afw.image import (
     ExposureFitsReader,
     ExposureInfo,
@@ -44,13 +54,20 @@ from lsst.afw.image import (
 
 # Needed for ApCorrMap to resolve properly
 from lsst.afw.math import BoundedField  # noqa: F401
-from lsst.daf.base import PropertySet
+from lsst.daf.base import PropertyList, PropertySet
 from lsst.daf.butler import DatasetProvenance, FormatterV2
 from lsst.resources import ResourcePath
 from lsst.utils.classes import cached_getter
 from lsst.utils.introspection import find_outside_stacklevel
 
 from ..utils import add_provenance_to_fits_header
+
+_LOG = logging.getLogger()
+_ALWAYS_USE_ASTROPY_FOR_COMPONENT_READ = False
+"""If True, the astropy code will always be used to read component and cutouts
+even if the file is local, the cutout is too large, or the dataset type is
+wrong. This should mostly be used for testing.
+"""
 
 
 class FitsImageFormatterBase(FormatterV2):
@@ -502,6 +519,13 @@ def standardizeAmplifierParameters(parameters, on_disk_detector):
     return target_amplifier, detector, comparison & comparison.REGIONS_DIFFER
 
 
+class _ComponentCache(NamedTuple):
+    id_: uuid.UUID | None = None
+    reader: ExposureFitsReader | None = None
+    bbox: lsst.geom.Box2I | None = None
+    mem: MemFileManager | None = None
+
+
 class FitsExposureFormatter(FitsMaskedImageFormatter):
     """Concrete formatter for reading/writing `~lsst.afw.image.Exposure`
     from/to FITS.
@@ -516,7 +540,186 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
     type covariance violation ever becomes a practical problem.
     """
 
+    can_read_from_uri = True
     ReaderClass = ExposureFitsReader
+    # TODO: Remove MemFileManager from cache when DM-49640 is fixed.
+    _lock = threading.Lock()
+    _cached_fits: _ComponentCache = _ComponentCache()
+
+    def read_from_uri(self, uri: ResourcePath, component: str | None = None, expected_size: int = -1) -> Any:
+        # For now only support small non-pixel components. In future
+        # could work with cutouts.
+        self._reader = None  # Guarantee things are reset.
+        if not _ALWAYS_USE_ASTROPY_FOR_COMPONENT_READ and uri.isLocal:
+            # For a local URI allow afw to read it directly.
+            return NotImplemented
+        pixel_components = ("mask", "image", "variance")
+
+        if component in pixel_components:
+            # For pixel access currently this can not be cached in memory
+            # and the performance gains are unclear. Assume local file
+            # read with file caching for now.
+            return NotImplemented
+
+        # With current file layouts the non-pixel extensions account for 1/3
+        # of the file size and it is more efficient to download the entire
+        # file.
+        if not (
+            _ALWAYS_USE_ASTROPY_FOR_COMPONENT_READ
+            or self._dataset_ref.dataId.mapping.keys().isdisjoint({"tract", "patch"})
+        ):
+            return NotImplemented
+
+        # Cutouts can be optimized. For now only use this optimization
+        # if bbox is the only parameter and the number of pixels in the
+        # bounding box is reasonable.
+        bbox = None
+        origin = lsst.afw.image.PARENT
+        if not component:
+            # Try to support PARENT and LOCAL origin but if there are any
+            # other parameters do not attempt a cutout.
+            if self.checked_parameters.keys() - {"bbox", "origin"}:
+                return NotImplemented
+            bbox = self.checked_parameters["bbox"]
+            origin = self.checked_parameters.get("origin", lsst.afw.image.PARENT)
+            # For larger cutouts use the full file.
+            max_cutout_size = 500 * 500
+            if not _ALWAYS_USE_ASTROPY_FOR_COMPONENT_READ and bbox.width * bbox.height > max_cutout_size:
+                return NotImplemented
+
+        # We only cache component reads since those are small.
+        if component:
+            with self._lock:
+                cache = type(self)._cached_fits
+            if self.dataset_ref.id == cache.id_:
+                if component in {"xy0", "dimensions", "bbox"} and cache.bbox is not None:
+                    match component:
+                        case "xy0":
+                            return cache.bbox.getMin()
+                        case "dimensions":
+                            return cache.bbox.getDimensions()
+                        case "bbox":
+                            return cache.bbox
+                else:
+                    self._reader = cache.reader
+                    return self.readComponent(component)
+
+        try:
+            fs, fspath = uri.to_fsspec()
+        except Exception:
+            # fsspec cannot be initialized, fall back to downloading the file.
+            return NotImplemented
+
+        bbox_component = None
+        try:
+            hdul = []
+            with fs.open(fspath) as f, astropy.io.fits.open(f) as fits_obj:
+                # Read all non-pixel components and cache.
+                for hdu in fits_obj:
+                    hdr = hdu.header
+                    extname = hdr.get("EXTNAME")
+                    # Older files have IMAGE in EXTNAME in PRIMARY so check
+                    # for EXTEND=T.
+                    extend = hdr.get("EXTEND")
+                    if not extend and extname and extname.lower() in pixel_components:
+                        # Calculate the dimensional components for later
+                        # caching. Do not derive from cached FITS reader
+                        # because they depend on the dimensionality of the
+                        # pixel data and we do not want to cache the pixel
+                        # data.
+                        if bbox_component is None:
+                            shape = hdu.shape
+                            dimensions = lsst.geom.Extent2I(shape[1], shape[0])
+
+                            # XY0 is defined in the A WCS.
+                            pl = PropertyList()
+                            pl.update(hdr)
+                            xy0 = getImageXY0FromMetadata(pl, "A", strip=False)
+
+                            # This is the PARENT bbox.
+                            bbox_component = lsst.geom.Box2I(xy0, dimensions)
+
+                        # Handle cutout request.
+                        if bbox:
+                            if origin == lsst.afw.image.PARENT:
+                                full_bbox = bbox_component
+                            else:
+                                full_bbox = lsst.geom.Box2I(
+                                    lsst.geom.Point2I(0, 0), bbox_component.getDimensions
+                                )
+                            minX = bbox.getBeginX() - full_bbox.getBeginX()
+                            maxX = bbox.getEndX() - full_bbox.getBeginX()
+                            minY = bbox.getBeginY() - full_bbox.getBeginY()
+                            maxY = bbox.getEndY() - full_bbox.getBeginY()
+                            data = hdu.section[minY:maxY, minX:maxX]
+
+                            # Must correct the header to take into account the
+                            # offset.
+                            for x, y in (("CRPIX1", "CRPIX2"), ("LTV1", "LTV2")):
+                                if x in hdr:
+                                    hdr[x] -= bbox.getBeginX()
+                                if y in hdr:
+                                    hdr[y] -= bbox.getBeginY()
+                            if "CRVAL1A" in hdr:
+                                hdr["CRVAL1A"] += bbox.getBeginX()
+                            if "CRVAL2A" in hdr:
+                                hdr["CRVAL2A"] += bbox.getBeginY()
+                        else:
+                            data = np.zeros([1, 1], dtype=np.int32)
+
+                        # Construct a new HDU and copy the header.
+                        stripped_hdu = astropy.io.fits.ImageHDU(data=data, header=hdr)
+                        hdul.append(stripped_hdu)
+                    else:
+                        hdul.append(hdu)
+                stripped_fits = astropy.io.fits.HDUList(hdus=hdul)
+                # Write the FITS file to in-memory FITS.
+                buffer = BytesIO()
+                stripped_fits.writeto(buffer)
+        except Exception as e:
+            # For some reason we can't open the remote file so fall back.
+            _LOG.debug(
+                "Attempted remote read of components but encountered an error. "
+                "Falling back to file download. Error: %s",
+                str(e),
+            )
+            return NotImplemented
+
+        # Pass the new FITS buffer to the reader class without going through
+        # a temporary file. We can assume this is relatively small for
+        # components.
+        fits_data = buffer.getvalue()
+        mem = MemFileManager(len(fits_data))
+        mem.setData(fits_data, len(fits_data))
+        self._reader = self.ReaderClass(mem)
+
+        if component:
+            with self._lock:
+                type(self)._cached_fits = _ComponentCache(
+                    id_=self.dataset_ref.id,
+                    reader=self._reader,
+                    mem=mem,
+                    bbox=bbox_component,
+                )
+            match component:
+                case "xy0":
+                    if bbox_component is None:  # For mypy.
+                        return None
+                    return bbox_component.getMin()
+                case "dimensions":
+                    if bbox_component is None:
+                        return None
+                    return bbox_component.getDimensions()
+                case "bbox":
+                    return bbox_component
+                case _:
+                    return self.readComponent(component)
+        else:
+            # Must be a cutout. We have applied the bbox parameter so no
+            # parameters should be passed here.
+            cutout = self.reader.read()
+            cutout.getInfo().setFilter(self._fixFilterLabels(cutout.getInfo().getFilter()))
+            return cutout
 
     def add_provenance(
         self, in_memory_dataset: Any, /, *, provenance: DatasetProvenance | None = None

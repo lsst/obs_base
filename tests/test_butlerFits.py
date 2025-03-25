@@ -25,6 +25,7 @@ import os
 import shutil
 import tempfile
 import unittest
+import unittest.mock
 import uuid
 
 import astropy.table
@@ -34,7 +35,7 @@ import lsst.afw.image
 import lsst.pex.config
 import lsst.utils.tests
 from lsst.afw.fits import readMetadata
-from lsst.afw.image import LOCAL, ExposureFitsReader, MaskedImageFitsReader
+from lsst.afw.image import LOCAL, PARENT, ExposureFitsReader, MaskedImageFitsReader
 from lsst.afw.math import flipImage
 from lsst.daf.base import PropertyList, PropertySet
 from lsst.daf.butler import Config, DatasetProvenance, DatasetRef, DatasetType, StorageClassFactory
@@ -251,6 +252,13 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
         uri = self.butler.getURI(ref)
         self.assertTrue(uri.exists(), f"Checking URI {uri} existence")
 
+    def testExposureCompositePutGetConcreteAstropy(self) -> None:
+        """Test composite with no disassembly and astropy component read."""
+        with unittest.mock.patch(
+            "lsst.obs.base.formatters.fitsExposure._ALWAYS_USE_ASTROPY_FOR_COMPONENT_READ", True
+        ):
+            self.runExposureCompositePutGetTest("calexp")
+
     def testExposureCompositePutGetVirtual(self) -> None:
         """Testing composite disassembly."""
         ref = self.runExposureCompositePutGetTest("unknown")
@@ -312,44 +320,47 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
                 # Equality for PSF does not work
                 pass
             elif compName == "filter":
-                self.assertEqual(component, reference)
+                self.assertEqual(component, reference, compName)
             elif compName == "id":
-                self.assertEqual(component, reference)
+                self.assertEqual(component, reference, compName)
             elif compName == "visitInfo":
                 self.assertEqual(component, reference, "VisitInfo comparison")
             elif compName == "metadata":
                 # The component metadata has extra fields in it so cannot
                 # compare directly.
                 for k, v in reference.items():
-                    self.assertEqual(component[k], v)
+                    self.assertEqual(component[k], v, f"{compName} key: {k}")
             elif compName == "photoCalib":
                 # This example has a
                 # "spatially constant with mean: inf error: nan" entry
                 # which does not compare directly.
-                self.assertEqual(str(component), str(reference))
+                self.assertEqual(str(component), str(reference), compName)
                 self.assertIn("spatially constant with mean: 1.99409", str(component), "Checking photoCalib")
             elif compName in ("bbox", "xy0", "dimensions", "validPolygon"):
-                self.assertEqual(component, reference)
+                self.assertEqual(component, reference, compName)
             elif compName == "apCorrMap":
-                self.assertEqual(set(component.keys()), set(reference.keys()))
+                self.assertEqual(set(component.keys()), set(reference.keys()), compName)
             elif compName == "transmissionCurve":
-                self.assertEqual(component.getThroughputAtBounds(), reference.getThroughputAtBounds())
+                self.assertEqual(
+                    component.getThroughputAtBounds(), reference.getThroughputAtBounds(), compName
+                )
             elif compName == "detector":
                 c_amps = {a.getName() for a in component.getAmplifiers()}
                 r_amps = {a.getName() for a in reference.getAmplifiers()}
-                self.assertEqual(c_amps, r_amps)
+                self.assertEqual(c_amps, r_amps, compName)
             elif compName == "summaryStats":
-                self.assertEqual(component.psfSigma, reference.psfSigma)
+                self.assertEqual(component.psfSigma, reference.psfSigma, compName)
             else:
                 raise RuntimeError(f"Unexpected component '{compName}' encountered in test")
 
         # Full Exposure with parameters
-        inBBox = Box2I(minimum=Point2I(3, 3), maximum=Point2I(21, 16))
-        parameters = {"bbox": inBBox, "origin": LOCAL}
-        subset = self.butler.get(datasetTypeName, dataId, parameters=parameters)
-        outBBox = subset.getBBox()
-        self.assertEqual(inBBox, outBBox)
-        self.assertImagesEqual(subset.getImage(), exposure.subset(inBBox, origin=LOCAL).getImage())
+        for origin in (LOCAL, PARENT):
+            inBBox = Box2I(minimum=Point2I(5, 3), maximum=Point2I(42, 16))
+            parameters = {"bbox": inBBox, "origin": origin}
+            subset = self.butler.get(datasetTypeName, dataId, parameters=parameters)
+            outBBox = subset.getBBox()
+            self.assertEqual(inBBox, outBBox)
+            self.assertImagesEqual(subset.getImage(), exposure.subset(inBBox, origin=LOCAL).getImage())
 
         return ref
 
