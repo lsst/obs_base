@@ -28,6 +28,7 @@ __all__ = (
 )
 
 import logging
+import threading
 import uuid
 import warnings
 from abc import abstractmethod
@@ -542,6 +543,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
     can_read_from_uri = True
     ReaderClass = ExposureFitsReader
     # TODO: Remove MemFileManager from cache when DM-49640 is fixed.
+    _lock = threading.Lock()
     _cached_fits: _ComponentCache = _ComponentCache()
 
     def read_from_uri(self, uri: ResourcePath, component: str | None = None, expected_size: int = -1) -> Any:
@@ -587,7 +589,8 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
 
         # We only cache component reads since those are small.
         if component:
-            cache = type(self)._cached_fits
+            with self._lock:
+                cache = type(self)._cached_fits
             if self.dataset_ref.id == cache.id_:
                 if component in {"xy0", "dimensions", "bbox"} and cache.bbox is not None:
                     match component:
@@ -691,12 +694,13 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         self._reader = self.ReaderClass(mem)
 
         if component:
-            type(self)._cached_fits = _ComponentCache(
-                id_=self.dataset_ref.id,
-                reader=self._reader,
-                mem=mem,
-                bbox=bbox_component,
-            )
+            with self._lock:
+                type(self)._cached_fits = _ComponentCache(
+                    id_=self.dataset_ref.id,
+                    reader=self._reader,
+                    mem=mem,
+                    bbox=bbox_component,
+                )
             match component:
                 case "xy0":
                     if bbox_component is None:  # For mypy.
