@@ -521,8 +521,6 @@ def standardizeAmplifierParameters(parameters, on_disk_detector):
 class _ComponentCache(NamedTuple):
     id_: uuid.UUID | None = None
     reader: ExposureFitsReader | None = None
-    xy0: lsst.geom.Point2I | None = None
-    dimensions: lsst.geom.Extent2I | None = None
     bbox: lsst.geom.Box2I | None = None
     mem: MemFileManager | None = None
 
@@ -591,12 +589,14 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         if component:
             cache = type(self)._cached_fits
             if self.dataset_ref.id == cache.id_:
-                if component == "xy0" and cache.xy0 is not None:
-                    return cache.xy0
-                elif component == "dimensions" and cache.dimensions is not None:
-                    return cache.dimensions
-                elif component == "bbox" and cache.bbox is not None:
-                    return cache.bbox
+                if component in {"xy0", "dimensions", "bbox"} and cache.bbox is not None:
+                    match component:
+                        case "xy0":
+                            return cache.bbox.getMin()
+                        case "dimensions":
+                            return cache.bbox.getDimensions()
+                        case "bbox":
+                            return cache.bbox
                 else:
                     self._reader = cache.reader
                     return self.readComponent(component)
@@ -607,8 +607,6 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
             # fsspec cannot be initialized, fall back to downloading the file.
             return NotImplemented
 
-        dimensions = None
-        xy0 = None
         bbox_component = None
         try:
             hdul = []
@@ -626,15 +624,15 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
                         # because they depend on the dimensionality of the
                         # pixel data and we do not want to cache the pixel
                         # data.
-                        if dimensions is None:
+                        if bbox_component is None:
                             shape = hdu.shape
                             dimensions = lsst.geom.Extent2I(shape[1], shape[0])
-                        if xy0 is None:
+
                             # XY0 is defined in the A WCS.
                             pl = PropertyList()
                             pl.update(hdr)
                             xy0 = getImageXY0FromMetadata(pl, "A", strip=False)
-                        if bbox_component is None:
+
                             # This is the PARENT bbox.
                             bbox_component = lsst.geom.Box2I(xy0, dimensions)
 
@@ -643,7 +641,9 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
                             if origin == lsst.afw.image.PARENT:
                                 full_bbox = bbox_component
                             else:
-                                full_bbox = lsst.geom.Box2I(lsst.geom.Point2I(0, 0), dimensions)
+                                full_bbox = lsst.geom.Box2I(
+                                    lsst.geom.Point2I(0, 0), bbox_component.getDimensions
+                                )
                             minX = bbox.getBeginX() - full_bbox.getBeginX()
                             maxX = bbox.getEndX() - full_bbox.getBeginX()
                             minY = bbox.getBeginY() - full_bbox.getBeginY()
@@ -695,17 +695,17 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
                 id_=self.dataset_ref.id,
                 reader=self._reader,
                 mem=mem,
-                xy0=xy0,
-                dimensions=dimensions,
                 bbox=bbox_component,
             )
-            if component == "bbox":
-                return bbox_component
-            if component == "xy0":
-                return xy0
-            if component == "dimensions":
-                return dimensions
-            return self.readComponent(component)
+            match component:
+                case "xy0":
+                    return bbox_component.getMin()
+                case "dimensions":
+                    return bbox_component.getDimensions()
+                case "bbox":
+                    return bbox_component
+                case _:
+                    return self.readComponent(component)
         else:
             # Must be a cutout. We have applied the bbox parameter so no
             # parameters should be passed here.
