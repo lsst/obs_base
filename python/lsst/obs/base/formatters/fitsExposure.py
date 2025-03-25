@@ -699,8 +699,12 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
             )
             match component:
                 case "xy0":
+                    if bbox_component is None:  # For mypy.
+                        return None
                     return bbox_component.getMin()
                 case "dimensions":
+                    if bbox_component is None:
+                        return None
                     return bbox_component.getDimensions()
                 case "bbox":
                     return bbox_component
