@@ -74,6 +74,10 @@ StandardCuratedCalibrationDatasetTypes = {
         "dimensions": ("instrument", "physical_filter"),
         "storageClass": "TransmissionCurve",
     },
+    "transmission_filter_detector": {
+        "dimensions": ("instrument", "detector", "physical_filter"),
+        "storageClass": "TransmissionCurve",
+    },
     "transmission_sensor": {"dimensions": ("instrument", "detector"), "storageClass": "TransmissionCurve"},
     "transmission_atmosphere": {"dimensions": ("instrument",), "storageClass": "TransmissionCurve"},
     "transmission_system": {
