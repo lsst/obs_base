@@ -1,1 +1,0 @@
-Modified the FITS-based formatters to write out dataset provenance in the output FITS header.
