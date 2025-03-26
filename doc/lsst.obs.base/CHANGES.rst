@@ -1,3 +1,13 @@
+obs_base v29.0.0 (2025-03-26)
+=============================
+
+New Features
+------------
+
+- Modified the FITS-based formatters to write out dataset provenance in the output FITS header. (`DM-35396 <https://rubinobs.atlassian.net/browse/DM-35396>`_)
+- Added a new dataset type for defects that are manually defined. (`DM-47365 <https://rubinobs.atlassian.net/browse/DM-47365>`_)
+
+
 obs_base v28.0.0 (2024-11-21)
 =============================
 
