@@ -70,6 +70,12 @@ datastore:
   composites:
     disassembled:
       ExposureCompositeF: True
+  # Always run with cache disabled. None of these datasets are remote but
+  # we want to check that URI reading does work properly.
+  cached:
+    expiry:
+      default: false
+      mode: disabled
 """
 
 # Components present in the test file

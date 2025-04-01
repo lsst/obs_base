@@ -550,6 +550,11 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         # For now only support small non-pixel components. In future
         # could work with cutouts.
         self._reader = None  # Guarantee things are reset.
+
+        # Full read, always use local file read.
+        if not component and not self.checked_parameters:
+            return NotImplemented
+
         if not _ALWAYS_USE_ASTROPY_FOR_COMPONENT_READ and uri.isLocal:
             # For a local URI allow afw to read it directly.
             return NotImplemented
