@@ -624,13 +624,13 @@ def makeExposureRecordFromObsInfo(
     ra, dec, sky_angle, azimuth, zenith_angle = (None, None, None, None, None)
     if obsInfo.tracking_radec is not None:
         icrs = obsInfo.tracking_radec.icrs
-        ra = icrs.ra.degree
-        dec = icrs.dec.degree
+        ra = float(icrs.ra.degree)
+        dec = float(icrs.dec.degree)
         if obsInfo.boresight_rotation_coord == "sky":
-            sky_angle = obsInfo.boresight_rotation_angle.degree
+            sky_angle = float(obsInfo.boresight_rotation_angle.degree)
     if obsInfo.altaz_begin is not None:
-        zenith_angle = obsInfo.altaz_begin.zen.degree
-        azimuth = obsInfo.altaz_begin.az.degree
+        zenith_angle = float(obsInfo.altaz_begin.zen.degree)
+        azimuth = float(obsInfo.altaz_begin.az.degree)
 
     extras: dict[str, Any] = {}
     for meta_key, info_key in (
@@ -643,7 +643,7 @@ def makeExposureRecordFromObsInfo(
             extras[meta_key] = getattr(obsInfo, info_key)
 
     if (k := "azimuth") in supported:
-        extras[k] = azimuth
+        extras[k] = float(azimuth) if azimuth is not None else None
 
     if "group" in dimension.implied:
         extras["group"] = obsInfo.exposure_group
