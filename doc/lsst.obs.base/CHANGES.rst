@@ -7,6 +7,10 @@ New Features
 - Modified the FITS-based formatters to write out dataset provenance in the output FITS header. (`DM-35396 <https://rubinobs.atlassian.net/browse/DM-35396>`_)
 - Added a new dataset type for defects that are manually defined. (`DM-47365 <https://rubinobs.atlassian.net/browse/DM-47365>`_)
 
+Other Changes and Additions
+---------------------------
+
+- Fixed problem ingesting on-sky raws into a Postgres database with numpy 2. (`DM-49845 <https://rubinobs.atlassian.net/browse/DM-49845>`_)
 
 obs_base v28.0.0 (2024-11-21)
 =============================
