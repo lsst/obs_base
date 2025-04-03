@@ -1,1 +1,0 @@
-Fixed problem ingesting on-sky raws into a Postgres database with numpy 2.
