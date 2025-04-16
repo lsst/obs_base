@@ -681,7 +681,16 @@ class DefineVisitsTask(Task):
         for dataId in data_id_set:
             record = dataId.records["exposure"]
             assert record is not None, "Guaranteed by expandDataIds call earlier."
-            if record.tracking_ra is None or record.tracking_dec is None or record.sky_angle is None:
+            # LSSTCam data can assign ra/dec to flats, and dome-closed
+            # engineering tests. Do not assign a visit if we know that
+            # can_see_sky is False. Treat None as True for this test.
+            can_see_sky = getattr(record, "can_see_sky", True)
+            if (
+                record.tracking_ra is None
+                or record.tracking_dec is None
+                or record.sky_angle is None
+                or can_see_sky is False
+            ):
                 if self.config.ignoreNonScienceExposures:
                     continue
                 else:
