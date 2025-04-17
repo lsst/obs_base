@@ -1,0 +1,1 @@
+Adjusted the logic for visit definition such that a visit will not be defined if it is known that the observation was not looking at the sky (such as with closed-dome tests).
