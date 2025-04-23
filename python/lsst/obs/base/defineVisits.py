@@ -752,7 +752,7 @@ class DefineVisitsTask(Task):
                     visitRecords.visit,
                     update=update_records,
                 )
-                if inserted_or_updated:
+                if inserted_or_updated or update_records:
                     if inserted_or_updated is True:
                         # This is a new visit, not an update to an existing
                         # one, so insert visit definition.
