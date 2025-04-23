@@ -644,18 +644,20 @@ class DefineVisitsTask(Task):
             Can be any of the types supported by the ``collections`` argument
             to butler construction.
         update_records : `bool`, optional
-            If `True` (`False` is default), update existing visit records that
-            conflict with the new ones instead of rejecting them (and when this
-            occurs, update visit_detector_region as well).  THIS IS AN ADVANCED
-            OPTION THAT SHOULD ONLY BE USED TO FIX REGIONS AND/OR METADATA THAT
-            ARE KNOWN TO BE BAD, AND IT CANNOT BE USED TO REMOVE EXPOSURES OR
+            If `True` (`False` is default), update existing ``visit`` records
+            and ``visit_detector_region`` records.  THIS IS AN ADVANCED OPTION
+            THAT SHOULD ONLY BE USED TO FIX REGIONS AND/OR METADATA THAT ARE
+            KNOWN TO BE BAD, AND IT CANNOT BE USED TO REMOVE EXPOSURES OR
             DETECTORS FROM A VISIT.
         incremental : `bool`, optional
             If `True` indicate that exposures are being ingested incrementally
-            and visit definition will be run on partial visits. This will
-            force ``update_records`` to `True`. If there is any risk that
-            files are being ingested incrementally it is critical that this
-            parameter is set to `True` and not to rely on ``updated_records``.
+            and visit definition will be run on partial visits.  This will
+            allow the ``visit`` record to be updated if it already exists, but
+            (unlike ``update_records=True``) it will only update the
+            ``visit_detector_region`` records if the ``visit`` record's region
+            changes. If there is any risk that files are being ingested
+            incrementally it is critical that this parameter is set to `True`
+            and not to rely on ``updated_records``.
 
         Raises
         ------
@@ -671,8 +673,6 @@ class DefineVisitsTask(Task):
         }
         if not data_id_set:
             raise RuntimeError("No exposures given.")
-        if incremental:
-            update_records = True
         # Extract exposure DimensionRecords, check that there's only one
         # instrument in play, and check for non-science exposures.
         exposures = []
@@ -750,7 +750,7 @@ class DefineVisitsTask(Task):
                 inserted_or_updated = self.butler.registry.syncDimensionData(
                     "visit",
                     visitRecords.visit,
-                    update=update_records,
+                    update=(update_records or incremental),
                 )
                 if inserted_or_updated or update_records:
                     if inserted_or_updated is True:
@@ -780,13 +780,25 @@ class DefineVisitsTask(Task):
                         # with the previous definition.
                         for definition in visitRecords.visit_definition:
                             self.butler.registry.syncDimensionData("visit_definition", definition)
-
-                    # [Re]Insert visit_detector_region records for both inserts
-                    # and updates, because we do allow updating to affect the
-                    # region calculations.
-                    self.butler.registry.insertDimensionData(
-                        "visit_detector_region", *visitRecords.visit_detector_region, replace=update_records
-                    )
+                    if inserted_or_updated is True:
+                        # Insert visit-detector regions if the visit is new.
+                        self.butler.registry.insertDimensionData(
+                            "visit_detector_region",
+                            *visitRecords.visit_detector_region,
+                            replace=False,
+                        )
+                    # Cast below is because MyPy can't determine that
+                    # inserted_or_updated can only be False if update_records
+                    # is True.
+                    elif update_records or "region" in cast(dict, inserted_or_updated):
+                        # Replace visit-detector regions if we were told to
+                        # update records explicitly, or if the visit region
+                        # changed in an incremental=True update.
+                        self.butler.registry.insertDimensionData(
+                            "visit_detector_region",
+                            *visitRecords.visit_detector_region,
+                            replace=True,
+                        )
 
                     # Update obscore exposure records with region information
                     # from corresponding visits.
