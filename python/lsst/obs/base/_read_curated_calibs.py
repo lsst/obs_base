@@ -23,16 +23,13 @@ from __future__ import annotations
 
 __all__ = ["CuratedCalibration", "read_all"]
 
+import datetime
 import glob
 import os
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Protocol
 
-import dateutil.parser
-
 if TYPE_CHECKING:
-    import datetime
-
     import lsst.afw.cameraGeom
 
 
@@ -104,6 +101,12 @@ def read_one_calib(
     Filter dependent calibrations that do depend on the detector
     (i.e., transmission_system), have physical filter named
     directories below the detector level directories.
+
+    The files themselves are required to be named with the validity start
+    date and the appropriate file extension. The date must be in an ISO format
+    that can be parsed by `datetime.datetime.fromisoformat`. This can include
+    variants commonly used data packages such as ``2025-04-30T12:23:00`` or the
+    more compact ``20250430T123000``.
     """
     files = []
     extensions = (".ecsv", ".yaml", ".json")
@@ -116,7 +119,8 @@ def read_one_calib(
     data_dict: dict[datetime.datetime, Any] = {}
     for f in files:
         date_str = os.path.splitext(os.path.basename(f))[0]
-        valid_start = dateutil.parser.parse(date_str)
+        # Assume files are using some form of ISO date string.
+        valid_start = datetime.datetime.fromisoformat(date_str)
         data_dict[valid_start] = calib_class.readText(f)
         check_metadata(data_dict[valid_start], valid_start, instrument, chip_id, filter_name, f, calib_type)
     return data_dict, calib_type
