@@ -657,7 +657,7 @@ class DefineVisitsTask(Task):
             ``visit_detector_region`` records if the ``visit`` record's region
             changes. If there is any risk that files are being ingested
             incrementally it is critical that this parameter is set to `True`
-            and not to rely on ``updated_records``.
+            and not to rely on ``update_records``.
 
         Raises
         ------
