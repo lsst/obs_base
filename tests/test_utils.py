@@ -20,6 +20,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import unittest
+from datetime import datetime
 
 import lsst.geom as geom
 import lsst.obs.base as obsBase
@@ -77,6 +78,27 @@ class TestProvenanceAdd(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             _store_str_header(pl, key + "0", "abcdef", allow_long_headers=False)
+
+
+class TestCalibDates(unittest.TestCase):
+    """Tests relating to curated calibration dates."""
+
+    def test_calib_dates(self):
+        """Test file root creation and parsing."""
+        for valid_start, file_root, standard_iso in (
+            ("2025-04-30T12:25", "20250430T122500", "2025-04-30T12:25:00"),
+            ("2025-04-30 12:25:50", "20250430T122550", "2025-04-30T12:25:50"),
+            ("2025-04-30 12:25:50.123", "20250430T122550", "2025-04-30T12:25:50"),
+            ("1970-01-01", "19700101T000000", "1970-01-01T00:00:00"),
+            ("20100501T1223", "20100501T122300", "2010-05-01T12:23:00"),
+        ):
+            derived = obsBase.iso_date_to_curated_calib_file_root(valid_start)
+            self.assertEqual(derived, file_root)
+            self.assertEqual(datetime.fromisoformat(derived).isoformat(), standard_iso)
+            # We know that fromisoformat is used internally by read_one_calib
+            # so have explicit test here to make sure the date formats we
+            # expect will work.
+            self.assertEqual(datetime.fromisoformat(valid_start).isoformat(timespec="seconds"), standard_iso)
 
 
 class MemoryTester(lsst.utils.tests.MemoryTestCase):
