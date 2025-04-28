@@ -742,6 +742,10 @@ class DefineVisitsTask(Task):
         # transaction per visit.  If a visit already exists, we skip all other
         # inserts.
         self.log.info("Computing regions and other metadata for %d visit(s).", len(definitions))
+        n_skipped: int = 0
+        n_new: int = 0
+        n_fully_updated: int = 0
+        n_partially_updated: int = 0
         for visitDefinition in self.progress.wrap(
             definitions, total=len(definitions), desc="Computing regions and inserting visits"
         ):
@@ -792,6 +796,7 @@ class DefineVisitsTask(Task):
                             len(visitRecords.visit_detector_region),
                             visitRecords.visit.id,
                         )
+                        n_new += 1
                     # Cast below is because MyPy can't determine that
                     # inserted_or_updated can only be False if update_records
                     # is True.
@@ -809,11 +814,13 @@ class DefineVisitsTask(Task):
                             len(visitRecords.visit_detector_region),
                             visitRecords.visit.id,
                         )
+                        n_fully_updated += 1
                     else:
                         self.log.verbose(
                             "Updated visit %s without modifying visit_detector_region records.",
                             visitRecords.visit.id,
                         )
+                        n_partially_updated += 1
 
                     # Update obscore exposure records with region information
                     # from corresponding visits.
@@ -831,7 +838,16 @@ class DefineVisitsTask(Task):
                                 )
                 else:
                     self.log.verbose("Skipped already-existing visit %s.", visitRecords.visit.id)
-        self.log.info("Finished writing database records for %d visit(s).", len(definitions))
+                    n_skipped += 1
+        self.log.info(
+            "Finished writing database records for %d visit(s): %s left unchanged, %s new, "
+            "%s updated with new detector regions, %s updated without new detector regions.",
+            len(definitions),
+            n_skipped,
+            n_new,
+            n_fully_updated,
+            n_partially_updated,
+        )
 
 
 _T = TypeVar("_T")
