@@ -787,6 +787,11 @@ class DefineVisitsTask(Task):
                             *visitRecords.visit_detector_region,
                             replace=False,
                         )
+                        self.log.verbose(
+                            "Inserted %s visit_detector_region records for new visit %s.",
+                            len(visitRecords.visit_detector_region),
+                            visitRecords.visit.id,
+                        )
                     # Cast below is because MyPy can't determine that
                     # inserted_or_updated can only be False if update_records
                     # is True.
@@ -798,6 +803,16 @@ class DefineVisitsTask(Task):
                             "visit_detector_region",
                             *visitRecords.visit_detector_region,
                             replace=True,
+                        )
+                        self.log.verbose(
+                            "Re-inserted %s visit_detector_region records for updated visit %s.",
+                            len(visitRecords.visit_detector_region),
+                            visitRecords.visit.id,
+                        )
+                    else:
+                        self.log.verbose(
+                            "Updated visit %s without modifying visit_detector_region records.",
+                            visitRecords.visit.id,
                         )
 
                     # Update obscore exposure records with region information
@@ -814,6 +829,9 @@ class DefineVisitsTask(Task):
                                 obscore_manager.update_exposure_regions(
                                     cast(str, instrument), obscore_updates
                                 )
+                else:
+                    self.log.verbose("Skipped already-existing visit %s.", visitRecords.visit.id)
+        self.log.info("Finished writing database records for %d visit(s).", len(definitions))
 
 
 _T = TypeVar("_T")
