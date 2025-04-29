@@ -25,9 +25,11 @@ __all__ = (
     "bboxFromIraf",
     "createInitialSkyWcs",
     "createInitialSkyWcsFromBoresight",
+    "iso_date_to_curated_calib_file_root",
     "strip_provenance_from_fits_header",
 )
 
+import datetime
 import re
 from collections.abc import MutableMapping
 
@@ -269,3 +271,26 @@ def strip_provenance_from_fits_header(hdr: MutableMapping | PropertyList) -> Non
     for k in list(hdr):
         if k.startswith(_PROVENANCE_PREFIX):
             del hdr[k]
+
+
+def iso_date_to_curated_calib_file_root(valid_start: str) -> str:
+    """Parse an ISO time, potentially from a calibration valid start time,
+    and convert to form suitable for use in a curated calibration filename.
+
+    Parameters
+    ----------
+    valid_start : `str`
+        Validity start time in ISOT format.
+
+    Returns
+    -------
+    date_str : `str`
+        Form suitable for use in a curated calibration file name in a
+        data package: YYYYMMDDTHHMMSS.
+    """
+    # Parse the ISO string to ensure conformity if there is an edit to
+    # valid_start.
+    valid_date = datetime.datetime.fromisoformat(valid_start)
+
+    # Drop any fractional seconds.
+    return re.sub(r"\W", "", valid_date.isoformat(timespec="seconds"))
