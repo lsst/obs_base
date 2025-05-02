@@ -75,7 +75,7 @@ def defineVisits(
     """
     if not collections:
         collections = None
-    butler = Butler(repo, collections=collections, writeable=True)
+    butler = Butler.from_config(repo, collections=collections, writeable=True)
     instr = Instrument.from_string(instrument, butler.registry)
     config = DefineVisitsConfig()
     instr.applyConfigOverrides(DefineVisitsTask._DefaultName, config)
@@ -94,28 +94,29 @@ def defineVisits(
         )
         config.groupExposures.name = legacy
 
-    if collections is None:
-        # Default to the raw collection for this instrument
-        collections = instr.makeDefaultRawIngestRunName()
-        log.info("Defaulting to searching for raw exposures in collection %s", collections)
-
     if not where:
-        where = None
+        where = ""
 
     if config_file is not None:
         config.load(config_file)
     task = DefineVisitsTask(config=config, butler=butler)
 
+    with butler.query() as query:
+        query = query.join_dimensions(["exposure"]).where(where, instrument=instr.getName())
+        if not {"tracking_ra", "tracking_dec", "sky_angle"}.issubset(exposure_dimension.metadata.names):
+            # Old dimension universes don't have boresight in exposure record,
+            # so we need load raw.wcs.
+            if collections is None:
+                # Default to the raw collection for this instrument
+                collections = instr.makeDefaultRawIngestRunName()
+                log.info("Defaulting to searching for raw exposures in collection %s", collections)
+            query = query.join_dataset_search(raw_name, collections)
+        data_ids = list(query.data_ids(["exposure"]).with_dimension_records())
+
     # Assume the dataset type is "raw" -- this is required to allow this
     # query to filter out exposures not relevant to the specified collection.
     task.run(
-        butler.registry.queryDataIds(
-            ["exposure"],
-            dataId={"instrument": instr.getName()},
-            collections=collections,
-            datasets=raw_name,
-            where=where,
-        ).expanded(),
+        data_ids,
         collections=collections,
         update_records=update_records,
         incremental=incremental,
