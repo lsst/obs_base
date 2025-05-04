@@ -35,7 +35,6 @@ def defineVisits(
     where=None,
     update_records=False,
     incremental=False,
-    raw_name="raw",
 ):
     """Implement the command line interface `butler define-visits` subcommand,
     should only be called by command line tools and unit test code that tests
@@ -65,8 +64,6 @@ def defineVisits(
         Declare that the visit definitions are being run in a situation
         where data from multi-snap visits are being ingested incrementally
         and so the visit definition could change as new data arrive.
-    raw_name : `str`, optional
-        Name of the raw dataset type name.  Defaults to 'raw'.
 
     Notes
     -----
@@ -103,18 +100,8 @@ def defineVisits(
 
     with butler.query() as query:
         query = query.join_dimensions(["exposure"]).where(where, instrument=instr.getName())
-        if not {"tracking_ra", "tracking_dec", "sky_angle"}.issubset(exposure_dimension.metadata.names):
-            # Old dimension universes don't have boresight in exposure record,
-            # so we need load raw.wcs.
-            if collections is None:
-                # Default to the raw collection for this instrument
-                collections = instr.makeDefaultRawIngestRunName()
-                log.info("Defaulting to searching for raw exposures in collection %s", collections)
-            query = query.join_dataset_search(raw_name, collections)
         data_ids = list(query.data_ids(["exposure"]).with_dimension_records())
 
-    # Assume the dataset type is "raw" -- this is required to allow this
-    # query to filter out exposures not relevant to the specified collection.
     task.run(
         data_ids,
         collections=collections,

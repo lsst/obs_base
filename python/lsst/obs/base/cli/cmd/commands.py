@@ -95,7 +95,7 @@ def convert(*args, **kwargs):
 )
 @click.option(
     "--collections",
-    help="The collections to be searched (in order) when reading datasets.",
+    help="The collections to be searched (in order) for camera geometry.",
     multiple=True,
     callback=split_commas,
     metavar=typeStrAcceptsMultiple,
