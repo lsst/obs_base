@@ -35,7 +35,6 @@ def defineVisits(
     where=None,
     update_records=False,
     incremental=False,
-    raw_name="raw",
 ):
     """Implement the command line interface `butler define-visits` subcommand,
     should only be called by command line tools and unit test code that tests
@@ -65,8 +64,6 @@ def defineVisits(
         Declare that the visit definitions are being run in a situation
         where data from multi-snap visits are being ingested incrementally
         and so the visit definition could change as new data arrive.
-    raw_name : `str`, optional
-        Name of the raw dataset type name.  Defaults to 'raw'.
 
     Notes
     -----
@@ -75,7 +72,7 @@ def defineVisits(
     """
     if not collections:
         collections = None
-    butler = Butler(repo, collections=collections, writeable=True)
+    butler = Butler.from_config(repo, collections=collections, writeable=True)
     instr = Instrument.from_string(instrument, butler.registry)
     config = DefineVisitsConfig()
     instr.applyConfigOverrides(DefineVisitsTask._DefaultName, config)
@@ -94,28 +91,19 @@ def defineVisits(
         )
         config.groupExposures.name = legacy
 
-    if collections is None:
-        # Default to the raw collection for this instrument
-        collections = instr.makeDefaultRawIngestRunName()
-        log.info("Defaulting to searching for raw exposures in collection %s", collections)
-
     if not where:
-        where = None
+        where = ""
 
     if config_file is not None:
         config.load(config_file)
     task = DefineVisitsTask(config=config, butler=butler)
 
-    # Assume the dataset type is "raw" -- this is required to allow this
-    # query to filter out exposures not relevant to the specified collection.
+    with butler.query() as query:
+        query = query.join_dimensions(["exposure"]).where(where, instrument=instr.getName())
+        data_ids = list(query.data_ids(["exposure"]).with_dimension_records())
+
     task.run(
-        butler.registry.queryDataIds(
-            ["exposure"],
-            dataId={"instrument": instr.getName()},
-            collections=collections,
-            datasets=raw_name,
-            where=where,
-        ).expanded(),
+        data_ids,
         collections=collections,
         update_records=update_records,
         incremental=incremental,

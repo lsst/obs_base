@@ -481,7 +481,6 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             config_file=None,
             collections=self.outputRun,
             instrument=self.instrumentName,
-            raw_name=self.ingestDatasetTypeName,
         )
 
         # Test that we got the visits we expected.

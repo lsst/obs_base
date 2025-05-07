@@ -359,10 +359,9 @@ class ComputeVisitRegionsTask(Task, metaclass=ABCMeta):
         visit : `VisitDefinitionData`
             Struct describing the visit and the exposures associated with it.
         collections : `Sequence` [ `str` ] or `str` or `None`
-            Collections to be searched for raws and camera geometry, overriding
-            ``self.butler.collections.defaults``.
-            Can be any of the types supported by the ``collections`` argument
-            to butler construction.
+            Collections to be searched for camera geometry, overriding
+            ``self.butler.collections.defaults``. Can be any of the types
+            supported by the ``collections`` argument to butler construction.
 
         Returns
         -------
@@ -415,8 +414,8 @@ class DefineVisitsTask(Task):
     config : `DefineVisitsConfig`
         Configuration for the task.
     butler : `~lsst.daf.butler.Butler`
-        Writeable butler instance.  Will be used to read `raw.wcs` and `camera`
-        datasets and insert/sync dimension data.
+        Writeable butler instance.  Will be used to read ``camera`` datasets
+        and insert/sync dimension data.
     **kwargs
         Additional keyword arguments are forwarded to the `lsst.pipe.base.Task`
         constructor.
@@ -428,20 +427,17 @@ class DefineVisitsTask(Task):
     exposures into one or more new visits, all belonging to the same visit
     system and instrument.
 
-    The actual work of grouping exposures and computing regions is delegated
-    to pluggable subtasks (`GroupExposuresTask` and `ComputeVisitRegionsTask`),
-    respectively.  The defaults are to create one visit for every exposure,
-    and to use exactly one (arbitrary) detector-level raw dataset's WCS along
-    with camera geometry to compute regions for all detectors.  Other
+    The actual work of grouping exposures and computing regions is delegated to
+    pluggable subtasks (`GroupExposuresTask` and `ComputeVisitRegionsTask`),
+    respectively.  The defaults are to create one visit for every exposure, and
+    to use exactly one (arbitrary) detector-level raw dataset's WCS along with
+    camera geometry to compute regions for all detectors, but the raw WCS is
+    recomputed from the ``exposure`` dimension record's rotation angle and
+    boresight rather than by loading the ``raw.wcs`` dataset directly.  Other
     implementations can be created and configured for instruments for which
     these choices are unsuitable (e.g. because visits and exposures are not
     one-to-one, or because ``raw.wcs`` datasets for different detectors may not
     be consistent with camera geometry).
-
-    It is not necessary in general to ingest all raws for an exposure before
-    defining a visit that includes the exposure; this depends entirely on the
-    `ComputeVisitRegionTask` subclass used.  For the default configuration,
-    a single raw for each exposure is sufficient.
 
     Defining the same visit the same way multiple times (e.g. via multiple
     invocations of this task on the same exposures, with the same
@@ -481,10 +477,9 @@ class DefineVisitsTask(Task):
             Struct with identifiers for the visit and records for its
             constituent exposures.
         collections : `Sequence` [ `str` ] or `str` or `None`
-            Collections to be searched for raws and camera geometry, overriding
-            ``self.butler.collections.defaults``.
-            Can be any of the types supported by the ``collections`` argument
-            to butler construction.
+            Collections to be searched for camera geometry, overriding
+            ``self.butler.collections.defaults``. Can be any of the types
+            supported by the ``collections`` argument to butler construction.
 
         Results
         -------
@@ -639,10 +634,9 @@ class DefineVisitsTask(Task):
             Exposure-level data IDs.  These must all correspond to the same
             instrument, and are expected to be on-sky science exposures.
         collections : `Sequence` [ `str` ] or `str` or `None`
-            Collections to be searched for raws and camera geometry, overriding
-            ``self.butler.collections.defaults``.
-            Can be any of the types supported by the ``collections`` argument
-            to butler construction.
+            Collections to be searched for camera geometry, overriding
+            ``self.butler.collections.defaults``. Can be any of the types
+            supported by the ``collections`` argument to butler construction.
         update_records : `bool`, optional
             If `True` (`False` is default), update existing ``visit`` records
             and ``visit_detector_region`` records.  THIS IS AN ADVANCED OPTION
@@ -1232,9 +1226,10 @@ class _ComputeVisitRegionsFromSingleRawWcsConfig(ComputeVisitRegionsConfig):
 
 @registerConfigurable("single-raw-wcs", ComputeVisitRegionsTask.registry)
 class _ComputeVisitRegionsFromSingleRawWcsTask(ComputeVisitRegionsTask):
-    """A visit region calculator that uses a single raw WCS and a camera to
-    project the bounding boxes of all detectors onto the sky, relating
-    different detectors by their positions in focal plane coordinates.
+    """A visit region calculator that uses a single raw WCS (recomputed from
+    the ``exposure`` dimension record) and a camera to project the bounding
+    boxes of all detectors onto the sky, relating different detectors by their
+    positions in focal plane coordinates.
 
     Notes
     -----
@@ -1277,57 +1272,31 @@ class _ComputeVisitRegionsFromSingleRawWcsTask(ComputeVisitRegionsTask):
         if not versioned and self.config.requireVersionedCamera:
             raise LookupError(f"No versioned camera found for exposure {exposure.dataId}.")
 
-        # Derive WCS from boresight information -- if available in registry
-        use_registry = True
-        try:
-            orientation = lsst.geom.Angle(exposure.sky_angle, lsst.geom.degrees)
-            radec = lsst.geom.SpherePoint(
-                lsst.geom.Angle(exposure.tracking_ra, lsst.geom.degrees),
-                lsst.geom.Angle(exposure.tracking_dec, lsst.geom.degrees),
-            )
-        except AttributeError:
-            use_registry = False
+        orientation = lsst.geom.Angle(exposure.sky_angle, lsst.geom.degrees)
+        radec = lsst.geom.SpherePoint(
+            lsst.geom.Angle(exposure.tracking_ra, lsst.geom.degrees),
+            lsst.geom.Angle(exposure.tracking_dec, lsst.geom.degrees),
+        )
 
-        if use_registry:
-            if self.config.detectorId is None:
-                detectorId = next(camera.getIdIter())
-            else:
-                detectorId = self.config.detectorId
-            wcsDetector = camera[detectorId]
-
-            # Ask the raw formatter to create the relevant WCS
-            # This allows flips to be taken into account
-            instrument = self.getInstrument(exposure.instrument)
-            rawFormatter = instrument.getRawFormatter({"detector": detectorId})
-
-            try:
-                wcs = rawFormatter.makeRawSkyWcsFromBoresight(radec, orientation, wcsDetector)  # type: ignore
-            except AttributeError:
-                raise TypeError(
-                    f"Raw formatter is {get_full_type_name(rawFormatter)} but visit"
-                    " definition requires it to support 'makeRawSkyWcsFromBoresight'"
-                ) from None
+        if self.config.detectorId is None:
+            detectorId = next(camera.getIdIter())
         else:
-            if self.config.detectorId is None:
-                wcsRefsIter = self.butler.registry.queryDatasets(
-                    "raw.wcs", dataId=exposure.dataId, collections=collections
-                )
-                if not wcsRefsIter:
-                    raise LookupError(
-                        f"No raw.wcs datasets found for data ID {exposure.dataId} "
-                        f"in collections {collections}."
-                    )
-                wcsRef = next(iter(wcsRefsIter))
-                wcsDetector = camera[wcsRef.dataId["detector"]]
-                wcs = self.butler.get(wcsRef)
-            else:
-                wcsDetector = camera[self.config.detectorId]
-                wcs = self.butler.get(
-                    "raw.wcs",
-                    dataId=exposure.dataId,
-                    detector=self.config.detectorId,
-                    collections=collections,
-                )
+            detectorId = self.config.detectorId
+        wcsDetector = camera[detectorId]
+
+        # Ask the raw formatter to create the relevant WCS
+        # This allows flips to be taken into account
+        instrument = self.getInstrument(exposure.instrument)
+        rawFormatter = instrument.getRawFormatter({"detector": detectorId})
+
+        try:
+            wcs = rawFormatter.makeRawSkyWcsFromBoresight(radec, orientation, wcsDetector)  # type: ignore
+        except AttributeError:
+            raise TypeError(
+                f"Raw formatter is {get_full_type_name(rawFormatter)} but visit"
+                " definition requires it to support 'makeRawSkyWcsFromBoresight'"
+            ) from None
+
         fpToSky = wcsDetector.getTransform(FOCAL_PLANE, PIXELS).then(wcs.getTransform())
         bounds = {}
         for detector in camera:
