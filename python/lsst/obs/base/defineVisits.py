@@ -414,8 +414,8 @@ class DefineVisitsTask(Task):
     config : `DefineVisitsConfig`
         Configuration for the task.
     butler : `~lsst.daf.butler.Butler`
-        Writeable butler instance.  Will be used to read `camera` datasets and
-        insert/sync dimension data.
+        Writeable butler instance.  Will be used to read ``camera`` datasets
+        and insert/sync dimension data.
     **kwargs
         Additional keyword arguments are forwarded to the `lsst.pipe.base.Task`
         constructor.
@@ -634,7 +634,7 @@ class DefineVisitsTask(Task):
             Exposure-level data IDs.  These must all correspond to the same
             instrument, and are expected to be on-sky science exposures.
         collections : `Sequence` [ `str` ] or `str` or `None`
-            Collections to be searched forcamera geometry, overriding
+            Collections to be searched for camera geometry, overriding
             ``self.butler.collections.defaults``. Can be any of the types
             supported by the ``collections`` argument to butler construction.
         update_records : `bool`, optional
