@@ -28,12 +28,13 @@ from collections.abc import Iterable, Mapping
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+from tqdm.notebook import tqdm
 
 from lsst.afw.cameraGeom import FIELD_ANGLE, PIXELS, Camera, Detector
 from lsst.afw.geom import SkyWcs, makeSkyWcs
 from lsst.daf.butler import Butler, DataCoordinate, DatasetNotFoundError, DimensionRecord
 from lsst.daf.butler.queries import Query
-from lsst.geom import Angle, Point2D, SpherePoint, degrees
+from lsst.geom import Angle, Point2D, SpherePoint, degrees, SphereTransform
 from lsst.sphgeom import ConvexPolygon, UnitVector3d
 
 from ._instrument import Instrument, loadCamera
@@ -130,7 +131,7 @@ class VisitGeometry:
         self.instrument = Instrument.fromName(self.visit_record.instrument, butler.registry)
         if camera is None:
             camera, _ = loadCamera(butler, self.exposure_records[0].dataId, collections=collections)
-        for detector_id in self.detector_region_records.keys():
+        for detector_id in tqdm(self.detector_region_records.keys(), "Remaking raw WCS."):
             self.detectors[detector_id] = VisitDetectorGeometry.build(
                 camera[detector_id],
                 self.instrument,
@@ -138,7 +139,7 @@ class VisitGeometry:
                 self.orientation,
             )
             self.wcs_flip_x = self.detectors[detector_id].wcs_flip_x
-        for dataset_type in dataset_types:
+        for dataset_type in tqdm(dataset_types, "Loading visit summaries."):
             missing_detectors = self.get_missing_detectors()
             if not missing_detectors:
                 break
@@ -161,12 +162,12 @@ class VisitGeometry:
     def fit_pointing(self) -> tuple[SpherePoint, Angle]:
         fit_vectors = []
         raw_vectors = []
-        y_axis_vector: UnitVector3d | None = None
+        y_axis_point: SpherePoint | None = None
         for detector_geometry in self.detectors.values():
             if detector_geometry.fit_region is not None:
                 fit_vectors.extend(detector_geometry.fit_region.getVertices())
                 raw_vectors.extend(detector_geometry.raw_region.getVertices())
-            if y_axis_vector is None:
+            if y_axis_point is None:
                 # Define a point at (0, 1deg) in the FIELD_ANGLE system,
                 # according to the raw WCS, to let us fit the rotation angle.
                 # We could do this with any detector and get the same answer.
@@ -174,20 +175,18 @@ class VisitGeometry:
                 # raw WCS goes from pixels to field angle to sky, because that
                 # minimizes how much this code knows about how the rotation
                 # angle is defined.
-                y_axis_vector = detector_geometry.raw_wcs.pixelToSky(
+                y_axis_point = detector_geometry.raw_wcs.pixelToSky(
                     detector_geometry.detector.transform(Point2D(0.0, np.pi / 180.0), FIELD_ANGLE, PIXELS)
-                ).getVector()
+                )
         # Fit (in the least-squares sense) for the 3-d rotation that best maps
         # the raw_vectors onto the fit_vectors.
         # See https://igl.ethz.ch/projects/ARAP/svd_rot.pdf for derivation.
         fit_matrix = np.array(fit_vectors)
         raw_matrix = np.array(raw_vectors)
-        u, _, vt = np.linalg.svd(np.dot(raw_matrix.transpose(), fit_matrix))
-        d = np.array([1.0, 1.0, np.linalg.det(np.dot(vt.transpose(), u))], dtype=np.float64)
-        rotation_matrix = np.dot(vt.transpose(), np.dot(np.diag(d), u.transpose()))
-        new_boresight = SpherePoint(UnitVector3d(*np.dot(rotation_matrix, self.boresight.getVector())))
-        new_y_axis_vector = UnitVector3d(*np.dot(rotation_matrix, y_axis_vector))
-        new_orientation = Angle(90, degrees) - new_boresight.bearingTo(SpherePoint(new_y_axis_vector))
+        rotation = SphereTransform.fit_unit_vectors(raw_matrix, fit_matrix)
+        new_boresight = rotation(self.boresight)
+        new_y_axis_point = rotation(y_axis_point)
+        new_orientation = Angle(90, degrees) - new_boresight.bearingTo(new_y_axis_point)
         if self.wcs_flip_x:
             # TODO: test this logic branch on an appropriate camera!  ComCam
             # doesn't exercise it.
