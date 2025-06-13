@@ -23,14 +23,16 @@
 subcommand plugins that are provided by this package.
 """
 
+from typing import cast
+
 import click
 
-from lsst.utils import doImport
+from lsst.utils import doImportType
 
 from .. import cmd
 
 
-class ButlerCmdDocGen(click.MultiCommand):
+class ButlerCmdDocGen(click.Group):
     """Provide access of butler subcommand plugins to Sphinx."""
 
     def list_commands(self, ctx):
@@ -48,22 +50,22 @@ class ButlerCmdDocGen(click.MultiCommand):
         """
         return cmd.__all__
 
-    def get_command(self, context, name):
+    def get_command(self, ctx: click.Context, cmd_name: str) -> click.Command | None:
         """Get a click command provided by this package.
 
         Parameters
         ----------
-        ctx : click.Context
+        ctx : `click.Context`
             The current Click context.
-        name : string
+        cmd_name : `str`
             The name of the command to return.
 
         Returns
         -------
-        command : click.Command
+        command : `click.Command`
             A Command that wraps a callable command function.
         """
-        return doImport("lsst.obs.base.cli.cmd." + name)
+        return cast(click.Command | None, doImportType("lsst.obs.base.cli.cmd." + cmd_name))
 
 
 @click.command(cls=ButlerCmdDocGen)
