@@ -223,7 +223,7 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
             for n, amp in enumerate(detector):
                 for amp_parameter in [amp, amp.getName(), n]:
                     for parameters in [{"amp": amp_parameter}, {"amp": amp_parameter, "detector": detector}]:
-                        with self.subTest(parameters=parameters):
+                        with self.subTest(parameters=repr(parameters)):
                             # Make a new formatter that points at the new file
                             # and has the right parameters.
                             formatter = SimpleFitsRawFormatter(
