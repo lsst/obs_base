@@ -121,13 +121,25 @@ def createInitialSkyWcsFromBoresight(boresight, orientation, detector, flipX=Fal
         Raised if there is an error generating the SkyWcs, chained from the
         lower-level exception if available.
     """
+    camera_parity = detector.getTransformMap().getFocalPlaneParity()
+    actual_flip_x = False
+    if flipX and not camera_parity:
+        # This is probably an old camera definition from before those could
+        # hold parity flips.  We need to work around this since data
+        # repositories aren't necessarily updated in sync with code.
+        actual_flip_x = True
+    elif not flipX and camera_parity:
+        raise InitialSkyWcsError(
+            "Camera geometry reports a parity flip between FOCAL_PLANE and FIELD_ANGLE, but this "
+            "was not expected by caller for this instrument."
+        )
     try:
         pixelsToFieldAngle = detector.getTransform(
             detector.makeCameraSys(PIXELS), detector.makeCameraSys(FIELD_ANGLE)
         )
     except lsst.pex.exceptions.InvalidParameterError as e:
         raise InitialSkyWcsError("Cannot compute PIXELS to FIELD_ANGLE Transform.") from e
-    return makeSkyWcs(pixelsToFieldAngle, orientation, flipX, boresight)
+    return makeSkyWcs(pixelsToFieldAngle, orientation, actual_flip_x, boresight)
 
 
 def bboxFromIraf(irafBBoxStr):

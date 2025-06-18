@@ -23,7 +23,7 @@ __all__ = ("FitsRawFormatterBase",)
 
 import logging
 from abc import abstractmethod
-from typing import Any
+from typing import Any, ClassVar
 
 from astro_metadata_translator import ObservationInfo, fix_header
 
@@ -48,9 +48,9 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
 
     ReaderClass = lsst.afw.image.ImageFitsReader
 
-    # This has to be explicit until we fix camera geometry in DM-20746
-    wcsFlipX = False
-    """Control whether the WCS is flipped in the X-direction (`bool`)"""
+    wcsFlipX: ClassVar[bool] = False
+    """Control whether the WCS is flipped in the X-direction (`bool`).
+    """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
