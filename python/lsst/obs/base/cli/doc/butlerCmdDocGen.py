@@ -30,7 +30,7 @@ from lsst.utils import doImport
 from .. import cmd
 
 
-class ButlerCmdDocGen(click.MultiCommand):
+class ButlerCmdDocGen(click.Group):
     """Provide access of butler subcommand plugins to Sphinx."""
 
     def list_commands(self, ctx):
