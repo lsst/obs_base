@@ -427,6 +427,7 @@ datastore:
             # Modify some metadata and repeat the process to update the
             # exposure.
             metadata["exposure_time"] *= 2.0
+            metadata["exposure_time_requested"] *= 2.0
             with open(sidecar_filename, "w") as sidecar_file:
                 json.dump(metadata, sidecar_file)
             task.run(
