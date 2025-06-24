@@ -498,7 +498,7 @@ class RawIngestTask(Task):
             "detector_num",
             "exposure_group",
             "exposure_id",
-            "exposure_time",
+            "exposure_time_requested",
             "group_counter_end",
             "group_counter_start",
             "has_simulated_content",
