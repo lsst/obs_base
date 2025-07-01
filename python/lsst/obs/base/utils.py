@@ -55,7 +55,7 @@ class InitialSkyWcsError(Exception):
     pass
 
 
-def createInitialSkyWcs(visitInfo, detector, flipX=False):
+def createInitialSkyWcs(visitInfo, detector, flipX=None):
     """Create a SkyWcs from the visit information and detector geometry.
 
     A typical use case for this is to create the initial WCS for a newly-read
@@ -68,8 +68,10 @@ def createInitialSkyWcs(visitInfo, detector, flipX=False):
         Where to get the telescope boresight and rotator angle from.
     detector : `lsst.afw.cameraGeom.Detector`
         Where to get the camera geometry from.
-    flipX : `bool`, optional
-        If False, +X is along W, if True +X is along E.
+    flipX : `bool` or `None`, optional
+        If `False`, +X is along W, if `True` +X is along E.  If `None`, the
+        focal plane parity in the camera geometry is assumed to be correct,
+        which may not be true for old camera datasets.
 
     Returns
     -------
@@ -93,7 +95,7 @@ def createInitialSkyWcs(visitInfo, detector, flipX=False):
     return createInitialSkyWcsFromBoresight(boresight, orientation, detector, flipX)
 
 
-def createInitialSkyWcsFromBoresight(boresight, orientation, detector, flipX=False):
+def createInitialSkyWcsFromBoresight(boresight, orientation, detector, flipX=None):
     """Create a SkyWcs from the telescope boresight and detector geometry.
 
     A typical usecase for this is to create the initial WCS for a newly-read
@@ -107,8 +109,10 @@ def createInitialSkyWcsFromBoresight(boresight, orientation, detector, flipX=Fal
         The rotation angle of the focal plane on the sky.
     detector : `lsst.afw.cameraGeom.Detector`
         Where to get the camera geometry from.
-    flipX : `bool`, optional
-        If False, +X is along W, if True +X is along E.
+    flipX : `bool` or `None`, optional
+        If `False`, +X is along W, if `True` +X is along E.  If `None`, the
+        focal plane parity in the camera geometry is assumed to be correct,
+        which may not be true for old camera datasets.
 
     Returns
     -------
@@ -121,13 +125,25 @@ def createInitialSkyWcsFromBoresight(boresight, orientation, detector, flipX=Fal
         Raised if there is an error generating the SkyWcs, chained from the
         lower-level exception if available.
     """
+    camera_parity = detector.getTransformMap().getFocalPlaneParity()
+    actual_flip_x = False
+    if flipX and not camera_parity:
+        # This is probably an old camera definition from before those could
+        # hold parity flips.  We need to work around this since data
+        # repositories aren't necessarily updated in sync with code.
+        actual_flip_x = True
+    elif flipX is not None and not flipX and camera_parity:
+        raise InitialSkyWcsError(
+            "Camera geometry reports a parity flip between FOCAL_PLANE and FIELD_ANGLE, but this "
+            "was not expected by caller for this instrument."
+        )
     try:
         pixelsToFieldAngle = detector.getTransform(
             detector.makeCameraSys(PIXELS), detector.makeCameraSys(FIELD_ANGLE)
         )
     except lsst.pex.exceptions.InvalidParameterError as e:
         raise InitialSkyWcsError("Cannot compute PIXELS to FIELD_ANGLE Transform.") from e
-    return makeSkyWcs(pixelsToFieldAngle, orientation, flipX, boresight)
+    return makeSkyWcs(pixelsToFieldAngle, orientation, actual_flip_x, boresight)
 
 
 def bboxFromIraf(irafBBoxStr):
