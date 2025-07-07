@@ -60,12 +60,20 @@ def makeCamera(cameraFile):
 
     ccdParams = cameraParams["CCDs"]
     detectorConfigList = makeDetectorConfigList(ccdParams)
+    focalPlaneParity = cameraParams.get("focalPlaneParity", False)
 
     amplifierDict = {}
     for ccdName, ccdValues in ccdParams.items():
         amplifierDict[ccdName] = makeAmplifierList(ccdValues)
 
-    return makeCameraFromCatalogs(cameraName, detectorConfigList, nativeSys, transforms, amplifierDict)
+    return makeCameraFromCatalogs(
+        cameraName,
+        detectorConfigList,
+        nativeSys,
+        transforms,
+        amplifierDict,
+        focalPlaneParity=focalPlaneParity,
+    )
 
 
 def makeDetectorConfigList(ccdParams):
@@ -277,6 +285,7 @@ def makeCameraFromCatalogs(
     transformDict,
     amplifierDict,
     pupilFactoryClass=cameraGeom.pupil.PupilFactory,
+    focalPlaneParity=False,
 ):
     """Construct a Camera instance from a dictionary of
     detector name and `lsst.afw.cameraGeom.Amplifier`.
@@ -298,6 +307,9 @@ def makeCameraFromCatalogs(
     pupilFactoryClass : `type` [ `lsst.default afw.cameraGeom.PupilFactory`], \
             optional
         Class to attach to camera.
+    focalPlaneParity : `bool`, optional
+        If `True`, the X axis is flipped between the FOCAL_PLANE and
+        FIELD_ANGLE coordinate systems.
 
     Returns
     -------
@@ -320,6 +332,7 @@ def makeCameraFromCatalogs(
 
     cameraBuilder = Camera.Builder(cameraName)
     cameraBuilder.setPupilFactoryClass(pupilFactoryClass)
+    cameraBuilder.setFocalPlaneParity(focalPlaneParity)
 
     # Ensure all transforms in the camera transform dict are included.
     for toSys, transform in transformDict.items():
