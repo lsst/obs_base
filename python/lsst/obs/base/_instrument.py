@@ -246,15 +246,11 @@ class Instrument(InstrumentBase):
             Butler to use to store these calibrations.
         collection : `str`, optional
             Name to use for the calibration collection that associates all
-            datasets with a validity range.  If this collection already exists,
-            it must be a `~CollectionType.CALIBRATION` collection, and it must
-            not have any datasets that would conflict with those inserted by
-            this method.  If `None`, a collection name is worked out
-            automatically from the instrument name and other metadata by
-            calling ``makeCalibrationCollectionName``, but this
-            default name may not work well for long-lived repositories unless
-            ``labels`` is also provided (and changed every time curated
-            calibrations are ingested).
+            datasets with a validity range.  Since this just sets the name of
+            the `~CollectionType.CALIBRATION` collection, not the
+            `~CollectionType.RUN` collections that references, this should
+            almost always be `None`, in favor of either initializing the
+            `Instrument` with a collection prefix or passing ``labels``.
         labels : `Sequence` [ `str` ], optional
             Extra strings to include in collection names, after concatenating
             them with the standard collection name delimiter.  If provided,
