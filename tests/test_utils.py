@@ -22,11 +22,15 @@
 import unittest
 from datetime import datetime
 
+import astropy.table
+import numpy as np
+
 import lsst.geom as geom
 import lsst.obs.base as obsBase
 import lsst.utils.tests
 from lsst.daf.base import PropertyList
-from lsst.obs.base.utils import _store_str_header
+from lsst.obs.base.utils import TableVStack, _store_str_header
+from lsst.pipe.base._dataset_handle import InMemoryDatasetHandle
 
 
 class BboxFromIrafTestCase(lsst.utils.tests.TestCase):
@@ -99,6 +103,59 @@ class TestCalibDates(unittest.TestCase):
             # so have explicit test here to make sure the date formats we
             # expect will work.
             self.assertEqual(datetime.fromisoformat(valid_start).isoformat(timespec="seconds"), standard_iso)
+
+
+class TableVStackTestCase(unittest.TestCase):
+    """Unit tests for lsst.pipe.base.utils.TableVStack."""
+
+    def setUp(self):
+        self.len_table1 = 5
+        self.len_table2 = 6
+        self.table1 = astropy.table.Table(
+            {
+                "x": np.arange(self.len_table1),
+                "y": np.ma.masked_array(
+                    np.arange(1.0, 1.0 + self.len_table1), mask=np.arange(self.len_table1) < 3
+                ),
+            }
+        )
+        self.table2 = astropy.table.Table(
+            {
+                "x": np.arange(self.len_table2),
+                "y": np.ma.masked_array(
+                    np.arange(-2.0, -2.0 + self.len_table2),
+                    mask=(np.arange(self.len_table2) % 2) == 0,
+                ),
+            }
+        )
+        self.extra_values1 = {"z": -self.table1["x"]}
+        self.extra_values2 = {"z": -self.table2["x"]}
+
+    def test_vstack(self):
+        handles = (
+            InMemoryDatasetHandle(self.table1, storageClass="ArrowAstropy"),
+            InMemoryDatasetHandle(self.table2, storageClass="ArrowAstropy"),
+        )
+        u_stack = TableVStack.vstack_handles(
+            handles=handles,
+            extra_values={
+                idx: extra_values for idx, extra_values in enumerate((self.extra_values1, self.extra_values2))
+            },
+        )
+        ap_stack = astropy.table.vstack((self.table1, self.table2))
+        self.assertEqual(len(u_stack), self.len_table1 + self.len_table2)
+        self.assertEqual(len(u_stack), len(ap_stack))
+
+        ap_stack["z"] = np.concatenate((self.extra_values1["z"], self.extra_values2["z"]))
+        self.assertEqual(u_stack.colnames, ap_stack.colnames)
+        for colname in u_stack.colnames:
+            col_u = u_stack[colname]
+            col_ap = ap_stack[colname]
+            if (mask := getattr(col_u, "mask", None)) is not None:
+                np.testing.assert_array_equal(mask, col_ap.mask)
+                col_u = col_u.data
+                col_ap = col_ap.data
+            np.testing.assert_array_equal(col_u, col_ap)
 
 
 class MemoryTester(lsst.utils.tests.MemoryTestCase):
