@@ -21,6 +21,7 @@
 
 __all__ = (
     "InitialSkyWcsError",
+    "TableVStack",
     "add_provenance_to_fits_header",
     "bboxFromIraf",
     "createInitialSkyWcs",
@@ -31,10 +32,13 @@ __all__ = (
 
 import datetime
 import re
-from collections.abc import MutableMapping
+from collections.abc import Iterable, MutableMapping
+from typing import Any, Self
 
-import astropy
+import astropy.table
+import numpy as np
 from astro_metadata_translator.headers import merge_headers
+from numpy.typing import ArrayLike
 
 import lsst.geom as geom
 import lsst.pex.exceptions
@@ -46,6 +50,8 @@ from lsst.daf.butler import DatasetProvenance, DatasetRef
 
 _PROVENANCE_PREFIX = "LSST BUTLER"
 """The prefix used in FITS headers for butler provenance."""
+
+DeferredHandles = Iterable[lsst.daf.butler.DeferredDatasetHandle]
 
 
 class InitialSkyWcsError(Exception):
@@ -331,15 +337,61 @@ class TableVStack:
     ``join_type="exact"`` argument to `astropy.table.vstack`).
     """
 
-    def __init__(self, capacity):
-        self.index = 0
+    def __init__(self, capacity: int) -> None:
+        self.index: int = 0
         self.capacity = capacity
-        self.result = None
+        self.result: astropy.table.Table | None = None
 
     @classmethod
-    def from_handles(cls, handles):
+    def set_extra_values(
+        cls,
+        table: astropy.table.Table,
+        key: str,
+        values: Any,
+        capacity: int,
+        slicer: slice | None = None,
+        validate: bool = True,
+    ) -> None:
+        """Set extra column values in a slice of a table.
+
+        Parameters
+        ----------
+        table : `astropy.table.Table`
+            The table to set values for.
+        key : `str`
+            The column key.
+        values : `Any`
+            The value(s) to set. Can be a scalar.
+        capacity : `int`
+            The size to initialize the column with, if it doesn't exist yet.
+        slicer : `slice` or `None`, optional
+            A slice to select values to update.
+        validate : `bool`, optional
+            If True and the column already exists, will raise if the new values
+            do not match the existing ones.
+        """
+        if key in table.colnames:
+            column = table[key]
+            if validate and not np.all((table[key] if (slicer is None) else table[key][slicer]) == values):
+                raise RuntimeError(
+                    f"table already contains {column=} with {key=} but values differ from {values=}"
+                )
+            table[key][slicer] = values
+        else:
+            if slicer is None:
+                table[key] = values
+            else:
+                try:
+                    dtype = values.dtype
+                except AttributeError:
+                    dtype = np.dtype(type(values))
+                table[key] = np.empty(capacity, dtype=dtype)
+                table[key][slicer] = values
+
+    @classmethod
+    def from_handles(cls, handles: DeferredHandles) -> Self:
         """Construct from an iterable of
-        `lsst.daf.butler.DeferredDatasetHandle`.
+          `lsst.daf.butler.DeferredDatasetHandle`.
 
         Parameters
         ----------
@@ -357,36 +409,55 @@ class TableVStack:
         capacity = sum(handle.get(component="rowcount") for handle in handles)
         return cls(capacity=capacity)
 
-    def extend(self, table):
+    def extend(self, table: astropy.table.Table, extra_values: dict[str, ArrayLike] | None = None) -> None:
         """Add a single table to the stack.
 
         Parameters
         ----------
         table : `astropy.table.Table`
             An astropy table instance.
+        extra_values : `dict`
+            Dict keyed by column name with an array-like of values to set
+            for this table only.
         """
+        if extra_values is None:
+            extra_values = {}
         if self.result is None:
             self.result = astropy.table.Table()
+            slicer = slice(None, len(table))
             for name in table.colnames:
                 column = table[name]
                 column_cls = type(column)
                 self.result[name] = column_cls.info.new_like([column], self.capacity, name=name)
                 self.result[name][: len(table)] = column
+            for name, values in extra_values.items():
+                self.set_extra_values(
+                    table=self.result,
+                    key=name,
+                    values=values,
+                    capacity=self.capacity,
+                    slicer=slicer,
+                )
             self.index = len(table)
             self.result.meta = table.meta.copy()
         else:
             next_index = self.index + len(table)
-            if set(self.result.colnames) != set(table.colnames):
-                raise TypeError(
-                    "Inconsistent columns in concatentation: "
-                    f"{set(self.result.colnames).symmetric_difference(table.colnames)}"
-                )
+            slicer = slice(self.index, next_index)
             for name in table.colnames:
                 out_col = self.result[name]
                 in_col = table[name]
                 if out_col.dtype != in_col.dtype:
                     raise TypeError(f"Type mismatch on column {name!r}: {out_col.dtype} != {in_col.dtype}.")
-                self.result[name][self.index : next_index] = table[name]
+                self.result[name][slicer] = table[name]
+            for name, values in extra_values.items():
+                self.set_extra_values(
+                    table=self.result,
+                    key=name,
+                    values=values,
+                    capacity=self.capacity,
+                    slicer=slicer,
+                    validate=False,
+                )
             self.index = next_index
             # Butler provenance should be stripped on merge. It will be
             # added by butler on write. No attempt is made here to combine
@@ -395,7 +466,12 @@ class TableVStack:
             strip_provenance_from_fits_header(self.result.meta)
 
     @classmethod
-    def vstack_handles(cls, handles):
+    def vstack_handles(
+        cls,
+        handles: DeferredHandles,
+        extra_values: dict[int, dict[str, ArrayLike]] | None = None,
+        kwargs_get: dict[str, Any] | None = None,
+    ) -> astropy.table.Table:
         """Vertically stack tables represented by deferred dataset handles.
 
         Parameters
@@ -404,19 +480,30 @@ class TableVStack:
                 `lsst.daf.butler.DeferredDatasetHandle` ]
             Iterable of handles.   Must have the "ArrowAstropy" storage class
             and identical columns.
+        extra_values : `dict`
+            Dictionary keyed by index of handle of additional values
+            to pass to extend.
+        kwargs_get : `dict`[`str`, `Any`]
+            Keyword argument-value pairs to pass to handle.get().
 
         Returns
         -------
         table : `astropy.table.Table`
             Concatenated table with the same columns as each input table and
-            the rows of all of them.
+            the rows of all of them, or an empty table if there are no handles.
         """
+        if not handles:
+            return astropy.table.Table()
+        if extra_values is None:
+            extra_values = {}
+        if kwargs_get is None:
+            kwargs_get = {}
         handles = tuple(handles)  # guard against single-pass iterators
         # Ensure that zero length catalogs are not included
-        rowcount = tuple(handle.get(component="rowcount") for handle in handles)
-        handles = tuple(handle for handle, count in zip(handles, rowcount) if count > 0)
+        rowcounts = tuple(handle.get(component="rowcount") for handle in handles)
+        handles = tuple(handle for handle, count in zip(handles, rowcounts) if count > 0)
 
-        vstack = cls.from_handles(handles)
-        for handle in handles:
-            vstack.extend(handle.get())
-        return vstack.result
+        vstack = cls(capacity=np.sum(rowcounts))
+        for idx, handle in enumerate(handles):
+            vstack.extend(handle.get(**kwargs_get), extra_values=extra_values.get(idx))
+        return astropy.table.Table() if vstack.result is None else vstack.result
