@@ -43,9 +43,9 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from pydantic import BaseModel
 
-from lsst.daf.butler import CollectionType, DatasetType, RegistryConfig
+from lsst.daf.butler import CollectionType, DatasetType
 from lsst.daf.butler.formatters.yaml import YamlFormatter
-from lsst.daf.butler.registry.sql_registry import SqlRegistry
+from lsst.daf.butler.tests.utils import create_populated_sqlite_registry
 from lsst.obs.base import FilterDefinition, FilterDefinitionCollection, Instrument
 from lsst.obs.base.yamlCamera import makeCamera
 from lsst.resources import ResourcePath
@@ -230,9 +230,7 @@ class InstrumentTests(metaclass=abc.ABCMeta):
 
     def test_register(self):
         """Test that register() sets appropriate Dimensions."""
-        registryConfig = RegistryConfig()
-        registryConfig["db"] = "sqlite://"
-        registry = SqlRegistry.createFromConfig(registryConfig)
+        registry = create_populated_sqlite_registry().registry
         # Check that the registry starts out empty.
         self.assertFalse(registry.queryDataIds(["instrument"]).toSequence())
         self.assertFalse(registry.queryDataIds(["detector"]).toSequence())
