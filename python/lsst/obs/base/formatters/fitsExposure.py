@@ -658,17 +658,20 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
                             maxY = bbox.getEndY() - full_bbox.getBeginY()
                             data = hdu.section[minY:maxY, minX:maxX]
 
-                            # Must correct the header to take into account the
-                            # offset.
-                            for x, y in (("CRPIX1", "CRPIX2"), ("LTV1", "LTV2")):
-                                if x in hdr:
-                                    hdr[x] -= bbox.getBeginX()
-                                if y in hdr:
-                                    hdr[y] -= bbox.getBeginY()
-                            if "CRVAL1A" in hdr:
-                                hdr["CRVAL1A"] += bbox.getBeginX()
-                            if "CRVAL2A" in hdr:
-                                hdr["CRVAL2A"] += bbox.getBeginY()
+                            # Must correct the header WCS to take into
+                            # account the offset.
+                            if (k := "CRPIX1") in hdr:
+                                hdr[k] -= minX
+                            if (k := "CRPIX2") in hdr:
+                                hdr[k] -= minY
+                            if (k := "LTV1") in hdr:
+                                hdr[k] = -bbox.getBeginX()
+                            if (k := "LTV2") in hdr:
+                                hdr[k] = -bbox.getBeginY()
+                            if (k := "CRVAL1A") in hdr:
+                                hdr[k] = bbox.getBeginX()
+                            if (k := "CRVAL2A") in hdr:
+                                hdr[k] = bbox.getBeginY()
                         else:
                             data = np.zeros([1, 1], dtype=np.int32)
 
