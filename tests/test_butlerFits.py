@@ -326,7 +326,11 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
                 # Equality for PSF does not work
                 pass
             elif compName == "filter":
-                self.assertEqual(component, reference, compName)
+                # FilterLabel has different values depending whether you load
+                # it using a ref with full data ID values or not.  With a full
+                # data ID value, it uses the physical_filter data ID value
+                # instead of reading it from the file.
+                self.assertTrue(component.physicalLabel == "d-r" or component.physicalLabel == "HSC-I")
             elif compName == "id":
                 self.assertEqual(component, reference, compName)
             elif compName == "visitInfo":
