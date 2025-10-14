@@ -124,6 +124,18 @@ class FitsImageFormatterBase(FormatterV2):
         self.file_descriptor.storageClass.validateParameters(parameters)
         return parameters
 
+    @property
+    def storageClass_dtype(self) -> np.dtype | None:
+        """The numpy data type associated with the storage class."""
+        dtype: np.dtype | None = None
+        try:
+            # lsst.afw.image.Exposure is generic base class and does not have
+            # the dtype attribute.
+            dtype = np.dtype(self.file_descriptor.storageClass.pytype.dtype)  # type: ignore[attr-defined]
+        except AttributeError:
+            pass
+        return dtype
+
     def read_from_local_file(self, path: str, component: str | None = None, expected_size: int = -1) -> Any:
         # Docstring inherited.
         # The methods doing the reading all currently assume local file
@@ -284,7 +296,7 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
 
     def readFull(self):
         # Docstring inherited.
-        return self.reader.read(**self.checked_parameters)
+        return self.reader.read(**self.checked_parameters, dtype=self.storageClass_dtype)
 
     def write_local_file(self, in_memory_dataset: Any, uri: ResourcePath) -> None:
         # check to see if we have a recipe requested
@@ -441,11 +453,11 @@ class FitsMaskedImageFormatter(StandardFitsImageFormatterBase):
     def readComponent(self, component):
         # Docstring inherited.
         if component == "image":
-            return self.reader.readImage(**self.checked_parameters)
+            return self.reader.readImage(**self.checked_parameters, dtype=self.storageClass_dtype)
         elif component == "mask":
-            return self.reader.readMask(**self.checked_parameters)
+            return self.reader.readMask(**self.checked_parameters, dtype=self.storageClass_dtype)
         elif component == "variance":
-            return self.reader.readVariance(**self.checked_parameters)
+            return self.reader.readVariance(**self.checked_parameters, dtype=self.storageClass_dtype)
         else:
             # Delegate to base for bbox, dimensions, xy0.
             return super().readComponent(component)
@@ -725,7 +737,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         else:
             # Must be a cutout. We have applied the bbox parameter so no
             # parameters should be passed here.
-            cutout = self.reader.read()
+            cutout = self.reader.read(dtype=self.storageClass_dtype)
             cutout.getInfo().setFilter(self._fixFilterLabels(cutout.getInfo().getFilter()))
             return cutout
 
@@ -783,11 +795,11 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
                 detector,
             )
             result = amplifier_isolator.transform_subimage(
-                self.reader.read(bbox=amplifier_isolator.subimage_bbox)
+                self.reader.read(bbox=amplifier_isolator.subimage_bbox, dtype=self.storageClass_dtype)
             )
             result.setDetector(amplifier_isolator.make_detector())
         else:
-            result = self.reader.read(**self.checked_parameters)
+            result = self.reader.read(**self.checked_parameters, dtype=self.storageClass_dtype)
         result.getInfo().setFilter(self._fixFilterLabels(result.getInfo().getFilter()))
         return result
 
