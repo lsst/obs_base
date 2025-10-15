@@ -455,7 +455,7 @@ class FitsMaskedImageFormatter(StandardFitsImageFormatterBase):
         if component == "image":
             return self.reader.readImage(**self.checked_parameters, dtype=self.storageClass_dtype)
         elif component == "mask":
-            return self.reader.readMask(**self.checked_parameters, dtype=self.storageClass_dtype)
+            return self.reader.readMask(**self.checked_parameters)
         elif component == "variance":
             return self.reader.readVariance(**self.checked_parameters, dtype=self.storageClass_dtype)
         else:
