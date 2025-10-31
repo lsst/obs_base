@@ -27,6 +27,8 @@ __all__ = (
     "standardizeAmplifierParameters",
 )
 
+import hashlib
+import json
 import logging
 import threading
 import uuid
@@ -310,14 +312,48 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
         recipe = self.write_recipes[recipeName]
         if recipe is None:
             return
-
-        # Set the seed based on dataId.  Valid FITS seed range is [1, 10000].
-        seed = 1 + hash(tuple(self.data_id.required.items())) % 9999
+        seed: int | None = None
         for plane in ("image", "mask", "variance"):
             if plane in recipe and (quantization := recipe[plane].get("quantization")) is not None:
                 if quantization.get("seed", 0) == 0:
+                    if seed is None:
+                        # Set the seed based on data ID.  We can't just use
+                        # 'hash', since like 'set' that's not deterministic.
+                        # And we can't rely on a DimensionPacker because those
+                        # are only defined for certain combinations of
+                        # dimensions.  Doing an MD5 of the JSON feels like
+                        # overkill but I don't really see anything much
+                        # simpler.
+                        hash_bytes = hashlib.md5(
+                            json.dumps(list(self.data_id.required_values)).encode(),
+                            usedforsecurity=False,
+                        ).digest()
+                        # And it *really* feels like overkill when we squash
+                        # that into the [1, 10000] range allowed by FITS.
+                        seed = 1 + int.from_bytes(hash_bytes) % 9999
+                    _LOG.debug(
+                        "Setting compression quantization seed for %s %s %s to %s.",
+                        self.data_id,
+                        self.dataset_ref.datasetType.name,
+                        plane,
+                        seed,
+                    )
                     quantization["seed"] = seed
-
+                else:
+                    _LOG.warning(
+                        "Compression quantization seed for %s %s %s was set explicitly to %s.",
+                        self.dataset_ref.datasetType.name,
+                        self.data_id,
+                        plane,
+                        quantization["seed"],
+                    )
+            else:
+                _LOG.debug(
+                    "No quantization found for %s %s %s.",
+                    self.dataset_ref.datasetType.name,
+                    self.data_id,
+                    plane,
+                )
         return recipe
 
     @classmethod
