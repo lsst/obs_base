@@ -62,7 +62,8 @@ from lsst.utils.introspection import find_outside_stacklevel
 
 from ..utils import add_provenance_to_fits_header
 
-_LOG = logging.getLogger()
+_LOG = logging.getLogger(__name__)
+
 _ALWAYS_USE_ASTROPY_FOR_COMPONENT_READ = False
 """If True, the astropy code will always be used to read component and cutouts
 even if the file is local, the cutout is too large, or the dataset type is
