@@ -27,6 +27,8 @@ __all__ = (
     "standardizeAmplifierParameters",
 )
 
+import hashlib
+import json
 import logging
 import threading
 import uuid
@@ -41,7 +43,7 @@ import numpy as np
 
 import lsst.geom
 from lsst.afw.cameraGeom import AmplifierGeometryComparison, AmplifierIsolator
-from lsst.afw.fits import MemFileManager
+from lsst.afw.fits import CompressionOptions, MemFileManager
 from lsst.afw.geom.wcsUtils import getImageXY0FromMetadata
 from lsst.afw.image import (
     ExposureFitsReader,
@@ -54,7 +56,7 @@ from lsst.afw.image import (
 
 # Needed for ApCorrMap to resolve properly
 from lsst.afw.math import BoundedField  # noqa: F401
-from lsst.daf.base import PropertyList, PropertySet
+from lsst.daf.base import PropertyList
 from lsst.daf.butler import DatasetProvenance, FormatterV2
 from lsst.resources import ResourcePath
 from lsst.utils.classes import cached_getter
@@ -62,7 +64,8 @@ from lsst.utils.introspection import find_outside_stacklevel
 
 from ..utils import add_provenance_to_fits_header
 
-_LOG = logging.getLogger()
+_LOG = logging.getLogger(__name__)
+
 _ALWAYS_USE_ASTROPY_FOR_COMPONENT_READ = False
 """If True, the astropy code will always be used to read component and cutouts
 even if the file is local, the cutout is too large, or the dataset type is
@@ -237,33 +240,9 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
 
     Each ``StandardFitsImageFormatterBase`` recipe for FITS compression should
     define ``image``, ``mask`` and ``variance`` entries, each of which may
-    contain ``compression`` and ``scaling`` entries. Defaults will be
-    provided for any missing elements under ``compression`` and
-    ``scaling``.
-
-    The allowed entries under ``compression`` are:
-
-    * ``algorithm`` (`str`): compression algorithm to use
-    * ``rows`` (`int`): number of rows per tile (0 = entire dimension)
-    * ``columns`` (`int`): number of columns per tile (0 = entire dimension)
-    * ``quantizeLevel`` (`float`): cfitsio quantization level
-
-    The allowed entries under ``scaling`` are:
-
-    * ``algorithm`` (`str`): scaling algorithm to use
-    * ``bitpix`` (`int`): bits per pixel (0,8,16,32,64,-32,-64)
-    * ``fuzz`` (`bool`): fuzz the values when quantising floating-point values?
-    * ``seed`` (`int`): seed for random number generator when fuzzing
-    * ``maskPlanes`` (`list` of `str`): mask planes to ignore when doing
-      statistics
-    * ``quantizeLevel`` (`float`): divisor of the standard deviation for
-      ``STDEV_*`` scaling
-    * ``quantizePad`` (`float`): number of stdev to allow on the low side (for
-      ``STDEV_POSITIVE``/``NEGATIVE``)
-    * ``bscale`` (`float`): manually specified ``BSCALE``
-      (for ``MANUAL`` scaling)
-    * ``bzero`` (`float`): manually specified ``BSCALE``
-      (for ``MANUAL`` scaling)
+    contain entries supported by
+    `lsst.afw.fits.CompressionOptions.from_mapping` (``null`` disables
+    compression).
 
     A very simple example YAML recipe (for the ``Exposure`` specialization):
 
@@ -272,8 +251,7 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
         lsst.obs.base.fitsExposureFormatter.FitsExposureFormatter:
           default:
             image: &default
-              compression:
-                algorithm: GZIP_SHUFFLE
+              algorithm: GZIP_2
             mask: *default
             variance: *default
 
@@ -303,11 +281,7 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
         recipeName = self.write_parameters.get("recipe")
         recipe = self.get_image_compression_settings(recipeName)
         if recipe:
-            # Can not construct a PropertySet from a hierarchical
-            # dict but can update one.
-            ps = PropertySet()
-            ps.update(recipe)
-            in_memory_dataset.writeFitsWithOptions(uri.ospath, options=ps)
+            in_memory_dataset.writeFitsWithOptions(uri.ospath, options=recipe)
         else:
             in_memory_dataset.writeFits(uri.ospath)
 
@@ -336,15 +310,50 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
             raise RuntimeError(f"Unrecognized recipe option given for compression: {recipeName}")
 
         recipe = self.write_recipes[recipeName]
-
-        # Set the seed based on dataId
-        seed = hash(tuple(self.data_id.required.items())) % 2**31
+        if recipe is None:
+            return
+        seed: int | None = None
         for plane in ("image", "mask", "variance"):
-            if plane in recipe and "scaling" in recipe[plane]:
-                scaling = recipe[plane]["scaling"]
-                if "seed" in scaling and scaling["seed"] == 0:
-                    scaling["seed"] = seed
-
+            if plane in recipe and (quantization := recipe[plane].get("quantization")) is not None:
+                if quantization.get("seed", 0) == 0:
+                    if seed is None:
+                        # Set the seed based on data ID.  We can't just use
+                        # 'hash', since like 'set' that's not deterministic.
+                        # And we can't rely on a DimensionPacker because those
+                        # are only defined for certain combinations of
+                        # dimensions.  Doing an MD5 of the JSON feels like
+                        # overkill but I don't really see anything much
+                        # simpler.
+                        hash_bytes = hashlib.md5(
+                            json.dumps(list(self.data_id.required_values)).encode(),
+                            usedforsecurity=False,
+                        ).digest()
+                        # And it *really* feels like overkill when we squash
+                        # that into the [1, 10000] range allowed by FITS.
+                        seed = 1 + int.from_bytes(hash_bytes) % 9999
+                    _LOG.debug(
+                        "Setting compression quantization seed for %s %s %s to %s.",
+                        self.data_id,
+                        self.dataset_ref.datasetType.name,
+                        plane,
+                        seed,
+                    )
+                    quantization["seed"] = seed
+                else:
+                    _LOG.warning(
+                        "Compression quantization seed for %s %s %s was set explicitly to %s.",
+                        self.dataset_ref.datasetType.name,
+                        self.data_id,
+                        plane,
+                        quantization["seed"],
+                    )
+            else:
+                _LOG.debug(
+                    "No quantization found for %s %s %s.",
+                    self.dataset_ref.datasetType.name,
+                    self.data_id,
+                    plane,
+                )
         return recipe
 
     @classmethod
@@ -352,8 +361,6 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
         """Validate supplied recipes for this formatter.
 
         The recipes are supplemented with default values where appropriate.
-
-        TODO: replace this custom validation code with Cerberus (DM-11846)
 
         Parameters
         ----------
@@ -371,59 +378,23 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
         RuntimeError
             Raised if validation fails.
         """
-        # Schemas define what should be there, and the default values (and by
-        # the default value, the expected type).
-        compressionSchema = {
-            "algorithm": "NONE",
-            "rows": 1,
-            "columns": 0,
-            "quantizeLevel": 0.0,
-        }
-        scalingSchema = {
-            "algorithm": "NONE",
-            "bitpix": 0,
-            "maskPlanes": ["NO_DATA"],
-            "seed": 0,
-            "quantizeLevel": 4.0,
-            "quantizePad": 5.0,
-            "fuzz": True,
-            "bscale": 1.0,
-            "bzero": 0.0,
-        }
-
         if not recipes:
-            # We can not insist on recipes being specified
+            # We can not insist on recipes being specified.
             return recipes
 
-        def checkUnrecognized(entry, allowed, description):
-            """Check to see if the entry contains unrecognised keywords."""
-            unrecognized = set(entry) - set(allowed)
-            if unrecognized:
-                raise RuntimeError(
-                    f"Unrecognized entries when parsing image compression recipe {description}: "
-                    f"{unrecognized}"
-                )
-
         validated = {}
-        for name in recipes:
-            checkUnrecognized(recipes[name], ["image", "mask", "variance"], name)
-            validated[name] = {}
-            for plane in ("image", "mask", "variance"):
-                checkUnrecognized(recipes[name][plane], ["compression", "scaling"], f"{name}->{plane}")
-
-                np = {}
-                validated[name][plane] = np
-                for settings, schema in (("compression", compressionSchema), ("scaling", scalingSchema)):
-                    np[settings] = {}
-                    if settings not in recipes[name][plane]:
-                        for key in schema:
-                            np[settings][key] = schema[key]
-                        continue
-                    entry = recipes[name][plane][settings]
-                    checkUnrecognized(entry, schema.keys(), f"{name}->{plane}->{settings}")
-                    for key in schema:
-                        value = type(schema[key])(entry[key]) if key in entry else schema[key]
-                        np[settings][key] = value
+        for name, recipe in recipes.items():
+            if recipe is not None:
+                validated[name] = {}
+                for plane in ["image", "mask", "variance"]:
+                    try:
+                        options = CompressionOptions.from_mapping(recipe[plane])
+                    except Exception as err:
+                        err.add_note(f"Validating write recipe {name!r} ({plane!r} section).")
+                        raise
+                    validated[name][plane] = options.to_dict()
+            else:
+                validated[name] = None
         return validated
 
 

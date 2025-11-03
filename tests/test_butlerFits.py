@@ -402,10 +402,14 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
         metaN, sizeN = self.putFits(exposure, "uncompressed", 43)
         self.assertNotIn("ZCMPTYPE", metaN)
 
-        # Write an uncompressed FITS file
+        # Write a lossy-compressed FITS file.
         metaL, sizeL = self.putFits(exposure, "lossy", 44)
         self.assertEqual(metaL["TTYPE1"], "COMPRESSED_DATA")
-        self.assertEqual(metaL["ZCMPTYPE"], "RICE_1")
+        # "RICE_ONE" is some bad CFITSIO behavior that we have to tolerate for
+        # now; it's an old pre-standard key that has become acceptable to at
+        # least astropy (when reading) that CFITSIO continues to write for the
+        # dubious purpose of supporting even older readers.
+        self.assertIn(metaL["ZCMPTYPE"], ("RICE_1", "RICE_ONE"))
 
         self.assertNotEqual(sizeC, sizeN)
         # Data file is so small that Lossy and Compressed are dominated
