@@ -433,7 +433,7 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
             # parameters that should all do the same thing.
             for amp_parameter in [amp, amp.getName(), n]:
                 for parameters in [{"amp": amp_parameter}, {"amp": amp_parameter, "detector": detector}]:
-                    with self.subTest(parameters=parameters):
+                    with self.subTest(parameters=repr(parameters)):
                         test_trimmed = self.butler.get(trimmed_ref, parameters=parameters)
                         test_untrimmed = self.butler.get(untrimmed_ref, parameters=parameters)
                         self.assertImagesEqual(test_trimmed.image, trimmed_full[amp.getBBox()].image)
@@ -505,7 +505,7 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
             {"bbox": Box2I(minimum=Point2I(3, 3), maximum=Point2I(21, 16)), "origin": LOCAL},
         ):
             bbox = parameters.get("bbox", reader.readBBox())
-            with self.subTest(parameters=parameters):
+            with self.subTest(parameters=repr(parameters)):
                 # Check that the reader supports reading sub-regions.
                 subMaskedImage = reader.read(**parameters)
                 self.assertImagesEqual(subMaskedImage.image, mi.image[bbox])
