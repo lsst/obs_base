@@ -1,0 +1,1 @@
+Capped the number of input provenance datasets recorded in Exposure FITS files to 3,000 inputs.
