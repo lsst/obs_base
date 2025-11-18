@@ -245,8 +245,11 @@ def add_provenance_to_fits_header(
     if provenance is None:
         provenance = DatasetProvenance()
 
-    # Get the flat dict in form suitable for FITS.
-    prov_dict = provenance.to_flat_dict(ref, prefix="LSST BUTLER", sep=" ", simple_types=True)
+    # Get the flat dict in form suitable for FITS. Protect against abnormally
+    # large number of inputs.
+    prov_dict = provenance.to_flat_dict(
+        ref, prefix="LSST BUTLER", sep=" ", simple_types=True, max_inputs=3_000
+    )
 
     # Copy keys into a PropertyList so we have the option of including
     # comments.
