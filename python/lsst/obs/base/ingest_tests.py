@@ -133,10 +133,10 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         cls._registerInstrument()
 
         # Determine the relevant datastore root to use for testing.
-        butler = Butler(cls.root)
-        roots = butler.get_datastore_roots()
-        assert len(roots) == 1  # Only one datastore.
-        cls.datastore_root = list(roots.values())[0]
+        with Butler.from_config(cls.root) as butler:
+            roots = butler.get_datastore_roots()
+            assert len(roots) == 1  # Only one datastore.
+            cls.datastore_root = list(roots.values())[0]
 
     def setUp(self):
         # Want a unique run name per test.
@@ -169,7 +169,8 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         Don't even do that if we are requested not to by the caller.
         This only really affects files that contain multiple datasets.
         """
-        butler = Butler(self.root, run=self.outputRun)
+        butler = Butler.from_config(self.root, run=self.outputRun)
+        self.enterContext(butler)
         datasets = list(butler.registry.queryDatasets(self.ingestDatasetTypeName, collections=self.outputRun))
         self.assertEqual(len(datasets), len(self.dataIds))
 
@@ -336,7 +337,8 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
         # Check that it really did have a URI outside of datastore.
         srcUri = ResourcePath(self.file, forceAbsolute=True)
-        butler = Butler(self.root, run=self.outputRun)
+        butler = Butler.from_config(self.root, run=self.outputRun)
+        self.enterContext(butler)
         datasets = list(butler.registry.queryDatasets(self.ingestDatasetTypeName, collections=self.outputRun))
         datastoreUri = butler.getURI(datasets[0])
         self.assertEqual(datastoreUri, srcUri)
@@ -365,7 +367,8 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         """Test that files already in the directory can be added to the
         registry in-place.
         """
-        butler = Butler(self.root, run=self.outputRun)
+        butler = Butler.from_config(self.root, run=self.outputRun)
+        self.enterContext(butler)
 
         # If the test uses an index file the index file needs to also
         # appear in the datastore root along with the file to be ingested.
@@ -400,7 +403,8 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
         # Recreate a butler post-ingest (the earlier one won't see the
         # ingested files).
-        butler = Butler(self.root, run=self.outputRun)
+        butler = Butler.from_config(self.root, run=self.outputRun)
+        self.enterContext(butler)
 
         # Check that the URI associated with this path is the right one.
         uri = butler.getURI(self.ingestDatasetTypeName, self.dataIds[0])
@@ -419,7 +423,8 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         if self.curatedCalibrationDatasetTypes is None:
             raise unittest.SkipTest("Class requests disabling of writeCuratedCalibrations test")
 
-        butler = Butler(self.root, writeable=False)
+        butler = Butler.from_config(self.root, writeable=False)
+        self.enterContext(butler)
         collection = self.instrumentClass().makeCalibrationCollectionName("test")
 
         # Trying to load a camera with a data ID not known to the registry
@@ -442,7 +447,8 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         # caches (e.g. of DatasetTypes).  Note that we didn't give
         # _writeCuratedCalibrations the butler instance we had, because it's
         # trying to test the CLI interface anyway.
-        butler = Butler(self.root, writeable=False)
+        butler = Butler.from_config(self.root, writeable=False)
+        self.enterContext(butler)
 
         instrumentClass = self.instrumentClass()
         calibration_names = instrumentClass.getCuratedCalibrationNames()
@@ -469,7 +475,8 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         self._ingestRaws(transfer="link")
 
         # Check that obscore table (if configured) has correct contents.
-        butler = Butler(self.root, run=self.outputRun)
+        butler = Butler.from_config(self.root, run=self.outputRun)
+        self.enterContext(butler)
         self._check_obscore(butler.registry, has_visits=False)
 
         # Calling defineVisits tests the implementation of the butler command

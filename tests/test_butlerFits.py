@@ -127,6 +127,7 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
         butlerRoot = os.path.join(cls.root, subdir)
 
         cls.creatorButler = makeTestRepo(butlerRoot, dataIds, config=Config.fromYaml(BUTLER_CONFIG))
+        cls.enterClassContext(cls.creatorButler)
 
         # Create dataset types used by the tests
         for datasetTypeName, storageClassName in (
@@ -158,6 +159,7 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
 
     def setUp(self):
         self.butler = makeTestCollection(self.creatorButler, uniqueId=self.id())
+        self.enterContext(self.butler)
 
     def makeExampleCatalog(self) -> lsst.afw.table.SourceCatalog:
         catalogPath = os.path.join(TESTDIR, "data", "source_catalog.fits")

@@ -58,10 +58,10 @@ def writeCuratedCalibrations(repo, instrument, collection, labels, prefix=None):
         Raised if the instrument is not a subclass of
         `lsst.obs.base.Instrument`.
     """
-    butler = Butler(repo, writeable=True)
-    instr = Instrument.from_string(instrument, butler.registry, collection_prefix=prefix)
-    if collection is None and not labels:
-        labels = instr.get_curated_calibration_labels()
-        if not labels:
-            raise ValueError("At least one label or --collection must be provided.")
-    instr.writeCuratedCalibrations(butler, collection=collection, labels=labels)
+    with Butler.from_config(repo, writeable=True) as butler:
+        instr = Instrument.from_string(instrument, butler.registry, collection_prefix=prefix)
+        if collection is None and not labels:
+            labels = instr.get_curated_calibration_labels()
+            if not labels:
+                raise ValueError("At least one label or --collection must be provided.")
+        instr.writeCuratedCalibrations(butler, collection=collection, labels=labels)
