@@ -1051,12 +1051,7 @@ class RawIngestTask(Task):
             same data ID in the target collection, even if from another file).
             Note that this is much slower than just not passing
             already-ingested files as inputs, because we still need to read and
-            process metadata to identify which exposures to search for.  It
-            also will not work reliably if multiple processes are attempting to
-            ingest raws from the same exposure concurrently, in that different
-            processes may still attempt to ingest the same raw and conflict,
-            causing a failure that prevents other raws from the same exposure
-            from being ingested.
+            process metadata to identify which exposures to search for.
         track_file_attrs : `bool`, optional
             Control whether file attributes such as the size or checksum should
             be tracked by the datastore. Whether this parameter is honored
@@ -1068,18 +1063,6 @@ class RawIngestTask(Task):
             Per-file structures identifying the files ingested and their
             dataset representation in the data repository.
         """
-        if skip_existing_exposures:
-            existing = {
-                ref.dataId
-                for ref in self.butler.registry.queryDatasets(
-                    datasetType,
-                    collections=[run],
-                    dataId=exposure.dataId,
-                )
-            }
-        else:
-            existing = set()
-
         # Raw files are preferentially ingested using a UUID derived from
         # the collection name and dataId.
         if self.butler.registry.supportsIdGenerationMode(DatasetIdGenEnum.DATAID_TYPE_RUN):
@@ -1090,9 +1073,7 @@ class RawIngestTask(Task):
         datasets = []
         for file in exposure.files:
             refs = [
-                DatasetRef(datasetType, d.dataId, run=run, id_generation_mode=mode)
-                for d in file.datasets
-                if d.dataId not in existing
+                DatasetRef(datasetType, d.dataId, run=run, id_generation_mode=mode) for d in file.datasets
             ]
             if refs:
                 datasets.append(
@@ -1103,6 +1084,7 @@ class RawIngestTask(Task):
             *datasets,
             transfer=self.config.transfer,
             record_validation_info=track_file_attrs,
+            skip_existing=skip_existing_exposures,
         )
         return datasets
 
