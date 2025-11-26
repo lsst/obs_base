@@ -66,7 +66,7 @@ datastore:
     lossy:
       formatter: lsst.obs.base.formatters.fitsExposure.FitsExposureFormatter
       parameters:
-        recipe: lossyBasic
+        recipe: lossy16
   composites:
     disassembled:
       ExposureCompositeF: True
