@@ -46,7 +46,9 @@ class DefineVisitsBase:
         """
         self.root = tempfile.mkdtemp(dir=TESTDIR)
         self.creatorButler = butlerTests.makeTestRepo(self.root, [])
+        self.enterContext(self.creatorButler)
         self.butler = butlerTests.makeTestCollection(self.creatorButler, uniqueId=self.id())
+        self.enterContext(self.butler)
 
         self.config = self.get_config()
         self.task = DefineVisitsTask(config=self.config, butler=self.butler)
@@ -193,6 +195,7 @@ class DefineVisitsTestCase(unittest.TestCase, DefineVisitsBase):
     def testPickleTask(self):
         stream = pickle.dumps(self.task)
         copy = pickle.loads(stream)
+        self.enterContext(copy.butler)
         self.assertEqual(self.task.getFullName(), copy.getFullName())
         self.assertEqual(self.task.log.name, copy.log.name)
         self.assertEqual(self.task.config, copy.config)

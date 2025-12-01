@@ -230,29 +230,30 @@ class InstrumentTests(metaclass=abc.ABCMeta):
 
     def test_register(self):
         """Test that register() sets appropriate Dimensions."""
-        registry = create_populated_sqlite_registry().registry
-        # Check that the registry starts out empty.
-        self.assertFalse(registry.queryDataIds(["instrument"]).toSequence())
-        self.assertFalse(registry.queryDataIds(["detector"]).toSequence())
-        self.assertFalse(registry.queryDataIds(["physical_filter"]).toSequence())
+        with create_populated_sqlite_registry() as butler:
+            registry = butler.registry
+            # Check that the registry starts out empty.
+            self.assertFalse(registry.queryDataIds(["instrument"]).toSequence())
+            self.assertFalse(registry.queryDataIds(["detector"]).toSequence())
+            self.assertFalse(registry.queryDataIds(["physical_filter"]).toSequence())
 
-        # Register the instrument and check that certain dimensions appear.
-        self.instrument.register(registry)
-        instrumentDataIds = registry.queryDataIds(["instrument"]).toSequence()
-        self.assertEqual(len(instrumentDataIds), 1)
-        instrumentNames = {dataId["instrument"] for dataId in instrumentDataIds}
-        self.assertEqual(instrumentNames, {self.data.name})
-        detectorDataIds = registry.queryDataIds(["detector"]).expanded().toSequence()
-        self.assertEqual(len(detectorDataIds), self.data.nDetectors)
-        detectorNames = {dataId.records["detector"].full_name for dataId in detectorDataIds}
-        self.assertIn(self.data.firstDetectorName, detectorNames)
-        physicalFilterDataIds = registry.queryDataIds(["physical_filter"]).toSequence()
-        filterNames = {dataId["physical_filter"] for dataId in physicalFilterDataIds}
-        self.assertGreaterEqual(filterNames, self.data.physical_filters)
+            # Register the instrument and check that certain dimensions appear.
+            self.instrument.register(registry)
+            instrumentDataIds = registry.queryDataIds(["instrument"]).toSequence()
+            self.assertEqual(len(instrumentDataIds), 1)
+            instrumentNames = {dataId["instrument"] for dataId in instrumentDataIds}
+            self.assertEqual(instrumentNames, {self.data.name})
+            detectorDataIds = registry.queryDataIds(["detector"]).expanded().toSequence()
+            self.assertEqual(len(detectorDataIds), self.data.nDetectors)
+            detectorNames = {dataId.records["detector"].full_name for dataId in detectorDataIds}
+            self.assertIn(self.data.firstDetectorName, detectorNames)
+            physicalFilterDataIds = registry.queryDataIds(["physical_filter"]).toSequence()
+            filterNames = {dataId["physical_filter"] for dataId in physicalFilterDataIds}
+            self.assertGreaterEqual(filterNames, self.data.physical_filters)
 
-        # Check that the instrument class can be retrieved.
-        registeredInstrument = Instrument.fromName(self.instrument.getName(), registry)
-        self.assertEqual(type(registeredInstrument), type(self.instrument))
+            # Check that the instrument class can be retrieved.
+            registeredInstrument = Instrument.fromName(self.instrument.getName(), registry)
+            self.assertEqual(type(registeredInstrument), type(self.instrument))
 
-        # Check that re-registration is not an error.
-        self.instrument.register(registry)
+            # Check that re-registration is not an error.
+            self.instrument.register(registry)

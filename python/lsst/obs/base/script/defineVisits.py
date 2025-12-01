@@ -72,39 +72,39 @@ def defineVisits(
     """
     if not collections:
         collections = None
-    butler = Butler.from_config(repo, collections=collections, writeable=True)
-    instr = Instrument.from_string(instrument, butler.registry)
-    config = DefineVisitsConfig()
-    instr.applyConfigOverrides(DefineVisitsTask._DefaultName, config)
+    with Butler.from_config(repo, collections=collections, writeable=True) as butler:
+        instr = Instrument.from_string(instrument, butler.registry)
+        config = DefineVisitsConfig()
+        instr.applyConfigOverrides(DefineVisitsTask._DefaultName, config)
 
-    # If this is old schema but is using modern visit grouping algorithm,
-    # (which is the default for new code) revert to one-to-one (which
-    # was the old default).
-    exposure_dimension = butler.dimensions["exposure"]
-    modern = "one-to-one-and-by-counter"
-    if "seq_end" not in exposure_dimension.metadata and config.groupExposures.name == modern:
-        legacy = "one-to-one"
-        log.warning(
-            "Request to use %s grouping algorithm but registry schema is too old. Using %s instead.",
-            modern,
-            legacy,
+        # If this is old schema but is using modern visit grouping algorithm,
+        # (which is the default for new code) revert to one-to-one (which
+        # was the old default).
+        exposure_dimension = butler.dimensions["exposure"]
+        modern = "one-to-one-and-by-counter"
+        if "seq_end" not in exposure_dimension.metadata and config.groupExposures.name == modern:
+            legacy = "one-to-one"
+            log.warning(
+                "Request to use %s grouping algorithm but registry schema is too old. Using %s instead.",
+                modern,
+                legacy,
+            )
+            config.groupExposures.name = legacy
+
+        if not where:
+            where = ""
+
+        if config_file is not None:
+            config.load(config_file)
+        task = DefineVisitsTask(config=config, butler=butler)
+
+        with butler.query() as query:
+            query = query.join_dimensions(["exposure"]).where(where, instrument=instr.getName())
+            data_ids = list(query.data_ids(["exposure"]).with_dimension_records())
+
+        task.run(
+            data_ids,
+            collections=collections,
+            update_records=update_records,
+            incremental=incremental,
         )
-        config.groupExposures.name = legacy
-
-    if not where:
-        where = ""
-
-    if config_file is not None:
-        config.load(config_file)
-    task = DefineVisitsTask(config=config, butler=butler)
-
-    with butler.query() as query:
-        query = query.join_dimensions(["exposure"]).where(where, instrument=instr.getName())
-        data_ids = list(query.data_ids(["exposure"]).with_dimension_records())
-
-    task.run(
-        data_ids,
-        collections=collections,
-        update_records=update_records,
-        incremental=incremental,
-    )

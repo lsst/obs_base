@@ -116,8 +116,9 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
 
         dataIds = {
             "instrument": ["DummyCam"],
-            "physical_filter": ["d-r"],
+            "physical_filter": ["HSC-I"],
             "visit": [42, 43, 44],
+            "band": ["300"],
         }
 
         # Ensure that we test in a directory that will include some
@@ -126,6 +127,7 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
         butlerRoot = os.path.join(cls.root, subdir)
 
         cls.creatorButler = makeTestRepo(butlerRoot, dataIds, config=Config.fromYaml(BUTLER_CONFIG))
+        cls.enterClassContext(cls.creatorButler)
 
         # Create dataset types used by the tests
         for datasetTypeName, storageClassName in (
@@ -157,6 +159,7 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
 
     def setUp(self):
         self.butler = makeTestCollection(self.creatorButler, uniqueId=self.id())
+        self.enterContext(self.butler)
 
     def makeExampleCatalog(self) -> lsst.afw.table.SourceCatalog:
         catalogPath = os.path.join(TESTDIR, "data", "source_catalog.fits")
@@ -236,7 +239,7 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
     def testFitsCatalog(self) -> None:
         """Test reading of a FITS catalog."""
         catalog = self.makeExampleCatalog()
-        dataId = {"visit": 42, "instrument": "DummyCam", "physical_filter": "d-r"}
+        dataId = {"visit": 42, "instrument": "DummyCam", "physical_filter": "HSC-I"}
         prov = self._make_provenance()
         ref = self.butler.put(catalog, "testCatalog", dataId, provenance=prov)
         stored = self.butler.get(ref)
@@ -280,7 +283,7 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
         exposure = lsst.afw.image.ExposureF(example)
 
         prov = self._make_provenance()
-        dataId = {"visit": 42, "instrument": "DummyCam", "physical_filter": "d-r"}
+        dataId = {"visit": 42, "instrument": "DummyCam", "physical_filter": "HSC-I"}
         ref = self.butler.put(exposure, datasetTypeName, dataId, provenance=prov)
 
         # Get the full thing
@@ -330,7 +333,7 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
                 # it using a ref with full data ID values or not.  With a full
                 # data ID value, it uses the physical_filter data ID value
                 # instead of reading it from the file.
-                self.assertTrue(component.physicalLabel == "d-r" or component.physicalLabel == "HSC-I")
+                self.assertTrue(component.physicalLabel == "HSC-I" or component.physicalLabel == "HSC-I")
             elif compName == "id":
                 self.assertEqual(component, reference, compName)
             elif compName == "visitInfo":
@@ -376,7 +379,7 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
 
     def putFits(self, exposure, datasetTypeName, visit):
         """Put different datasetTypes and return information."""
-        dataId = {"visit": visit, "instrument": "DummyCam", "physical_filter": "d-r"}
+        dataId = {"visit": visit, "instrument": "DummyCam", "physical_filter": "HSC-I"}
         refC = self.butler.put(exposure, datasetTypeName, dataId)
         uriC = self.butler.getURI(refC)
         stat = os.stat(uriC.ospath)
@@ -486,7 +489,7 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
         mi = reader.read()
 
         # Put the MaskedImage into the Butler and get a reference to it.
-        dataId = {"visit": 42, "instrument": "DummyCam", "physical_filter": "d-r"}
+        dataId = {"visit": 42, "instrument": "DummyCam", "physical_filter": "HSC-I"}
         ref = self.butler.put(mi, "noise", dataId)
 
         # Check that the MaskedImage can be retrieved from the butler.

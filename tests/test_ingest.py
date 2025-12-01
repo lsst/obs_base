@@ -52,12 +52,14 @@ class RawIngestTestCase(IngestTestBase, unittest.TestCase):
 
     @property
     def visits(self):
-        butler = Butler(self.root, collections=[self.outputRun])
-        return {
-            DataCoordinate.standardize(instrument="DummyCam", visit=100, universe=butler.dimensions): [
-                DataCoordinate.standardize(instrument="DummyCam", exposure=100, universe=butler.dimensions)
-            ]
-        }
+        with Butler.from_config(self.root, collections=[self.outputRun]) as butler:
+            return {
+                DataCoordinate.standardize(instrument="DummyCam", visit=100, universe=butler.dimensions): [
+                    DataCoordinate.standardize(
+                        instrument="DummyCam", exposure=100, universe=butler.dimensions
+                    )
+                ]
+            }
 
     def testWriteCuratedCalibrations(self):
         # Inject the "data package" location.
@@ -106,9 +108,11 @@ datastore:
 """
         self.root = tempfile.mkdtemp(dir=TESTDIR)
         self.creatorButler = butlerTests.makeTestRepo(self.root, {}, config=Config.fromYaml(butlerConfig))
+        self.enterContext(self.creatorButler)
         DummyCam().register(self.creatorButler.registry)
 
         self.butler = butlerTests.makeTestCollection(self.creatorButler, uniqueId=self.id())
+        self.enterContext(self.butler)
         self.outputRun = self.butler.run
 
         config = RawIngestTask.ConfigClass()
@@ -464,6 +468,7 @@ class TestRawIngestTaskPickle(unittest.TestCase):
     def testPickleTask(self):
         stream = pickle.dumps(self.task)
         copy = pickle.loads(stream)
+        self.enterContext(copy.butler)
         self.assertEqual(self.task.getFullName(), copy.getFullName())
         self.assertEqual(self.task.log.name, copy.log.name)
         self.assertEqual(self.task.config, copy.config)

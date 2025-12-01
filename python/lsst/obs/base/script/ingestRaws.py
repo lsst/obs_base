@@ -79,7 +79,6 @@ def ingestRaws(
     Exception
         Raised if operations on configuration object fail.
     """
-    butler = Butler(repo, writeable=True)
     TaskClass = doImportType(ingest_task)
     ingestConfig = TaskClass.ConfigClass()
     ingestConfig.transfer = transfer
@@ -92,12 +91,13 @@ def ingestRaws(
     if fail_fast:
         configOverrides.addValueOverride("failFast", True)
     configOverrides.applyTo(ingestConfig)
-    ingester = TaskClass(config=ingestConfig, butler=butler)
-    ingester.run(
-        locations,
-        run=output_run,
-        processes=processes,
-        file_filter=regex,
-        track_file_attrs=track_file_attrs,
-        update_exposure_records=update_records,
-    )
+    with Butler.from_config(repo, writeable=True) as butler:
+        ingester = TaskClass(config=ingestConfig, butler=butler)
+        ingester.run(
+            locations,
+            run=output_run,
+            processes=processes,
+            file_filter=regex,
+            track_file_attrs=track_file_attrs,
+            update_exposure_records=update_records,
+        )
