@@ -273,7 +273,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         # Classmethod so assertEqual does not work.
         assert result.exit_code == 0, f"output: {result.output} exception: {result.exception}"
 
-    def _ingestRaws(self, transfer, file=None):
+    def _ingestRaws(self, transfer, file=None, skip_existing=True):
         """Use the Click `testing` module to call the butler command line api
         to ingest raws.
 
@@ -287,21 +287,22 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         """
         if file is None:
             file = self.file
+
+        args = [
+            "ingest-raws",
+            self.root,
+            file,
+            "--output-run",
+            self.outputRun,
+            "--transfer",
+            transfer,
+            "--ingest-task",
+            self.rawIngestTask,
+        ]
+        if not skip_existing:
+            args.append("--no-skip-existing")
         runner = LogCliRunner()
-        result = runner.invoke(
-            butlerCli,
-            [
-                "ingest-raws",
-                self.root,
-                file,
-                "--output-run",
-                self.outputRun,
-                "--transfer",
-                transfer,
-                "--ingest-task",
-                self.rawIngestTask,
-            ],
-        )
+        result = runner.invoke(butlerCli, args)
         self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
 
     @classmethod
@@ -413,8 +414,9 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     def testFailOnConflict(self):
         """Re-ingesting the same data into the repository should fail."""
         self._ingestRaws(transfer="symlink")
+        self._ingestRaws(transfer="symlink")  # Default is to skip.
         with self.assertRaises(AssertionError):
-            self._ingestRaws(transfer="symlink")
+            self._ingestRaws(transfer="symlink", skip_existing=False)
 
     def testWriteCuratedCalibrations(self):
         """Test that we can ingest the curated calibrations, and read them

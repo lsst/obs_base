@@ -52,6 +52,7 @@ class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
             track_file_attrs=True,
             update_records=False,
             fail_fast=False,
+            skip_existing=True,
         )
 
     @staticmethod
@@ -123,6 +124,13 @@ class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
         self.run_test(
             ["ingest-raws", "repo", "in/directory/,in/another/dir/", "other/file.fits"],
             self.makeExpected(repo="repo", locations=("in/directory/", "in/another/dir/", "other/file.fits")),
+        )
+
+    def test_no_skip(self):
+        """Test that no skip does appear."""
+        self.run_test(
+            ["ingest-raws", "repo", "in/directory/", "--no-skip-existing"],
+            self.makeExpected(repo="repo", locations=("in/directory/",), skip_existing=False),
         )
 
 

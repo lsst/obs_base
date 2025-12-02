@@ -160,6 +160,12 @@ def define_visits(*args, **kwargs):
     "Should only be used if you know that there has been a change to the "
     "exposure records, such as a change to the metadata translator.",
 )
+@click.option(
+    "--skip-existing/--no-skip-existing",
+    default=True,
+    help="Use this option to control whether a raw file already existing "
+    "in the Butler repository is an error or not.",
+)
 @options_file_option()
 def ingest_raws(*args, **kwargs):
     """Ingest raw frames into from a directory into the butler registry."""
