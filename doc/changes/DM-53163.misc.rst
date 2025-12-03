@@ -1,0 +1,2 @@
+Added ``--skip-existing`` command line option to ``butler ingest-raws``.
+Skip existing raws is now the default (previously re-ingesting was an error).

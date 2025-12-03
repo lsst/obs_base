@@ -37,6 +37,7 @@ def ingestRaws(
     ingest_task="lsst.obs.base.RawIngestTask",
     track_file_attrs=True,
     update_records=False,
+    skip_existing=False,
 ):
     """Ingest raw frames into the butler registry.
 
@@ -73,6 +74,9 @@ def ingestRaws(
     update_records : `bool`, optional
         Control whether recalculated exposure definitions will be accepted or
         not.
+    skip_existing : `bool`, optional
+        Control whether raws that are already in the Butler repo will be
+        skipped without error.
 
     Raises
     ------
@@ -100,4 +104,5 @@ def ingestRaws(
             file_filter=regex,
             track_file_attrs=track_file_attrs,
             update_exposure_records=update_records,
+            skip_existing_exposures=skip_existing,
         )
