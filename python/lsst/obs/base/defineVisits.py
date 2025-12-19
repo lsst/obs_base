@@ -45,7 +45,7 @@ from lsst.afw.cameraGeom import FOCAL_PLANE, PIXELS
 from lsst.daf.butler import Butler, DataCoordinate, DataId, DimensionRecord, Progress, Timespan
 from lsst.geom import Box2D
 from lsst.pex.config import Config, Field, makeRegistry, registerConfigurable
-from lsst.pipe.base import Task
+from lsst.pipe.base import Struct, Task
 from lsst.sphgeom import ConvexPolygon, Region, UnitVector3d
 from lsst.utils.introspection import get_full_type_name
 
@@ -625,7 +625,7 @@ class DefineVisitsTask(Task):
         collections: Sequence[str] | str | None = None,
         update_records: bool = False,
         incremental: bool = False,
-    ) -> None:
+    ) -> Struct:
         """Add visit definitions to the registry for the given exposures.
 
         Parameters
@@ -652,6 +652,17 @@ class DefineVisitsTask(Task):
             changes. If there is any risk that files are being ingested
             incrementally it is critical that this parameter is set to `True`
             and not to rely on ``update_records``.
+
+        Returns
+        -------
+        result : `lsst.pipe.base.Struct`
+            Structure with the following attributes (all `int`):
+
+            - n_visits: total number of visits defined
+            - n_skipped: number of visits that were already present left alone
+            - n_new: number of new visits inserted
+            - n_fully_updated: number of existing visits fully updated
+            - n_partially_updated: number of visits with non-geometry updates.
 
         Raises
         ------
@@ -699,7 +710,7 @@ class DefineVisitsTask(Task):
             exposures.append(record)
         if not exposures:
             self.log.info("No on-sky exposures found after filtering.")
-            return
+            return Struct(n_visits=0, n_skipped=0, n_new=0, n_partially_updated=0, n_fully_updated=0)
         if len(instruments) > 1:
             raise RuntimeError(
                 "All data IDs passed to DefineVisitsTask.run must be "
@@ -841,6 +852,13 @@ class DefineVisitsTask(Task):
             n_new,
             n_fully_updated,
             n_partially_updated,
+        )
+        return Struct(
+            n_visits=len(definitions),
+            n_skipped=n_skipped,
+            n_new=n_new,
+            n_fully_updated=n_fully_updated,
+            n_partially_updated=n_partially_updated,
         )
 
 
