@@ -43,50 +43,6 @@ from ..opt import failfast_option, labels_argument
 fits_re = r"\.fit[s]?\b"
 
 
-@click.command(short_help="Convert a gen2 repo to gen3.", cls=ButlerCommand)
-@repo_argument(
-    required=True,
-    help="REPO is the URI or path to the gen3 repository. Will be created if it does not already exist",
-)
-@click.option("--gen2root", required=True, help="Root path of the gen 2 repo to be converted.")
-@click.option("--skymap-name", help="Name of the new gen3 skymap (e.g. 'discrete/ci_hsc').")
-@click.option("--skymap-config", help="Path to skymap config file defining the new gen3 skymap.")
-@click.option(
-    "--calibs", help="Path to the gen 2 calibration repo. It can be absolute or relative to gen2root."
-)
-@click.option(
-    "--reruns",
-    multiple=True,
-    callback=split_commas,
-    metavar=typeStrAcceptsMultiple,
-    help=(
-        "List of rerun paths to convert.  Output collection names will be "
-        "guessed, which can fail if the Gen2 repository paths do not follow a "
-        "recognized convention.  In this case, the command-line interface cannot "
-        "be used."
-    ),
-)
-@transfer_option(help="Mode to use to transfer files into the new repository.")
-@processes_option()
-@config_file_option(
-    help="Path to a `ConvertRepoConfig` override to be included after the Instrument config "
-    "overrides are applied."
-)
-@options_file_option()
-def convert(*args, **kwargs):
-    """Convert one or more Butler gen 2 repositories into a gen 3 repository.
-
-    This is a highly simplified interface that should only be used to convert
-    suites of gen 2 repositories that contain at most one calibration repo and
-    has no chained reruns.  Custom scripts that call ConvertRepoTask should be
-    used on more complex suites of repositories.
-    """
-    raise RuntimeError(
-        "Gen2 conversion to Gen3 is no longer supported. "
-        "Please use version v23.0 of the pipelines code to do legacy conversions."
-    )
-
-
 @click.command(short_help="Define visits from exposures.", cls=ButlerCommand)
 @repo_argument(required=True)
 @instrument_argument(required=True)
@@ -207,3 +163,7 @@ def write_curated_calibrations(*, repo, instrument, collection, labels, labels_a
     script.writeCuratedCalibrations(
         repo=repo, instrument=instrument, collection=collection, labels=labels_arg + labels, prefix=prefix
     )
+
+@click.command(short_help="Update dimension record regions from visit geometry datasets.")
+@repo_argument(required=True)
+@instrument_argument(required=True)
