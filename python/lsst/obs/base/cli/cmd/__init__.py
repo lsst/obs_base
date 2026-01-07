@@ -19,6 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["define_visits", "ingest_raws", "write_curated_calibrations"]
+__all__ = ["define_visits", "ingest_raws", "update_dimension_regions", "write_curated_calibrations"]
 
-from .commands import define_visits, ingest_raws, write_curated_calibrations
+from .commands import define_visits, ingest_raws, update_dimension_regions, write_curated_calibrations

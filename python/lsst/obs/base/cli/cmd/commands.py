@@ -19,9 +19,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from collections.abc import Sequence
+
 import click
 
+from lsst.daf.butler import Butler
 from lsst.daf.butler.cli.opt import (
+    collections_argument,
     config_file_option,
     config_option,
     locations_argument,
@@ -164,6 +168,27 @@ def write_curated_calibrations(*, repo, instrument, collection, labels, labels_a
         repo=repo, instrument=instrument, collection=collection, labels=labels_arg + labels, prefix=prefix
     )
 
-@click.command(short_help="Update dimension record regions from visit geometry datasets.")
+
+@click.command()
 @repo_argument(required=True)
-@instrument_argument(required=True)
+@click.argument("instrument")
+@collections_argument(help="Collections to search for visit geometry datasets.")
+@click.option("--dataset-type", default="visit_geometry", help="Name of the visit geometry dataset type.")
+@click.option("--batch-size", default=11, help="Number of visits to process in each transaction.")
+@where_option()
+def update_dimension_regions(
+    *,
+    repo: str,
+    instrument: str,
+    collections: Sequence[str],
+    dataset_type: str,
+    batch_size: int,
+    where: str,
+) -> None:
+    """Update dimension record regions from visit geometry datasets."""
+    from ...visit_geometry import VisitGeometry
+
+    butler = Butler.from_config(repo, writeable=True, collections=collections)
+    VisitGeometry.update_dimension_records(
+        butler, instrument, where, dataset_type=dataset_type, batch_size=batch_size
+    )
