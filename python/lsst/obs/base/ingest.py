@@ -25,7 +25,7 @@ __all__ = ("RawIngestConfig", "RawIngestTask", "makeTransferChoiceField")
 import json
 import re
 from collections import defaultdict
-from collections.abc import Callable, Iterable, Iterator, MutableMapping, Sized
+from collections.abc import Callable, Iterable, Iterator, MutableMapping, Sequence, Sized
 from dataclasses import InitVar, dataclass
 from multiprocessing import Pool
 from typing import Any, ClassVar
@@ -51,7 +51,7 @@ from lsst.daf.butler import (
 from lsst.pex.config import ChoiceField, Config, Field
 from lsst.pipe.base import Instrument, Task
 from lsst.resources import ResourcePath, ResourcePathExpression
-from lsst.utils.timer import timeMethod
+from lsst.utils.timer import time_this, timeMethod
 
 from ._instrument import makeExposureRecordFromObsInfo
 
@@ -1090,7 +1090,7 @@ class RawIngestTask(Task):
 
     def ingestFiles(
         self,
-        files: Iterable[ResourcePath],
+        files: Sequence[ResourcePath],
         *,
         pool: PoolType | None = None,
         processes: int = 1,
@@ -1161,7 +1161,12 @@ class RawIngestTask(Task):
             created_pool = True
 
         try:
-            exposureData, bad_files = self.prep(files, pool=pool)
+            with time_this(
+                self.log,
+                msg="Reading metadata from %d file%s",
+                args=(*_log_msg_counter(files),),
+            ):
+                exposureData, bad_files = self.prep(files, pool=pool)
         finally:
             if created_pool and pool:
                 # The pool is not needed any more so close it if we created
@@ -1193,13 +1198,21 @@ class RawIngestTask(Task):
             )
 
             try:
-                for name, record in exposure.dependencyRecords.items():
-                    self.butler.registry.syncDimensionData(name, record, update=update_exposure_records)
-                inserted_or_updated = self.butler.registry.syncDimensionData(
-                    "exposure",
-                    exposure.record,
-                    update=update_exposure_records,
-                )
+                with time_this(
+                    self.log,
+                    msg="Creating dimension records for instrument %s, exposure %s",
+                    args=(
+                        str(exposure.record.instrument),
+                        str(exposure.record.id),
+                    ),
+                ):
+                    for name, record in exposure.dependencyRecords.items():
+                        self.butler.registry.syncDimensionData(name, record, update=update_exposure_records)
+                    inserted_or_updated = self.butler.registry.syncDimensionData(
+                        "exposure",
+                        exposure.record,
+                        update=update_exposure_records,
+                    )
             except Exception as e:
                 self._on_ingest_failure(exposure, e)
                 n_exposures_failed += 1
@@ -1282,7 +1295,7 @@ class RawIngestTask(Task):
     @timeMethod
     def run(
         self,
-        files: Iterable[ResourcePathExpression],
+        files: Sequence[ResourcePathExpression],
         *,
         pool: PoolType | None = None,
         processes: int = 1,
@@ -1366,7 +1379,7 @@ class RawIngestTask(Task):
         if group_files:
             for group in ResourcePath.findFileResources(files, file_filter, group_files):
                 new_refs, bad, n_exp, n_exp_fail, n_ingest_fail = self.ingestFiles(
-                    group,
+                    tuple(group),
                     pool=pool,
                     processes=processes,
                     run=run,
@@ -1381,7 +1394,7 @@ class RawIngestTask(Task):
                 n_ingests_failed += n_ingest_fail
         else:
             refs, bad_files, n_exposures, n_exposures_failed, n_ingests_failed = self.ingestFiles(
-                ResourcePath.findFileResources(files, file_filter, group_files),
+                tuple(ResourcePath.findFileResources(files, file_filter, group_files)),
                 pool=pool,
                 processes=processes,
                 run=run,
