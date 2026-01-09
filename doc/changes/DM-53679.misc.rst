@@ -1,0 +1,1 @@
+Added timer log messages to raw ingest to allow reporting of metadata gathering and butler ingest times separately.
