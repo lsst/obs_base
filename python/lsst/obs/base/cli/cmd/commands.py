@@ -19,9 +19,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from collections.abc import Sequence
+
 import click
 
+from lsst.daf.butler import Butler
 from lsst.daf.butler.cli.opt import (
+    collections_argument,
     config_file_option,
     config_option,
     locations_argument,
@@ -41,50 +45,6 @@ from ..opt import failfast_option, labels_argument
 
 # regular expression that can be used to find supported fits file extensions.
 fits_re = r"\.fit[s]?\b"
-
-
-@click.command(short_help="Convert a gen2 repo to gen3.", cls=ButlerCommand)
-@repo_argument(
-    required=True,
-    help="REPO is the URI or path to the gen3 repository. Will be created if it does not already exist",
-)
-@click.option("--gen2root", required=True, help="Root path of the gen 2 repo to be converted.")
-@click.option("--skymap-name", help="Name of the new gen3 skymap (e.g. 'discrete/ci_hsc').")
-@click.option("--skymap-config", help="Path to skymap config file defining the new gen3 skymap.")
-@click.option(
-    "--calibs", help="Path to the gen 2 calibration repo. It can be absolute or relative to gen2root."
-)
-@click.option(
-    "--reruns",
-    multiple=True,
-    callback=split_commas,
-    metavar=typeStrAcceptsMultiple,
-    help=(
-        "List of rerun paths to convert.  Output collection names will be "
-        "guessed, which can fail if the Gen2 repository paths do not follow a "
-        "recognized convention.  In this case, the command-line interface cannot "
-        "be used."
-    ),
-)
-@transfer_option(help="Mode to use to transfer files into the new repository.")
-@processes_option()
-@config_file_option(
-    help="Path to a `ConvertRepoConfig` override to be included after the Instrument config "
-    "overrides are applied."
-)
-@options_file_option()
-def convert(*args, **kwargs):
-    """Convert one or more Butler gen 2 repositories into a gen 3 repository.
-
-    This is a highly simplified interface that should only be used to convert
-    suites of gen 2 repositories that contain at most one calibration repo and
-    has no chained reruns.  Custom scripts that call ConvertRepoTask should be
-    used on more complex suites of repositories.
-    """
-    raise RuntimeError(
-        "Gen2 conversion to Gen3 is no longer supported. "
-        "Please use version v23.0 of the pipelines code to do legacy conversions."
-    )
 
 
 @click.command(short_help="Define visits from exposures.", cls=ButlerCommand)
@@ -206,4 +166,29 @@ def write_curated_calibrations(*, repo, instrument, collection, labels, labels_a
     """Add an instrument's curated calibrations to the data repository."""
     script.writeCuratedCalibrations(
         repo=repo, instrument=instrument, collection=collection, labels=labels_arg + labels, prefix=prefix
+    )
+
+
+@click.command()
+@repo_argument(required=True)
+@click.argument("instrument")
+@collections_argument(help="Collections to search for visit geometry datasets.")
+@click.option("--dataset-type", default="visit_geometry", help="Name of the visit geometry dataset type.")
+@click.option("--batch-size", default=11, help="Number of visits to process in each transaction.")
+@where_option()
+def update_dimension_regions(
+    *,
+    repo: str,
+    instrument: str,
+    collections: Sequence[str],
+    dataset_type: str,
+    batch_size: int,
+    where: str,
+) -> None:
+    """Update dimension record regions from visit geometry datasets."""
+    from ...visit_geometry import VisitGeometry
+
+    butler = Butler.from_config(repo, writeable=True, collections=collections)
+    VisitGeometry.update_dimension_records(
+        butler, instrument, where, dataset_type=dataset_type, batch_size=batch_size
     )
