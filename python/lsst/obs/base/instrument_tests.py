@@ -132,6 +132,13 @@ class DummyCam(Instrument):
     def getObsDataPackageDir(cls) -> str | None:
         return cls.dataPackageDir
 
+    @classmethod
+    @lru_cache  # For mypy
+    def getObsDataPackageRoot(cls) -> ResourcePath | None:
+        if cls.dataPackageDir is None:
+            return None
+        return ResourcePath(cls.dataPackageDir)
+
     def getCamera(self) -> lsst.afw.cameraGeom.Camera:
         # Return something that can be indexed by detector number
         # but also has to support getIdIter.
