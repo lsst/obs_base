@@ -1,3 +1,43 @@
+obs_base v30.0.0 (2026-01-16)
+=============================
+
+New Features
+------------
+
+- Added ``lsst.obs.base.utils.TableVStack`` for efficient Astropy Table concatenation from dataset refs.
+
+  This utility class was made for consolidating object tables in ``pipe_tasks`` but is broadly useful.
+  While ``obs_base`` isn't the most logical place to put it, it's the lowest level package it can go right now. (`DM-52169 <https://rubinobs.atlassian.net/browse/DM-52169>`_)
+
+
+Bug Fixes
+---------
+
+- The ``FitsExposureFormatter`` now forces the data type returned to match the storage class, overriding the default type associated with the FITS file. (`DM-52873 <https://rubinobs.atlassian.net/browse/DM-52873>`_)
+
+
+Other Changes and Additions
+---------------------------
+
+- Moved camera geometry parity flips (relative to sky) into camera geometry (between the ``FOCAL_PLANE`` and ``FIELD_ANGLE`` coordinate systems).
+
+  Raw formatters still track whether a parity flip is needed in order to support old camera definitions.
+  This may change in the future. (`DM-20746 <https://rubinobs.atlassian.net/browse/DM-20746>`_)
+- Added ``transmission_filter_detector`` to curated calibration types. (`DM-46526 <https://rubinobs.atlassian.net/browse/DM-46526>`_)
+- Added new ``lsst.obs.base.utils.iso_date_to_curated_calib_file_root`` to unify the logic for converting an ISO date string to a curated calibrations file name. (`DM-49900 <https://rubinobs.atlassian.net/browse/DM-49900>`_)
+- Adjusted the logic for visit definition such that a visit will not be defined if it is known that the observation was not looking at the sky (such as with closed-dome tests). (`DM-50167 <https://rubinobs.atlassian.net/browse/DM-50167>`_)
+- When defining visits, always update visit-detector regions if ``update_records=True``.
+
+  Previously, we only updated visit-detector regions when the visit record itself changed, which made it impossible to fix cases where the code for the detector regions was changing but the visit record was not, as well as more mysterious cases where some visit-detector regions were not originally inserted at all. (`DM-50446 <https://rubinobs.atlassian.net/browse/DM-50446>`_)
+- Dropped support for old dimension universes (and stopped requiring ``raw`` dataset existence)  in ``butler define-visits``. (`DM-50661 <https://rubinobs.atlassian.net/browse/DM-50661>`_)
+- Adapt ``FitsExposureFormatter`` to the new interfaces for FITS compression. (`DM-52879 <https://rubinobs.atlassian.net/browse/DM-52879>`_)
+- Added ``--skip-existing`` command line option to ``butler ingest-raws``.
+  Skip existing raws is now the default (previously re-ingesting was an error). (`DM-53163 <https://rubinobs.atlassian.net/browse/DM-53163>`_)
+- Capped the number of input provenance datasets recorded in Exposure FITS files to 3,000 inputs. (`DM-53326 <https://rubinobs.atlassian.net/browse/DM-53326>`_)
+- Modified ``DefineVisitsTask.run`` to return a struct of visit counts. (`DM-53622 <https://rubinobs.atlassian.net/browse/DM-53622>`_)
+- Added timer log messages to raw ingest to allow reporting of metadata gathering and butler ingest times separately. (`DM-53679 <https://rubinobs.atlassian.net/browse/DM-53679>`_)
+
+
 obs_base v29.0.0 (2025-03-26)
 =============================
 

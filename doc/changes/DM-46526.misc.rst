@@ -1,1 +1,0 @@
-Add transmission_filter_detector to curated calibration types.

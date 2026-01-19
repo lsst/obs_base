@@ -1,1 +1,0 @@
-Added new ``lsst.obs.base.utils.iso_date_to_curated_calib_file_root`` to unify the logic for converting an ISO date string to a curated calibrations file name.

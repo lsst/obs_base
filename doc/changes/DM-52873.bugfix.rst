@@ -1,1 +1,0 @@
-The Exposure formatter now forces the data type returned to match the storage class, overriding the default type associated with the FITS file.
