@@ -179,7 +179,8 @@ class GroupExposuresTask(Task, metaclass=ABCMeta):
     config : `GroupExposuresConfig`
         Configuration information.
     **kwargs
-        Additional keyword arguments forwarded to the `Task` constructor.
+        Additional keyword arguments forwarded to the `lsst.pipe.baseTask`
+        constructor.
     """
 
     def __init__(self, config: GroupExposuresConfig, **kwargs: Any):
@@ -232,7 +233,7 @@ class GroupExposuresTask(Task, metaclass=ABCMeta):
 
         Returns
         -------
-        groups : `dict` [Any, `list` of `DimensionRecord`]
+        groups : `dict` [Any, `list` [ `lsst.daf.butler.DimensionRecord` ] ]
             Groupings of exposure records. The key type is relevant to the
             specific visit definition and could be a string or a tuple.
         """
@@ -246,7 +247,7 @@ class GroupExposuresTask(Task, metaclass=ABCMeta):
 
         Parameters
         ----------
-        exposures : `list` [ `DimensionRecord` ]
+        exposures : `list` [ `lsst.daf.butler.DimensionRecord` ]
             DimensionRecords (for the 'exposure' dimension) describing the
             exposures to group.
         instrument : `~lsst.obs.base.Instrument`
@@ -481,7 +482,7 @@ class DefineVisitsTask(Task):
             ``self.butler.collections.defaults``. Can be any of the types
             supported by the ``collections`` argument to butler construction.
 
-        Results
+        Returns
         -------
         records : `_VisitRecords`
             Struct containing DimensionRecords for the visit, including

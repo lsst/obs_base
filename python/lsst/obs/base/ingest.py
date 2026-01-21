@@ -269,7 +269,7 @@ class RawIngestTask(Task):
 
         Returns
         -------
-        datasetType : `DatasetType`
+        datasetType : `lsst.daf.butler.DatasetType`
             The default dataset type to use for the data being ingested. This
             is only used if the relevant `~lsst.pipe.base.Instrument` does not
             define an override.
@@ -474,18 +474,19 @@ class RawIngestTask(Task):
 
     @classmethod
     def getObservationInfoSubsets(cls) -> tuple[set, set]:
-        """Return subsets of fields in the `ObservationInfo` that we care
-        about.
+        """Return subsets of fields in the
+        `~astro_metadata_translator.ObservationInfo` that we care about.
 
         These fields will be used in constructing an exposure record.
 
         Returns
         -------
         required : `set`
-            Set of `ObservationInfo` field names that are required.
+            Set of `~astro_metadata_translator.ObservationInfo` field names
+            that are required.
         optional : `set`
-            Set of `ObservationInfo` field names we will use if they are
-            available.
+            Set of `~astro_metadata_translator.ObservationInfo` field names
+            we will use if they are available.
         """
         # Marking the new properties "group_counter_*" and
         # "has_simulated_content" as required, assumes that we either
@@ -586,22 +587,22 @@ class RawIngestTask(Task):
 
         Parameters
         ----------
-        files : iterable over `lsst.resources.ResourcePath`
+        files : `~collections.abc.Iterable` [ `lsst.resources.ResourcePath` ]
             URIs to the files to be ingested.
 
         Returns
         -------
-        index : `dict` [`ResourcePath`, Any]
+        index : `dict` [ `lsst.resources.ResourcePath`, `typing.Any` ]
             Merged contents of all relevant index files found. These can
             be explicitly specified index files or ones found in the
             directory alongside a data file to be ingested.
-        updated_files : `list` of `ResourcePath`
+        updated_files : `list` [ `lsst.resources.ResourcePath` ]
             Updated list of the input files with entries removed that were
             found listed in an index file. Order is not guaranteed to
             match the order of the files given to this routine.
-        good_index_files: `set` [ `ResourcePath` ]
+        good_index_files: `set` [ `lsst.resources.ResourcePath` ]
             Index files that were successfully read.
-        bad_index_files: `set` [ `ResourcePath` ]
+        bad_index_files: `set` [ `lsst.resources.ResourcePath` ]
             Files that looked like index files but failed to read properly.
         """
         # Convert the paths to absolute for easy comparison with index content.
@@ -729,7 +730,7 @@ class RawIngestTask(Task):
 
         Parameters
         ----------
-        index_entries : `dict` [`ResourcePath`, Any]
+        index_entries : `dict` [`lsst.resources.ResourcePath`, `typing.Any`]
             Dict indexed by name of file to ingest and with keys either
             raw metadata or translated
             `~astro_metadata_translator.ObservationInfo`.
@@ -821,16 +822,16 @@ class RawIngestTask(Task):
 
         Parameters
         ----------
-        obsInfo : `ObservationInfo`
+        obsInfo : `~astro_metadata_translator.ObservationInfo`
             Observation details for (one of the components of) the exposure.
-        universe : `DimensionUniverse`
+        universe : `lsst.daf.butler.DimensionUniverse`
             Set of all known dimensions.
         **kwargs
             Additional field values for this record.
 
         Returns
         -------
-        record : `DimensionRecord`
+        record : `lsst.daf.butler.DimensionRecord`
             The exposure record that must be inserted into the
             `~lsst.daf.butler.Registry` prior to file-level ingest.
         """
@@ -852,14 +853,14 @@ class RawIngestTask(Task):
 
         Parameters
         ----------
-        obsInfo : `ObservationInfo`
+        obsInfo : `~astro_metadata_translator.ObservationInfo`
             Observation details for (one of the components of) the exposure.
-        universe : `DimensionUniverse`
+        universe : `lsst.daf.butler.DimensionUniverse`
             Set of all known dimensions.
 
         Returns
         -------
-        records : `dict` [`str`, `DimensionRecord`]
+        records : `dict` [`str`, `lsst.daf.butler.DimensionRecord`]
             The records to insert, indexed by dimension name.
         """
         records: dict[str, DimensionRecord] = {}
@@ -891,7 +892,7 @@ class RawIngestTask(Task):
 
         Parameters
         ----------
-        exposure : `RawExposureData`
+        data : `RawExposureData`
             A structure containing information about the exposure to be
             ingested.  Must have `RawExposureData.record` populated. Should
             be considered consumed upon return.
@@ -1041,7 +1042,7 @@ class RawIngestTask(Task):
             A structure containing information about the exposure to be
             ingested.  Must have `RawExposureData.records` populated and all
             data ID attributes expanded.
-        datasetType : `DatasetType`
+        datasetType : `lsst.daf.butler.DatasetType`
             The dataset type associated with this exposure.
         run : `str`
             Name of a RUN-type collection to write to.
@@ -1146,7 +1147,7 @@ class RawIngestTask(Task):
         -------
         refs : `list` of `lsst.daf.butler.DatasetRef`
             Dataset references for ingested raws.
-        bad_files : `list` of `ResourcePath`
+        bad_files : `list` of `lsst.resources.ResourcePath`
             Given paths that could not be ingested.
         n_exposures : `int`
             Number of exposures successfully ingested.
@@ -1366,8 +1367,9 @@ class RawIngestTask(Task):
         -----
         This method inserts all datasets for an exposure within a transaction,
         guaranteeing that partial exposures are never ingested.  The exposure
-        dimension record is inserted with `Registry.syncDimensionData` first
-        (in its own transaction), which inserts only if a record with the same
+        dimension record is inserted with
+        `lsst.daf.butler.Registry.syncDimensionData` first (in its own
+        transaction), which inserts only if a record with the same
         primary key does not already exist.  This allows different files within
         the same exposure to be ingested in different runs.
         """

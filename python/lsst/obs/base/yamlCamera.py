@@ -228,12 +228,9 @@ def makeTransformDict(nativeSys, transformDict, plateScale):
 
     Returns
     -------
-    transforms : `dict`
-        A dict of `lsst.afw.cameraGeom.CameraSys` :
-        `lsst.afw.geom.TransformPoint2ToPoint2`
-
-    The resulting dict's keys are `~lsst.afw.cameraGeom.CameraSys`,
-    and the values are Transforms *from* NativeSys *to* CameraSys
+    transforms : `dict` [`lsst.afw.cameraGeom.CameraSys`, \
+      `lsst.afw.geom.TransformPoint2ToPoint2` ]
+        The values are Transforms *from* NativeSys *to* CameraSys
     """
     # As other comments note this is required, and this is one function where
     # it's assumed

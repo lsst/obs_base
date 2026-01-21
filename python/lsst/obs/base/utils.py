@@ -70,7 +70,6 @@ def createInitialSkyWcs(visitInfo, detector, flipX=None):
     A typical use case for this is to create the initial WCS for a newly-read
     raw exposure.
 
-
     Parameters
     ----------
     visitInfo : `lsst.afw.image.VisitInfo`
@@ -176,10 +175,14 @@ def _store_str_header(
 
     Parameters
     ----------
+    hdr : `lsst.daf.base.PropertyList`
+        Header to examine.
     key : `str`
         The key to use in the FITS header (without HIERARCH).
     value : `str`
         The value that is to be stored in the header.
+    comment : `str` or `None`, optional
+        Possible comment to add.
     allow_long_headers : `bool`, optional
         If `True` the value will be used unchanged. If `False` the value
         could have some content elided and a modified version used that will
@@ -236,7 +239,7 @@ def add_provenance_to_fits_header(
     allow_long_headers : `bool`, optional
         If `True` it is assumed that there is no limit to the length of the
         values being stored. If `False`, assumes that FITS header cards must be
-        kept within 80 characters including quoting, ``HIERARCH``, and `=`.
+        kept within 80 characters including quoting, ``HIERARCH``, and ``=``.
     """
     # Some datasets do not define a header.
     if hdr is None:
@@ -486,7 +489,7 @@ class TableVStack:
         extra_values : `dict`
             Dictionary keyed by index of handle of additional values
             to pass to extend.
-        kwargs_get : `dict`[`str`, `Any`]
+        kwargs_get : `dict` [`str`, `Any`]
             Keyword argument-value pairs to pass to handle.get().
 
         Returns

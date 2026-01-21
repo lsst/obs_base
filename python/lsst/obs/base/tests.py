@@ -72,10 +72,10 @@ class ObsTests(butler_tests.ButlerGetTests, camera_tests.CameraTests):
 
         Parameters
         ----------
-        butler: `lsst.daf.butler.Butler`
+        butler : `lsst.daf.butler.Butler`
             A butler object, instantiated on the testdata repository for the
             obs package being tested.
-        dataIds: `dict`
+        dataIds : `dict`
             dictionary of (exposure name): (dataId of that exposure in the
             testdata repository), with unittest.SkipTest as the value for any
             exposures you do not have/do not want to test. It must contain a

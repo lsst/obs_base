@@ -155,6 +155,8 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         ----------
         files : `list` [`str`], or None
             List of files to be ingested, or None to use ``self.file``
+        cli : `bool`, optional
+            Unused.
         fullCheck : `bool`, optional
             If `True`, read the full raw dataset and check component
             consistency. If `False` check that a component can be read
@@ -281,9 +283,11 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         ----------
         transfer : `str`
             The external data transfer type.
-        file : `str`
+        file : `str` or `None`, optional
             Path to a file to ingest instead of the default associated with
             the object.
+        skip_existing : `bool`, optional
+            Whether to use the ``--no-skip-existing`` flag for ingest.
         """
         if file is None:
             file = self.file

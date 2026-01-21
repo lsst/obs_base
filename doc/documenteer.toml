@@ -16,3 +16,4 @@ extensions = [
 astropy = "https://docs.astropy.org/en/stable"
 python = "https://docs.python.org/3"
 lsst = "https://pipelines.lsst.io/v/daily/"
+astro_metadata_translator = "https://astro-metadata-translator.lsst.io/"
