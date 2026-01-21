@@ -142,7 +142,6 @@ datastore:
     def testTimeStampWarning(self):
         # Now ingest a dataset which should generate a warning because of
         # the end time being before the begin time.
-        return
         files = [os.path.join(INGESTDIR, "sidecar_data", "dataset_end.yaml")]
         with self.assertLogs("lsst.obs.base._instrument", level="WARNING") as cm:
             self.task.run(files, run=self.outputRun)
