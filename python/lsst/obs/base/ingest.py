@@ -288,6 +288,10 @@ class RawIngestTask(Task):
         Guaranteed to be called in an ``except`` block, allowing the callback
         to re-raise or replace (with ``raise ... from``) to override the task's
         usual error handling (before `RawIngestConfig.failFast` logic occurs).
+    on_exposure_record : `Callable`, optional
+        A callback invoked when an exposure dimension record has been created
+        or modified. Will not be called if the record already existed. Will
+        be called with the exposure record.
     **kwargs
         Additional keyword arguments are forwarded to the `lsst.pipe.base.Task`
         constructor.
@@ -331,6 +335,7 @@ class RawIngestTask(Task):
         on_success: Callable[[list[FileDataset]], Any] = _do_nothing,
         on_metadata_failure: Callable[[ResourcePath, Exception], Any] = _do_nothing,
         on_ingest_failure: Callable[[RawExposureData, Exception], Any] = _do_nothing,
+        on_exposure_record: Callable[[DimensionRecord], Any] = _do_nothing,
         **kwargs: Any,
     ):
         config.validate()  # Not a CmdlineTask nor PipelineTask, so have to validate the config here.
@@ -339,6 +344,7 @@ class RawIngestTask(Task):
         self.universe = self.butler.dimensions
         self.datasetType = self.getDatasetType()
         self._on_success = on_success
+        self._on_exposure_record = on_exposure_record
         self._on_metadata_failure = on_metadata_failure
         self._on_ingest_failure = on_ingest_failure
         self.progress = Progress("obs.base.RawIngestTask")
@@ -1259,6 +1265,11 @@ class RawIngestTask(Task):
                         exposure.record,
                         update=update_exposure_records,
                     )
+                if inserted_or_updated is not False:
+                    with self.metrics.collect_metric(
+                        "time_for_callbacks", log=self.log, msg="Exposure record updated. Calling handler"
+                    ):
+                        self._on_exposure_record(exposure.record)
             except Exception as e:
                 self._on_ingest_failure(exposure, e)
                 n_exposures_failed += 1

@@ -314,12 +314,16 @@ datastore:
         metadata_failures = []
         successes = []
         ingest_failures = []
+        records = []
 
         def on_metadata_failure(filename, exc):
             metadata_failures.append(filename)
 
         def on_success(datasets):
             successes.append(datasets)
+
+        def on_exposure_record(record):
+            records.append(record)
 
         def on_ingest_failure(exposure, exc):
             ingest_failures.append(exposure)
@@ -331,6 +335,7 @@ datastore:
             butler=self.butler,
             on_metadata_failure=on_metadata_failure,
             on_success=on_success,
+            on_exposure_record=on_exposure_record,
             on_ingest_failure=on_ingest_failure,
         )
 
@@ -340,6 +345,7 @@ datastore:
             self.task.run(files, run=self.outputRun)
 
         self.assertEqual(len(successes), 1)
+        self.assertEqual(len(records), 1)
         self.assertEqual(len(metadata_failures), 2)
         self.assertEqual(len(ingest_failures), 0)
 
