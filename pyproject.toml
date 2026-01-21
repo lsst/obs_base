@@ -1,6 +1,10 @@
 [project]
 name = "lsst-obs-base"
 
+[project.urls]
+"Homepage" = "https://github.com/lsst/obs_base"
+"Source" = "https://github.com/lsst/obs_base"
+
 [project.entry-points.'butler.cli']
 obs_base = "lsst.obs.base.cli:get_cli_subcommands"
 
