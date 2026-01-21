@@ -132,6 +132,7 @@ datastore:
         self.task.run([self.good_file])
         datasets = list(self.butler.registry.queryDatasets("raw_dict", collections="DummyCam/raw/all"))
         self.assertEqual(len(datasets), 1)
+        self.assertGreater(self.task.metrics.time_for_ingest, 0.0)
 
         # Now parallelized.
         files = [self.good_file, os.path.join(INGESTDIR, "sidecar_data", "dataset_1.yaml")]

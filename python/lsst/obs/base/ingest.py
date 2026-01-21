@@ -23,15 +23,18 @@
 __all__ = ("RawIngestConfig", "RawIngestTask", "makeTransferChoiceField")
 
 import json
+import logging
 import re
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Iterator, MutableMapping, Sequence, Sized
+from contextlib import contextmanager
 from dataclasses import InitVar, dataclass
 from multiprocessing import Pool
 from typing import Any, ClassVar
 
 from astro_metadata_translator import MetadataTranslator, ObservationInfo, merge_headers
 from astro_metadata_translator.indexing import process_index_data, process_sidecar_data
+from pydantic import BaseModel
 
 from lsst.afw.fits import readMetadata
 from lsst.daf.butler import (
@@ -51,6 +54,7 @@ from lsst.daf.butler import (
 from lsst.pex.config import ChoiceField, Config, Field
 from lsst.pipe.base import Instrument, Task
 from lsst.resources import ResourcePath, ResourcePathExpression
+from lsst.utils.logging import LsstLoggers
 from lsst.utils.timer import time_this, timeMethod
 
 from ._instrument import makeExposureRecordFromObsInfo
@@ -99,6 +103,41 @@ def _log_msg_counter(noun: int | Sized) -> tuple[int, str]:
     else:
         num = len(noun)
     return num, "" if num == 1 else "s"
+
+
+class IngestMetrics(BaseModel):
+    """Metrics collected during raw ingest."""
+
+    time_for_metadata: float = 0.0
+    """Wall-clock time, in seconds, spent gathering file metadata."""
+
+    time_for_records: float = 0.0
+    """Wall-clock time, in seconds, spent writing dimension records."""
+
+    time_for_ingest: float = 0.0
+    """Wall-clock time, in seconds, spent calling butler ingest."""
+
+    time_for_callbacks: float = 0.0
+    """Wall-clock time, in seconds, processing user-supplied callbacks."""
+
+    def reset(self) -> None:
+        """Reset all metrics to initial values."""
+        self.time_for_ingest = 0.0
+        self.time_for_records = 0.0
+        self.time_for_metadata = 0.0
+        self.time_for_callbacks = 0.0
+
+    @contextmanager
+    def collect_metric(
+        self,
+        property: str,
+        log: LsstLoggers | None = None,
+        msg: str | None = None,
+        args: tuple[Any, ...] = (),
+    ) -> Iterator[None]:
+        with time_this(log=log, msg=msg, args=args, level=logging.INFO) as timer:
+            yield
+        setattr(self, property, getattr(self, property) + timer.duration)
 
 
 @dataclass
@@ -313,6 +352,8 @@ class RawIngestTask(Task):
         self._instrument_records = {
             rec.name: rec for rec in butler.registry.queryDimensionRecords("instrument")
         }
+        # Create empty metrics.
+        self.metrics = IngestMetrics()
 
     def _reduce_kwargs(self) -> dict[str, Any]:
         # Add extra parameters to pickle.
@@ -1081,12 +1122,14 @@ class RawIngestTask(Task):
                     FileDataset(path=file.filename.abspath(), refs=refs, formatter=file.FormatterClass)
                 )
 
-        self.butler.ingest(
-            *datasets,
-            transfer=self.config.transfer,
-            record_validation_info=track_file_attrs,
-            skip_existing=skip_existing_exposures,
-        )
+        with self.butler.record_metrics() as butler_metrics:
+            self.butler.ingest(
+                *datasets,
+                transfer=self.config.transfer,
+                record_validation_info=track_file_attrs,
+                skip_existing=skip_existing_exposures,
+            )
+        self.metrics.time_for_ingest += butler_metrics.time_in_ingest
         return datasets
 
     def ingestFiles(
@@ -1162,7 +1205,8 @@ class RawIngestTask(Task):
             created_pool = True
 
         try:
-            with time_this(
+            with self.metrics.collect_metric(
+                "time_for_metadata",
                 self.log,
                 msg="Reading metadata from %d file%s",
                 args=(*_log_msg_counter(files),),
@@ -1199,7 +1243,8 @@ class RawIngestTask(Task):
             )
 
             try:
-                with time_this(
+                with self.metrics.collect_metric(
+                    "time_for_records",
                     self.log,
                     msg="Creating dimension records for instrument %s, exposure %s",
                     args=(
@@ -1281,7 +1326,8 @@ class RawIngestTask(Task):
                     raise e
                 continue
             else:
-                self._on_success(datasets_for_exposure)
+                with self.metrics.collect_metric("time_for_callbacks", self.log, msg="Calling on_success"):
+                    self._on_success(datasets_for_exposure)
                 for dataset in datasets_for_exposure:
                     refs.extend(dataset.refs)
 
@@ -1378,31 +1424,37 @@ class RawIngestTask(Task):
         n_exposures = 0
         n_exposures_failed = 0
         n_ingests_failed = 0
+        self.metrics.reset()  # Clear previous metrics.
+        ingest_duration = 0.0
         if group_files:
-            for group in ResourcePath.findFileResources(files, file_filter, group_files):
-                new_refs, bad, n_exp, n_exp_fail, n_ingest_fail = self.ingestFiles(
-                    tuple(group),
+            with time_this(log=self.log, msg="Processing ingest groups") as timer:
+                for group in ResourcePath.findFileResources(files, file_filter, group_files):
+                    new_refs, bad, n_exp, n_exp_fail, n_ingest_fail = self.ingestFiles(
+                        tuple(group),
+                        pool=pool,
+                        processes=processes,
+                        run=run,
+                        skip_existing_exposures=skip_existing_exposures,
+                        update_exposure_records=update_exposure_records,
+                        track_file_attrs=track_file_attrs,
+                    )
+                    refs.extend(new_refs)
+                    bad_files.extend(bad)
+                    n_exposures += n_exp
+                    n_exposures_failed += n_exp_fail
+                    n_ingests_failed += n_ingest_fail
+            ingest_duration = timer.duration
+        else:
+            with time_this(log=self.log, msg="Ingesting all files in one batch") as timer:
+                refs, bad_files, n_exposures, n_exposures_failed, n_ingests_failed = self.ingestFiles(
+                    tuple(ResourcePath.findFileResources(files, file_filter, group_files)),
                     pool=pool,
                     processes=processes,
                     run=run,
                     skip_existing_exposures=skip_existing_exposures,
                     update_exposure_records=update_exposure_records,
-                    track_file_attrs=track_file_attrs,
                 )
-                refs.extend(new_refs)
-                bad_files.extend(bad)
-                n_exposures += n_exp
-                n_exposures_failed += n_exp_fail
-                n_ingests_failed += n_ingest_fail
-        else:
-            refs, bad_files, n_exposures, n_exposures_failed, n_ingests_failed = self.ingestFiles(
-                tuple(ResourcePath.findFileResources(files, file_filter, group_files)),
-                pool=pool,
-                processes=processes,
-                run=run,
-                skip_existing_exposures=skip_existing_exposures,
-                update_exposure_records=update_exposure_records,
-            )
+            ingest_duration = timer.duration
 
         had_failure = False
 
@@ -1414,14 +1466,25 @@ class RawIngestTask(Task):
 
         self.log.info(
             "Successfully processed data from %d exposure%s with %d failure%s from exposure"
-            " registration and %d failure%s from file ingest.",
+            " registration and %d failure%s from file ingest.\n"
+            "Timing breakdown:\n"
+            " - time in metadata gathering: %f s\n"
+            " - time in dimension record writing: %f s\n"
+            " - time in butler ingest: %f s\n"
+            " - time in user-supplied callbacks: %f s\n",
             *_log_msg_counter(n_exposures),
             *_log_msg_counter(n_exposures_failed),
             *_log_msg_counter(n_ingests_failed),
+            self.metrics.time_for_metadata,
+            self.metrics.time_for_records,
+            self.metrics.time_for_ingest,
+            self.metrics.time_for_callbacks,
         )
         if n_exposures_failed > 0 or n_ingests_failed > 0:
             had_failure = True
-        self.log.info("Ingested %d distinct Butler dataset%s", *_log_msg_counter(refs))
+        self.log.info(
+            "Ingested %d distinct Butler dataset%s in %f sec", *_log_msg_counter(refs), ingest_duration
+        )
 
         if had_failure:
             raise RuntimeError("Some failures encountered during ingestion")
