@@ -23,6 +23,7 @@
 __all__ = ("RawIngestConfig", "RawIngestTask", "makeTransferChoiceField")
 
 import concurrent.futures
+import contextlib
 import json
 import logging
 import re
@@ -450,11 +451,13 @@ class RawIngestTask(Task):
         sidecar_fail_msg = ""  # Requires prepended space when set.
         try:
             sidecar_file = filename.updatedExtension(".json")
-            if sidecar_file.exists():
+            headers = []
+            with contextlib.suppress(Exception):
+                # Try to read directly, bypassing existence check.
                 content = json.loads(sidecar_file.read())
                 headers = [process_sidecar_data(content)]
                 sidecar_fail_msg = " (via sidecar)"
-            else:
+            if not headers:
                 # Read the metadata from the data file itself.
 
                 # For remote files download the entire file to get the
