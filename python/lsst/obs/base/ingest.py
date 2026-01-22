@@ -22,6 +22,7 @@
 
 __all__ = ("RawIngestConfig", "RawIngestTask", "makeTransferChoiceField")
 
+import concurrent.futures
 import json
 import logging
 import re
@@ -29,7 +30,6 @@ from collections import defaultdict
 from collections.abc import Callable, Iterable, Iterator, MutableMapping, Sequence, Sized
 from contextlib import contextmanager
 from dataclasses import InitVar, dataclass
-from multiprocessing import Pool
 from typing import Any, ClassVar, cast
 
 from astro_metadata_translator import MetadataTranslator, ObservationInfo, merge_headers
@@ -58,11 +58,6 @@ from lsst.utils.logging import LsstLoggers
 from lsst.utils.timer import time_this, timeMethod
 
 from ._instrument import makeExposureRecordFromObsInfo
-
-# multiprocessing.Pool is actually a function, not a type, and the real type
-# isn't exposed, so we can't used it annotations, so we'll just punt on it via
-# this alias instead.
-PoolType = Any
 
 
 def _do_nothing(*args: Any, **kwargs: Any) -> None:
@@ -980,7 +975,7 @@ class RawIngestTask(Task):
         return data
 
     def prep(
-        self, files: Iterable[ResourcePath], *, pool: PoolType | None = None
+        self, files: Iterable[ResourcePath], *, pool: concurrent.futures.ThreadPoolExecutor | None = None
     ) -> tuple[Iterator[RawExposureData], list[ResourcePath]]:
         """Perform all non-database-updating ingest preprocessing steps.
 
@@ -989,8 +984,8 @@ class RawIngestTask(Task):
         files : iterable over `str` or path-like objects
             Paths to the files to be ingested.  Will be made absolute
             if they are not already.
-        pool : `multiprocessing.Pool`, optional
-            If not `None`, a process pool with which to parallelize some
+        pool : `concurrent.futures.ThreadPoolExecutor`, optional
+            If not `None`, a thread pool with which to parallelize some
             operations.
 
         Returns
@@ -1001,7 +996,6 @@ class RawIngestTask(Task):
         bad_files : `list` of `str`
             List of all the files that could not have metadata extracted.
         """
-        mapFunc = map if pool is None else pool.imap_unordered
 
         def _partition_good_bad(
             file_data: Iterable[RawFileData],
@@ -1037,9 +1031,13 @@ class RawIngestTask(Task):
             )
 
         # Extract metadata and build per-detector regions.
-        # This could run in a subprocess so collect all output
+        # This could run in threads or a subprocess so collect all output
         # before looking at failures.
-        fileData: Iterator[RawFileData] = mapFunc(self.extractMetadata, files)
+        fileData: Iterator[RawFileData]
+        if pool is None:
+            fileData = map(self.extractMetadata, files)
+        else:
+            fileData = pool.map(self.extractMetadata, files)
 
         # Filter out all the failed reads and store them for later
         # reporting.
@@ -1075,7 +1073,7 @@ class RawIngestTask(Task):
         # SELECTs), so if there's going to be a problem with connections vs.
         # multiple processes, or lock contention (in SQLite) slowing things
         # down, it'll happen here.
-        return mapFunc(self.expandDataIds, exposureData), bad_files
+        return map(self.expandDataIds, exposureData), bad_files
 
     def ingestExposureDatasets(
         self,
@@ -1147,7 +1145,7 @@ class RawIngestTask(Task):
         self,
         files: Sequence[ResourcePath],
         *,
-        pool: PoolType | None = None,
+        pool: concurrent.futures.ThreadPoolExecutor | None = None,
         processes: int = 1,
         run: str | None = None,
         skip_existing_exposures: bool = False,
@@ -1166,8 +1164,8 @@ class RawIngestTask(Task):
         ----------
         files : iterable over `lsst.resources.ResourcePath`
             URIs to the files to be ingested.
-        pool : `multiprocessing.Pool`, optional
-            If not `None`, a process pool with which to parallelize some
+        pool : `concurrent.futures.ThreadPoolExecutor`, optional
+            If not `None`, a thread pool with which to parallelize some
             operations.
         processes : `int`, optional
             The number of processes to use.  Ignored if ``pool`` is not `None`.
@@ -1212,7 +1210,7 @@ class RawIngestTask(Task):
         """
         created_pool = False
         if pool is None and processes > 1:
-            pool = Pool(processes)
+            pool = concurrent.futures.ThreadPoolExecutor(max_workers=processes)
             created_pool = True
 
         try:
@@ -1227,8 +1225,7 @@ class RawIngestTask(Task):
             if created_pool and pool:
                 # The pool is not needed any more so close it if we created
                 # it to ensure we clean up resources.
-                pool.close()
-                pool.join()
+                pool.shutdown(wait=True)
 
         # Up to this point, we haven't modified the data repository at all.
         # Now we finally do that, with one transaction per exposure.  This is
@@ -1360,7 +1357,7 @@ class RawIngestTask(Task):
         self,
         files: Sequence[ResourcePathExpression],
         *,
-        pool: PoolType | None = None,
+        pool: concurrent.futures.ThreadPoolExecutor | None = None,
         processes: int = 1,
         run: str | None = None,
         file_filter: str | re.Pattern = r"\.fit[s]?\b",
@@ -1382,9 +1379,11 @@ class RawIngestTask(Task):
         files : iterable `lsst.resources.ResourcePath`, `str` or path-like
             Paths to the files to be ingested.  Can refer to directories.
             Will be made absolute if they are not already.
-        pool : `multiprocessing.Pool`, optional
+        pool : `concurrent.futures.ThreadPoolExecutor`, optional
             If not `None`, a process pool with which to parallelize some
-            operations.
+            operations. This parameter was previously a `multiprocessing.Pool`
+            but that option is no longer supported since it is slow compared
+            to futures.
         processes : `int`, optional
             The number of processes to use.  Ignored if ``pool`` is not `None`.
         run : `str`, optional
@@ -1435,6 +1434,8 @@ class RawIngestTask(Task):
         primary key does not already exist.  This allows different files within
         the same exposure to be ingested in different runs.
         """
+        if pool and not isinstance(pool, concurrent.futures.ThreadPoolExecutor):
+            raise ValueError(f"This parameter must now be a ThreadPoolExecutor but was given {pool}.")
         refs = []
         bad_files = []
         n_exposures = 0
