@@ -42,7 +42,7 @@ from typing import Any, ClassVar, TypeVar, cast
 
 import lsst.geom
 from lsst.afw.cameraGeom import FOCAL_PLANE, PIXELS
-from lsst.daf.butler import Butler, DataCoordinate, DataId, DimensionRecord, Progress, Timespan
+from lsst.daf.butler import Butler, DataId, DimensionRecord, Progress, Timespan
 from lsst.geom import Box2D
 from lsst.pex.config import Config, Field, makeRegistry, registerConfigurable
 from lsst.pipe.base import Struct, Task
@@ -621,7 +621,7 @@ class DefineVisitsTask(Task):
 
     def run(
         self,
-        dataIds: Iterable[DataId],
+        dataIds_or_records: Iterable[DataId | DimensionRecord],
         *,
         collections: Sequence[str] | str | None = None,
         update_records: bool = False,
@@ -631,9 +631,12 @@ class DefineVisitsTask(Task):
 
         Parameters
         ----------
-        dataIds : `Iterable` [ `dict` or `~lsst.daf.butler.DataCoordinate` ]
-            Exposure-level data IDs.  These must all correspond to the same
-            instrument, and are expected to be on-sky science exposures.
+        dataIds_or_records : `Iterable` [ `dict` or \
+              `~lsst.daf.butler.DataCoordinate` or \
+              `~lsst.daf.butler.DimensionRecord` ]
+            Exposure-level data IDs or explicit exposure records.  These must
+            all correspond to the same instrument, and are expected to be
+            on-sky science exposures.
         collections : `Sequence` [ `str` ] or `str` or `None`
             Collections to be searched for camera geometry, overriding
             ``self.butler.collections.defaults``. Can be any of the types
@@ -674,19 +677,26 @@ class DefineVisitsTask(Task):
         # Normalize, expand, and deduplicate data IDs.
         self.log.info("Preprocessing data IDs.")
         dimensions = self.universe.conform(["exposure"])
-        data_id_set: set[DataCoordinate] = {
-            self.butler.registry.expandDataId(d, dimensions=dimensions) for d in dataIds
-        }
-        if not data_id_set:
-            raise RuntimeError("No exposures given.")
-        # Extract exposure DimensionRecords, check that there's only one
-        # instrument in play, and check for non-science exposures.
-        exposures = []
-        instruments = set()
+
+        exposures: list[DimensionRecord] = []
+        instruments: set[str] = set()
         instrument_cls_name: str | None = None
-        for dataId in data_id_set:
-            record = dataId.records["exposure"]
-            assert record is not None, "Guaranteed by expandDataIds call earlier."
+        instrument_record: DimensionRecord | None = None
+
+        # Go through the supplied dataset extracting records.
+        # Check that only a single instrument is being used.
+        for external in dataIds_or_records:
+            if isinstance(external, DimensionRecord):
+                record = external
+                if str(record.definition) != "exposure":
+                    raise ValueError(f"Can only define visits from exposure records, not {record}.")
+            else:
+                data_id = self.butler.registry.expandDataId(external, dimensions=dimensions)
+                exp_record = data_id.records["exposure"]
+                assert exp_record is not None, "Guaranteed by expandDataIds call earlier."
+                record = exp_record
+                instrument_record = data_id.records["instrument"]
+
             # LSSTCam data can assign ra/dec to flats, and dome-closed
             # engineering tests. Do not assign a visit if we know that
             # can_see_sky is False. Treat None as True for this test.
@@ -701,13 +711,11 @@ class DefineVisitsTask(Task):
                     continue
                 else:
                     raise RuntimeError(
-                        f"Input exposure {dataId} has observation_type "
+                        f"Input exposure {external} has observation_type "
                         f"{record.observation_type}, but is not on sky."
                     )
-            instruments.add(dataId["instrument"])
-            instrument_record = dataId.records["instrument"]
-            if instrument_record is not None:
-                instrument_cls_name = instrument_record.class_name
+            instrument_name = record.instrument
+            instruments.add(instrument_name)
             exposures.append(record)
         if not exposures:
             self.log.info("No on-sky exposures found after filtering.")
@@ -721,7 +729,20 @@ class DefineVisitsTask(Task):
 
         # Might need the instrument class for later depending on universe
         # and grouping scheme.
-        assert instrument_cls_name is not None, "Instrument must be defined in this dataId"
+        if instrument_cls_name is None:
+            if instrument_record is None:
+                # We were given a DimensionRecord instead of a DataCoordinate.
+
+                instrument_records = self.butler.query_dimension_records(
+                    "instrument", instrument=instrument, limit=1
+                )
+                if len(instrument_records) != 1:
+                    raise RuntimeError(
+                        f"Instrument {instrument} found in dimension record but unknown to butler."
+                    )
+                instrument_record = instrument_records[0]
+            instrument_cls_name = instrument_record.class_name
+        assert instrument_cls_name is not None, "Instrument must be defined by this point"
         instrument_helper = Instrument.from_string(instrument_cls_name)
 
         # Ensure the visit_system our grouping algorithm uses is in the
@@ -839,9 +860,7 @@ class DefineVisitsTask(Task):
                                     (exposure, record.detector, record.region) for exposure in exposure_ids
                                 ]
                             if obscore_updates:
-                                obscore_manager.update_exposure_regions(
-                                    cast(str, instrument), obscore_updates
-                                )
+                                obscore_manager.update_exposure_regions(instrument, obscore_updates)
                 else:
                     self.log.verbose("Skipped already-existing visit %s.", visitRecords.visit.id)
                     n_skipped += 1
