@@ -126,6 +126,13 @@ def define_visits(*args, **kwargs):
     help="Use this option to control whether a raw file already existing "
     "in the Butler repository is an error or not.",
 )
+@click.option(
+    "--search-indexes/--no-search-indexes",
+    default=True,
+    help="By default ingest searches for index files in each directory being "
+    "searched. Turning this off can improve performance if you know for a fact "
+    "you have no indexes and you are using an object store.",
+)
 @options_file_option()
 def ingest_raws(*args, **kwargs):
     """Ingest raw frames into from a directory into the butler registry."""

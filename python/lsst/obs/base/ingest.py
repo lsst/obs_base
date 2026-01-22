@@ -978,7 +978,11 @@ class RawIngestTask(Task):
         return data
 
     def prep(
-        self, files: Iterable[ResourcePath], *, pool: concurrent.futures.ThreadPoolExecutor | None = None
+        self,
+        files: Iterable[ResourcePath],
+        *,
+        pool: concurrent.futures.ThreadPoolExecutor | None = None,
+        search_indexes: bool = True,
     ) -> tuple[Iterator[RawExposureData], list[ResourcePath]]:
         """Perform all non-database-updating ingest preprocessing steps.
 
@@ -990,6 +994,10 @@ class RawIngestTask(Task):
         pool : `concurrent.futures.ThreadPoolExecutor`, optional
             If not `None`, a thread pool with which to parallelize some
             operations.
+        search_indexes : `bool`, optional
+            If `True` the code will search for index JSON files in given
+            directories. If you know for a fact that index files do not exist
+            set this to `False` for a slight speed up in metadata gathering.
 
         Returns
         -------
@@ -1015,11 +1023,17 @@ class RawIngestTask(Task):
 
         # Look for index files and read them.
         # There should be far fewer index files than data files.
-        index_entries, files, good_index_files, bad_index_files = self.locateAndReadIndexFiles(files)
-        if bad_index_files:
-            self.log.info("Failed to read the following explicitly requested index files:")
-            for bad in sorted(bad_index_files):
-                self.log.info("- %s", bad)
+        if search_indexes:
+            index_entries, files, good_index_files, bad_index_files = self.locateAndReadIndexFiles(files)
+            if bad_index_files:
+                self.log.info("Failed to read the following explicitly requested index files:")
+                for bad in sorted(bad_index_files):
+                    self.log.info("- %s", bad)
+        else:
+            # We have been told explicitly there are no indexes.
+            index_entries = {}
+            good_index_files = set()
+            bad_index_files = set()
 
         # Now convert all the index file entries to standard form for ingest.
         processed_bad_index_files: list[ResourcePath] = []
@@ -1154,6 +1168,7 @@ class RawIngestTask(Task):
         skip_existing_exposures: bool = False,
         update_exposure_records: bool = False,
         track_file_attrs: bool = True,
+        search_indexes: bool = True,
     ) -> tuple[list[DatasetRef], list[ResourcePath], int, int, int]:
         """Ingest files into a Butler data repository.
 
@@ -1197,6 +1212,10 @@ class RawIngestTask(Task):
             Control whether file attributes such as the size or checksum should
             be tracked by the datastore. Whether this parameter is honored
             depends on the specific datastore implementation.
+        search_indexes : `bool`, optional
+            If `True` the code will search for index JSON files in given
+            directories. If you know for a fact that index files do not exist
+            set this to `False` for a slight speed up in metadata gathering.
 
         Returns
         -------
@@ -1223,7 +1242,7 @@ class RawIngestTask(Task):
                 msg="Reading metadata from %d file%s",
                 args=(*_log_msg_counter(files),),
             ):
-                exposureData, bad_files = self.prep(files, pool=pool)
+                exposureData, bad_files = self.prep(files, pool=pool, search_indexes=search_indexes)
         finally:
             if created_pool and pool:
                 # The pool is not needed any more so close it if we created
@@ -1368,6 +1387,7 @@ class RawIngestTask(Task):
         skip_existing_exposures: bool = False,
         update_exposure_records: bool = False,
         track_file_attrs: bool = True,
+        search_indexes: bool = True,
     ) -> list[DatasetRef]:
         """Ingest files into a Butler data repository.
 
@@ -1421,6 +1441,10 @@ class RawIngestTask(Task):
             Control whether file attributes such as the size or checksum should
             be tracked by the datastore. Whether this parameter is honored
             depends on the specific datastore implementation.
+        search_indexes : `bool`, optional
+            If `True` the code will search for index JSON files in given
+            directories. If you know for a fact that index files do not exist
+            set this to `False` for a slight speed up in metadata gathering.
 
         Returns
         -------
@@ -1457,6 +1481,7 @@ class RawIngestTask(Task):
                         skip_existing_exposures=skip_existing_exposures,
                         update_exposure_records=update_exposure_records,
                         track_file_attrs=track_file_attrs,
+                        search_indexes=search_indexes,
                     )
                     refs.extend(new_refs)
                     bad_files.extend(bad)
@@ -1473,6 +1498,8 @@ class RawIngestTask(Task):
                     run=run,
                     skip_existing_exposures=skip_existing_exposures,
                     update_exposure_records=update_exposure_records,
+                    track_file_attrs=track_file_attrs,
+                    search_indexes=search_indexes,
                 )
             ingest_duration = timer.duration
 

@@ -38,6 +38,7 @@ def ingestRaws(
     track_file_attrs=True,
     update_records=False,
     skip_existing=False,
+    search_indexes=True,
 ):
     """Ingest raw frames into the butler registry.
 
@@ -77,6 +78,10 @@ def ingestRaws(
     skip_existing : `bool`, optional
         Control whether raws that are already in the Butler repo will be
         skipped without error.
+    search_indexes : `bool`, optional
+        Control whether raw ingest will search for per-directory index files
+        or not. Disabling this can improve performance if you know that there
+        are no indexes.
 
     Raises
     ------
@@ -105,4 +110,5 @@ def ingestRaws(
             track_file_attrs=track_file_attrs,
             update_exposure_records=update_records,
             skip_existing_exposures=skip_existing,
+            search_indexes=search_indexes,
         )
