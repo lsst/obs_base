@@ -30,7 +30,7 @@ from collections.abc import Callable, Iterable, Iterator, MutableMapping, Sequen
 from contextlib import contextmanager
 from dataclasses import InitVar, dataclass
 from multiprocessing import Pool
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 from astro_metadata_translator import MetadataTranslator, ObservationInfo, merge_headers
 from astro_metadata_translator.indexing import process_index_data, process_sidecar_data
@@ -351,7 +351,7 @@ class RawIngestTask(Task):
 
         # Import all the instrument classes so that we ensure that we
         # have all the relevant metadata translators loaded.
-        Instrument.importAll(self.butler.registry)
+        self.instruments = Instrument.importAll(self.butler.registry)
 
         # Read all the instrument records into a cache since they will be
         # needed later to calculate day_obs timespans, if appropriate.
@@ -390,12 +390,17 @@ class RawIngestTask(Task):
             indicates that the instrument could not be determined.
         formatterClass : `type`
             Class to be used as the formatter for this dataset.
+
+        Notes
+        -----
+        Does not access butler registry since it may be called from threads.
         """
         # The data model currently assumes that whilst multiple datasets
         # can be associated with a single file, they must all share the
         # same formatter.
         try:
-            instrument = Instrument.fromName(dataId["instrument"], self.butler.registry)  # type: ignore
+            instrument_name = cast(str, dataId["instrument"])
+            instrument = self.instruments[instrument_name]()
         except LookupError as e:
             self._on_metadata_failure(filename, e)
             self.log.warning(
