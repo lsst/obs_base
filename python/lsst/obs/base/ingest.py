@@ -27,6 +27,7 @@ import contextlib
 import json
 import logging
 import re
+import warnings
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Iterator, MutableMapping, Sequence, Sized
 from contextlib import contextmanager
@@ -1163,7 +1164,7 @@ class RawIngestTask(Task):
         files: Sequence[ResourcePath],
         *,
         pool: concurrent.futures.ThreadPoolExecutor | None = None,
-        processes: int = 1,
+        num_workers: int = 1,
         run: str | None = None,
         skip_existing_exposures: bool = False,
         update_exposure_records: bool = False,
@@ -1185,8 +1186,8 @@ class RawIngestTask(Task):
         pool : `concurrent.futures.ThreadPoolExecutor`, optional
             If not `None`, a thread pool with which to parallelize some
             operations.
-        processes : `int`, optional
-            The number of processes to use.  Ignored if ``pool`` is not `None`.
+        num_workers : `int`, optional
+            The number of workers to use.  Ignored if ``pool`` is not `None`.
         run : `str`, optional
             Name of a RUN-type collection to write to, overriding
             the default derived from the instrument name.
@@ -1231,8 +1232,8 @@ class RawIngestTask(Task):
             Number of exposures that failed when ingesting raw datasets.
         """
         created_pool = False
-        if pool is None and processes > 1:
-            pool = concurrent.futures.ThreadPoolExecutor(max_workers=processes)
+        if pool is None and num_workers > 1:
+            pool = concurrent.futures.ThreadPoolExecutor(max_workers=num_workers)
             created_pool = True
 
         try:
@@ -1380,7 +1381,7 @@ class RawIngestTask(Task):
         files: Sequence[ResourcePathExpression],
         *,
         pool: concurrent.futures.ThreadPoolExecutor | None = None,
-        processes: int = 1,
+        processes: int | None = None,  # Deprecated. Use num_workers.
         run: str | None = None,
         file_filter: str | re.Pattern = r"\.fit[s]?\b",
         group_files: bool = True,
@@ -1388,6 +1389,7 @@ class RawIngestTask(Task):
         update_exposure_records: bool = False,
         track_file_attrs: bool = True,
         search_indexes: bool = True,
+        num_workers: int = 1,
     ) -> list[DatasetRef]:
         """Ingest files into a Butler data repository.
 
@@ -1409,6 +1411,7 @@ class RawIngestTask(Task):
             to futures.
         processes : `int`, optional
             The number of processes to use.  Ignored if ``pool`` is not `None`.
+            Deprecated. Please use ``num_workers`` parameter instead.
         run : `str`, optional
             Name of a RUN-type collection to write to, overriding
             the default derived from the instrument name.
@@ -1445,6 +1448,9 @@ class RawIngestTask(Task):
             If `True` the code will search for index JSON files in given
             directories. If you know for a fact that index files do not exist
             set this to `False` for a slight speed up in metadata gathering.
+        num_workers : `int`, optional
+            The number of workers to use. Ignored if ``pool`` parameter is
+            given.
 
         Returns
         -------
@@ -1463,6 +1469,15 @@ class RawIngestTask(Task):
         """
         if pool and not isinstance(pool, concurrent.futures.ThreadPoolExecutor):
             raise ValueError(f"This parameter must now be a ThreadPoolExecutor but was given {pool}.")
+
+        if processes is not None:
+            warnings.warn(
+                "Processes parameter is deprecated. Please use num_workers parameter.",
+                FutureWarning,
+                stacklevel=3,  # Jump above the timeMethod wrapper.
+            )
+            num_workers = processes
+
         refs = []
         bad_files = []
         n_exposures = 0
@@ -1476,7 +1491,7 @@ class RawIngestTask(Task):
                     new_refs, bad, n_exp, n_exp_fail, n_ingest_fail = self.ingestFiles(
                         tuple(group),
                         pool=pool,
-                        processes=processes,
+                        num_workers=num_workers,
                         run=run,
                         skip_existing_exposures=skip_existing_exposures,
                         update_exposure_records=update_exposure_records,
@@ -1494,7 +1509,7 @@ class RawIngestTask(Task):
                 refs, bad_files, n_exposures, n_exposures_failed, n_ingests_failed = self.ingestFiles(
                     tuple(ResourcePath.findFileResources(files, file_filter, group_files)),
                     pool=pool,
-                    processes=processes,
+                    num_workers=num_workers,
                     run=run,
                     skip_existing_exposures=skip_existing_exposures,
                     update_exposure_records=update_exposure_records,

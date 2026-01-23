@@ -99,7 +99,7 @@ def define_visits(*args, **kwargs):
 @config_file_option(type=click.Path(exists=True, writable=False, file_okay=True, dir_okay=False))
 @run_option(required=False)
 @transfer_option()
-@processes_option()
+@processes_option(help="Number of workers to use.")
 @click.option(
     "--ingest-task",
     default="lsst.obs.base.RawIngestTask",

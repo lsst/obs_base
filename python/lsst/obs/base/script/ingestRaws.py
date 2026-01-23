@@ -64,7 +64,7 @@ def ingestRaws(
     transfer : `str` or None
         The external data transfer type, by default "auto".
     processes : `int`
-        Number of processes to use for ingest.
+        Number of workers to use for ingest.
     ingest_task : `str`
         The fully qualified class name of the ingest task to use by default
         lsst.obs.base.RawIngestTask.
@@ -105,7 +105,7 @@ def ingestRaws(
         ingester.run(
             locations,
             run=output_run,
-            processes=processes,
+            num_workers=processes,
             file_filter=regex,
             track_file_attrs=track_file_attrs,
             update_exposure_records=update_records,
