@@ -31,6 +31,7 @@ __all__ = (
 )
 
 import logging
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -38,6 +39,13 @@ from lsst.afw.cameraGeom.utils import calcRawCcdBBox
 from lsst.afw.image import Exposure
 
 from . import butler_tests, camera_tests
+
+if TYPE_CHECKING:
+    import lsst.afw.cameraGeom
+    import lsst.afw.geom
+    import lsst.afw.image
+    import lsst.daf.butler
+    import lsst.geom
 
 
 class ObsTests(butler_tests.ButlerGetTests, camera_tests.CameraTests):
@@ -67,7 +75,7 @@ class ObsTests(butler_tests.ButlerGetTests, camera_tests.CameraTests):
     neglect.
     """
 
-    def setUp_tests(self, butler, dataIds):
+    def setUp_tests(self, butler: lsst.daf.butler.Butler, dataIds: dict[str, Any]) -> Any:
         """Set up the necessary shared variables used by multiple tests.
 
         Parameters
@@ -93,12 +101,12 @@ class ObsTests(butler_tests.ButlerGetTests, camera_tests.CameraTests):
         self.dataIds = dataIds
         self.log = logging.getLogger(__name__)
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         del self.butler
-        super().tearDown()
+        super().tearDown()  # type: ignore[misc]
 
 
-def make_ramp_array(bbox, pedestal):
+def make_ramp_array(bbox: lsst.geom.Box2I, pedestal: int) -> tuple[np.ndarray, int]:
     """Make a 2-d ramp array.
 
     Parameters
@@ -120,7 +128,9 @@ def make_ramp_array(bbox, pedestal):
     return np.arange(pedestal, end).reshape(bbox.getHeight(), bbox.getWidth()), end
 
 
-def make_ramp_exposure_untrimmed(detector, dtype=None):
+def make_ramp_exposure_untrimmed(
+    detector: lsst.afw.cameraGeom.Detector, dtype: np.dtype | None = None
+) -> Exposure:
     """Create an untrimmed, assembled exposure with different ramps for
     each sub-amplifier region.
 
@@ -151,7 +161,9 @@ def make_ramp_exposure_untrimmed(detector, dtype=None):
     return ramp_exposure
 
 
-def make_ramp_exposure_trimmed(detector, dtype=None):
+def make_ramp_exposure_trimmed(
+    detector: lsst.afw.cameraGeom.Detector, dtype: np.dtype | None = None
+) -> Exposure:
     """Create a trimmed, assembled exposure with different ramps for
     each amplifier region.
 

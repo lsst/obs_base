@@ -20,26 +20,27 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from lsst.daf.butler import Butler
+from lsst.obs.base.ingest import RawIngestTask
 from lsst.pipe.base.configOverrides import ConfigOverrides
 from lsst.utils import doImportType
 
 
 def ingestRaws(
-    repo,
-    locations,
-    regex,
-    output_run,
-    fail_fast=False,
-    config=None,
-    config_file=None,
-    transfer="auto",
-    processes=1,
-    ingest_task="lsst.obs.base.RawIngestTask",
-    track_file_attrs=True,
-    update_records=False,
-    skip_existing=False,
-    search_indexes=True,
-):
+    repo: str,
+    locations: list[str],
+    regex: str,
+    output_run: str,
+    fail_fast: bool = False,
+    config: dict[str, str] | None = None,
+    config_file: str | None = None,
+    transfer: str | None = "auto",
+    processes: int = 1,
+    ingest_task: str = "lsst.obs.base.RawIngestTask",
+    track_file_attrs: bool = True,
+    update_records: bool = False,
+    skip_existing: bool = False,
+    search_indexes: bool = True,
+) -> None:
     """Ingest raw frames into the butler registry.
 
     Parameters
@@ -89,6 +90,7 @@ def ingestRaws(
         Raised if operations on configuration object fail.
     """
     TaskClass = doImportType(ingest_task)
+    assert issubclass(TaskClass, RawIngestTask)
     ingestConfig = TaskClass.ConfigClass()
     ingestConfig.transfer = transfer
     configOverrides = ConfigOverrides()
@@ -101,7 +103,7 @@ def ingestRaws(
         configOverrides.addValueOverride("failFast", True)
     configOverrides.applyTo(ingestConfig)
     with Butler.from_config(repo, writeable=True) as butler:
-        ingester = TaskClass(config=ingestConfig, butler=butler)
+        ingester = TaskClass(config=ingestConfig, butler=butler)  # type: ignore[arg-type]
         ingester.run(
             locations,
             run=output_run,

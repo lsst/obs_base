@@ -33,7 +33,7 @@ __all__ = (
 import datetime
 import re
 from collections.abc import Iterable, MutableMapping
-from typing import Any, Self
+from typing import TYPE_CHECKING, Any, Self
 
 import astropy.table
 import numpy as np
@@ -47,6 +47,10 @@ from lsst.afw.geom.skyWcs import makeSkyWcs
 from lsst.afw.image import RotType
 from lsst.daf.base import PropertyList
 from lsst.daf.butler import DatasetProvenance, DatasetRef
+
+if TYPE_CHECKING:
+    import lsst.afw.image
+    import lsst.geom
 
 _PROVENANCE_PREFIX = "LSST BUTLER"
 """The prefix used in FITS headers for butler provenance."""
@@ -64,7 +68,9 @@ class InitialSkyWcsError(Exception):
     pass
 
 
-def createInitialSkyWcs(visitInfo, detector, flipX=None):
+def createInitialSkyWcs(
+    visitInfo: lsst.afw.image.VisitInfo, detector: lsst.afw.cameraGeom.Detector, flipX: bool | None = None
+) -> lsst.afw.geom.SkyWcs:
     """Create a SkyWcs from the visit information and detector geometry.
 
     A typical use case for this is to create the initial WCS for a newly-read
@@ -103,7 +109,12 @@ def createInitialSkyWcs(visitInfo, detector, flipX=None):
     return createInitialSkyWcsFromBoresight(boresight, orientation, detector, flipX)
 
 
-def createInitialSkyWcsFromBoresight(boresight, orientation, detector, flipX=None):
+def createInitialSkyWcsFromBoresight(
+    boresight: lsst.geom.SpherePoint,
+    orientation: lsst.geom.Angle,
+    detector: lsst.afw.cameraGeom.Detector,
+    flipX: bool | None = None,
+) -> lsst.afw.geom.SkyWcs:
     """Create a SkyWcs from the telescope boresight and detector geometry.
 
     A typical usecase for this is to create the initial WCS for a newly-read
@@ -154,7 +165,7 @@ def createInitialSkyWcsFromBoresight(boresight, orientation, detector, flipX=Non
     return makeSkyWcs(pixelsToFieldAngle, orientation, actual_flip_x, boresight)
 
 
-def bboxFromIraf(irafBBoxStr):
+def bboxFromIraf(irafBBoxStr: str) -> lsst.geom.Box2I:
     """Return a Box2I corresponding to an IRAF-style BBOX.
 
     [x0:x1,y0:y1] where x0 and x1 are the one-indexed start and end columns,
@@ -165,7 +176,7 @@ def bboxFromIraf(irafBBoxStr):
         raise RuntimeError(f'Unable to parse IRAF-style bbox "{irafBBoxStr}"')
     x0, x1, y0, y1 = (int(_) for _ in mat.groups())
 
-    return geom.BoxI(geom.PointI(x0 - 1, y0 - 1), geom.PointI(x1 - 1, y1 - 1))
+    return geom.Box2I(geom.PointI(x0 - 1, y0 - 1), geom.PointI(x1 - 1, y1 - 1))
 
 
 def _store_str_header(

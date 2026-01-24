@@ -34,9 +34,9 @@ import threading
 import uuid
 import warnings
 from abc import abstractmethod
-from collections.abc import Set
+from collections.abc import Mapping, Set
 from io import BytesIO
-from typing import Any, ClassVar, NamedTuple
+from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, Protocol
 
 import astropy.io.fits
 import numpy as np
@@ -64,6 +64,10 @@ from lsst.utils.introspection import find_outside_stacklevel
 
 from ..utils import add_provenance_to_fits_header
 
+if TYPE_CHECKING:
+    import lsst.afw.cameraGeom
+
+
 _LOG = logging.getLogger(__name__)
 
 _ALWAYS_USE_ASTROPY_FOR_COMPONENT_READ = False
@@ -71,6 +75,19 @@ _ALWAYS_USE_ASTROPY_FOR_COMPONENT_READ = False
 even if the file is local, the cutout is too large, or the dataset type is
 wrong. This should mostly be used for testing.
 """
+
+
+class _ReaderClassLike(Protocol):
+    def __init__(self, path: str) -> None: ...
+    def readBBox(self) -> lsst.geom.Box2I: ...
+    def read(self, bbox: lsst.geom.Box2I = lsst.geom.Box2I(), dtype: Any = None) -> Any: ...
+    def readImage(self, bbox: lsst.geom.Box2I = lsst.geom.Box2I(), dtype: Any = None) -> Any: ...
+    def readMask(self, bbox: lsst.geom.Box2I = lsst.geom.Box2I(), dtype: Any = None) -> Any: ...
+    def readVariance(self, bbox: lsst.geom.Box2I = lsst.geom.Box2I(), dtype: Any = None) -> Any: ...
+    def readDetector(self) -> lsst.afw.cameraGeom.Detector: ...
+    def readComponent(self, component: str) -> Any: ...
+    def readMetadata(self) -> PropertyList: ...
+    def readSerializationVersion(self) -> int: ...
 
 
 class FitsImageFormatterBase(FormatterV2):
@@ -97,22 +114,24 @@ class FitsImageFormatterBase(FormatterV2):
     _reader = None
     _reader_path: str | None = None
 
-    ReaderClass: type  # must be set by concrete subclasses
+    ReaderClass: type[_ReaderClassLike]  # must be set by concrete subclasses
 
     @property
-    def reader(self):
+    def reader(self) -> _ReaderClassLike:
         """The reader object that backs this formatter's read operations.
 
         This is computed on first use and then cached.  It should never be
         accessed when writing. Currently assumes a local file.
         """
         if self._reader is None:
+            if self._reader_path is None:
+                raise RuntimeError("Internal error in formatter; failing to set path.")
             self._reader = self.ReaderClass(self._reader_path)
         return self._reader
 
     @property
     @cached_getter
-    def checked_parameters(self):
+    def checked_parameters(self) -> dict[str, Any]:
         """The parameters passed by the butler user, after checking them
         against the storage class and transforming `None` into an empty `dict`
         (`dict`).
@@ -157,7 +176,7 @@ class FitsImageFormatterBase(FormatterV2):
         return in_memory_dataset
 
     @abstractmethod
-    def readComponent(self, component):
+    def readComponent(self, component: str) -> Any:
         """Read a component dataset.
 
         Parameters
@@ -178,7 +197,7 @@ class FitsImageFormatterBase(FormatterV2):
         raise NotImplementedError()
 
     @abstractmethod
-    def readFull(self):
+    def readFull(self) -> Any:
         """Read the full dataset (while still accounting for parameters).
 
         Returns
@@ -259,7 +278,7 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
 
     supported_write_parameters = frozenset({"recipe"})
 
-    def readComponent(self, component):
+    def readComponent(self, component: str) -> Any:
         # Docstring inherited.
         if component in ("bbox", "dimensions", "xy0"):
             bbox = self.reader.readBBox()
@@ -272,7 +291,7 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
         else:
             raise KeyError(f"Unknown component requested: {component}")
 
-    def readFull(self):
+    def readFull(self) -> Any:
         # Docstring inherited.
         return self.reader.read(**self.checked_parameters, dtype=self.storageClass_dtype)
 
@@ -285,12 +304,12 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
         else:
             in_memory_dataset.writeFits(uri.ospath)
 
-    def get_image_compression_settings(self, recipeName):
+    def get_image_compression_settings(self, recipeName: str | None) -> dict:
         """Retrieve the relevant compression settings for this recipe.
 
         Parameters
         ----------
-        recipeName : `str`
+        recipeName : `str` or `None`
             Label associated with the collection of compression parameters
             to select.
 
@@ -311,7 +330,7 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
 
         recipe = self.write_recipes[recipeName]
         if recipe is None:
-            return
+            return {}
         seed: int | None = None
         for plane in ("image", "mask", "variance"):
             if plane in recipe and (quantization := recipe[plane].get("quantization")) is not None:
@@ -357,14 +376,14 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
         return recipe
 
     @classmethod
-    def validate_write_recipes(cls, recipes):
+    def validate_write_recipes(cls, recipes: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
         """Validate supplied recipes for this formatter.
 
         The recipes are supplemented with default values where appropriate.
 
         Parameters
         ----------
-        recipes : `dict`
+        recipes : `dict` or `None`
             Recipes to validate. Can be empty dict or `None`.
 
         Returns
@@ -382,7 +401,7 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
             # We can not insist on recipes being specified.
             return recipes
 
-        validated = {}
+        validated: dict[str, Any] = {}
         for name, recipe in recipes.items():
             if recipe is not None:
                 validated[name] = {}
@@ -421,7 +440,7 @@ class FitsMaskedImageFormatter(StandardFitsImageFormatterBase):
 
     ReaderClass = MaskedImageFitsReader
 
-    def readComponent(self, component):
+    def readComponent(self, component: str) -> Any:
         # Docstring inherited.
         if component == "image":
             return self.reader.readImage(**self.checked_parameters, dtype=self.storageClass_dtype)
@@ -434,7 +453,9 @@ class FitsMaskedImageFormatter(StandardFitsImageFormatterBase):
             return super().readComponent(component)
 
 
-def standardizeAmplifierParameters(parameters, on_disk_detector):
+def standardizeAmplifierParameters(
+    parameters: dict[str, Any], on_disk_detector: lsst.afw.cameraGeom.Detector | None
+) -> tuple[lsst.afw.cameraGeom.Amplifier, lsst.afw.cameraGeom.Detector, bool]:
     """Preprocess the Exposure storage class's "amp" and "detector" parameters.
 
     This checks the given objects for consistency with the on-disk geometry and
@@ -719,7 +740,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         add_provenance_to_fits_header(in_memory_dataset.metadata, self.dataset_ref, provenance)
         return in_memory_dataset
 
-    def readComponent(self, component):
+    def readComponent(self, component: str) -> Any:
         # Docstring inherited.
         # Generic components can be read via a string name; DM-27754 will make
         # this mapping larger at the expense of the following one.
@@ -753,7 +774,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         # Delegate to MaskedImage and ImageBase implementations for the rest.
         return super().readComponent(component)
 
-    def readFull(self):
+    def readFull(self) -> Any:
         # Docstring inherited.
         amplifier, detector, _ = standardizeAmplifierParameters(
             self.checked_parameters,
@@ -774,7 +795,9 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         result.getInfo().setFilter(self._fixFilterLabels(result.getInfo().getFilter()))
         return result
 
-    def _fixFilterLabels(self, file_filter_label, should_be_standardized=None):
+    def _fixFilterLabels(
+        self, file_filter_label: lsst.afw.image.FilterLabel, should_be_standardized: bool | None = None
+    ) -> lsst.afw.image.FilterLabel:
         """Compare the filter label read from the file with the one in the
         data ID.
 

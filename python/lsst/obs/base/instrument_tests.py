@@ -54,7 +54,10 @@ from lsst.utils.introspection import get_full_type_name
 from .utils import createInitialSkyWcsFromBoresight
 
 if TYPE_CHECKING:
-    from lsst.daf.butler import Butler
+    import lsst.afw.cameraGeom
+    import lsst.afw.geom
+    import lsst.geom
+    from lsst.daf.butler import Butler, Formatter, Registry
 
 DUMMY_FILTER_DEFINITIONS = FilterDefinitionCollection(
     FilterDefinition(physical_filter="dummy_u", band="u"),
@@ -66,7 +69,12 @@ class DummyCamYamlWcsFormatter(YamlFormatter):
     """Specialist formatter for tests that can make a WCS."""
 
     @classmethod
-    def makeRawSkyWcsFromBoresight(cls, boresight, orientation, detector):
+    def makeRawSkyWcsFromBoresight(
+        cls,
+        boresight: lsst.geom.SpherePoint,
+        orientation: lsst.geom.Angle,
+        detector: lsst.afw.cameraGeom.Detector,
+    ) -> lsst.afw.geom.SkyWcs:
         """Class method to make a raw sky WCS from boresight and detector.
 
         This uses the API expected by define-visits. A working example
@@ -115,7 +123,7 @@ class DummyCam(Instrument):
     )
 
     @classmethod
-    def getName(cls):
+    def getName(cls) -> str:
         return "DummyCam"
 
     @classmethod
@@ -123,13 +131,13 @@ class DummyCam(Instrument):
     def getObsDataPackageDir(cls) -> str | None:
         return cls.dataPackageDir
 
-    def getCamera(self):
+    def getCamera(self) -> lsst.afw.cameraGeom.Camera:
         # Return something that can be indexed by detector number
         # but also has to support getIdIter.
         with ResourcePath("resource://lsst.obs.base/test/dummycam.yaml").as_local() as local_file:
             return makeCamera(local_file.ospath)
 
-    def register(self, registry, update=False):
+    def register(self, registry: Registry, update: bool = False):
         """Insert Instrument, physical_filter, and detector entries into a
         `Registry`.
         """
@@ -156,7 +164,7 @@ class DummyCam(Instrument):
                     update=update,
                 )
 
-    def getRawFormatter(self, dataId):
+    def getRawFormatter(self, dataId) -> type[Formatter]:
         # Docstring inherited fromt Instrument.getRawFormatter.
         return DummyCamYamlWcsFormatter
 
@@ -218,17 +226,17 @@ class InstrumentTests(metaclass=abc.ABCMeta):
     instrument: ClassVar[Instrument | None] = None
     """The `~lsst.obs.base.Instrument` to be tested."""
 
-    def test_name(self):
+    def test_name(self) -> None:
         self.assertEqual(self.instrument.getName(), self.data.name)
 
-    def test_getCamera(self):
+    def test_getCamera(self) -> None:
         """Test that getCamera() returns a reasonable Camera definition."""
         camera = self.instrument.getCamera()
         self.assertEqual(camera.getName(), self.instrument.getName())
         self.assertEqual(len(camera), self.data.nDetectors)
         self.assertEqual(next(iter(camera)).getName(), self.data.firstDetectorName)
 
-    def test_register(self):
+    def test_register(self) -> None:
         """Test that register() sets appropriate Dimensions."""
         with create_populated_sqlite_registry() as butler:
             registry = butler.registry

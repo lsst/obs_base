@@ -20,6 +20,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from functools import lru_cache
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import yaml
@@ -29,11 +30,14 @@ import lsst.afw.geom as afwGeom
 import lsst.geom as geom
 from lsst.afw.cameraGeom import Amplifier, Camera, ReadoutCorner
 
+if TYPE_CHECKING:
+    from lsst.afw.cameraGeom import CameraSys, DetectorConfig
+
 __all__ = ["makeCamera"]
 
 
 @lru_cache
-def makeCamera(cameraFile):
+def makeCamera(cameraFile: str) -> Camera:
     """Construct an imaging camera (e.g. the LSST 3Gpix camera).
 
     Parameters
@@ -76,7 +80,7 @@ def makeCamera(cameraFile):
     )
 
 
-def makeDetectorConfigList(ccdParams):
+def makeDetectorConfigList(ccdParams: dict[str, Any]) -> list[DetectorConfig]:
     """Make a list of detector configs.
 
     Returns
@@ -119,7 +123,7 @@ def makeDetectorConfigList(ccdParams):
     return detectorConfigs
 
 
-def makeAmplifierList(ccd):
+def makeAmplifierList(ccd: dict[str, Any]) -> list[Amplifier.Builder]:
     """Construct a list of AmplifierBuilder objects."""
     # Much of this will need to be filled in when we know it.
     assert len(ccd) > 0
@@ -150,7 +154,7 @@ def makeAmplifierList(ccd):
         rawDataBBox = makeBBoxFromList(amp["rawDataBBox"])  # Photosensitive area
         xDataExtent, yDataExtent = rawDataBBox.getDimensions()
         amplifier.setBBox(
-            geom.BoxI(geom.PointI(ix * xDataExtent, iy * yDataExtent), rawDataBBox.getDimensions())
+            geom.Box2I(geom.PointI(ix * xDataExtent, iy * yDataExtent), rawDataBBox.getDimensions())
         )
 
         rawBBox = makeBBoxFromList(amp["rawBBox"])
@@ -200,20 +204,22 @@ def makeAmplifierList(ccd):
     return amplifierList
 
 
-def makeAmpInfoCatalog(ccd):
+def makeAmpInfoCatalog(ccd: dict[str, Any]) -> list[Amplifier.Builder]:
     """Backward compatible name."""
     return makeAmplifierList(ccd)
 
 
-def makeBBoxFromList(ylist):
+def makeBBoxFromList(ylist: tuple[tuple[int, int], tuple[int, int]]) -> geom.Box2I:
     """Given a list [(x0, y0), (xsize, ysize)], probably from a yaml file,
-    return a BoxI.
+    return a Box2I.
     """
     (x0, y0), (xsize, ysize) = ylist
-    return geom.BoxI(geom.PointI(x0, y0), geom.ExtentI(xsize, ysize))
+    return geom.Box2I(geom.PointI(x0, y0), geom.ExtentI(xsize, ysize))
 
 
-def makeTransformDict(nativeSys, transformDict, plateScale):
+def makeTransformDict(
+    nativeSys: CameraSys, transformDict: dict[str, Any], plateScale: geom.Angle
+) -> dict[CameraSys, afwGeom.TransformPoint2ToPoint2]:
     """Make a dictionary of TransformPoint2ToPoint2s from yaml, mapping from
     nativeSys.
 
@@ -276,14 +282,14 @@ def makeTransformDict(nativeSys, transformDict, plateScale):
 
 
 def makeCameraFromCatalogs(
-    cameraName,
-    detectorConfigList,
-    nativeSys,
-    transformDict,
-    amplifierDict,
-    pupilFactoryClass=cameraGeom.pupil.PupilFactory,
-    focalPlaneParity=False,
-):
+    cameraName: str,
+    detectorConfigList: list[DetectorConfig],
+    nativeSys: CameraSys,
+    transformDict: dict[CameraSys, afwGeom.TransformPoint2ToPoint2],
+    amplifierDict: dict[str, cameraGeom.Amplifier.Builder],
+    pupilFactoryClass: type[cameraGeom.pupil.PupilFactory] = cameraGeom.pupil.PupilFactory,
+    focalPlaneParity: bool = False,
+) -> Camera:
     """Construct a Camera instance from a dictionary of
     detector name and `lsst.afw.cameraGeom.Amplifier`.
 
@@ -301,7 +307,7 @@ def makeCameraFromCatalogs(
         `lsst.afw.geom.TransformPoint2ToPoint2`
     amplifierDict : `dict` [`str`, `lsst.afw.cameraGeom.Amplifier.Builder` ]
         A dictionary of detector name and amplifier builders.
-    pupilFactoryClass : `type` [ `lsst.default afw.cameraGeom.PupilFactory`], \
+    pupilFactoryClass : `type` [`lsst.afw.cameraGeom.PupilFactory`], \
             optional
         Class to attach to camera.
     focalPlaneParity : `bool`, optional
