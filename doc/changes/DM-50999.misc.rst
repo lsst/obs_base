@@ -1,0 +1,3 @@
+* Added ``Instrument.getObsDataPackageRoot`` to specify data package locations in terms of generic URIs instead of EUPS package names.
+* Modified write-curated-calibrations to internally work with ``lsst.resources.ResourcePath`` instead of local file paths.
+  This allows ``Instrument`` classes to specify data packages using ``resource`` or ``eups`` URIs as well as ``file`` URIs.
