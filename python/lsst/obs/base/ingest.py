@@ -50,6 +50,7 @@ from lsst.daf.butler import (
     DimensionUniverse,
     FileDataset,
     Formatter,
+    FormatterV2,
     Progress,
     Timespan,
 )
@@ -370,7 +371,7 @@ class RawIngestTask(Task):
 
     def _determine_instrument_formatter(
         self, dataId: DataCoordinate, filename: ResourcePath
-    ) -> tuple[Instrument | None, type[Formatter]]:
+    ) -> tuple[Instrument | None, type[Formatter | FormatterV2]]:
         """Determine the instrument and formatter class.
 
         Parameters
@@ -395,6 +396,7 @@ class RawIngestTask(Task):
         # The data model currently assumes that whilst multiple datasets
         # can be associated with a single file, they must all share the
         # same formatter.
+        FormatterClass: type[Formatter | FormatterV2] = Formatter
         try:
             instrument_name = cast(str, dataId["instrument"])
             instrument = self.instruments[instrument_name]()
@@ -407,7 +409,6 @@ class RawIngestTask(Task):
                 raise RuntimeError(
                     f"Instrument {dataId['instrument']} for file {filename} not known to registry"
                 ) from e
-            FormatterClass = Formatter
             # Indicate that we could not work out the instrument.
             instrument = None
         else:
@@ -449,6 +450,7 @@ class RawIngestTask(Task):
         extract metadata without having to read the data file itself.
         The sidecar file is always used if found.
         """
+        formatterClass: type[Formatter | FormatterV2]
         sidecar_fail_msg = ""  # Requires prepended space when set.
         try:
             sidecar_file = filename.updatedExtension(".json")
@@ -794,6 +796,7 @@ class RawIngestTask(Task):
             but the `RawFileData.dataId` attributes will be minimal
             (unexpanded) `~lsst.daf.butler.DataCoordinate` instances.
         """
+        formatterClass: type[Formatter | FormatterV2]
         fileData = []
         for filename, metadata in index_entries.items():
             try:
