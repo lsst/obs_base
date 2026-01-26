@@ -19,24 +19,33 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+
 __all__ = ("FitsRawFormatterBase",)
 
 import logging
 from abc import abstractmethod
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Self
 
 from astro_metadata_translator import ObservationInfo, fix_header
 
 import lsst.afw.fits
 import lsst.afw.geom
 import lsst.afw.image
-from lsst.daf.butler import FileDescriptor, FormatterNotImplementedError
+from lsst.daf.butler import FileDescriptor, FormatterNotImplementedError, Location, StorageClass
 from lsst.resources import ResourcePath
 from lsst.utils.classes import cached_getter
 
 from .formatters.fitsExposure import FitsImageFormatterBase, standardizeAmplifierParameters
 from .makeRawVisitInfoViaObsInfo import MakeRawVisitInfoViaObsInfo
 from .utils import InitialSkyWcsError, createInitialSkyWcsFromBoresight
+
+if TYPE_CHECKING:
+    import astro_metadata_translator
+
+    import lsst.daf.base
+
+    from .filters import FilterDefinitionCollection
 
 log = logging.getLogger(__name__)
 
@@ -52,13 +61,19 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
     """Control whether the WCS is flipped in the X-direction (`bool`).
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self._metadata = None
-        self._observationInfo = None
+        self._metadata: lsst.daf.base.PropertyList | None = None
+        self._observationInfo: ObservationInfo | None = None
 
     @classmethod
-    def fromMetadata(cls, metadata, obsInfo=None, storageClass=None, location=None):
+    def fromMetadata(
+        cls,
+        metadata: lsst.daf.base.PropertyList,
+        obsInfo: ObservationInfo | None = None,
+        storageClass: StorageClass | None = None,
+        location: Location | None = None,
+    ) -> Self:
         """Construct a possibly-limited formatter from known metadata.
 
         Parameters
@@ -84,14 +99,19 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         formatter : `FitsRawFormatterBase`
             An instance of ``cls``.
         """
-        self = cls(FileDescriptor(location, storageClass))
+        self = cls(
+            FileDescriptor(
+                location if location is not None else Location("", "<unspecified>"),
+                storageClass if storageClass is not None else StorageClass(),
+            )
+        )
         self._metadata = metadata
         self._observationInfo = obsInfo
         return self
 
     @property
     @abstractmethod
-    def translatorClass(self):
+    def translatorClass(self) -> type[astro_metadata_translator.MetadataTranslator] | None:
         """`~astro_metadata_translator.MetadataTranslator` to translate
         metadata header to `~astro_metadata_translator.ObservationInfo`.
         """
@@ -99,15 +119,15 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
 
     @property
     @abstractmethod
-    def filterDefinitions(self):
-        """`~lsst.obs.base.FilterDefinitions`, defining the filters for this
-        instrument.
+    def filterDefinitions(self) -> FilterDefinitionCollection | None:
+        """`~lsst.obs.base.FilterDefinitionCollection`, defining the filters
+        for this instrument.
         """
         return None
 
     @property
     @cached_getter
-    def checked_parameters(self):
+    def checked_parameters(self) -> dict[str, Any]:
         # Docstring inherited.
         parameters = super().checked_parameters
         if "bbox" in parameters:
@@ -117,7 +137,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             )
         return parameters
 
-    def readImage(self):
+    def readImage(self) -> lsst.afw.image.Image:
         """Read just the image component of the Exposure.
 
         Returns
@@ -127,7 +147,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         """
         return lsst.afw.image.ImageU(self._reader_path)
 
-    def isOnSky(self):
+    def isOnSky(self) -> bool:
         """Boolean to determine if the exposure is thought to be on the sky.
 
         Returns
@@ -148,7 +168,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         return True
 
     @property
-    def metadata(self):
+    def metadata(self) -> lsst.daf.base.PropertyList:
         """The metadata read from this file. It will be stripped as
         components are extracted from it
         (`lsst.daf.base.PropertyList`).
@@ -157,7 +177,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             self._metadata = self.readMetadata()
         return self._metadata
 
-    def readMetadata(self):
+    def readMetadata(self) -> lsst.daf.base.PropertyList:
         """Read all header metadata directly into a PropertyList.
 
         Returns
@@ -166,17 +186,19 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             Header metadata.
         """
         md = self.reader.readMetadata()
-        fix_header(md, translator_class=self.translatorClass)
+        translatorClass = self.translatorClass
+        assert translatorClass is not None
+        fix_header(md, translator_class=translatorClass)
         return md
 
-    def stripMetadata(self):
+    def stripMetadata(self) -> None:
         """Remove metadata entries that are parsed into components."""
         try:
             lsst.afw.geom.stripWcsMetadata(self.metadata)
         except TypeError as e:
             log.debug("Error caught and ignored while stripping metadata: %s", e.args[0])
 
-    def makeVisitInfo(self):
+    def makeVisitInfo(self) -> lsst.afw.image.VisitInfo:
         """Construct a VisitInfo from metadata.
 
         Returns
@@ -197,7 +219,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         return visit_info
 
     @abstractmethod
-    def getDetector(self, id):
+    def getDetector(self, id: int) -> lsst.afw.cameraGeom.Detector:
         """Return the detector that acquired this raw exposure.
 
         Parameters
@@ -212,7 +234,9 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         """
         raise NotImplementedError("Must be implemented by subclasses.")
 
-    def makeWcs(self, visitInfo, detector):
+    def makeWcs(
+        self, visitInfo: lsst.afw.image.VisitInfo, detector: lsst.afw.cameraGeom.Detector
+    ) -> lsst.afw.geom.SkyWcs:
         """Create a SkyWcs from information about the exposure.
 
         If VisitInfo is not None, use it and the detector to create a SkyWcs,
@@ -258,7 +282,12 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         )
 
     @classmethod
-    def makeRawSkyWcsFromBoresight(cls, boresight, orientation, detector):
+    def makeRawSkyWcsFromBoresight(
+        cls,
+        boresight: lsst.geom.SpherePoint,
+        orientation: lsst.geom.Angle,
+        detector: lsst.afw.cameraGeom.Detector,
+    ) -> lsst.afw.geom.SkyWcs:
         """Class method to make a raw sky WCS from boresight and detector.
 
         Parameters
@@ -277,7 +306,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         """
         return createInitialSkyWcsFromBoresight(boresight, orientation, detector, flipX=cls.wcsFlipX)
 
-    def _createSkyWcsFromMetadata(self):
+    def _createSkyWcsFromMetadata(self) -> lsst.afw.geom.SkyWcs | None:
         """Create a SkyWcs from the FITS header metadata in an Exposure.
 
         Returns
@@ -296,7 +325,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             log.warning("Cannot create a valid WCS from metadata: %s", e.args[0])
             return None
 
-    def makeFilterLabel(self):
+    def makeFilterLabel(self) -> lsst.afw.image.FilterLabel:
         """Construct a FilterLabel from metadata.
 
         Returns
@@ -305,10 +334,12 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             Object that identifies the filter for this image.
         """
         physical = self.observationInfo.physical_filter
-        band = self.filterDefinitions.physical_to_band[physical]
+        filter_definitions = self.filterDefinitions
+        assert filter_definitions is not None
+        band = filter_definitions.physical_to_band[physical]
         return lsst.afw.image.FilterLabel(physical=physical, band=band)
 
-    def readComponent(self, component):
+    def readComponent(self, component: str) -> Any:
         # Docstring inherited.
         _ = self.checked_parameters  # just for checking; no supported parameters.
         if component == "image":
@@ -328,7 +359,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             return self.metadata
         return None
 
-    def readFull(self):
+    def readFull(self) -> Any:
         # Docstring inherited.
         amplifier, detector, _ = standardizeAmplifierParameters(
             self.checked_parameters,
@@ -355,7 +386,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         raise FormatterNotImplementedError("Raw data cannot be `put`.")
 
     @property
-    def observationInfo(self):
+    def observationInfo(self) -> ObservationInfo:
         """The `~astro_metadata_translator.ObservationInfo` extracted from
         this file's metadata (`~astro_metadata_translator.ObservationInfo`,
         read-only).
@@ -370,7 +401,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             )
         return self._observationInfo
 
-    def attachComponentsFromMetadata(self, exposure):
+    def attachComponentsFromMetadata(self, exposure: lsst.afw.image.Exposure) -> None:
         """Attach all `lsst.afw.image.Exposure` components derived from
         metadata (including the stripped metadata itself).
 

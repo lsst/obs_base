@@ -22,12 +22,14 @@
 import logging
 
 from lsst.daf.butler import Butler
-from lsst.pipe.base import Instrument
+from lsst.obs.base import Instrument
 
 log = logging.getLogger(__name__)
 
 
-def writeCuratedCalibrations(repo, instrument, collection, labels, prefix=None):
+def writeCuratedCalibrations(
+    repo: str, instrument: str, collection: str | None, labels: list[str], prefix: str | None = None
+) -> None:
     """Add an instrument's curated calibrations to the data repository.
 
     Parameters

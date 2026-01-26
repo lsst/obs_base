@@ -19,19 +19,25 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
 
 __all__ = ("RawIngestConfig", "RawIngestTask", "makeTransferChoiceField")
 
+import concurrent.futures
+import contextlib
 import json
+import logging
 import re
+import warnings
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Iterator, MutableMapping, Sequence, Sized
+from contextlib import contextmanager
 from dataclasses import InitVar, dataclass
-from multiprocessing import Pool
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 from astro_metadata_translator import MetadataTranslator, ObservationInfo, merge_headers
 from astro_metadata_translator.indexing import process_index_data, process_sidecar_data
+from pydantic import BaseModel
 
 from lsst.afw.fits import readMetadata
 from lsst.daf.butler import (
@@ -45,20 +51,17 @@ from lsst.daf.butler import (
     DimensionUniverse,
     FileDataset,
     Formatter,
+    FormatterV2,
     Progress,
     Timespan,
 )
 from lsst.pex.config import ChoiceField, Config, Field
 from lsst.pipe.base import Instrument, Task
 from lsst.resources import ResourcePath, ResourcePathExpression
+from lsst.utils.logging import LsstLoggers
 from lsst.utils.timer import time_this, timeMethod
 
 from ._instrument import makeExposureRecordFromObsInfo
-
-# multiprocessing.Pool is actually a function, not a type, and the real type
-# isn't exposed, so we can't used it annotations, so we'll just punt on it via
-# this alias instead.
-PoolType = Any
 
 
 def _do_nothing(*args: Any, **kwargs: Any) -> None:
@@ -99,6 +102,41 @@ def _log_msg_counter(noun: int | Sized) -> tuple[int, str]:
     else:
         num = len(noun)
     return num, "" if num == 1 else "s"
+
+
+class IngestMetrics(BaseModel):
+    """Metrics collected during raw ingest."""
+
+    time_for_metadata: float = 0.0
+    """Wall-clock time, in seconds, spent gathering file metadata."""
+
+    time_for_records: float = 0.0
+    """Wall-clock time, in seconds, spent writing dimension records."""
+
+    time_for_ingest: float = 0.0
+    """Wall-clock time, in seconds, spent calling butler ingest."""
+
+    time_for_callbacks: float = 0.0
+    """Wall-clock time, in seconds, processing user-supplied callbacks."""
+
+    def reset(self) -> None:
+        """Reset all metrics to initial values."""
+        self.time_for_ingest = 0.0
+        self.time_for_records = 0.0
+        self.time_for_metadata = 0.0
+        self.time_for_callbacks = 0.0
+
+    @contextmanager
+    def collect_metric(
+        self,
+        property: str,
+        log: LsstLoggers | None = None,
+        msg: str | None = None,
+        args: tuple[Any, ...] = (),
+    ) -> Iterator[None]:
+        with time_this(log=log, msg=msg, args=args, level=logging.INFO) as timer:
+            yield
+        setattr(self, property, getattr(self, property) + timer.duration)
 
 
 @dataclass
@@ -249,6 +287,10 @@ class RawIngestTask(Task):
         Guaranteed to be called in an ``except`` block, allowing the callback
         to re-raise or replace (with ``raise ... from``) to override the task's
         usual error handling (before `RawIngestConfig.failFast` logic occurs).
+    on_exposure_record : `Callable`, optional
+        A callback invoked when an exposure dimension record has been created
+        or modified. Will not be called if the record already existed. Will
+        be called with the exposure record.
     **kwargs
         Additional keyword arguments are forwarded to the `lsst.pipe.base.Task`
         constructor.
@@ -269,7 +311,7 @@ class RawIngestTask(Task):
 
         Returns
         -------
-        datasetType : `DatasetType`
+        datasetType : `lsst.daf.butler.DatasetType`
             The default dataset type to use for the data being ingested. This
             is only used if the relevant `~lsst.pipe.base.Instrument` does not
             define an override.
@@ -292,6 +334,7 @@ class RawIngestTask(Task):
         on_success: Callable[[list[FileDataset]], Any] = _do_nothing,
         on_metadata_failure: Callable[[ResourcePath, Exception], Any] = _do_nothing,
         on_ingest_failure: Callable[[RawExposureData, Exception], Any] = _do_nothing,
+        on_exposure_record: Callable[[DimensionRecord], Any] = _do_nothing,
         **kwargs: Any,
     ):
         config.validate()  # Not a CmdlineTask nor PipelineTask, so have to validate the config here.
@@ -300,19 +343,22 @@ class RawIngestTask(Task):
         self.universe = self.butler.dimensions
         self.datasetType = self.getDatasetType()
         self._on_success = on_success
+        self._on_exposure_record = on_exposure_record
         self._on_metadata_failure = on_metadata_failure
         self._on_ingest_failure = on_ingest_failure
         self.progress = Progress("obs.base.RawIngestTask")
 
         # Import all the instrument classes so that we ensure that we
         # have all the relevant metadata translators loaded.
-        Instrument.importAll(self.butler.registry)
+        self.instruments = Instrument.importAll(self.butler.registry)
 
         # Read all the instrument records into a cache since they will be
         # needed later to calculate day_obs timespans, if appropriate.
         self._instrument_records = {
             rec.name: rec for rec in butler.registry.queryDimensionRecords("instrument")
         }
+        # Create empty metrics.
+        self.metrics = IngestMetrics()
 
     def _reduce_kwargs(self) -> dict[str, Any]:
         # Add extra parameters to pickle.
@@ -326,7 +372,7 @@ class RawIngestTask(Task):
 
     def _determine_instrument_formatter(
         self, dataId: DataCoordinate, filename: ResourcePath
-    ) -> tuple[Instrument | None, type[Formatter]]:
+    ) -> tuple[Instrument | None, type[Formatter | FormatterV2]]:
         """Determine the instrument and formatter class.
 
         Parameters
@@ -343,12 +389,18 @@ class RawIngestTask(Task):
             indicates that the instrument could not be determined.
         formatterClass : `type`
             Class to be used as the formatter for this dataset.
+
+        Notes
+        -----
+        Does not access butler registry since it may be called from threads.
         """
         # The data model currently assumes that whilst multiple datasets
         # can be associated with a single file, they must all share the
         # same formatter.
+        FormatterClass: type[Formatter | FormatterV2] = Formatter
         try:
-            instrument = Instrument.fromName(dataId["instrument"], self.butler.registry)  # type: ignore
+            instrument_name = cast(str, dataId["instrument"])
+            instrument = self.instruments[instrument_name]()
         except LookupError as e:
             self._on_metadata_failure(filename, e)
             self.log.warning(
@@ -358,7 +410,6 @@ class RawIngestTask(Task):
                 raise RuntimeError(
                     f"Instrument {dataId['instrument']} for file {filename} not known to registry"
                 ) from e
-            FormatterClass = Formatter
             # Indicate that we could not work out the instrument.
             instrument = None
         else:
@@ -400,14 +451,17 @@ class RawIngestTask(Task):
         extract metadata without having to read the data file itself.
         The sidecar file is always used if found.
         """
+        formatterClass: type[Formatter | FormatterV2]
         sidecar_fail_msg = ""  # Requires prepended space when set.
         try:
             sidecar_file = filename.updatedExtension(".json")
-            if sidecar_file.exists():
+            headers = []
+            with contextlib.suppress(Exception):
+                # Try to read directly, bypassing existence check.
                 content = json.loads(sidecar_file.read())
                 headers = [process_sidecar_data(content)]
                 sidecar_fail_msg = " (via sidecar)"
-            else:
+            if not headers:
                 # Read the metadata from the data file itself.
 
                 # For remote files download the entire file to get the
@@ -474,18 +528,19 @@ class RawIngestTask(Task):
 
     @classmethod
     def getObservationInfoSubsets(cls) -> tuple[set, set]:
-        """Return subsets of fields in the `ObservationInfo` that we care
-        about.
+        """Return subsets of fields in the
+        `~astro_metadata_translator.ObservationInfo` that we care about.
 
         These fields will be used in constructing an exposure record.
 
         Returns
         -------
         required : `set`
-            Set of `ObservationInfo` field names that are required.
+            Set of `~astro_metadata_translator.ObservationInfo` field names
+            that are required.
         optional : `set`
-            Set of `ObservationInfo` field names we will use if they are
-            available.
+            Set of `~astro_metadata_translator.ObservationInfo` field names
+            we will use if they are available.
         """
         # Marking the new properties "group_counter_*" and
         # "has_simulated_content" as required, assumes that we either
@@ -586,22 +641,22 @@ class RawIngestTask(Task):
 
         Parameters
         ----------
-        files : iterable over `lsst.resources.ResourcePath`
+        files : `~collections.abc.Iterable` [ `lsst.resources.ResourcePath` ]
             URIs to the files to be ingested.
 
         Returns
         -------
-        index : `dict` [`ResourcePath`, Any]
+        index : `dict` [ `lsst.resources.ResourcePath`, `typing.Any` ]
             Merged contents of all relevant index files found. These can
             be explicitly specified index files or ones found in the
             directory alongside a data file to be ingested.
-        updated_files : `list` of `ResourcePath`
+        updated_files : `list` [ `lsst.resources.ResourcePath` ]
             Updated list of the input files with entries removed that were
             found listed in an index file. Order is not guaranteed to
             match the order of the files given to this routine.
-        good_index_files: `set` [ `ResourcePath` ]
+        good_index_files: `set` [ `lsst.resources.ResourcePath` ]
             Index files that were successfully read.
-        bad_index_files: `set` [ `ResourcePath` ]
+        bad_index_files: `set` [ `lsst.resources.ResourcePath` ]
             Files that looked like index files but failed to read properly.
         """
         # Convert the paths to absolute for easy comparison with index content.
@@ -729,7 +784,7 @@ class RawIngestTask(Task):
 
         Parameters
         ----------
-        index_entries : `dict` [`ResourcePath`, Any]
+        index_entries : `dict` [`lsst.resources.ResourcePath`, `typing.Any`]
             Dict indexed by name of file to ingest and with keys either
             raw metadata or translated
             `~astro_metadata_translator.ObservationInfo`.
@@ -742,6 +797,7 @@ class RawIngestTask(Task):
             but the `RawFileData.dataId` attributes will be minimal
             (unexpanded) `~lsst.daf.butler.DataCoordinate` instances.
         """
+        formatterClass: type[Formatter | FormatterV2]
         fileData = []
         for filename, metadata in index_entries.items():
             try:
@@ -821,16 +877,16 @@ class RawIngestTask(Task):
 
         Parameters
         ----------
-        obsInfo : `ObservationInfo`
+        obsInfo : `~astro_metadata_translator.ObservationInfo`
             Observation details for (one of the components of) the exposure.
-        universe : `DimensionUniverse`
+        universe : `lsst.daf.butler.DimensionUniverse`
             Set of all known dimensions.
         **kwargs
             Additional field values for this record.
 
         Returns
         -------
-        record : `DimensionRecord`
+        record : `lsst.daf.butler.DimensionRecord`
             The exposure record that must be inserted into the
             `~lsst.daf.butler.Registry` prior to file-level ingest.
         """
@@ -852,14 +908,14 @@ class RawIngestTask(Task):
 
         Parameters
         ----------
-        obsInfo : `ObservationInfo`
+        obsInfo : `~astro_metadata_translator.ObservationInfo`
             Observation details for (one of the components of) the exposure.
-        universe : `DimensionUniverse`
+        universe : `lsst.daf.butler.DimensionUniverse`
             Set of all known dimensions.
 
         Returns
         -------
-        records : `dict` [`str`, `DimensionRecord`]
+        records : `dict` [`str`, `lsst.daf.butler.DimensionRecord`]
             The records to insert, indexed by dimension name.
         """
         records: dict[str, DimensionRecord] = {}
@@ -891,7 +947,7 @@ class RawIngestTask(Task):
 
         Parameters
         ----------
-        exposure : `RawExposureData`
+        data : `RawExposureData`
             A structure containing information about the exposure to be
             ingested.  Must have `RawExposureData.record` populated. Should
             be considered consumed upon return.
@@ -927,7 +983,11 @@ class RawIngestTask(Task):
         return data
 
     def prep(
-        self, files: Iterable[ResourcePath], *, pool: PoolType | None = None
+        self,
+        files: Iterable[ResourcePath],
+        *,
+        pool: concurrent.futures.ThreadPoolExecutor | None = None,
+        search_indexes: bool = True,
     ) -> tuple[Iterator[RawExposureData], list[ResourcePath]]:
         """Perform all non-database-updating ingest preprocessing steps.
 
@@ -936,9 +996,13 @@ class RawIngestTask(Task):
         files : iterable over `str` or path-like objects
             Paths to the files to be ingested.  Will be made absolute
             if they are not already.
-        pool : `multiprocessing.Pool`, optional
-            If not `None`, a process pool with which to parallelize some
+        pool : `concurrent.futures.ThreadPoolExecutor`, optional
+            If not `None`, a thread pool with which to parallelize some
             operations.
+        search_indexes : `bool`, optional
+            If `True` the code will search for index JSON files in given
+            directories. If you know for a fact that index files do not exist
+            set this to `False` for a slight speed up in metadata gathering.
 
         Returns
         -------
@@ -948,7 +1012,6 @@ class RawIngestTask(Task):
         bad_files : `list` of `str`
             List of all the files that could not have metadata extracted.
         """
-        mapFunc = map if pool is None else pool.imap_unordered
 
         def _partition_good_bad(
             file_data: Iterable[RawFileData],
@@ -965,11 +1028,17 @@ class RawIngestTask(Task):
 
         # Look for index files and read them.
         # There should be far fewer index files than data files.
-        index_entries, files, good_index_files, bad_index_files = self.locateAndReadIndexFiles(files)
-        if bad_index_files:
-            self.log.info("Failed to read the following explicitly requested index files:")
-            for bad in sorted(bad_index_files):
-                self.log.info("- %s", bad)
+        if search_indexes:
+            index_entries, files, good_index_files, bad_index_files = self.locateAndReadIndexFiles(files)
+            if bad_index_files:
+                self.log.info("Failed to read the following explicitly requested index files:")
+                for bad in sorted(bad_index_files):
+                    self.log.info("- %s", bad)
+        else:
+            # We have been told explicitly there are no indexes.
+            index_entries = {}
+            good_index_files = set()
+            bad_index_files = set()
 
         # Now convert all the index file entries to standard form for ingest.
         processed_bad_index_files: list[ResourcePath] = []
@@ -984,9 +1053,13 @@ class RawIngestTask(Task):
             )
 
         # Extract metadata and build per-detector regions.
-        # This could run in a subprocess so collect all output
+        # This could run in threads or a subprocess so collect all output
         # before looking at failures.
-        fileData: Iterator[RawFileData] = mapFunc(self.extractMetadata, files)
+        fileData: Iterator[RawFileData]
+        if pool is None:
+            fileData = map(self.extractMetadata, files)
+        else:
+            fileData = pool.map(self.extractMetadata, files)
 
         # Filter out all the failed reads and store them for later
         # reporting.
@@ -1022,7 +1095,7 @@ class RawIngestTask(Task):
         # SELECTs), so if there's going to be a problem with connections vs.
         # multiple processes, or lock contention (in SQLite) slowing things
         # down, it'll happen here.
-        return mapFunc(self.expandDataIds, exposureData), bad_files
+        return map(self.expandDataIds, exposureData), bad_files
 
     def ingestExposureDatasets(
         self,
@@ -1041,7 +1114,7 @@ class RawIngestTask(Task):
             A structure containing information about the exposure to be
             ingested.  Must have `RawExposureData.records` populated and all
             data ID attributes expanded.
-        datasetType : `DatasetType`
+        datasetType : `lsst.daf.butler.DatasetType`
             The dataset type associated with this exposure.
         run : `str`
             Name of a RUN-type collection to write to.
@@ -1080,24 +1153,27 @@ class RawIngestTask(Task):
                     FileDataset(path=file.filename.abspath(), refs=refs, formatter=file.FormatterClass)
                 )
 
-        self.butler.ingest(
-            *datasets,
-            transfer=self.config.transfer,
-            record_validation_info=track_file_attrs,
-            skip_existing=skip_existing_exposures,
-        )
+        with self.butler.record_metrics() as butler_metrics:
+            self.butler.ingest(
+                *datasets,
+                transfer=self.config.transfer,
+                record_validation_info=track_file_attrs,
+                skip_existing=skip_existing_exposures,
+            )
+        self.metrics.time_for_ingest += butler_metrics.time_in_ingest
         return datasets
 
     def ingestFiles(
         self,
         files: Sequence[ResourcePath],
         *,
-        pool: PoolType | None = None,
-        processes: int = 1,
+        pool: concurrent.futures.ThreadPoolExecutor | None = None,
+        num_workers: int = 1,
         run: str | None = None,
         skip_existing_exposures: bool = False,
         update_exposure_records: bool = False,
         track_file_attrs: bool = True,
+        search_indexes: bool = True,
     ) -> tuple[list[DatasetRef], list[ResourcePath], int, int, int]:
         """Ingest files into a Butler data repository.
 
@@ -1111,11 +1187,11 @@ class RawIngestTask(Task):
         ----------
         files : iterable over `lsst.resources.ResourcePath`
             URIs to the files to be ingested.
-        pool : `multiprocessing.Pool`, optional
-            If not `None`, a process pool with which to parallelize some
+        pool : `concurrent.futures.ThreadPoolExecutor`, optional
+            If not `None`, a thread pool with which to parallelize some
             operations.
-        processes : `int`, optional
-            The number of processes to use.  Ignored if ``pool`` is not `None`.
+        num_workers : `int`, optional
+            The number of workers to use.  Ignored if ``pool`` is not `None`.
         run : `str`, optional
             Name of a RUN-type collection to write to, overriding
             the default derived from the instrument name.
@@ -1141,12 +1217,16 @@ class RawIngestTask(Task):
             Control whether file attributes such as the size or checksum should
             be tracked by the datastore. Whether this parameter is honored
             depends on the specific datastore implementation.
+        search_indexes : `bool`, optional
+            If `True` the code will search for index JSON files in given
+            directories. If you know for a fact that index files do not exist
+            set this to `False` for a slight speed up in metadata gathering.
 
         Returns
         -------
         refs : `list` of `lsst.daf.butler.DatasetRef`
             Dataset references for ingested raws.
-        bad_files : `list` of `ResourcePath`
+        bad_files : `list` of `lsst.resources.ResourcePath`
             Given paths that could not be ingested.
         n_exposures : `int`
             Number of exposures successfully ingested.
@@ -1156,23 +1236,23 @@ class RawIngestTask(Task):
             Number of exposures that failed when ingesting raw datasets.
         """
         created_pool = False
-        if pool is None and processes > 1:
-            pool = Pool(processes)
+        if pool is None and num_workers > 1:
+            pool = concurrent.futures.ThreadPoolExecutor(max_workers=num_workers)
             created_pool = True
 
         try:
-            with time_this(
+            with self.metrics.collect_metric(
+                "time_for_metadata",
                 self.log,
                 msg="Reading metadata from %d file%s",
                 args=(*_log_msg_counter(files),),
             ):
-                exposureData, bad_files = self.prep(files, pool=pool)
+                exposureData, bad_files = self.prep(files, pool=pool, search_indexes=search_indexes)
         finally:
             if created_pool and pool:
                 # The pool is not needed any more so close it if we created
                 # it to ensure we clean up resources.
-                pool.close()
-                pool.join()
+                pool.shutdown(wait=True)
 
         # Up to this point, we haven't modified the data repository at all.
         # Now we finally do that, with one transaction per exposure.  This is
@@ -1198,7 +1278,8 @@ class RawIngestTask(Task):
             )
 
             try:
-                with time_this(
+                with self.metrics.collect_metric(
+                    "time_for_records",
                     self.log,
                     msg="Creating dimension records for instrument %s, exposure %s",
                     args=(
@@ -1213,6 +1294,11 @@ class RawIngestTask(Task):
                         exposure.record,
                         update=update_exposure_records,
                     )
+                if inserted_or_updated is not False:
+                    with self.metrics.collect_metric(
+                        "time_for_callbacks", log=self.log, msg="Exposure record updated. Calling handler"
+                    ):
+                        self._on_exposure_record(exposure.record)
             except Exception as e:
                 self._on_ingest_failure(exposure, e)
                 n_exposures_failed += 1
@@ -1280,7 +1366,8 @@ class RawIngestTask(Task):
                     raise e
                 continue
             else:
-                self._on_success(datasets_for_exposure)
+                with self.metrics.collect_metric("time_for_callbacks", self.log, msg="Calling on_success"):
+                    self._on_success(datasets_for_exposure)
                 for dataset in datasets_for_exposure:
                     refs.extend(dataset.refs)
 
@@ -1297,14 +1384,16 @@ class RawIngestTask(Task):
         self,
         files: Sequence[ResourcePathExpression],
         *,
-        pool: PoolType | None = None,
-        processes: int = 1,
+        pool: concurrent.futures.ThreadPoolExecutor | None = None,
+        processes: int | None = None,  # Deprecated. Use num_workers.
         run: str | None = None,
         file_filter: str | re.Pattern = r"\.fit[s]?\b",
         group_files: bool = True,
         skip_existing_exposures: bool = False,
         update_exposure_records: bool = False,
         track_file_attrs: bool = True,
+        search_indexes: bool = True,
+        num_workers: int = 1,
     ) -> list[DatasetRef]:
         """Ingest files into a Butler data repository.
 
@@ -1319,11 +1408,14 @@ class RawIngestTask(Task):
         files : iterable `lsst.resources.ResourcePath`, `str` or path-like
             Paths to the files to be ingested.  Can refer to directories.
             Will be made absolute if they are not already.
-        pool : `multiprocessing.Pool`, optional
+        pool : `concurrent.futures.ThreadPoolExecutor`, optional
             If not `None`, a process pool with which to parallelize some
-            operations.
+            operations. This parameter was previously a `multiprocessing.Pool`
+            but that option is no longer supported since it is slow compared
+            to futures.
         processes : `int`, optional
             The number of processes to use.  Ignored if ``pool`` is not `None`.
+            Deprecated. Please use ``num_workers`` parameter instead.
         run : `str`, optional
             Name of a RUN-type collection to write to, overriding
             the default derived from the instrument name.
@@ -1356,6 +1448,13 @@ class RawIngestTask(Task):
             Control whether file attributes such as the size or checksum should
             be tracked by the datastore. Whether this parameter is honored
             depends on the specific datastore implementation.
+        search_indexes : `bool`, optional
+            If `True` the code will search for index JSON files in given
+            directories. If you know for a fact that index files do not exist
+            set this to `False` for a slight speed up in metadata gathering.
+        num_workers : `int`, optional
+            The number of workers to use. Ignored if ``pool`` parameter is
+            given.
 
         Returns
         -------
@@ -1366,41 +1465,62 @@ class RawIngestTask(Task):
         -----
         This method inserts all datasets for an exposure within a transaction,
         guaranteeing that partial exposures are never ingested.  The exposure
-        dimension record is inserted with `Registry.syncDimensionData` first
-        (in its own transaction), which inserts only if a record with the same
+        dimension record is inserted with
+        `lsst.daf.butler.Registry.syncDimensionData` first (in its own
+        transaction), which inserts only if a record with the same
         primary key does not already exist.  This allows different files within
         the same exposure to be ingested in different runs.
         """
+        if pool and not isinstance(pool, concurrent.futures.ThreadPoolExecutor):
+            raise ValueError(f"This parameter must now be a ThreadPoolExecutor but was given {pool}.")
+
+        if processes is not None:
+            warnings.warn(
+                "Processes parameter is deprecated. Please use num_workers parameter.",
+                FutureWarning,
+                stacklevel=3,  # Jump above the timeMethod wrapper.
+            )
+            num_workers = processes
+
         refs = []
         bad_files = []
         n_exposures = 0
         n_exposures_failed = 0
         n_ingests_failed = 0
+        self.metrics.reset()  # Clear previous metrics.
+        ingest_duration = 0.0
         if group_files:
-            for group in ResourcePath.findFileResources(files, file_filter, group_files):
-                new_refs, bad, n_exp, n_exp_fail, n_ingest_fail = self.ingestFiles(
-                    tuple(group),
+            with time_this(log=self.log, msg="Processing ingest groups") as timer:
+                for group in ResourcePath.findFileResources(files, file_filter, group_files):
+                    new_refs, bad, n_exp, n_exp_fail, n_ingest_fail = self.ingestFiles(
+                        tuple(group),
+                        pool=pool,
+                        num_workers=num_workers,
+                        run=run,
+                        skip_existing_exposures=skip_existing_exposures,
+                        update_exposure_records=update_exposure_records,
+                        track_file_attrs=track_file_attrs,
+                        search_indexes=search_indexes,
+                    )
+                    refs.extend(new_refs)
+                    bad_files.extend(bad)
+                    n_exposures += n_exp
+                    n_exposures_failed += n_exp_fail
+                    n_ingests_failed += n_ingest_fail
+            ingest_duration = timer.duration
+        else:
+            with time_this(log=self.log, msg="Ingesting all files in one batch") as timer:
+                refs, bad_files, n_exposures, n_exposures_failed, n_ingests_failed = self.ingestFiles(
+                    tuple(ResourcePath.findFileResources(files, file_filter, group_files)),
                     pool=pool,
-                    processes=processes,
+                    num_workers=num_workers,
                     run=run,
                     skip_existing_exposures=skip_existing_exposures,
                     update_exposure_records=update_exposure_records,
                     track_file_attrs=track_file_attrs,
+                    search_indexes=search_indexes,
                 )
-                refs.extend(new_refs)
-                bad_files.extend(bad)
-                n_exposures += n_exp
-                n_exposures_failed += n_exp_fail
-                n_ingests_failed += n_ingest_fail
-        else:
-            refs, bad_files, n_exposures, n_exposures_failed, n_ingests_failed = self.ingestFiles(
-                tuple(ResourcePath.findFileResources(files, file_filter, group_files)),
-                pool=pool,
-                processes=processes,
-                run=run,
-                skip_existing_exposures=skip_existing_exposures,
-                update_exposure_records=update_exposure_records,
-            )
+            ingest_duration = timer.duration
 
         had_failure = False
 
@@ -1412,14 +1532,25 @@ class RawIngestTask(Task):
 
         self.log.info(
             "Successfully processed data from %d exposure%s with %d failure%s from exposure"
-            " registration and %d failure%s from file ingest.",
+            " registration and %d failure%s from file ingest.\n"
+            "Timing breakdown:\n"
+            " - time in metadata gathering: %f s\n"
+            " - time in dimension record writing: %f s\n"
+            " - time in butler ingest: %f s\n"
+            " - time in user-supplied callbacks: %f s\n",
             *_log_msg_counter(n_exposures),
             *_log_msg_counter(n_exposures_failed),
             *_log_msg_counter(n_ingests_failed),
+            self.metrics.time_for_metadata,
+            self.metrics.time_for_records,
+            self.metrics.time_for_ingest,
+            self.metrics.time_for_callbacks,
         )
         if n_exposures_failed > 0 or n_ingests_failed > 0:
             had_failure = True
-        self.log.info("Ingested %d distinct Butler dataset%s", *_log_msg_counter(refs))
+        self.log.info(
+            "Ingested %d distinct Butler dataset%s in %f sec", *_log_msg_counter(refs), ingest_duration
+        )
 
         if had_failure:
             raise RuntimeError("Some failures encountered during ingestion")

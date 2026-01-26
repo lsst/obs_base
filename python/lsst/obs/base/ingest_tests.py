@@ -21,6 +21,8 @@
 
 """Base class for writing Gen3 raw data ingest tests."""
 
+from __future__ import annotations
+
 __all__ = ("IngestTestBase",)
 
 import abc
@@ -28,18 +30,26 @@ import os
 import shutil
 import tempfile
 import unittest
+from typing import TYPE_CHECKING
 
 import lsst.afw.cameraGeom
 import lsst.afw.cameraGeom.testUtils  # For assertDetectorsEqual
 import lsst.obs.base
-from lsst.daf.butler import Butler, Registry
+from lsst.daf.butler import Butler, DataCoordinate, Registry
 from lsst.daf.butler.cli.butler import cli as butlerCli
 from lsst.daf.butler.cli.utils import LogCliRunner
-from lsst.pipe.base import Instrument
+from lsst.obs.base import Instrument
+from lsst.pipe.base import Task
 from lsst.resources import ResourcePath
 from lsst.utils import doImportType
 
 from . import script
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    import lsst.afw.image
+    import lsst.sphgeom
 
 
 class IngestTestBase(metaclass=abc.ABCMeta):
@@ -47,41 +57,41 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     `unittest.TestCase` to get a working test suite.
     """
 
-    ingestDir = ""
+    ingestDir: str = ""
     """Root path to ingest files into. Typically `obs_package/tests/`; the
     actual directory will be a tempdir under this one.
     """
 
-    ingestDatasetTypeName = "raw"
+    ingestDatasetTypeName: str = "raw"
     """The DatasetType to use for the ingest.
 
     If this is not an Exposure dataset type the tests will be more limited.
     """
 
-    dataIds = []
+    dataIds: list[DataCoordinate] = []
     """list of butler data IDs of files that should have been ingested."""
 
-    file = ""
+    file: str = ""
     """Full path to a file to ingest in tests."""
 
-    filterLabel = None
+    filterLabel: lsst.afw.image.FilterLabel = None
     """The lsst.afw.image.FilterLabel that should be returned by the above
     file."""
 
-    rawIngestTask = "lsst.obs.base.RawIngestTask"
+    rawIngestTask: str = "lsst.obs.base.RawIngestTask"
     """The task to use in the Ingest test."""
 
-    curatedCalibrationDatasetTypes = None
+    curatedCalibrationDatasetTypes: list[str] | None = None
     """List or tuple of Datasets types that should be present after calling
     writeCuratedCalibrations. If `None` writeCuratedCalibrations will
     not be called and the test will be skipped."""
 
-    defineVisitsTask = lsst.obs.base.DefineVisitsTask
+    defineVisitsTask: type[Task] = lsst.obs.base.DefineVisitsTask
     """The task to use to define visits from groups of exposures.
     This is ignored if ``visits`` is `None`.
     """
 
-    visits = {}
+    visits: dict[DataCoordinate, DataCoordinate] = {}
     """A dictionary mapping visit data IDs the lists of exposure data IDs that
     are associated with them.
     If this is empty (but not `None`), visit definition will be run but no
@@ -89,15 +99,38 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     observations).
     """
 
-    seed_config = None
+    seed_config: str | None = None
     """Location of a seed configuration file to pass to butler create.
 
     Useful if additional formatters or storage classes need to be defined.
     """
 
+    root: str
+    """Root directory of the test butler."""
+
+    datastore_root: ResourcePath
+    """Root of the file datastore used for testing."""
+
+    if TYPE_CHECKING:
+        enterContext: Callable
+        assertEqual: Callable
+        assertIsNotNone: Callable
+        assertTrue: Callable
+        assertRaises: Callable
+        assertIn: Callable
+        assertFalse: Callable
+        assertIsInstance: Callable
+        assertCountEqual: Callable
+        skipTest: Callable
+        assertGreater: Callable
+        assertDetectorsEqual: Callable
+        subTest: Callable
+
+        def id(self) -> str: ...
+
     @property
     @abc.abstractmethod
-    def instrumentClassName(self):
+    def instrumentClassName(self) -> str:
         """The fully qualified instrument class name.
 
         Returns
@@ -108,12 +141,14 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         pass
 
     @property
-    def instrumentClass(self):
+    def instrumentClass(self) -> type[Instrument]:
         """The instrument class."""
-        return doImportType(self.instrumentClassName)
+        inst_class = doImportType(self.instrumentClassName)
+        assert issubclass(inst_class, Instrument)
+        return inst_class
 
     @property
-    def instrumentName(self):
+    def instrumentName(self) -> str:
         """The name of the instrument.
 
         Returns
@@ -124,7 +159,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         return self.instrumentClass.getName()
 
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         # Use a temporary working directory.
         cls.root = tempfile.mkdtemp(dir=cls.ingestDir)
         cls._createRepo()
@@ -136,25 +171,30 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         with Butler.from_config(cls.root) as butler:
             roots = butler.get_datastore_roots()
             assert len(roots) == 1  # Only one datastore.
-            cls.datastore_root = list(roots.values())[0]
+            _, root = roots.popitem()
+            assert isinstance(root, ResourcePath)
+            cls.datastore_root = root
 
-    def setUp(self):
+    def setUp(self) -> None:
         # Want a unique run name per test.
         self.outputRun = "raw_ingest_" + self.id()
 
     @classmethod
-    def tearDownClass(cls):
+    def tearDownClass(cls) -> None:
         if os.path.exists(cls.root):
             shutil.rmtree(cls.root, ignore_errors=True)
 
-    def verifyIngest(self, files=None, cli=False, fullCheck=False):
-        """
-        Test that RawIngestTask ingested the expected files.
+    def verifyIngest(
+        self, files: list[str] | None = None, cli: bool = False, fullCheck: bool = False
+    ) -> None:
+        """Test that RawIngestTask ingested the expected files.
 
         Parameters
         ----------
         files : `list` [`str`], or None
             List of files to be ingested, or None to use ``self.file``
+        cli : `bool`, optional
+            Unused.
         fullCheck : `bool`, optional
             If `True`, read the full raw dataset and check component
             consistency. If `False` check that a component can be read
@@ -247,7 +287,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
         self.checkRepo(files=files)
 
-    def checkRepo(self, files=None):
+    def checkRepo(self, files: list[str] | None = None) -> None:
         """Check the state of the repository after ingest.
 
         This is an optional hook provided for subclasses; by default it does
@@ -261,7 +301,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         return
 
     @classmethod
-    def _createRepo(cls):
+    def _createRepo(cls) -> None:
         """Use the Click `testing` module to call the butler command line api
         to create a repository.
         """
@@ -273,7 +313,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         # Classmethod so assertEqual does not work.
         assert result.exit_code == 0, f"output: {result.output} exception: {result.exception}"
 
-    def _ingestRaws(self, transfer, file=None, skip_existing=True):
+    def _ingestRaws(self, transfer: str, file: str | None = None, skip_existing: bool = True) -> None:
         """Use the Click `testing` module to call the butler command line api
         to ingest raws.
 
@@ -281,9 +321,11 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         ----------
         transfer : `str`
             The external data transfer type.
-        file : `str`
+        file : `str` or `None`, optional
             Path to a file to ingest instead of the default associated with
             the object.
+        skip_existing : `bool`, optional
+            Whether to use the ``--no-skip-existing`` flag for ingest.
         """
         if file is None:
             file = self.file
@@ -306,7 +348,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
 
     @classmethod
-    def _registerInstrument(cls):
+    def _registerInstrument(cls) -> None:
         """Use the Click `testing` module to call the butler command line api
         to register the instrument.
         """
@@ -315,7 +357,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         # Classmethod so assertEqual does not work.
         assert result.exit_code == 0, f"output: {result.output} exception: {result.exception}"
 
-    def _writeCuratedCalibrations(self):
+    def _writeCuratedCalibrations(self) -> None:
         """Use the Click `testing` module to call the butler command line api
         to write curated calibrations.
         """
@@ -325,15 +367,15 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         )
         self.assertEqual(result.exit_code, 0, f"output: {result.output} exception: {result.exception}")
 
-    def testLink(self):
+    def testLink(self) -> None:
         self._ingestRaws(transfer="link")
         self.verifyIngest()
 
-    def testSymLink(self):
+    def testSymLink(self) -> None:
         self._ingestRaws(transfer="symlink")
         self.verifyIngest()
 
-    def testDirect(self):
+    def testDirect(self) -> None:
         self._ingestRaws(transfer="direct")
 
         # Check that it really did have a URI outside of datastore.
@@ -344,14 +386,14 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         datastoreUri = butler.getURI(datasets[0])
         self.assertEqual(datastoreUri, srcUri)
 
-    def testCopy(self):
+    def testCopy(self) -> None:
         self._ingestRaws(transfer="copy")
         # Only test full read of raws for the copy test. No need to do it
         # in the other tests since the formatter will be the same in all
         # cases.
         self.verifyIngest(fullCheck=True)
 
-    def testHardLink(self):
+    def testHardLink(self) -> None:
         try:
             self._ingestRaws(transfer="hardlink")
             # Running ingest through the Click testing infrastructure causes
@@ -364,7 +406,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             ) from err
         self.verifyIngest()
 
-    def testInPlace(self):
+    def testInPlace(self) -> None:
         """Test that files already in the directory can be added to the
         registry in-place.
         """
@@ -411,14 +453,14 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         uri = butler.getURI(self.ingestDatasetTypeName, self.dataIds[0])
         self.assertEqual(uri.relative_to(self.datastore_root), pathInStore)
 
-    def testFailOnConflict(self):
+    def testFailOnConflict(self) -> None:
         """Re-ingesting the same data into the repository should fail."""
         self._ingestRaws(transfer="symlink")
         self._ingestRaws(transfer="symlink")  # Default is to skip.
         with self.assertRaises(AssertionError):
             self._ingestRaws(transfer="symlink", skip_existing=False)
 
-    def testWriteCuratedCalibrations(self):
+    def testWriteCuratedCalibrations(self) -> None:
         """Test that we can ingest the curated calibrations, and read them
         with `loadCamera` both before and after.
         """
@@ -471,8 +513,8 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         self.assertTrue(isVersioned)
         self.assertIsInstance(camera, lsst.afw.cameraGeom.Camera)
 
-    def testDefineVisits(self):
-        if self.visits is None:
+    def testDefineVisits(self) -> None:
+        if not self.visits:
             self.skipTest("Expected visits were not defined.")
         self._ingestRaws(transfer="link")
 
@@ -488,7 +530,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
         script.defineVisits(
             self.root,
             config_file=None,
-            collections=self.outputRun,
+            collections=[self.outputRun],
             instrument=self.instrumentName,
         )
 
@@ -511,6 +553,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             )
             self.assertEqual(len(detectorVisitDataIds), len(camera))
             for dataId in detectorVisitDataIds:
+                assert isinstance(foundVisit.region, lsst.sphgeom.Region)
                 self.assertTrue(foundVisit.region.contains(dataId.region))
 
         # Check obscore table again.

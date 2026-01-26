@@ -1,0 +1,8 @@
+Optimized ingest raws to support summit operations.
+
+* Now report timing information on ingest completion including separating out butler timings from metadata extraction.
+* Added a new callback that is called whenever a dimension record is created.
+* Changed defineVisits to allow it to be called with dimension records in addition to data coordinates.
+* Switched from `multiprocessing.Pool` to `concurrent.futures.ThreadPoolExecutor`, resulting in significant speed ups for large numbers of files.
+* Added ability to declare that there are no per-directory index files.
+* Changed how sidecar files are read to prevent an unnecessary round trip to remote object stores if the file does exist.

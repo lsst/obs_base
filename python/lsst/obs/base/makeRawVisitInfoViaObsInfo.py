@@ -19,11 +19,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+
 __all__ = ["MakeRawVisitInfoViaObsInfo"]
 
 import logging
 import warnings
-from typing import ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import astropy.units
 import astropy.utils.exceptions
@@ -45,6 +47,10 @@ from lsst.afw.coord import Observatory, Weather
 from lsst.afw.image import RotType, VisitInfo
 from lsst.daf.base import DateTime
 from lsst.geom import SpherePoint, degrees, radians
+
+if TYPE_CHECKING:
+    import lsst.afw.image
+    import lsst.daf.base
 
 
 class MakeRawVisitInfoViaObsInfo:
@@ -69,17 +75,17 @@ class MakeRawVisitInfoViaObsInfo:
         Strip header keywords from the metadata as they are used?
     """
 
-    metadataTranslator: ClassVar[MetadataTranslator | None] = None
+    metadataTranslator: ClassVar[type[MetadataTranslator] | None] = None
     """Header translator to use to construct VisitInfo, defaulting to
     automatic determination."""
 
-    def __init__(self, log=None, doStripHeader=False):
+    def __init__(self, log: logging.Logger | None = None, doStripHeader: bool = False):
         if log is None:
             log = logging.getLogger(__name__)
         self.log = log
         self.doStripHeader = doStripHeader
 
-    def __call__(self, md):
+    def __call__(self, md: lsst.daf.base.PropertySet) -> lsst.afw.image.VisitInfo:
         """Construct a VisitInfo and strip associated data from the metadata.
 
         Parameters
@@ -104,7 +110,9 @@ class MakeRawVisitInfoViaObsInfo:
         return self.observationInfo2visitInfo(obsInfo, log=self.log)
 
     @staticmethod
-    def observationInfo2visitInfo(obsInfo, log=None):
+    def observationInfo2visitInfo(
+        obsInfo: ObservationInfo, log: logging.Logger | None = None
+    ) -> lsst.afw.image.VisitInfo:
         """Construct a `~lsst.afw.image.VisitInfo` from an
         `~astro_metadata_translator.ObservationInfo`.
 
@@ -122,7 +130,7 @@ class MakeRawVisitInfoViaObsInfo:
             `~lsst.afw.image.VisitInfo` derived from the supplied
             `~astro_metadata_translator.ObservationInfo`.
         """
-        argDict = {}
+        argDict: dict[str, Any] = {}
 
         # Map the translated information into a form suitable for VisitInfo
         if obsInfo.exposure_time is not None:

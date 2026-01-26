@@ -20,25 +20,27 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from lsst.daf.butler import Butler
+from lsst.obs.base.ingest import RawIngestTask
 from lsst.pipe.base.configOverrides import ConfigOverrides
 from lsst.utils import doImportType
 
 
 def ingestRaws(
-    repo,
-    locations,
-    regex,
-    output_run,
-    fail_fast=False,
-    config=None,
-    config_file=None,
-    transfer="auto",
-    processes=1,
-    ingest_task="lsst.obs.base.RawIngestTask",
-    track_file_attrs=True,
-    update_records=False,
-    skip_existing=False,
-):
+    repo: str,
+    locations: list[str],
+    regex: str,
+    output_run: str,
+    fail_fast: bool = False,
+    config: dict[str, str] | None = None,
+    config_file: str | None = None,
+    transfer: str | None = "auto",
+    processes: int = 1,
+    ingest_task: str = "lsst.obs.base.RawIngestTask",
+    track_file_attrs: bool = True,
+    update_records: bool = False,
+    skip_existing: bool = False,
+    search_indexes: bool = True,
+) -> None:
     """Ingest raw frames into the butler registry.
 
     Parameters
@@ -63,7 +65,7 @@ def ingestRaws(
     transfer : `str` or None
         The external data transfer type, by default "auto".
     processes : `int`
-        Number of processes to use for ingest.
+        Number of workers to use for ingest.
     ingest_task : `str`
         The fully qualified class name of the ingest task to use by default
         lsst.obs.base.RawIngestTask.
@@ -77,6 +79,10 @@ def ingestRaws(
     skip_existing : `bool`, optional
         Control whether raws that are already in the Butler repo will be
         skipped without error.
+    search_indexes : `bool`, optional
+        Control whether raw ingest will search for per-directory index files
+        or not. Disabling this can improve performance if you know that there
+        are no indexes.
 
     Raises
     ------
@@ -84,6 +90,7 @@ def ingestRaws(
         Raised if operations on configuration object fail.
     """
     TaskClass = doImportType(ingest_task)
+    assert issubclass(TaskClass, RawIngestTask)
     ingestConfig = TaskClass.ConfigClass()
     ingestConfig.transfer = transfer
     configOverrides = ConfigOverrides()
@@ -96,13 +103,14 @@ def ingestRaws(
         configOverrides.addValueOverride("failFast", True)
     configOverrides.applyTo(ingestConfig)
     with Butler.from_config(repo, writeable=True) as butler:
-        ingester = TaskClass(config=ingestConfig, butler=butler)
+        ingester = TaskClass(config=ingestConfig, butler=butler)  # type: ignore[arg-type]
         ingester.run(
             locations,
             run=output_run,
-            processes=processes,
+            num_workers=processes,
             file_filter=regex,
             track_file_attrs=track_file_attrs,
             update_exposure_records=update_records,
             skip_existing_exposures=skip_existing,
+            search_indexes=search_indexes,
         )

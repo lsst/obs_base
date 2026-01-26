@@ -53,6 +53,7 @@ class IngestRawsTestCase(CliCmdTestBase, unittest.TestCase):
             update_records=False,
             fail_fast=False,
             skip_existing=True,
+            search_indexes=True,
         )
 
     @staticmethod

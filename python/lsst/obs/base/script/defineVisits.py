@@ -28,14 +28,14 @@ log = logging.getLogger("lsst.obs.base.defineVisits")
 
 
 def defineVisits(
-    repo,
-    config_file,
-    collections,
-    instrument,
-    where=None,
-    update_records=False,
-    incremental=False,
-):
+    repo: str,
+    config_file: str | None,
+    collections: list[str] | None,
+    instrument: str,
+    where: str | None = None,
+    update_records: bool = False,
+    incremental: bool = False,
+) -> None:
     """Implement the command line interface `butler define-visits` subcommand,
     should only be called by command line tools and unit test code that tests
     this function.

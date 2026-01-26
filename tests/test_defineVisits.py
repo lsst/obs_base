@@ -40,6 +40,9 @@ DATADIR = os.path.join(TESTDIR, "data", "visits")
 class DefineVisitsBase:
     """General set up that can be shared."""
 
+    use_data_ids = True
+    """Use data IDs when calling defineVisits, else use dimension records."""
+
     def setUpExposures(self):
         """Create a new butler for each test since we are changing dimension
         records.
@@ -103,7 +106,10 @@ class DefineVisitsBase:
 
             self.butler.registry.insertDimensionData("exposure", *records)
             # Include all records so far in definition.
-            dataIds = list(self.butler.registry.queryDataIds("exposure", instrument="DummyCam"))
+            if self.use_data_ids:
+                dataIds = list(self.butler.registry.queryDataIds("exposure", instrument="DummyCam"))
+            else:
+                dataIds = records
             self.task.run(dataIds, incremental=incremental)
 
 
@@ -205,6 +211,12 @@ class DefineVisitsTestCase(unittest.TestCase, DefineVisitsBase):
         self.assertEqual(self.task.universe, copy.universe)
 
 
+class DefineVisitsRecordsTestCase(DefineVisitsTestCase):
+    """Define visits using only dimension records."""
+
+    use_data_ids = False
+
+
 class DefineVisitsGroupingTestCase(unittest.TestCase, DefineVisitsBase):
     """Test visit grouping by group metadata."""
 
@@ -251,6 +263,12 @@ class DefineVisitsGroupingTestCase(unittest.TestCase, DefineVisitsBase):
                 visit_ids[1]: {2022040500348, 2022040500349},
             },
         )
+
+
+class DefineVisitsGroupingRecordsTestCase(DefineVisitsGroupingTestCase):
+    """Test using dimension records instead of Data IDs."""
+
+    use_data_ids = False
 
 
 if __name__ == "__main__":
