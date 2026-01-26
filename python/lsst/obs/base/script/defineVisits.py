@@ -29,7 +29,7 @@ log = logging.getLogger("lsst.obs.base.defineVisits")
 
 def defineVisits(
     repo: str,
-    config_file: str,
+    config_file: str | None,
     collections: list[str] | None,
     instrument: str,
     where: str | None = None,

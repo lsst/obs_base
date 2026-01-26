@@ -21,6 +21,8 @@
 
 """Support for assembling and disassembling afw Exposures."""
 
+from __future__ import annotations
+
 import contextlib
 import logging
 from collections.abc import Iterable, Mapping

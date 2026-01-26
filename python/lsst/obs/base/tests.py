@@ -23,6 +23,8 @@
 Test utilities for obs_base and concrete obs* packages.
 """
 
+from __future__ import annotations
+
 __all__ = (
     "ObsTests",
     "make_ramp_array",
