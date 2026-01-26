@@ -370,6 +370,7 @@ class RawIngestTask(Task):
             on_success=self._on_success,
             on_metadata_failure=self._on_metadata_failure,
             on_ingest_failure=self._on_ingest_failure,
+            on_exposure_record=self._on_exposure_record,
         )
 
     def _determine_instrument_formatter(
