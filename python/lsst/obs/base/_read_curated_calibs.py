@@ -24,13 +24,21 @@ from __future__ import annotations
 __all__ = ["CuratedCalibration", "read_all"]
 
 import datetime
-import glob
 import os
+import re
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, NamedTuple, Protocol
+
+from lsst.resources import ResourcePath
 
 if TYPE_CHECKING:
     import lsst.afw.cameraGeom
+    from lsst.resources import ResourcePathExpression
+
+
+class _SearchPath(NamedTuple):
+    root: ResourcePath
+    children: tuple[str, ...]
 
 
 class CuratedCalibration(Protocol):
@@ -45,7 +53,7 @@ class CuratedCalibration(Protocol):
 
 
 def read_one_calib(
-    path: tuple[str, ...],
+    path: _SearchPath,
     chip_id: int | None,
     filter_name: str | None,
     calib_class: type[CuratedCalibration],
@@ -55,8 +63,8 @@ def read_one_calib(
 
     Parameters
     ----------
-    path : `tuple` [`str`]
-        This tuple contains the top level of the data tree at index=0,
+    path : `_SearchPath`
+        This tuple contains the top level of the data tree
         and then further optional subdirectories in subsequent
         indices.  See Notes below for more details.
     chip_id : `int` or None
@@ -108,20 +116,30 @@ def read_one_calib(
     variants commonly used data packages such as ``2025-04-30T12:23:00`` or the
     more compact ``20250430T123000``.
     """
-    files = []
+    files: list[ResourcePath] = []
     extensions = (".ecsv", ".yaml", ".json")
-    for ext in extensions:
-        files.extend(glob.glob(os.path.join(*path, f"*{ext}")))
+    search_root = path.root
+    for subdir in path.children:
+        search_root = search_root.join(subdir, forceDirectory=True)
 
-    parts = os.path.split(path[0])
+    file_filter = "(" + "|".join(re.escape(ext) for ext in extensions) + ")$"
+    files = list(ResourcePath.findFileResources([search_root], file_filter=file_filter))
+
+    # Convention is that data reside in location where the final two parts of
+    # the directory root are <instrument>/<calib type>.
+    # os.path.split() does not like a trailing "/" directory indicator.
+    parts = os.path.split(path.root.path.removesuffix("/"))
     instrument = os.path.split(parts[0])[1]  # convention is that these reside at <instrument>/<calib_type>
     calib_type = parts[1]
+
     data_dict: dict[datetime.datetime, Any] = {}
     for f in files:
-        date_str = os.path.splitext(os.path.basename(f))[0]
+        date_str = f.updatedExtension("").basename()
         # Assume files are using some form of ISO date string.
         valid_start = datetime.datetime.fromisoformat(date_str)
-        data_dict[valid_start] = calib_class.readText(f)
+        # For now readText does not know about URIs.
+        with f.as_local() as local_uri:
+            data_dict[valid_start] = calib_class.readText(local_uri.ospath)
         check_metadata(data_dict[valid_start], valid_start, instrument, chip_id, filter_name, f, calib_type)
     return data_dict, calib_type
 
@@ -132,7 +150,7 @@ def check_metadata(
     instrument: str,
     chip_id: int | None,
     filter_name: str | None,
-    filepath: str,
+    filepath: ResourcePath,
     calib_type: str,
 ) -> None:
     """Check that the metadata is complete and self consistent.
@@ -150,7 +168,7 @@ def check_metadata(
         Identifier of the sensor in question.
     filter_name : `str`
         Identifier of the filter in question.
-    filepath : `str`
+    filepath : `lsst.resources.ResourcePath`
         Path of the file read to construct the data.
     calib_type : `str`
         Name of the type of data being read.
@@ -192,18 +210,18 @@ def check_metadata(
 
 
 def read_all(
-    root: str,
+    root: ResourcePathExpression,
     camera: lsst.afw.cameraGeom.Camera,
     calib_class: type[CuratedCalibration],
     required_dimensions: list[str],
     filters: set[str],
-) -> tuple[dict[tuple[str, ...], dict[datetime.datetime, CuratedCalibration]], str]:
+) -> tuple[dict[_SearchPath, dict[datetime.datetime, CuratedCalibration]], str]:
     """Read all data from the standard format at a particular root.
 
     Parameters
     ----------
-    root : `str`
-        Path to the top level of the data tree.  This is expected to hold
+    root : `lsst.resources.ResourcePathExpression`
+        URI to the top level of the data tree.  This is expected to hold
         directories named after the sensor names.  They are expected to be
         lower case.
     camera : `lsst.afw.cameraGeom.Camera`
@@ -234,22 +252,26 @@ def read_all(
     it. The detector ID may be retrieved from the DETECTOR entry of that
     metadata.
     """
-    calibration_data = {}
+    calibration_data: dict[_SearchPath, dict[datetime.datetime, CuratedCalibration]] = {}
 
-    root = os.path.normpath(root)
-    dirs = os.listdir(root)  # assumes all directories contain data
-    dirs = [d for d in dirs if os.path.isdir(os.path.join(root, d))]
+    root_uri = ResourcePath(root, forceDirectory=True, forceAbsolute=True)
+
+    # Read all the subdirectories. These will be things like detectors or
+    # physical filters. We assume that every sub directory contains calibration
+    # data. We only walk the top level.
+    _, dirs, _ = next(root_uri.walk())
+
+    # If there are no sub directories this is a global calibration.
     if not dirs:
-        dirs = [root]
+        dirs = [""]
 
     calib_types = set()
     # We assume the directories have been lowered.
     detector_map = {det.getName().lower(): det.getName() for det in camera}
     filter_map = {filterName.lower().replace(" ", "_"): filterName for filterName in filters}
 
-    paths_to_search: list[tuple[str, ...]] = []
-    for d in dirs:
-        dir_name = os.path.basename(d)
+    paths_to_search: list[_SearchPath] = []
+    for dir_name in dirs:
         # Catch possible mistakes:
         if "detector" in required_dimensions:
             if dir_name not in detector_map:
@@ -270,36 +292,39 @@ def read_all(
                 # If the calibration depends on both detector and
                 # physical_filter, the subdirs here should contain the
                 # filter name.
-                subdirs = os.listdir(os.path.join(root, dir_name))
-                subdirs = [d for d in subdirs if os.path.isdir(os.path.join(root, dir_name, d))]
-                for sd in subdirs:
-                    subdir_name = os.path.basename(sd)
+                subdir = root_uri.join(dir_name, forceDirectory=True)
+                _, subdirs, _ = next(subdir.walk())
+                for subdir_name in subdirs:
                     if subdir_name not in filter_map:
-                        raise RuntimeError(f"Filter {subdir_name} not known to supplied camera.")
+                        raise RuntimeError(f"Filter {subdir_name} not known to supplied camera in {subdir}.")
                     else:
-                        paths_to_search.append((root, dir_name, subdir_name))
+                        paths_to_search.append(_SearchPath(root_uri, (dir_name, subdir_name)))
             else:
-                paths_to_search.append((root, dir_name))
+                paths_to_search.append(_SearchPath(root_uri, (dir_name,)))
         elif "physical_filter" in required_dimensions:
             # If detector is not required, but physical_filter is,
             # then the top level should contain the filter
             # directories.
             if dir_name not in filter_map:
-                raise RuntimeError(f"Filter {dir_name} not known to supplied camera.")
-            paths_to_search.append((root, dir_name))
+                raise RuntimeError(f"Filter {dir_name} not known to supplied camera in {root_uri}.")
+            paths_to_search.append(_SearchPath(root_uri, (dir_name,)))
         else:
             # Neither detector nor physical_filter are required, so
             # the calibration is global, and will not be found in
             # subdirectories.
-            paths_to_search.append((root,))
+            paths_to_search.append(_SearchPath(root_uri, ()))
 
+    if not paths_to_search:
+        raise RuntimeError(f"Found no data files in {root_uri}")
+
+    calib_type = "undefined"
     for path in paths_to_search:
         chip_id = None
         filter_name = None
         if "detector" in required_dimensions:
-            chip_id = camera[detector_map[path[1]]].getId()
+            chip_id = camera[detector_map[path.children[0]]].getId()
         if "physical_filter" in required_dimensions:
-            filter_name = filter_map[path[-1]]
+            filter_name = filter_map[path.children[-1]]
 
         calibration_data[path], calib_type = read_one_calib(path, chip_id, filter_name, calib_class)
 
