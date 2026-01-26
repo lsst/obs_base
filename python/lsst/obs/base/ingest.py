@@ -279,7 +279,9 @@ class RawIngestTask(Task):
         that order, as positional arguments.  Guaranteed to be called in an
         ``except`` block, allowing the callback to re-raise or replace (with
         ``raise ... from``) to override the task's usual error handling (before
-        `RawIngestConfig.failFast` logic occurs).
+        `RawIngestConfig.failFast` logic occurs). This callback can be called
+        from within a worker thread if multiple workers have been requested.
+        Ensure that any code within the call back is thread-safe.
     on_ingest_failure : `Callable`, optional
         A callback invoked when dimension record or dataset insertion into the
         database fails for an exposure.  Will be passed a `RawExposureData`
@@ -368,6 +370,7 @@ class RawIngestTask(Task):
             on_success=self._on_success,
             on_metadata_failure=self._on_metadata_failure,
             on_ingest_failure=self._on_ingest_failure,
+            on_exposure_record=self._on_exposure_record,
         )
 
     def _determine_instrument_formatter(
