@@ -20,6 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from collections.abc import Sequence
+from typing import Any
 
 import click
 
@@ -76,7 +77,7 @@ fits_re = r"\.fit[s]?\b"
     "might encounter partial visits.  Implies --update-records.",
 )
 @options_file_option()
-def define_visits(*args, **kwargs):
+def define_visits(*args: Any, **kwargs: Any) -> None:
     """Define visits from exposures in the butler registry.
 
     The calibration collection containing the camera geometry can not
@@ -134,7 +135,7 @@ def define_visits(*args, **kwargs):
     "you have no indexes and you are using an object store.",
 )
 @options_file_option()
-def ingest_raws(*args, **kwargs):
+def ingest_raws(*args: Any, **kwargs: Any) -> None:
     """Ingest raw frames into from a directory into the butler registry."""
     script.ingestRaws(*args, **kwargs)
 
@@ -169,7 +170,15 @@ def ingest_raws(*args, **kwargs):
     ),
 )
 @options_file_option()
-def write_curated_calibrations(*, repo, instrument, collection, labels, labels_arg, prefix):
+def write_curated_calibrations(
+    *,
+    repo: str,
+    instrument: str,
+    collection: str,
+    labels: list[str],
+    labels_arg: list[str],
+    prefix: str,
+) -> None:
     """Add an instrument's curated calibrations to the data repository."""
     script.writeCuratedCalibrations(
         repo=repo, instrument=instrument, collection=collection, labels=labels_arg + labels, prefix=prefix

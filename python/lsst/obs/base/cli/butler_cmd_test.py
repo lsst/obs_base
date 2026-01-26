@@ -21,13 +21,21 @@
 
 """Base class for writing CLI butler command tests."""
 
+from __future__ import annotations
+
 __all__ = ("ButlerCmdTestBase",)
 
 import abc
+from typing import TYPE_CHECKING
 
 from lsst.daf.butler.cli import butler
 from lsst.daf.butler.cli.utils import LogCliRunner
 from lsst.utils import doImportType
+
+from .._instrument import Instrument
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class ButlerCmdTestBase(metaclass=abc.ABCMeta):
@@ -35,9 +43,12 @@ class ButlerCmdTestBase(metaclass=abc.ABCMeta):
     Subclass from this, then `unittest.TestCase` to get a working test suite.
     """
 
+    if TYPE_CHECKING:
+        assertEqual: Callable
+
     @property
     @abc.abstractmethod
-    def instrumentClassName(self):
+    def instrumentClassName(self) -> str:
         """The fully qualified instrument class name.
 
         Returns
@@ -60,12 +71,14 @@ class ButlerCmdTestBase(metaclass=abc.ABCMeta):
         return None
 
     @property
-    def instrument(self):
+    def instrument(self) -> type[Instrument]:
         """The instrument class."""
-        return doImportType(self.instrumentClassName)
+        inst_class = doImportType(self.instrumentClassName)
+        assert issubclass(inst_class, Instrument)
+        return inst_class
 
     @property
-    def instrumentName(self):
+    def instrumentName(self) -> str:
         """The name of the instrument.
 
         Returns
@@ -75,7 +88,7 @@ class ButlerCmdTestBase(metaclass=abc.ABCMeta):
         """
         return self.instrument.getName()
 
-    def test_cli(self):
+    def test_cli(self) -> None:
         runner = LogCliRunner()
         with runner.isolated_filesystem():
             result = runner.invoke(butler.cli, ["create", "here"])

@@ -23,6 +23,8 @@
 subcommand plugins that are provided by this package.
 """
 
+from __future__ import annotations
+
 from typing import cast
 
 import click
@@ -35,7 +37,7 @@ from .. import cmd
 class ButlerCmdDocGen(click.Group):
     """Provide access of butler subcommand plugins to Sphinx."""
 
-    def list_commands(self, ctx):
+    def list_commands(self, ctx: click.Context) -> list[str]:
         """List the click commands provided by this package.
 
         Parameters
@@ -69,6 +71,6 @@ class ButlerCmdDocGen(click.Group):
 
 
 @click.command(cls=ButlerCmdDocGen)
-def cli():
+def cli() -> None:
     """Run the command."""
     pass
