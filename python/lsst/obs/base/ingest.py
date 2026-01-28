@@ -56,6 +56,8 @@ from lsst.daf.butler import (
     Progress,
     Timespan,
 )
+from lsst.daf.butler.datastore.stored_file_info import SerializedStoredFileInfo
+from lsst.daf.butler.datastores.file_datastore.retrieve_artifacts import ArtifactIndexInfo
 from lsst.pex.config import ChoiceField, Config, Field
 from lsst.pipe.base import Instrument, Task
 from lsst.resources import ResourcePath, ResourcePathExpression
@@ -1230,8 +1232,15 @@ class RawIngestTask(Task):
         else:
             mode = DatasetIdGenEnum.UNIQUE
 
-        datasets = []
+        # The datasets for this exposure could all be from a single zip
+        # or be distinct files. Need to pull out the zip files.
+        zips: dict[ResourcePath, list[RawFileData]] = defaultdict(list)
+        datasets: list[FileDataset] = []
         for file in exposure.files:
+            if file.filename.getExtension() == ".zip":
+                zips[file.filename.replace(fragment="")].append(file)
+                continue
+
             refs = [
                 DatasetRef(datasetType, d.dataId, run=run, id_generation_mode=mode) for d in file.datasets
             ]
@@ -1240,14 +1249,63 @@ class RawIngestTask(Task):
                     FileDataset(path=file.filename.abspath(), refs=refs, formatter=file.FormatterClass)
                 )
 
-        with self.butler.record_metrics() as butler_metrics:
-            self.butler.ingest(
-                *datasets,
-                transfer=self.config.transfer,
-                record_validation_info=track_file_attrs,
-                skip_existing=skip_existing_exposures,
-            )
-        self.metrics.time_for_ingest += butler_metrics.time_in_ingest
+        if datasets:
+            with self.butler.record_metrics() as butler_metrics:
+                self.butler.ingest(
+                    *datasets,
+                    transfer=self.config.transfer,
+                    record_validation_info=track_file_attrs,
+                    skip_existing=skip_existing_exposures,
+                )
+            self.metrics.time_for_ingest += butler_metrics.time_in_ingest
+
+        # In theory it is possible for the new Data IDs to differ from the Data
+        # IDs stored in the Zip index. That could happen if there is a metadata
+        # correction that changes the exposure or detector numbers. We have to
+        # assume that by the time the zip has been made that this correction
+        # has been applied. If we don't assume that then we have to
+        # regenerate the index but we cannot change the contents of the zip.
+        # The Dataset ref IDs will only change if the data IDs change.
+        re_calculate_zip_index = False
+        for zip, files in zips.items():
+            zip_datasets: list[FileDataset] = []  # Needed for return value.
+            all_refs: list[DatasetRef] = []
+            artifact_map: dict[str, ArtifactIndexInfo] = {}
+            for file in files:
+                refs = [
+                    DatasetRef(datasetType, d.dataId, run=run, id_generation_mode=mode) for d in file.datasets
+                ]
+                if refs:
+                    # Assumes the guiders are not included in the metadata
+                    # index.
+                    zip_datasets.append(
+                        FileDataset(path=file.filename.abspath(), refs=refs, formatter=file.FormatterClass)
+                    )
+                    if re_calculate_zip_index:
+                        fragment = file.filename.fragment
+                        _, path_in_zip = fragment.split("=")
+                        file_info = SerializedStoredFileInfo(
+                            formatter=file.FormatterClass.name(),
+                            path=str(file.filename),
+                            storage_class=datasetType.storageClass_name,
+                            file_size=-1,  # Do not retrieve file sizes from zip yet.
+                        )
+                        index_info = ArtifactIndexInfo(info=file_info, ids={ref.id for ref in refs})
+                        artifact_map[path_in_zip] = index_info
+                        all_refs.extend(refs)
+            # Currently not used unless we decide that there is a risk that
+            # the data ID might change.
+            # zip_index = ZipIndex(
+            #     refs=SerializedDatasetRefContainerV1.from_refs(all_refs),
+            #     artifact_map=artifact_map
+            # )
+            with self.butler.record_metrics() as butler_metrics:
+                self.butler.ingest_zip(
+                    zip, transfer=self.config.transfer, skip_existing=skip_existing_exposures
+                )
+            datasets.extend(zip_datasets)
+            self.metrics.time_for_ingest += butler_metrics.time_in_ingest
+
         return datasets
 
     def ingestFiles(
