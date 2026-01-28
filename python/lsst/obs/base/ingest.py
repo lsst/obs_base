@@ -29,6 +29,7 @@ import json
 import logging
 import re
 import warnings
+import zipfile
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Iterator, MutableMapping, Sequence, Sized
 from contextlib import contextmanager
@@ -633,6 +634,77 @@ class RawIngestTask(Task):
         )
         return RawFileDatasetInfo(obsInfo=obsInfo, dataId=dataId)
 
+    def readZipIndexFiles(
+        self, files: Iterable[ResourcePath]
+    ) -> tuple[dict[ResourcePath, Any], list[ResourcePath], set[ResourcePath], set[ResourcePath]]:
+        """Given a list of files, filter out zip files and look for index files
+        inside.
+
+        Parameters
+        ----------
+        files : `~collections.abc.Iterable` [ `lsst.resources.ResourcePath` ]
+            URIs to the files to be ingested.
+
+        Returns
+        -------
+        index : `dict` [ `lsst.resources.ResourcePath`, `typing.Any` ]
+            Merged contents of all relevant index files found in zip files.
+            The keys include the path to the data file within the zip using
+            the butler fragment convention of ``zip-path=PATH``.
+        updated_files : `list` [ `lsst.resources.ResourcePath` ]
+            Updated list of the input files with zip entries removed.
+        good_index_files: `set` [ `lsst.resources.ResourcePath` ]
+            Zip files that contained index information.
+        bad_zip_files: `set` [ `lsst.resources.ResourcePath` ]
+            Zip files that contained no index information.
+        """
+        zip_index = "_metadata_index.json"
+
+        # Files that weren't zip files.
+        updated_files: list[ResourcePath] = []
+
+        # All the metadata read from index files with keys of full path.
+        index_entries: dict[ResourcePath, Any] = {}
+
+        # Index files we failed to read.
+        bad_index_files: set[ResourcePath] = set()
+
+        # Any good index files that were found and used.
+        good_index_files: set[ResourcePath] = set()
+
+        for file in files:
+            if file.getExtension() != ".zip":
+                updated_files.append(file)
+                continue
+
+            zip_info: dict[str, zipfile.ZipInfo] = {}
+            with file.open("rb") as fd, zipfile.ZipFile(fd) as zf:
+                try:
+                    zip_info = {info.filename: info for info in zf.infolist()}
+                    content = json.loads(zf.read(zip_index))
+                    index = process_index_data(content, force_dict=True)
+                    assert isinstance(index, MutableMapping)
+                except Exception as e:
+                    if self.config.failFast:
+                        raise RuntimeError(f"Problem reading index file from zip file at {file}") from e
+                    bad_index_files.add(file)
+                    continue
+                self.log.debug("Extracted index metadata from zip file %s", str(file))
+
+            # In theory we could scan for JSON sidecar files associated with
+            # any files not found in the metadata index, but that is not meant
+            # to be possible. Guider data is another issue not handled by
+            # this code.
+            for path_in_zip in index:
+                if path_in_zip not in zip_info:
+                    # Index entry exists but no file for it.
+                    self.log.info("File {path_in_zip} is in zip index but not in zip file {file}. Ignoring.")
+                    continue
+                file_to_ingest = file.replace(fragment=f"zip-path={path_in_zip}")
+                index_entries[file_to_ingest] = index[path_in_zip]
+
+        return index_entries, updated_files, good_index_files, bad_index_files
+
     def locateAndReadIndexFiles(
         self, files: Iterable[ResourcePath]
     ) -> tuple[dict[ResourcePath, Any], list[ResourcePath], set[ResourcePath], set[ResourcePath]]:
@@ -671,7 +743,7 @@ class RawIngestTask(Task):
         index_root_file = "_index.json"
 
         # Group the files by directory.
-        files_by_directory = defaultdict(set)
+        files_by_directory: dict[ResourcePath, set[str]] = defaultdict(set)
 
         for path in files:
             directory, file_in_dir = path.split()
@@ -681,10 +753,10 @@ class RawIngestTask(Task):
         index_entries: dict[ResourcePath, Any] = {}
 
         # Index files we failed to read.
-        bad_index_files = set()
+        bad_index_files: set[ResourcePath] = set()
 
         # Any good index files that were found and used.
-        good_index_files = set()
+        good_index_files: set[ResourcePath] = set()
 
         # Look for index files in those directories.
         for directory, files_in_directory in files_by_directory.items():
@@ -1029,6 +1101,13 @@ class RawIngestTask(Task):
                     good_files.append(fileDatum)
             return good_files, bad_files
 
+        # Look for zip files.
+        zip_index_entries, files, good_zip_files, bad_zip_files = self.readZipIndexFiles(files)
+        if bad_zip_files:
+            self.log.info("Failed to extract index metadata from the following zip files:")
+            for bad in sorted(bad_zip_files):
+                self.log.info("- %s", bad)
+
         # Look for index files and read them.
         # There should be far fewer index files than data files.
         if search_indexes:
@@ -1042,6 +1121,11 @@ class RawIngestTask(Task):
             index_entries = {}
             good_index_files = set()
             bad_index_files = set()
+
+        # Merge index data from zips and standalone index files.
+        good_index_files.update(good_zip_files)
+        bad_index_files.update(bad_index_files)
+        index_entries.update(zip_index_entries)
 
         # Now convert all the index file entries to standard form for ingest.
         processed_bad_index_files: list[ResourcePath] = []
