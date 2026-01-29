@@ -136,7 +136,7 @@ datastore:
 
         # Now parallelized.
         files = [self.good_file, os.path.join(INGESTDIR, "sidecar_data", "dataset_1.yaml")]
-        self.task.run(files, processes=2, run=self.outputRun)
+        self.task.run(files, num_workers=2, run=self.outputRun)
         datasets = list(self.butler.registry.queryDatasets("raw_dict", collections=self.outputRun))
         self.assertEqual(len(datasets), 2)
 
