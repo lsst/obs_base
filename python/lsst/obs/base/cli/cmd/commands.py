@@ -187,7 +187,7 @@ def write_curated_calibrations(
 
 @click.command()
 @repo_argument(required=True)
-@click.argument("instrument")
+@instrument_argument(required=True, help="Name of the instrument to use for updates.")
 @collections_argument(help="Collections to search for visit geometry datasets.")
 @click.option("--dataset-type", default="visit_geometry", help="Name of the visit geometry dataset type.")
 @click.option("--batch-size", default=11, help="Number of visits to process in each transaction.")
@@ -204,7 +204,7 @@ def update_dimension_regions(
     """Update dimension record regions from visit geometry datasets."""
     from ...visit_geometry import VisitGeometry
 
-    butler = Butler.from_config(repo, writeable=True, collections=collections)
-    VisitGeometry.update_dimension_records(
-        butler, instrument, where, dataset_type=dataset_type, batch_size=batch_size
-    )
+    with Butler.from_config(repo, writeable=True, collections=collections) as butler:
+        VisitGeometry.update_dimension_records(
+            butler, instrument, where, dataset_type=dataset_type, batch_size=batch_size
+        )
