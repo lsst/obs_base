@@ -208,3 +208,20 @@ def update_dimension_regions(
         VisitGeometry.update_dimension_records(
             butler, instrument, where, dataset_type=dataset_type, batch_size=batch_size
         )
+
+
+@click.command
+@repo_argument(required=True)
+@instrument_argument(required=True, help="Instrument to use for finding raw datasets.")
+@collections_argument(help="List of collections to search for raws instead of the default.")
+@where_option(
+    help="A string expression to use to query the butler to find raw datasets to use for record updates."
+)
+@failfast_option()
+@config_option(metavar="TEXT=TEXT", multiple=True)
+@config_file_option(type=click.Path(exists=True, writable=False, file_okay=True, dir_okay=False))
+@processes_option()
+@options_file_option()
+def update_exposures_from_raws(*args: Any, **kwargs: Any) -> None:
+    """Update exposure records associated with specific raw datasets."""
+    script.updateExposures(*args, **kwargs)

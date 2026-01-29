@@ -403,6 +403,9 @@ datastore:
         # Try again with `skip_existing_exposures=True.
         self.task.run([self.good_file], run=self.outputRun, skip_existing_exposures=True)
 
+        # Now skip ingest completely.
+        self.task.run([self.good_file], run=self.outputRun, skip_ingest=True)
+
     def testUpdateExposureRecords(self):
         """Test that update_exposure_records=True allows metadata to be
         modified.

@@ -423,6 +423,38 @@ class RawIngestTask(Task):
             FormatterClass = instrument.getRawFormatter(dataId)
         return instrument, FormatterClass
 
+    def get_raw_datasetType(
+        self, instrument: Instrument, cache: dict[str, DatasetType] | None = None
+    ) -> DatasetType:
+        """Get the raw dataset type associated with this ingest.
+
+        Parameters
+        ----------
+        instrument : `Instrument`
+            Class that might specify an override of the default raw dataset
+            type. If no override is specified the task default will be used.
+        cache : `dict` [`str`, `lsst.daf.butler.DatasetType`] \
+                or `None`, optional
+            An optional cache that can be used to return a pre-existing
+            dataset type. Is not updated.
+
+        Returns
+        -------
+        lsst.daf.butler.DatasetType
+            The dataset type to use for raw ingest of this instrument.
+        """
+        if cache is None:
+            cache = {}
+        if raw_definition := getattr(instrument, "raw_definition", None):
+            datasetTypeName, dimensions, storageClass = raw_definition
+            if not (datasetType := cache.get(datasetTypeName)):
+                datasetType = DatasetType(
+                    datasetTypeName, dimensions, storageClass, universe=self.butler.dimensions
+                )
+        else:
+            datasetType = self.datasetType
+        return datasetType
+
     def extractMetadata(self, filename: ResourcePath) -> RawFileData:
         """Extract and process metadata from a single raw file.
 
@@ -1321,6 +1353,7 @@ class RawIngestTask(Task):
         update_exposure_records: bool = False,
         track_file_attrs: bool = True,
         search_indexes: bool = True,
+        skip_ingest: bool = False,
     ) -> tuple[list[DatasetRef], list[ResourcePath], int, int, int]:
         """Ingest files into a Butler data repository.
 
@@ -1368,6 +1401,10 @@ class RawIngestTask(Task):
             If `True` the code will search for index JSON files in given
             directories. If you know for a fact that index files do not exist
             set this to `False` for a slight speed up in metadata gathering.
+        skip_ingest : `bool`, optional
+            Set this to `True` to do metadata extraction and dimension record
+            updates without attempting to re-ingest. This can be useful if
+            there has been a metadata correction associated with an exposure.
 
         Returns
         -------
@@ -1469,20 +1506,16 @@ class RawIngestTask(Task):
                     str(list(inserted_or_updated.keys())),
                 )
 
+            if skip_ingest:
+                continue
+
             # Determine the instrument so we can work out the dataset type.
             instrument = exposure.files[0].instrument
             assert instrument is not None, (
                 "file should have been removed from this list by prep if instrument could not be found"
             )
 
-            if raw_definition := getattr(instrument, "raw_definition", None):
-                datasetTypeName, dimensions, storageClass = raw_definition
-                if not (datasetType := datasetTypes.get(datasetTypeName)):
-                    datasetType = DatasetType(
-                        datasetTypeName, dimensions, storageClass, universe=self.butler.dimensions
-                    )
-            else:
-                datasetType = self.datasetType
+            datasetType = self.get_raw_datasetType(instrument, datasetTypes)
             if datasetType.name not in datasetTypes:
                 self.butler.registry.registerDatasetType(datasetType)
                 datasetTypes[datasetType.name] = datasetType
@@ -1529,7 +1562,7 @@ class RawIngestTask(Task):
     @timeMethod
     def run(
         self,
-        files: Sequence[ResourcePathExpression],
+        files: Iterable[ResourcePathExpression],
         *,
         pool: concurrent.futures.ThreadPoolExecutor | None = None,
         processes: int | None = None,  # Deprecated. Use num_workers.
@@ -1541,6 +1574,7 @@ class RawIngestTask(Task):
         track_file_attrs: bool = True,
         search_indexes: bool = True,
         num_workers: int = 1,
+        skip_ingest: bool = False,
     ) -> list[DatasetRef]:
         """Ingest files into a Butler data repository.
 
@@ -1602,6 +1636,10 @@ class RawIngestTask(Task):
         num_workers : `int`, optional
             The number of workers to use. Ignored if ``pool`` parameter is
             given.
+        skip_ingest : `bool`, optional
+            Set this to `True` to do metadata extraction and dimension record
+            updates without attempting to re-ingest. This can be useful if
+            there has been a metadata correction associated with an exposure.
 
         Returns
         -------
@@ -1648,6 +1686,7 @@ class RawIngestTask(Task):
                         update_exposure_records=update_exposure_records,
                         track_file_attrs=track_file_attrs,
                         search_indexes=search_indexes,
+                        skip_ingest=skip_ingest,
                     )
                     refs.extend(new_refs)
                     bad_files.extend(bad)
@@ -1666,6 +1705,7 @@ class RawIngestTask(Task):
                     update_exposure_records=update_exposure_records,
                     track_file_attrs=track_file_attrs,
                     search_indexes=search_indexes,
+                    skip_ingest=skip_ingest,
                 )
             ingest_duration = timer.duration
 
@@ -1677,27 +1717,33 @@ class RawIngestTask(Task):
             for f in bad_files:
                 self.log.warning("- %s", f)
 
+        if skip_ingest:
+            ingest_text = ""
+        else:
+            ingest_text = f" - time in butler ingest: {self.metrics.time_for_ingest} s\n"
+
         self.log.info(
             "Successfully processed data from %d exposure%s with %d failure%s from exposure"
             " registration and %d failure%s from file ingest.\n"
             "Timing breakdown:\n"
             " - time in metadata gathering: %f s\n"
             " - time in dimension record writing: %f s\n"
-            " - time in butler ingest: %f s\n"
+            "%s"
             " - time in user-supplied callbacks: %f s\n",
             *_log_msg_counter(n_exposures),
             *_log_msg_counter(n_exposures_failed),
             *_log_msg_counter(n_ingests_failed),
             self.metrics.time_for_metadata,
             self.metrics.time_for_records,
-            self.metrics.time_for_ingest,
+            ingest_text,
             self.metrics.time_for_callbacks,
         )
         if n_exposures_failed > 0 or n_ingests_failed > 0:
             had_failure = True
-        self.log.info(
-            "Ingested %d distinct Butler dataset%s in %f sec", *_log_msg_counter(refs), ingest_duration
-        )
+        if not skip_ingest:
+            self.log.info(
+                "Ingested %d distinct Butler dataset%s in %f sec", *_log_msg_counter(refs), ingest_duration
+            )
 
         if had_failure:
             raise RuntimeError("Some failures encountered during ingestion")
