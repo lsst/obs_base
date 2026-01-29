@@ -1153,11 +1153,13 @@ class RawIngestTask(Task):
         # Filter out all the failed reads and store them for later
         # reporting.
         good_file_data, bad_files = _partition_good_bad(fileData)
-        self.log.info(
-            "Successfully extracted metadata from %d file%s with %d failure%s",
-            *_log_msg_counter(good_file_data),
-            *_log_msg_counter(bad_files),
-        )
+        # Only report if we looked at any standalone files at all.
+        if files:
+            self.log.info(
+                "Successfully extracted metadata from %d file%s with %d failure%s",
+                *_log_msg_counter(good_file_data),
+                *_log_msg_counter(bad_files),
+            )
 
         # Combine with data from index files.
         good_file_data.extend(indexFileData)
