@@ -63,6 +63,7 @@ from lsst.daf.butler import (
     Progress,
     Timespan,
 )
+from lsst.daf.butler.datastores.file_datastore.retrieve_artifacts import ZipIndex
 from lsst.pex.config import ChoiceField, Config, Field
 from lsst.pipe.base import Instrument, Task
 from lsst.resources import ResourcePath, ResourcePathExpression
@@ -677,7 +678,7 @@ class RawIngestTask(Task):
 
     def readZipIndexFiles(
         self, files: Iterable[ResourcePath]
-    ) -> tuple[dict[ResourcePath, Any], list[ResourcePath], set[ResourcePath], set[ResourcePath]]:
+    ) -> tuple[list[RawFileData], list[ResourcePath], set[ResourcePath], set[ResourcePath]]:
         """Given a list of files, filter out zip files and look for index files
         inside.
 
@@ -699,13 +700,10 @@ class RawIngestTask(Task):
         bad_zip_files: `set` [ `lsst.resources.ResourcePath` ]
             Zip files that contained no index information.
         """
-        zip_index = "_metadata_index.json"
+        zip_metadata_index = "_metadata_index.json"
 
         # Files that weren't zip files.
         updated_files: list[ResourcePath] = []
-
-        # All the metadata read from index files with keys of full path.
-        index_entries: dict[ResourcePath, Any] = {}
 
         # Index files we failed to read.
         bad_index_files: set[ResourcePath] = set()
@@ -713,24 +711,34 @@ class RawIngestTask(Task):
         # Any good index files that were found and used.
         good_index_files: set[ResourcePath] = set()
 
+        # Processed content from any zip files.
+        indexFileData: list[RawFileData] = []
+
         for file in files:
             if file.getExtension() != ".zip":
                 updated_files.append(file)
                 continue
 
             zip_info: dict[str, zipfile.ZipInfo] = {}
-            with file.open("rb") as fd, zipfile.ZipFile(fd) as zf:
-                try:
+            try:
+                with file.open("rb") as fd, zipfile.ZipFile(fd) as zf:
                     zip_info = {info.filename: info for info in zf.infolist()}
-                    content = json.loads(zf.read(zip_index))
+                    content = json.loads(zf.read(zip_metadata_index))
                     index = process_index_data(content, force_dict=True)
                     assert isinstance(index, MutableMapping)
-                except Exception as e:
-                    if self.config.failFast:
-                        raise RuntimeError(f"Problem reading index file from zip file at {file}") from e
-                    bad_index_files.add(file)
-                    continue
-                self.log.debug("Extracted index metadata from zip file %s", str(file))
+
+                    # Try to read the ZipIndex.
+                    zip_index = ZipIndex.from_open_zip(zf)
+            except Exception as e:
+                if self.config.failFast:
+                    raise RuntimeError(f"Problem reading index file from zip file at {file}") from e
+                bad_index_files.add(file)
+                continue
+            self.log.debug("Extracted index metadata from zip file %s", str(file))
+
+            # All the metadata read from this index file with keys of full
+            # path.
+            index_entries: dict[ResourcePath, Any] = {}
 
             # In theory we could scan for JSON sidecar files associated with
             # any files not found in the metadata index, but that is not meant
@@ -744,7 +752,35 @@ class RawIngestTask(Task):
                 file_to_ingest = file.replace(fragment=f"zip-path={path_in_zip}")
                 index_entries[file_to_ingest] = index[path_in_zip]
 
-        return index_entries, updated_files, good_index_files, bad_index_files
+            file_data = self.processIndexEntries(index_entries)
+
+            # Validate that the index entries we have read match the
+            # values in the butler zip index.
+            data_ids_from_index: dict[str, tuple[DataCoordinate, ...]] = {}
+            for f in file_data:
+                _, path_in_zip = f.filename.fragment.split("=")
+                data_ids_from_index[path_in_zip] = tuple(d.dataId for d in f.datasets)
+
+            data_ids_from_butler_index: dict[str, tuple[DataCoordinate, ...]] = {}
+            # Refs indexed by UUID.
+            refs = zip_index.refs.to_refs(universe=self.universe)
+            id_to_ref = {ref.id: ref for ref in refs}
+            for path_in_zip, index_info in zip_index.artifact_map.items():
+                data_ids_from_butler_index[path_in_zip] = tuple(
+                    id_to_ref[id_].dataId for id_ in index_info.ids
+                )
+
+            if data_ids_from_butler_index != data_ids_from_index:
+                self.log.warning(
+                    "Recalculating the Data IDs for zip file %s (which may include new metadata corrections) "
+                    "results in a difference to the Data IDs recorded in the butler index in that zip. "
+                    "Consider remaking the zipped raws.",
+                    file,
+                )
+
+            indexFileData.extend(file_data)
+
+        return indexFileData, updated_files, good_index_files, bad_index_files
 
     def locateAndReadIndexFiles(
         self, files: Iterable[ResourcePath]
@@ -1143,7 +1179,7 @@ class RawIngestTask(Task):
             return good_files, bad_files
 
         # Look for zip files.
-        zip_index_entries, files, good_zip_files, bad_zip_files = self.readZipIndexFiles(files)
+        zip_file_data, files, good_zip_files, bad_zip_files = self.readZipIndexFiles(files)
         if bad_zip_files:
             self.log.info("Failed to extract index metadata from the following zip files:")
             for bad in sorted(bad_zip_files):
@@ -1151,6 +1187,7 @@ class RawIngestTask(Task):
 
         # Look for index files and read them.
         # There should be far fewer index files than data files.
+        index_entries: dict[ResourcePath, Any] = {}
         if search_indexes:
             index_entries, files, good_index_files, bad_index_files = self.locateAndReadIndexFiles(files)
             if bad_index_files:
@@ -1163,14 +1200,14 @@ class RawIngestTask(Task):
             good_index_files = set()
             bad_index_files = set()
 
-        # Merge index data from zips and standalone index files.
+        # Merge information from zips and standalone index files.
         good_index_files.update(good_zip_files)
         bad_index_files.update(bad_index_files)
-        index_entries.update(zip_index_entries)
 
         # Now convert all the index file entries to standard form for ingest.
         processed_bad_index_files: list[ResourcePath] = []
         indexFileData = self.processIndexEntries(index_entries)
+        indexFileData.extend(zip_file_data)
         if indexFileData:
             indexFileData, processed_bad_index_files = _partition_good_bad(indexFileData)
             self.log.info(
