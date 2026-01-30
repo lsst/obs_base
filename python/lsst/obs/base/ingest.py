@@ -63,8 +63,6 @@ from lsst.daf.butler import (
     Progress,
     Timespan,
 )
-from lsst.daf.butler.datastore.stored_file_info import SerializedStoredFileInfo
-from lsst.daf.butler.datastores.file_datastore.retrieve_artifacts import ArtifactIndexInfo
 from lsst.pex.config import ChoiceField, Config, Field
 from lsst.pipe.base import Instrument, Task
 from lsst.resources import ResourcePath, ResourcePathExpression
@@ -1308,12 +1306,11 @@ class RawIngestTask(Task):
         # assume that by the time the zip has been made that this correction
         # has been applied. If we don't assume that then we have to
         # regenerate the index but we cannot change the contents of the zip.
+        # We would also need the ability for butler.ingest_zip to take an
+        # override ZipIndex object.
         # The Dataset ref IDs will only change if the data IDs change.
-        re_calculate_zip_index = False
         for zip, files in zips.items():
             zip_datasets: list[FileDataset] = []  # Needed for return value.
-            all_refs: list[DatasetRef] = []
-            artifact_map: dict[str, ArtifactIndexInfo] = {}
             for file in files:
                 refs = [
                     DatasetRef(datasetType, d.dataId, run=run, id_generation_mode=mode) for d in file.datasets
@@ -1324,24 +1321,6 @@ class RawIngestTask(Task):
                     zip_datasets.append(
                         FileDataset(path=file.filename.abspath(), refs=refs, formatter=file.FormatterClass)
                     )
-                    if re_calculate_zip_index:
-                        fragment = file.filename.fragment
-                        _, path_in_zip = fragment.split("=")
-                        file_info = SerializedStoredFileInfo(
-                            formatter=file.FormatterClass.name(),
-                            path=str(file.filename),
-                            storage_class=datasetType.storageClass_name,
-                            file_size=-1,  # Do not retrieve file sizes from zip yet.
-                        )
-                        index_info = ArtifactIndexInfo(info=file_info, ids={ref.id for ref in refs})
-                        artifact_map[path_in_zip] = index_info
-                        all_refs.extend(refs)
-            # Currently not used unless we decide that there is a risk that
-            # the data ID might change.
-            # zip_index = ZipIndex(
-            #     refs=SerializedDatasetRefContainerV1.from_refs(all_refs),
-            #     artifact_map=artifact_map
-            # )
             with self.butler.record_metrics() as butler_metrics:
                 self.butler.ingest_zip(
                     zip, transfer=self.config.transfer, skip_existing=skip_existing_exposures
