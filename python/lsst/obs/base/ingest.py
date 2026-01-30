@@ -21,7 +21,14 @@
 
 from __future__ import annotations
 
-__all__ = ("RawIngestConfig", "RawIngestTask", "makeTransferChoiceField")
+__all__ = (
+    "RawExposureData",
+    "RawFileData",
+    "RawFileDatasetInfo",
+    "RawIngestConfig",
+    "RawIngestTask",
+    "makeTransferChoiceField",
+)
 
 import concurrent.futures
 import contextlib
@@ -197,8 +204,8 @@ class RawExposureData:
     """
 
     record: DimensionRecord
-    """The exposure `DimensionRecord` that must be inserted into the
-    `~lsst.daf.butler.Registry` prior to file-level ingest
+    """The exposure `~lsst.daf.butler.DimensionRecord` that must be inserted
+    into the `~lsst.daf.butler.Registry` prior to file-level ingest
     (`~lsst.daf.butler.DimensionRecord`).
     """
 
@@ -270,13 +277,14 @@ class RawIngestTask(Task):
         Writeable butler instance, with ``butler.run`` set to the appropriate
         `~lsst.daf.butler.CollectionType.RUN` collection for these raw
         datasets.
-    on_success : `Callable`, optional
+    on_success : `collections.abc.Callable`, optional
         A callback invoked when all of the raws associated with an exposure
-        are ingested.  Will be passed a list of `FileDataset` objects, each
-        containing one or more resolved `DatasetRef` objects.  If this callback
-        raises it will interrupt the entire ingest process, even if
-        `RawIngestConfig.failFast` is `False`.
-    on_metadata_failure : `Callable`, optional
+        are ingested.  Will be passed a list of `~lsst.daf.butler.FileDataset`
+        objects, each containing one or more resolved
+        `~lsst.daf.butler.DatasetRef` objects. If this callback raises it will
+        interrupt the entire ingest process, even if `RawIngestConfig.failFast`
+        is `False`.
+    on_metadata_failure : `collections.abc.Callable`, optional
         A callback invoked when a failure occurs trying to translate the
         metadata for a file.  Will be passed the URI and the exception, in
         that order, as positional arguments.  Guaranteed to be called in an
@@ -285,14 +293,14 @@ class RawIngestTask(Task):
         `RawIngestConfig.failFast` logic occurs). This callback can be called
         from within a worker thread if multiple workers have been requested.
         Ensure that any code within the call back is thread-safe.
-    on_ingest_failure : `Callable`, optional
+    on_ingest_failure : `collections.abc.Callable`, optional
         A callback invoked when dimension record or dataset insertion into the
         database fails for an exposure.  Will be passed a `RawExposureData`
         instance and the exception, in that order, as positional arguments.
         Guaranteed to be called in an ``except`` block, allowing the callback
         to re-raise or replace (with ``raise ... from``) to override the task's
         usual error handling (before `RawIngestConfig.failFast` logic occurs).
-    on_exposure_record : `Callable`, optional
+    on_exposure_record : `collections.abc.Callable`, optional
         A callback invoked when an exposure dimension record has been created
         or modified. Will not be called if the record already existed. Will
         be called with the exposure record.
@@ -468,7 +476,7 @@ class RawIngestTask(Task):
         data : `RawFileData`
             A structure containing the metadata extracted from the file,
             as well as the original filename.  All fields will be populated,
-            but the `RawFileData.dataId` attribute will be a minimal
+            but the `RawFileDatasetInfo.dataId` attribute will be a minimal
             (unexpanded) `~lsst.daf.butler.DataCoordinate` instance. The
             ``instrument`` field will be `None` if there is a problem
             with metadata extraction.
@@ -479,11 +487,12 @@ class RawIngestTask(Task):
         file.  Instruments using a single file to store multiple datasets
         must implement their own version of this method.
 
-        By default the method will catch all exceptions unless the ``failFast``
-        configuration item is `True`.  If an error is encountered the
-        `_on_metadata_failure()` method will be called. If no exceptions
-        result and an error was encountered the returned object will have
-        a null-instrument class and no datasets.
+        By default the method will catch all exceptions unless the
+        `RawIngestConfig.failFast` configuration item is `True`.  If an error
+        is encountered the supplied ``on_metadata_failure()``
+        method will be called. If no exceptions result and an error was
+        encountered the returned object will have a null-instrument class and
+        no datasets.
 
         This method supports sidecar JSON files which can be used to
         extract metadata without having to read the data file itself.
@@ -903,7 +912,7 @@ class RawIngestTask(Task):
         data : `list` [ `RawFileData` ]
             Structures containing the metadata extracted from the file,
             as well as the original filename.  All fields will be populated,
-            but the `RawFileData.dataId` attributes will be minimal
+            but the `RawFileDatasetInfo.dataId` attributes will be minimal
             (unexpanded) `~lsst.daf.butler.DataCoordinate` instances.
         """
         formatterClass: type[Formatter | FormatterV2]
@@ -1065,8 +1074,8 @@ class RawIngestTask(Task):
         -------
         exposure : `RawExposureData`
             An updated version of the input structure, with
-            `RawExposureData.dataId` and nested `RawFileData.dataId` attributes
-            updated to data IDs for which
+            `RawExposureData.dataId` and nested `RawFileDatasetInfo.dataId`
+            attributes updated to data IDs for which
             `~lsst.daf.butler.DataCoordinate.hasRecords` returns `True`.
         """
         # We start by expanded the exposure-level data ID; we won't use that
@@ -1115,7 +1124,7 @@ class RawIngestTask(Task):
 
         Returns
         -------
-        exposures : `Iterator` [ `RawExposureData` ]
+        exposures : `~collections.abc.Iterator` [ `RawExposureData` ]
             Data structures containing dimension records, filenames, and data
             IDs to be ingested (one structure for each exposure).
         bad_files : `list` of `str`
@@ -1235,7 +1244,7 @@ class RawIngestTask(Task):
         ----------
         exposure : `RawExposureData`
             A structure containing information about the exposure to be
-            ingested.  Must have `RawExposureData.records` populated and all
+            ingested.  Must have `RawExposureData.record` populated and all
             data ID attributes expanded.
         datasetType : `lsst.daf.butler.DatasetType`
             The dataset type associated with this exposure.

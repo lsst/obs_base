@@ -66,3 +66,9 @@ Python API reference
 
 .. automodapi:: lsst.obs.base.formatters.fitsGeneric
    :no-main-docstr:
+
+.. automodapi:: lsst.obs.base.camera_tests
+   :no-main-docstr:
+
+.. automodapi:: lsst.obs.base.butler_tests
+   :no-main-docstr:
