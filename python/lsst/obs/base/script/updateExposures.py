@@ -125,6 +125,16 @@ def updateExposures(
         )
         refs = set(itertools.chain(*query.getDatasets()))
 
+        # Since we are updating exposure records we only need one ref per
+        # exposure. We can not expect people to add a detector constraint
+        # themselves and we do not want to gather metadata from 200x more files
+        # than we need for LSSTCam in the embargo rack.
+        n_refs = len(refs)
+        refs_by_exposure = {ref.dataId["exposure"]: ref for ref in refs}
+        refs = set(refs_by_exposure.values())
+        if n_refs != (n_filtered := len(refs)):
+            _LOG.info("Selecting one dataset per exposure. Filtering %d down to %d.", n_refs, n_filtered)
+
         # The ingest code wants the raw file locations and we want the zips
         # without fragments.
         uris = butler.get_many_uris(refs)
