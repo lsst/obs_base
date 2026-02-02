@@ -22,6 +22,7 @@
 __all__ = (
     "FitsExposureFormatter",
     "FitsImageFormatter",
+    "FitsImageFormatterBase",
     "FitsMaskFormatter",
     "FitsMaskedImageFormatter",
     "standardizeAmplifierParameters",

@@ -136,7 +136,7 @@ datastore:
 
         # Now parallelized.
         files = [self.good_file, os.path.join(INGESTDIR, "sidecar_data", "dataset_1.yaml")]
-        self.task.run(files, processes=2, run=self.outputRun)
+        self.task.run(files, num_workers=2, run=self.outputRun)
         datasets = list(self.butler.registry.queryDatasets("raw_dict", collections=self.outputRun))
         self.assertEqual(len(datasets), 2)
 
@@ -402,6 +402,9 @@ datastore:
             self.task.run([self.good_file], run=self.outputRun)
         # Try again with `skip_existing_exposures=True.
         self.task.run([self.good_file], run=self.outputRun, skip_existing_exposures=True)
+
+        # Now skip ingest completely.
+        self.task.run([self.good_file], run=self.outputRun, skip_ingest=True)
 
     def testUpdateExposureRecords(self):
         """Test that update_exposure_records=True allows metadata to be

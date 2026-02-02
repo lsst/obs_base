@@ -21,4 +21,5 @@
 
 from .defineVisits import defineVisits
 from .ingestRaws import ingestRaws
+from .updateExposures import updateExposures
 from .writeCuratedCalibrations import writeCuratedCalibrations

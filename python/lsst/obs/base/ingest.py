@@ -21,7 +21,14 @@
 
 from __future__ import annotations
 
-__all__ = ("RawIngestConfig", "RawIngestTask", "makeTransferChoiceField")
+__all__ = (
+    "RawExposureData",
+    "RawFileData",
+    "RawFileDatasetInfo",
+    "RawIngestConfig",
+    "RawIngestTask",
+    "makeTransferChoiceField",
+)
 
 import concurrent.futures
 import contextlib
@@ -29,6 +36,7 @@ import json
 import logging
 import re
 import warnings
+import zipfile
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Iterator, MutableMapping, Sequence, Sized
 from contextlib import contextmanager
@@ -55,6 +63,7 @@ from lsst.daf.butler import (
     Progress,
     Timespan,
 )
+from lsst.daf.butler.datastores.file_datastore.retrieve_artifacts import ZipIndex
 from lsst.pex.config import ChoiceField, Config, Field
 from lsst.pipe.base import Instrument, Task
 from lsst.resources import ResourcePath, ResourcePathExpression
@@ -194,8 +203,8 @@ class RawExposureData:
     """
 
     record: DimensionRecord
-    """The exposure `DimensionRecord` that must be inserted into the
-    `~lsst.daf.butler.Registry` prior to file-level ingest
+    """The exposure `~lsst.daf.butler.DimensionRecord` that must be inserted
+    into the `~lsst.daf.butler.Registry` prior to file-level ingest
     (`~lsst.daf.butler.DimensionRecord`).
     """
 
@@ -267,13 +276,14 @@ class RawIngestTask(Task):
         Writeable butler instance, with ``butler.run`` set to the appropriate
         `~lsst.daf.butler.CollectionType.RUN` collection for these raw
         datasets.
-    on_success : `Callable`, optional
+    on_success : `collections.abc.Callable`, optional
         A callback invoked when all of the raws associated with an exposure
-        are ingested.  Will be passed a list of `FileDataset` objects, each
-        containing one or more resolved `DatasetRef` objects.  If this callback
-        raises it will interrupt the entire ingest process, even if
-        `RawIngestConfig.failFast` is `False`.
-    on_metadata_failure : `Callable`, optional
+        are ingested.  Will be passed a list of `~lsst.daf.butler.FileDataset`
+        objects, each containing one or more resolved
+        `~lsst.daf.butler.DatasetRef` objects. If this callback raises it will
+        interrupt the entire ingest process, even if `RawIngestConfig.failFast`
+        is `False`.
+    on_metadata_failure : `collections.abc.Callable`, optional
         A callback invoked when a failure occurs trying to translate the
         metadata for a file.  Will be passed the URI and the exception, in
         that order, as positional arguments.  Guaranteed to be called in an
@@ -282,14 +292,14 @@ class RawIngestTask(Task):
         `RawIngestConfig.failFast` logic occurs). This callback can be called
         from within a worker thread if multiple workers have been requested.
         Ensure that any code within the call back is thread-safe.
-    on_ingest_failure : `Callable`, optional
+    on_ingest_failure : `collections.abc.Callable`, optional
         A callback invoked when dimension record or dataset insertion into the
         database fails for an exposure.  Will be passed a `RawExposureData`
         instance and the exception, in that order, as positional arguments.
         Guaranteed to be called in an ``except`` block, allowing the callback
         to re-raise or replace (with ``raise ... from``) to override the task's
         usual error handling (before `RawIngestConfig.failFast` logic occurs).
-    on_exposure_record : `Callable`, optional
+    on_exposure_record : `collections.abc.Callable`, optional
         A callback invoked when an exposure dimension record has been created
         or modified. Will not be called if the record already existed. Will
         be called with the exposure record.
@@ -420,6 +430,38 @@ class RawIngestTask(Task):
             FormatterClass = instrument.getRawFormatter(dataId)
         return instrument, FormatterClass
 
+    def get_raw_datasetType(
+        self, instrument: Instrument, cache: dict[str, DatasetType] | None = None
+    ) -> DatasetType:
+        """Get the raw dataset type associated with this ingest.
+
+        Parameters
+        ----------
+        instrument : `Instrument`
+            Class that might specify an override of the default raw dataset
+            type. If no override is specified the task default will be used.
+        cache : `dict` [`str`, `lsst.daf.butler.DatasetType`] \
+                or `None`, optional
+            An optional cache that can be used to return a pre-existing
+            dataset type. Is not updated.
+
+        Returns
+        -------
+        lsst.daf.butler.DatasetType
+            The dataset type to use for raw ingest of this instrument.
+        """
+        if cache is None:
+            cache = {}
+        if raw_definition := getattr(instrument, "raw_definition", None):
+            datasetTypeName, dimensions, storageClass = raw_definition
+            if not (datasetType := cache.get(datasetTypeName)):
+                datasetType = DatasetType(
+                    datasetTypeName, dimensions, storageClass, universe=self.butler.dimensions
+                )
+        else:
+            datasetType = self.datasetType
+        return datasetType
+
     def extractMetadata(self, filename: ResourcePath) -> RawFileData:
         """Extract and process metadata from a single raw file.
 
@@ -433,7 +475,7 @@ class RawIngestTask(Task):
         data : `RawFileData`
             A structure containing the metadata extracted from the file,
             as well as the original filename.  All fields will be populated,
-            but the `RawFileData.dataId` attribute will be a minimal
+            but the `RawFileDatasetInfo.dataId` attribute will be a minimal
             (unexpanded) `~lsst.daf.butler.DataCoordinate` instance. The
             ``instrument`` field will be `None` if there is a problem
             with metadata extraction.
@@ -444,11 +486,12 @@ class RawIngestTask(Task):
         file.  Instruments using a single file to store multiple datasets
         must implement their own version of this method.
 
-        By default the method will catch all exceptions unless the ``failFast``
-        configuration item is `True`.  If an error is encountered the
-        `_on_metadata_failure()` method will be called. If no exceptions
-        result and an error was encountered the returned object will have
-        a null-instrument class and no datasets.
+        By default the method will catch all exceptions unless the
+        `RawIngestConfig.failFast` configuration item is `True`.  If an error
+        is encountered the supplied ``on_metadata_failure()``
+        method will be called. If no exceptions result and an error was
+        encountered the returned object will have a null-instrument class and
+        no datasets.
 
         This method supports sidecar JSON files which can be used to
         extract metadata without having to read the data file itself.
@@ -633,6 +676,112 @@ class RawIngestTask(Task):
         )
         return RawFileDatasetInfo(obsInfo=obsInfo, dataId=dataId)
 
+    def readZipIndexFiles(
+        self, files: Iterable[ResourcePath]
+    ) -> tuple[list[RawFileData], list[ResourcePath], set[ResourcePath], set[ResourcePath]]:
+        """Given a list of files, filter out zip files and look for index files
+        inside.
+
+        Parameters
+        ----------
+        files : `~collections.abc.Iterable` [ `lsst.resources.ResourcePath` ]
+            URIs to the files to be ingested.
+
+        Returns
+        -------
+        index : `dict` [ `lsst.resources.ResourcePath`, `typing.Any` ]
+            Merged contents of all relevant index files found in zip files.
+            The keys include the path to the data file within the zip using
+            the butler fragment convention of ``zip-path=PATH``.
+        updated_files : `list` [ `lsst.resources.ResourcePath` ]
+            Updated list of the input files with zip entries removed.
+        good_index_files: `set` [ `lsst.resources.ResourcePath` ]
+            Zip files that contained index information.
+        bad_zip_files: `set` [ `lsst.resources.ResourcePath` ]
+            Zip files that contained no index information.
+        """
+        zip_metadata_index = "_metadata_index.json"
+
+        # Files that weren't zip files.
+        updated_files: list[ResourcePath] = []
+
+        # Index files we failed to read.
+        bad_index_files: set[ResourcePath] = set()
+
+        # Any good index files that were found and used.
+        good_index_files: set[ResourcePath] = set()
+
+        # Processed content from any zip files.
+        indexFileData: list[RawFileData] = []
+
+        for file in files:
+            if file.getExtension() != ".zip":
+                updated_files.append(file)
+                continue
+
+            zip_info: dict[str, zipfile.ZipInfo] = {}
+            try:
+                with file.open("rb") as fd, zipfile.ZipFile(fd) as zf:
+                    zip_info = {info.filename: info for info in zf.infolist()}
+                    content = json.loads(zf.read(zip_metadata_index))
+                    index = process_index_data(content, force_dict=True)
+                    assert isinstance(index, MutableMapping)
+
+                    # Try to read the ZipIndex.
+                    zip_index = ZipIndex.from_open_zip(zf)
+            except Exception as e:
+                if self.config.failFast:
+                    raise RuntimeError(f"Problem reading index file from zip file at {file}") from e
+                bad_index_files.add(file)
+                continue
+            self.log.debug("Extracted index metadata from zip file %s", str(file))
+
+            # All the metadata read from this index file with keys of full
+            # path.
+            index_entries: dict[ResourcePath, Any] = {}
+
+            # In theory we could scan for JSON sidecar files associated with
+            # any files not found in the metadata index, but that is not meant
+            # to be possible. Guider data is another issue not handled by
+            # this code.
+            for path_in_zip in index:
+                if path_in_zip not in zip_info:
+                    # Index entry exists but no file for it.
+                    self.log.info("File {path_in_zip} is in zip index but not in zip file {file}. Ignoring.")
+                    continue
+                file_to_ingest = file.replace(fragment=f"zip-path={path_in_zip}")
+                index_entries[file_to_ingest] = index[path_in_zip]
+
+            file_data = self.processIndexEntries(index_entries)
+
+            # Validate that the index entries we have read match the
+            # values in the butler zip index.
+            data_ids_from_index: dict[str, tuple[DataCoordinate, ...]] = {}
+            for f in file_data:
+                _, path_in_zip = f.filename.fragment.split("=")
+                data_ids_from_index[path_in_zip] = tuple(d.dataId for d in f.datasets)
+
+            data_ids_from_butler_index: dict[str, tuple[DataCoordinate, ...]] = {}
+            # Refs indexed by UUID.
+            refs = zip_index.refs.to_refs(universe=self.universe)
+            id_to_ref = {ref.id: ref for ref in refs}
+            for path_in_zip, index_info in zip_index.artifact_map.items():
+                data_ids_from_butler_index[path_in_zip] = tuple(
+                    id_to_ref[id_].dataId for id_ in index_info.ids
+                )
+
+            if data_ids_from_butler_index != data_ids_from_index:
+                self.log.warning(
+                    "Recalculating the Data IDs for zip file %s (which may include new metadata corrections) "
+                    "results in a difference to the Data IDs recorded in the butler index in that zip. "
+                    "Consider remaking the zipped raws.",
+                    file,
+                )
+
+            indexFileData.extend(file_data)
+
+        return indexFileData, updated_files, good_index_files, bad_index_files
+
     def locateAndReadIndexFiles(
         self, files: Iterable[ResourcePath]
     ) -> tuple[dict[ResourcePath, Any], list[ResourcePath], set[ResourcePath], set[ResourcePath]]:
@@ -671,7 +820,7 @@ class RawIngestTask(Task):
         index_root_file = "_index.json"
 
         # Group the files by directory.
-        files_by_directory = defaultdict(set)
+        files_by_directory: dict[ResourcePath, set[str]] = defaultdict(set)
 
         for path in files:
             directory, file_in_dir = path.split()
@@ -681,10 +830,10 @@ class RawIngestTask(Task):
         index_entries: dict[ResourcePath, Any] = {}
 
         # Index files we failed to read.
-        bad_index_files = set()
+        bad_index_files: set[ResourcePath] = set()
 
         # Any good index files that were found and used.
-        good_index_files = set()
+        good_index_files: set[ResourcePath] = set()
 
         # Look for index files in those directories.
         for directory, files_in_directory in files_by_directory.items():
@@ -797,7 +946,7 @@ class RawIngestTask(Task):
         data : `list` [ `RawFileData` ]
             Structures containing the metadata extracted from the file,
             as well as the original filename.  All fields will be populated,
-            but the `RawFileData.dataId` attributes will be minimal
+            but the `RawFileDatasetInfo.dataId` attributes will be minimal
             (unexpanded) `~lsst.daf.butler.DataCoordinate` instances.
         """
         formatterClass: type[Formatter | FormatterV2]
@@ -959,8 +1108,8 @@ class RawIngestTask(Task):
         -------
         exposure : `RawExposureData`
             An updated version of the input structure, with
-            `RawExposureData.dataId` and nested `RawFileData.dataId` attributes
-            updated to data IDs for which
+            `RawExposureData.dataId` and nested `RawFileDatasetInfo.dataId`
+            attributes updated to data IDs for which
             `~lsst.daf.butler.DataCoordinate.hasRecords` returns `True`.
         """
         # We start by expanded the exposure-level data ID; we won't use that
@@ -1009,7 +1158,7 @@ class RawIngestTask(Task):
 
         Returns
         -------
-        exposures : `Iterator` [ `RawExposureData` ]
+        exposures : `~collections.abc.Iterator` [ `RawExposureData` ]
             Data structures containing dimension records, filenames, and data
             IDs to be ingested (one structure for each exposure).
         bad_files : `list` of `str`
@@ -1029,8 +1178,16 @@ class RawIngestTask(Task):
                     good_files.append(fileDatum)
             return good_files, bad_files
 
+        # Look for zip files.
+        zip_file_data, files, good_zip_files, bad_zip_files = self.readZipIndexFiles(files)
+        if bad_zip_files:
+            self.log.info("Failed to extract index metadata from the following zip files:")
+            for bad in sorted(bad_zip_files):
+                self.log.info("- %s", bad)
+
         # Look for index files and read them.
         # There should be far fewer index files than data files.
+        index_entries: dict[ResourcePath, Any] = {}
         if search_indexes:
             index_entries, files, good_index_files, bad_index_files = self.locateAndReadIndexFiles(files)
             if bad_index_files:
@@ -1043,9 +1200,14 @@ class RawIngestTask(Task):
             good_index_files = set()
             bad_index_files = set()
 
+        # Merge information from zips and standalone index files.
+        good_index_files.update(good_zip_files)
+        bad_index_files.update(bad_index_files)
+
         # Now convert all the index file entries to standard form for ingest.
         processed_bad_index_files: list[ResourcePath] = []
         indexFileData = self.processIndexEntries(index_entries)
+        indexFileData.extend(zip_file_data)
         if indexFileData:
             indexFileData, processed_bad_index_files = _partition_good_bad(indexFileData)
             self.log.info(
@@ -1067,11 +1229,13 @@ class RawIngestTask(Task):
         # Filter out all the failed reads and store them for later
         # reporting.
         good_file_data, bad_files = _partition_good_bad(fileData)
-        self.log.info(
-            "Successfully extracted metadata from %d file%s with %d failure%s",
-            *_log_msg_counter(good_file_data),
-            *_log_msg_counter(bad_files),
-        )
+        # Only report if we looked at any standalone files at all.
+        if files:
+            self.log.info(
+                "Successfully extracted metadata from %d file%s with %d failure%s",
+                *_log_msg_counter(good_file_data),
+                *_log_msg_counter(bad_files),
+            )
 
         # Combine with data from index files.
         good_file_data.extend(indexFileData)
@@ -1115,7 +1279,7 @@ class RawIngestTask(Task):
         ----------
         exposure : `RawExposureData`
             A structure containing information about the exposure to be
-            ingested.  Must have `RawExposureData.records` populated and all
+            ingested.  Must have `RawExposureData.record` populated and all
             data ID attributes expanded.
         datasetType : `lsst.daf.butler.DatasetType`
             The dataset type associated with this exposure.
@@ -1146,8 +1310,15 @@ class RawIngestTask(Task):
         else:
             mode = DatasetIdGenEnum.UNIQUE
 
-        datasets = []
+        # The datasets for this exposure could all be from a single zip
+        # or be distinct files. Need to pull out the zip files.
+        zips: dict[ResourcePath, list[RawFileData]] = defaultdict(list)
+        datasets: list[FileDataset] = []
         for file in exposure.files:
+            if file.filename.getExtension() == ".zip":
+                zips[file.filename.replace(fragment="")].append(file)
+                continue
+
             refs = [
                 DatasetRef(datasetType, d.dataId, run=run, id_generation_mode=mode) for d in file.datasets
             ]
@@ -1156,14 +1327,44 @@ class RawIngestTask(Task):
                     FileDataset(path=file.filename.abspath(), refs=refs, formatter=file.FormatterClass)
                 )
 
-        with self.butler.record_metrics() as butler_metrics:
-            self.butler.ingest(
-                *datasets,
-                transfer=self.config.transfer,
-                record_validation_info=track_file_attrs,
-                skip_existing=skip_existing_exposures,
-            )
-        self.metrics.time_for_ingest += butler_metrics.time_in_ingest
+        if datasets:
+            with self.butler.record_metrics() as butler_metrics:
+                self.butler.ingest(
+                    *datasets,
+                    transfer=self.config.transfer,
+                    record_validation_info=track_file_attrs,
+                    skip_existing=skip_existing_exposures,
+                )
+            self.metrics.time_for_ingest += butler_metrics.time_in_ingest
+
+        # In theory it is possible for the new Data IDs to differ from the Data
+        # IDs stored in the Zip index. That could happen if there is a metadata
+        # correction that changes the exposure or detector numbers. We have to
+        # assume that by the time the zip has been made that this correction
+        # has been applied. If we don't assume that then we have to
+        # regenerate the index but we cannot change the contents of the zip.
+        # We would also need the ability for butler.ingest_zip to take an
+        # override ZipIndex object.
+        # The Dataset ref IDs will only change if the data IDs change.
+        for zip, files in zips.items():
+            zip_datasets: list[FileDataset] = []  # Needed for return value.
+            for file in files:
+                refs = [
+                    DatasetRef(datasetType, d.dataId, run=run, id_generation_mode=mode) for d in file.datasets
+                ]
+                if refs:
+                    # Assumes the guiders are not included in the metadata
+                    # index.
+                    zip_datasets.append(
+                        FileDataset(path=file.filename.abspath(), refs=refs, formatter=file.FormatterClass)
+                    )
+            with self.butler.record_metrics() as butler_metrics:
+                self.butler.ingest_zip(
+                    zip, transfer=self.config.transfer, skip_existing=skip_existing_exposures
+                )
+            datasets.extend(zip_datasets)
+            self.metrics.time_for_ingest += butler_metrics.time_in_ingest
+
         return datasets
 
     def ingestFiles(
@@ -1177,6 +1378,7 @@ class RawIngestTask(Task):
         update_exposure_records: bool = False,
         track_file_attrs: bool = True,
         search_indexes: bool = True,
+        skip_ingest: bool = False,
     ) -> tuple[list[DatasetRef], list[ResourcePath], int, int, int]:
         """Ingest files into a Butler data repository.
 
@@ -1224,6 +1426,10 @@ class RawIngestTask(Task):
             If `True` the code will search for index JSON files in given
             directories. If you know for a fact that index files do not exist
             set this to `False` for a slight speed up in metadata gathering.
+        skip_ingest : `bool`, optional
+            Set this to `True` to do metadata extraction and dimension record
+            updates without attempting to re-ingest. This can be useful if
+            there has been a metadata correction associated with an exposure.
 
         Returns
         -------
@@ -1318,12 +1524,20 @@ class RawIngestTask(Task):
             if isinstance(inserted_or_updated, dict):
                 # Exposure is in the registry and we updated it, so
                 # syncDimensionData returned a dict.
+                columns_updated = list(inserted_or_updated.keys())
+                s_col = "s" if len(columns_updated) != 1 else ""
+                w_col = "were" if len(columns_updated) != 1 else "was"
                 self.log.info(
-                    "Exposure %s:%s was already present, but columns %s were updated.",
+                    "Exposure %s:%s was already present, but column%s %s %s updated.",
                     exposure.record.instrument,
                     exposure.record.obs_id,
-                    str(list(inserted_or_updated.keys())),
+                    s_col,
+                    ", ".join(repr(c) for c in columns_updated),
+                    w_col,
                 )
+
+            if skip_ingest:
+                continue
 
             # Determine the instrument so we can work out the dataset type.
             instrument = exposure.files[0].instrument
@@ -1331,14 +1545,7 @@ class RawIngestTask(Task):
                 "file should have been removed from this list by prep if instrument could not be found"
             )
 
-            if raw_definition := getattr(instrument, "raw_definition", None):
-                datasetTypeName, dimensions, storageClass = raw_definition
-                if not (datasetType := datasetTypes.get(datasetTypeName)):
-                    datasetType = DatasetType(
-                        datasetTypeName, dimensions, storageClass, universe=self.butler.dimensions
-                    )
-            else:
-                datasetType = self.datasetType
+            datasetType = self.get_raw_datasetType(instrument, datasetTypes)
             if datasetType.name not in datasetTypes:
                 self.butler.registry.registerDatasetType(datasetType)
                 datasetTypes[datasetType.name] = datasetType
@@ -1385,7 +1592,7 @@ class RawIngestTask(Task):
     @timeMethod
     def run(
         self,
-        files: Sequence[ResourcePathExpression],
+        files: Iterable[ResourcePathExpression],
         *,
         pool: concurrent.futures.ThreadPoolExecutor | None = None,
         processes: int | None = None,  # Deprecated. Use num_workers.
@@ -1397,6 +1604,7 @@ class RawIngestTask(Task):
         track_file_attrs: bool = True,
         search_indexes: bool = True,
         num_workers: int = 1,
+        skip_ingest: bool = False,
     ) -> list[DatasetRef]:
         """Ingest files into a Butler data repository.
 
@@ -1458,6 +1666,10 @@ class RawIngestTask(Task):
         num_workers : `int`, optional
             The number of workers to use. Ignored if ``pool`` parameter is
             given.
+        skip_ingest : `bool`, optional
+            Set this to `True` to do metadata extraction and dimension record
+            updates without attempting to re-ingest. This can be useful if
+            there has been a metadata correction associated with an exposure.
 
         Returns
         -------
@@ -1504,6 +1716,7 @@ class RawIngestTask(Task):
                         update_exposure_records=update_exposure_records,
                         track_file_attrs=track_file_attrs,
                         search_indexes=search_indexes,
+                        skip_ingest=skip_ingest,
                     )
                     refs.extend(new_refs)
                     bad_files.extend(bad)
@@ -1522,6 +1735,7 @@ class RawIngestTask(Task):
                     update_exposure_records=update_exposure_records,
                     track_file_attrs=track_file_attrs,
                     search_indexes=search_indexes,
+                    skip_ingest=skip_ingest,
                 )
             ingest_duration = timer.duration
 
@@ -1533,27 +1747,33 @@ class RawIngestTask(Task):
             for f in bad_files:
                 self.log.warning("- %s", f)
 
+        if skip_ingest:
+            ingest_text = ""
+        else:
+            ingest_text = f" - time in butler ingest: {self.metrics.time_for_ingest} s\n"
+
         self.log.info(
             "Successfully processed data from %d exposure%s with %d failure%s from exposure"
             " registration and %d failure%s from file ingest.\n"
             "Timing breakdown:\n"
             " - time in metadata gathering: %f s\n"
             " - time in dimension record writing: %f s\n"
-            " - time in butler ingest: %f s\n"
+            "%s"
             " - time in user-supplied callbacks: %f s\n",
             *_log_msg_counter(n_exposures),
             *_log_msg_counter(n_exposures_failed),
             *_log_msg_counter(n_ingests_failed),
             self.metrics.time_for_metadata,
             self.metrics.time_for_records,
-            self.metrics.time_for_ingest,
+            ingest_text,
             self.metrics.time_for_callbacks,
         )
         if n_exposures_failed > 0 or n_ingests_failed > 0:
             had_failure = True
-        self.log.info(
-            "Ingested %d distinct Butler dataset%s in %f sec", *_log_msg_counter(refs), ingest_duration
-        )
+        if not skip_ingest:
+            self.log.info(
+                "Ingested %d distinct Butler dataset%s in %f sec", *_log_msg_counter(refs), ingest_duration
+            )
 
         if had_failure:
             raise RuntimeError("Some failures encountered during ingestion")

@@ -187,7 +187,7 @@ def write_curated_calibrations(
 
 @click.command()
 @repo_argument(required=True)
-@click.argument("instrument")
+@instrument_argument(required=True, help="Name of the instrument to use for updates.")
 @collections_argument(help="Collections to search for visit geometry datasets.")
 @click.option("--dataset-type", default="visit_geometry", help="Name of the visit geometry dataset type.")
 @click.option("--batch-size", default=11, help="Number of visits to process in each transaction.")
@@ -204,7 +204,24 @@ def update_dimension_regions(
     """Update dimension record regions from visit geometry datasets."""
     from ...visit_geometry import VisitGeometry
 
-    butler = Butler.from_config(repo, writeable=True, collections=collections)
-    VisitGeometry.update_dimension_records(
-        butler, instrument, where, dataset_type=dataset_type, batch_size=batch_size
-    )
+    with Butler.from_config(repo, writeable=True, collections=collections) as butler:
+        VisitGeometry.update_dimension_records(
+            butler, instrument, where, dataset_type=dataset_type, batch_size=batch_size
+        )
+
+
+@click.command
+@repo_argument(required=True)
+@instrument_argument(required=True, help="Instrument to use for finding raw datasets.")
+@collections_argument(help="List of collections to search for raws instead of the default.")
+@where_option(
+    help="A string expression to use to query the butler to find raw datasets to use for record updates."
+)
+@failfast_option()
+@config_option(metavar="TEXT=TEXT", multiple=True)
+@config_file_option(type=click.Path(exists=True, writable=False, file_okay=True, dir_okay=False))
+@processes_option()
+@options_file_option()
+def update_exposures_from_raws(*args: Any, **kwargs: Any) -> None:
+    """Update exposure records associated with specific raw datasets."""
+    script.updateExposures(*args, **kwargs)
