@@ -1524,11 +1524,16 @@ class RawIngestTask(Task):
             if isinstance(inserted_or_updated, dict):
                 # Exposure is in the registry and we updated it, so
                 # syncDimensionData returned a dict.
+                columns_updated = list(inserted_or_updated.keys())
+                s_col = "s" if len(columns_updated) != 1 else ""
+                w_col = "were" if len(columns_updated) != 1 else "was"
                 self.log.info(
-                    "Exposure %s:%s was already present, but columns %s were updated.",
+                    "Exposure %s:%s was already present, but column%s %s %s updated.",
                     exposure.record.instrument,
                     exposure.record.obs_id,
-                    str(list(inserted_or_updated.keys())),
+                    s_col,
+                    ", ".join(repr(c) for c in columns_updated),
+                    w_col,
                 )
 
             if skip_ingest:
