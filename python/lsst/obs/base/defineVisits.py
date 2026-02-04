@@ -43,6 +43,7 @@ from typing import Any, ClassVar, TypeVar, cast
 import lsst.geom
 from lsst.afw.cameraGeom import FOCAL_PLANE, PIXELS
 from lsst.daf.butler import Butler, DataId, DimensionRecord, Progress, Timespan
+from lsst.daf.butler.registry import ConflictingDefinitionError
 from lsst.geom import Box2D
 from lsst.pex.config import Config, Field, makeRegistry, registerConfigurable
 from lsst.pipe.base import Struct, Task
@@ -626,6 +627,7 @@ class DefineVisitsTask(Task):
         collections: Sequence[str] | str | None = None,
         update_records: bool = False,
         incremental: bool = False,
+        skip_conflicting: bool = False,
     ) -> Struct:
         """Add visit definitions to the registry for the given exposures.
 
@@ -656,6 +658,11 @@ class DefineVisitsTask(Task):
             changes. If there is any risk that files are being ingested
             incrementally it is critical that this parameter is set to `True`
             and not to rely on ``update_records``.
+        skip_conflicting : `bool`, optional
+            If `True` do not raise an error if there is a change in an existing
+            visit definition. This can be used if you solely want to define
+            visits that were somehow missed previously. It has no effect if
+            ``update_records`` is `True` or incremental mode is enabled.
 
         Returns
         -------
@@ -778,11 +785,16 @@ class DefineVisitsTask(Task):
         ):
             visitRecords = self._buildVisitRecords(visitDefinition, collections=collections)
             with self.butler.registry.transaction():
-                inserted_or_updated = self.butler.registry.syncDimensionData(
-                    "visit",
-                    visitRecords.visit,
-                    update=(update_records or incremental),
-                )
+                try:
+                    inserted_or_updated = self.butler.registry.syncDimensionData(
+                        "visit",
+                        visitRecords.visit,
+                        update=(update_records or incremental),
+                    )
+                except ConflictingDefinitionError:
+                    if not skip_conflicting:
+                        raise
+                    inserted_or_updated = False
                 if inserted_or_updated or update_records:
                     if inserted_or_updated is True:
                         # This is a new visit, not an update to an existing

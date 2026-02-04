@@ -76,6 +76,13 @@ fits_re = r"\.fit[s]?\b"
     "when multi-snap visits are being ingested incrementally and so you "
     "might encounter partial visits.  Implies --update-records.",
 )
+@click.option(
+    "--skip-conflicting/--no-skip-conflicting",
+    default=False,
+    help="Use this option to skip over any visits that are currently defined "
+    "with a different value and you are not sure whether to accept the new "
+    "value. Ignored if incremental or update mode is enabled.",
+)
 @options_file_option()
 def define_visits(*args: Any, **kwargs: Any) -> None:
     """Define visits from exposures in the butler registry.
