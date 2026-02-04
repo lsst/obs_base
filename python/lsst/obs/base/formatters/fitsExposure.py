@@ -25,6 +25,7 @@ __all__ = (
     "FitsImageFormatterBase",
     "FitsMaskFormatter",
     "FitsMaskedImageFormatter",
+    "StandardFitsImageFormatterBase",
     "standardizeAmplifierParameters",
 )
 
@@ -101,8 +102,8 @@ class FitsImageFormatterBase(FormatterV2):
     collection of miscellaneous boilerplate common to all FITS image
     formatters.
 
-    Concrete subclasses must implement `readComponent`, `readFull`, and `write`
-    (even if just to disable them by raising an exception).
+    Concrete subclasses must implement `readComponent`, `readFull`, and
+    `write_local_file` (even if just to disable them by raising an exception).
     """
 
     can_read_from_local_file = True
@@ -116,6 +117,9 @@ class FitsImageFormatterBase(FormatterV2):
     _reader_path: str | None = None
 
     ReaderClass: type[_ReaderClassLike]  # must be set by concrete subclasses
+    """Class to use for reading FITS files in the expected way.
+    (e.g., `type` [`lsst.afw.image.ImageFitsReader])
+    """
 
     @property
     def reader(self) -> _ReaderClassLike:
@@ -187,7 +191,7 @@ class FitsImageFormatterBase(FormatterV2):
 
         Returns
         -------
-        obj : component-dependent
+        obj : `typing.Any`
             In-memory component object.
 
         Raises
@@ -203,45 +207,20 @@ class FitsImageFormatterBase(FormatterV2):
 
         Returns
         -------
-        obj : component-dependent
+        obj : `typing.Any`
             In-memory component object.
 
         """
         raise NotImplementedError()
 
 
-class ReaderFitsImageFormatterBase(FitsImageFormatterBase):
-    """Base class formatter for image-like storage classes stored via FITS
-    backed by a "reader" object similar to `lsst.afw.image.ImageFitsReader`.
-
-    Notes
-    -----
-    This class includes no support for writing.
-
-    Concrete subclasses must provide at least the `ReaderClass` attribute
-    and a `write` implementation (even just to disable writing by raising).
-
-    The provided implementation of `readComponent` handles only the 'bbox',
-    'dimensions', and 'xy0' components common to all image-like storage
-    classes.  Subclasses with additional components should handle them first,
-    then delegate to ``super()`` for these (or, if necessary, delegate first
-    and catch `KeyError`).
-
-    The provided implementation of `readFull` handles only parameters that
-    can be forwarded directly to the reader class (usually ``bbox`` and
-    ``origin``).  Concrete subclasses that need to handle additional parameters
-    should generally reimplement without delegating (the implementation is
-    trivial).
-    """
-
-
-class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
+class StandardFitsImageFormatterBase(FitsImageFormatterBase):
     """Base class interface for image-like storage stored via FITS,
     written using LSST code.
 
     Notes
     -----
-    Concrete subclasses must provide at least the `ReaderClass` attribute.
+    Concrete subclasses must provide at least the ``ReaderClass`` attribute.
 
     The provided implementation of `readComponent` handles only the 'bbox',
     'dimensions', and 'xy0' components common to all image-like storage
@@ -264,7 +243,8 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
     `lsst.afw.fits.CompressionOptions.from_mapping` (``null`` disables
     compression).
 
-    A very simple example YAML recipe (for the ``Exposure`` specialization):
+    A very simple example YAML recipe (for the `lsst.afw.image.Exposure`
+    specialization):
 
     .. code-block:: yaml
 
@@ -297,6 +277,16 @@ class StandardFitsImageFormatterBase(ReaderFitsImageFormatterBase):
         return self.reader.read(**self.checked_parameters, dtype=self.storageClass_dtype)
 
     def write_local_file(self, in_memory_dataset: Any, uri: ResourcePath) -> None:
+        """Serialize the image to FITS.
+
+        Parameters
+        ----------
+        in_memory_dataset : `object`
+            Image to write. Must support a ``writeFits`` or
+            ``writeFitsWithOptions`` interface.
+        uri : `lsst.resources.ResourcePath`
+            Location to write the local file.
+        """
         # check to see if we have a recipe requested
         recipeName = self.write_parameters.get("recipe")
         recipe = self.get_image_compression_settings(recipeName)
@@ -540,7 +530,7 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
     This class inherits from `FitsMaskedImageFormatter` even though
     `lsst.afw.image.Exposure` doesn't inherit from
     `lsst.afw.image.MaskedImage`; this is just an easy way to be able to
-    delegate to `FitsMaskedImageFormatter.super()` for component-handling, and
+    delegate to `FitsMaskedImageFormatter` for component-handling, and
     should be replaced with e.g. both calling a free function if that slight
     type covariance violation ever becomes a practical problem.
     """

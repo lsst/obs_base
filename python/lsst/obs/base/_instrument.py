@@ -166,7 +166,7 @@ class Instrument(InstrumentBase):
         -----
         The returned list does not indicate whether a particular dataset
         is present in the Butler repository, simply that these are the
-        dataset types that are handled by ``writeCuratedCalibrations``.
+        dataset types that are handled by `writeCuratedCalibrations`.
         """
         # Camera is a special dataset type that is also handled as a
         # curated calibration.
@@ -247,23 +247,24 @@ class Instrument(InstrumentBase):
         collection : `str`, optional
             Name to use for the calibration collection that associates all
             datasets with a validity range.  If this collection already exists,
-            it must be a `~CollectionType.CALIBRATION` collection, and it must
-            not have any datasets that would conflict with those inserted by
-            this method.  If `None`, a collection name is worked out
-            automatically from the instrument name and other metadata by
-            calling ``makeCalibrationCollectionName``, but this
+            it must be a `~lsst.daf.butler.CollectionType.CALIBRATION`
+            collection, and it must not have any datasets that would conflict
+            with those inserted by this method.  If `None`, a collection name
+            is worked out automatically from the instrument name and other
+            metadata by calling `makeCalibrationCollectionName`, but this
             default name may not work well for long-lived repositories unless
             ``labels`` is also provided (and changed every time curated
             calibrations are ingested).
-        labels : `Sequence` [ `str` ], optional
+        labels : `collections.abc.Sequence` [ `str` ], optional
             Extra strings to include in collection names, after concatenating
             them with the standard collection name delimiter.  If provided,
-            these are inserted into the names of the `~CollectionType.RUN`
-            collections that datasets are inserted directly into, as well the
-            `~CollectionType.CALIBRATION` collection if it is generated
-            automatically (i.e. if ``collection is None``).  Usually this is
-            just the name of the ticket on which the calibration collection is
-            being created.
+            these are inserted into the names of the
+            `~lsst.daf.butler.CollectionType.RUN` collections that datasets are
+            inserted directly into, as well the
+            `~lsst.daf.butler.CollectionType.CALIBRATION` collection if it is
+            generated automatically (i.e., if ``collection is None``).
+            Usually this is just the name of the ticket on which the
+            calibration collection is being created.
 
         Notes
         -----
@@ -296,23 +297,24 @@ class Instrument(InstrumentBase):
         collection : `str`, optional
             Name to use for the calibration collection that associates all
             datasets with a validity range.  If this collection already exists,
-            it must be a `~CollectionType.CALIBRATION` collection, and it must
-            not have any datasets that would conflict with those inserted by
-            this method.  If `None`, a collection name is worked out
-            automatically from the instrument name and other metadata by
-            calling ``makeCalibrationCollectionName``, but this
+            it must be a `~lsst.daf.butler.CollectionType.CALIBRATION`
+            collection, and it must not have any datasets that would conflict
+            with those inserted by this method.  If `None`, a collection name
+            is worked out automatically from the instrument name and other
+            metadata by calling `makeCalibrationCollectionName`, but this
             default name may not work well for long-lived repositories unless
             ``labels`` is also provided (and changed every time curated
             calibrations are ingested).
-        labels : `Sequence` [ `str` ], optional
+        labels : `collections.abc.Sequence` [ `str` ], optional
             Extra strings to include in collection names, after concatenating
             them with the standard collection name delimiter.  If provided,
-            these are inserted into the names of the `~CollectionType.RUN`
-            collections that datasets are inserted directly into, as well the
-            `~CollectionType.CALIBRATION` collection if it is generated
-            automatically (i.e. if ``collection is None``).  Usually this is
-            just the name of the ticket on which the calibration collection is
-            being created.
+            these are inserted into the names of the
+            `~lsst.daf.butler.CollectionType.RUN` collections that datasets are
+            inserted directly into, as well the
+            `~lsst.daf.butler.CollectionType.CALIBRATION` collection if it is
+            generated automatically (i.e. if ``collection is None``).  Usually
+            this is just the name of the ticket on which the calibration
+            collection is being created.
         """
         return
 
@@ -330,23 +332,24 @@ class Instrument(InstrumentBase):
         collection : `str`, optional
             Name to use for the calibration collection that associates all
             datasets with a validity range.  If this collection already exists,
-            it must be a `~CollectionType.CALIBRATION` collection, and it must
-            not have any datasets that would conflict with those inserted by
-            this method.  If `None`, a collection name is worked out
-            automatically from the instrument name and other metadata by
-            calling ``makeCalibrationCollectionName``, but this
+            it must be a `~lsst.daf.butler.CollectionType.CALIBRATION`
+            collection, and it must not have any datasets that would conflict
+            with those inserted by this method.  If `None`, a collection name
+            is worked out automatically from the instrument name and other
+            metadata by calling `makeCalibrationCollectionName`, but this
             default name may not work well for long-lived repositories unless
             ``labels`` is also provided (and changed every time curated
             calibrations are ingested).
-        labels : `Sequence` [ `str` ], optional
+        labels : `collections.abc.Sequence` [ `str` ], optional
             Extra strings to include in collection names, after concatenating
             them with the standard collection name delimiter.  If provided,
-            these are inserted into the names of the `~CollectionType.RUN`
-            collections that datasets are inserted directly into, as well the
-            `~CollectionType.CALIBRATION` collection if it is generated
-            automatically (i.e. if ``collection is None``).  Usually this is
-            just the name of the ticket on which the calibration collection is
-            being created.
+            these are inserted into the names of the
+            `~lsst.daf.butler.CollectionType.RUN` collections that datasets are
+            inserted directly into, as well the
+            `~lsst.daf.butler.CollectionType.CALIBRATION` collection if it is
+            generated automatically (i.e. if ``collection is None``).  Usually
+            this is just the name of the ticket on which the calibration
+            collection is being created.
         """
         if collection is None:
             collection = self.makeCalibrationCollectionName(*labels)
@@ -374,23 +377,24 @@ class Instrument(InstrumentBase):
         collection : `str`, optional
             Name to use for the calibration collection that associates all
             datasets with a validity range.  If this collection already exists,
-            it must be a `~CollectionType.CALIBRATION` collection, and it must
-            not have any datasets that would conflict with those inserted by
-            this method.  If `None`, a collection name is worked out
-            automatically from the instrument name and other metadata by
-            calling ``makeCalibrationCollectionName``, but this
+            it must be a `~lsst.daf.butler.CollectionType.CALIBRATION`
+            collection, and it must not have any datasets that would conflict
+            with those inserted by this method.  If `None`, a collection name
+            is worked out automatically from the instrument name and other
+            metadata by calling `makeCalibrationCollectionName`, but this
             default name may not work well for long-lived repositories unless
             ``labels`` is also provided (and changed every time curated
             calibrations are ingested).
-        labels : `Sequence` [ `str` ], optional
+        labels : `collections.abc.Sequence` [ `str` ], optional
             Extra strings to include in collection names, after concatenating
             them with the standard collection name delimiter.  If provided,
-            these are inserted into the names of the `~CollectionType.RUN`
-            collections that datasets are inserted directly into, as well the
-            `~CollectionType.CALIBRATION` collection if it is generated
-            automatically (i.e. if ``collection is None``).  Usually this is
-            just the name of the ticket on which the calibration collection is
-            being created.
+            these are inserted into the names of the
+            `~lsst.daf.butler.CollectionType.RUN` collections that datasets are
+            inserted directly into, as well the
+            `~lsst.daf.butler.CollectionType.CALIBRATION` collection if it is
+            generated automatically (i.e., if ``collection is None``).  Usually
+            this is just the name of the ticket on which the calibration
+            collection is being created.
         """
         if collection is None:
             collection = self.makeCalibrationCollectionName(*labels)
@@ -460,14 +464,14 @@ class Instrument(InstrumentBase):
         datasetType : `lsst.daf.butler.DatasetType`
             Dataset type to be put.
         collection : `str`
-            Name of the `~CollectionType.CALIBRATION` collection that
-            associates all datasets with validity ranges.  Must have been
-            registered prior to this call.
+            Name of the `~lsst.daf.butler.CollectionType.CALIBRATION`
+            collection that associates all datasets with validity ranges.
+            Must have been registered prior to this call.
         runs : `set` [ `str` ]
             Names of runs that have already been registered by previous calls
             and need not be registered again.  Should be updated by this
             method as new runs are registered.
-        labels : `Sequence` [ `str` ]
+        labels : `collections.abc.Sequence` [ `str` ]
             Extra strings to include in run names when creating them from
             ``CALIBDATE`` metadata, via calls to `makeCuratedCalibrationName`.
             Usually this is the name of the ticket on which the calibration
@@ -609,16 +613,16 @@ def makeExposureRecordFromObsInfo(
     obsInfo : `astro_metadata_translator.ObservationInfo`
         A `~astro_metadata_translator.ObservationInfo` object corresponding to
         the exposure.
-    universe : `DimensionUniverse`
+    universe : `~lsst.daf.butler.DimensionUniverse`
         Set of all known dimensions.
     **kwargs
         Additional field values for this record.
 
     Returns
     -------
-    record : `DimensionRecord`
+    record : `~lsst.daf.butler.DimensionRecord`
         A record containing exposure metadata, suitable for insertion into
-        a `Registry`.
+        a `~lsst.daf.butler.Registry`.
     """
     dimension = universe["exposure"]
 
@@ -707,7 +711,7 @@ def loadCamera(butler: Butler, dataId: DataId, *, collections: Any = None) -> tu
     dataId : `dict` or `~lsst.daf.butler.DataCoordinate`
         Data ID that identifies at least the ``instrument`` and ``exposure``
         dimensions.
-    collections : Any, optional
+    collections : `typing.Any`, optional
         Collections to be searched, overriding
         ``self.butler.collections.defaults``.  Can be any of the types
         supported by the ``collections`` argument to butler construction.

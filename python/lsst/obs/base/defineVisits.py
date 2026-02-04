@@ -22,6 +22,8 @@
 from __future__ import annotations
 
 __all__ = [
+    "ComputeVisitRegionsConfig",
+    "ComputeVisitRegionsTask",
     "DefineVisitsConfig",
     "DefineVisitsTask",
     "GroupExposuresConfig",
@@ -180,7 +182,7 @@ class GroupExposuresTask(Task, metaclass=ABCMeta):
     config : `GroupExposuresConfig`
         Configuration information.
     **kwargs
-        Additional keyword arguments forwarded to the `lsst.pipe.baseTask`
+        Additional keyword arguments forwarded to the `lsst.pipe.base.Task`
         constructor.
     """
 
@@ -257,7 +259,7 @@ class GroupExposuresTask(Task, metaclass=ABCMeta):
 
         Returns
         -------
-        visits : `Iterable` [ `VisitDefinitionData` ]
+        visits : `~collections.abc.Iterable` [ `VisitDefinitionData` ]
             Structs identifying the visits and the exposures associated with
             them.  This may be an iterator or a container.
         """
@@ -269,7 +271,7 @@ class GroupExposuresTask(Task, metaclass=ABCMeta):
 
         Returns
         -------
-        visit_systems : `Set` [`VisitSystem`]
+        visit_systems : `set` [`VisitSystem`]
             The visit systems used by this algorithm.
         """
         raise NotImplementedError()
@@ -306,7 +308,8 @@ class ComputeVisitRegionsTask(Task, metaclass=ABCMeta):
     butler : `lsst.daf.butler.Butler`
         The butler to use.
     **kwargs
-        Additional keyword arguments forwarded to the `Task` constructor.
+        Additional keyword arguments forwarded to the `~lsst.pipe.base.Task`
+        constructor.
     """
 
     def __init__(self, config: ComputeVisitRegionsConfig, *, butler: Butler, **kwargs: Any):
@@ -360,7 +363,7 @@ class ComputeVisitRegionsTask(Task, metaclass=ABCMeta):
         ----------
         visit : `VisitDefinitionData`
             Struct describing the visit and the exposures associated with it.
-        collections : `Sequence` [ `str` ] or `str` or `None`
+        collections : `collections.abc.Sequence` [ `str` ] or `str` or `None`
             Collections to be searched for camera geometry, overriding
             ``self.butler.collections.defaults``. Can be any of the types
             supported by the ``collections`` argument to butler construction.
@@ -478,7 +481,7 @@ class DefineVisitsTask(Task):
         definition : `VisitDefinitionData`
             Struct with identifiers for the visit and records for its
             constituent exposures.
-        collections : `Sequence` [ `str` ] or `str` or `None`
+        collections : `collections.abc.Sequence` [ `str` ] or `str` or `None`
             Collections to be searched for camera geometry, overriding
             ``self.butler.collections.defaults``. Can be any of the types
             supported by the ``collections`` argument to butler construction.
@@ -633,13 +636,13 @@ class DefineVisitsTask(Task):
 
         Parameters
         ----------
-        dataIds_or_records : `Iterable` [ `dict` or \
+        dataIds_or_records : `~collections.abc.Iterable` [ `dict` or \
               `~lsst.daf.butler.DataCoordinate` or \
               `~lsst.daf.butler.DimensionRecord` ]
             Exposure-level data IDs or explicit exposure records.  These must
             all correspond to the same instrument, and are expected to be
             on-sky science exposures.
-        collections : `Sequence` [ `str` ] or `str` or `None`
+        collections : `~collections.abc.Sequence` [ `str` ] or `str` or `None`
             Collections to be searched for camera geometry, overriding
             ``self.butler.collections.defaults``. Can be any of the types
             supported by the ``collections`` argument to butler construction.

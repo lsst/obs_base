@@ -95,8 +95,8 @@ New Features
   * Updated the read curated calibration code to allow for the same flexibility in dimensions. (`DM-36597 <https://rubinobs.atlassian.net/browse/DM-36597>`_)
 - Raw ingest can now ask the ``Instrument`` class for the raw dataset type definition.
   This means it is no longer required to subclass the ``getDatasetType`` method and allows various instruments to be ingested with the base class implementation. (`DM-37950 <https://rubinobs.atlassian.net/browse/DM-37950>`_)
-- `DefineVisitsTask` now calls ObsCore table manager to update exposure regions after visit is defined.
-  New configuration field `updateObsCoreTable` for that task can be set to `False` to disable exposure updates. (`DM-38205 <https://rubinobs.atlassian.net/browse/DM-38205>`_)
+- ``DefineVisitsTask`` now calls ObsCore table manager to update exposure regions after visit is defined.
+  New configuration field ``updateObsCoreTable`` for that task can be set to `False` to disable exposure updates. (`DM-38205 <https://rubinobs.atlassian.net/browse/DM-38205>`_)
 
 An API Removal or Deprecation
 -----------------------------

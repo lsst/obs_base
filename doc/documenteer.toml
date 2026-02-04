@@ -11,9 +11,19 @@ clean = true
 extensions = [
     "sphinx_click"
 ]
+nitpick_ignore = [
+    ["py:obj", "multiprocessing.Pool"],  # No docs for this.
+    ["py:obj", "RegistryInstanceDict"],  # Private pex_config class.
+]
+nitpick_ignore_regex = [
+    ['py:.*', 'lsst\.afw\..*'],  # Not all afw APIs are not known to sphinx.
+    ['py:obj', 'lsst\.daf\.base.*'],  # daf_base has no sphinx docs.
+    ['py:.*', 'lsst\.sphgeom.*'],  # no sphinx docs.
+]
 
 [sphinx.intersphinx.projects]
 astropy = "https://docs.astropy.org/en/stable"
 python = "https://docs.python.org/3"
 lsst = "https://pipelines.lsst.io/v/daily/"
 astro_metadata_translator = "https://astro-metadata-translator.lsst.io/"
+numpy = "https://numpy.org/doc/stable/"

@@ -377,7 +377,7 @@ class TableVStack:
             The table to set values for.
         key : `str`
             The column key.
-        values : `Any`
+        values : `typing.Any`
             The value(s) to set. Can be a scalar.
         capacity : `int`
             The size to initialize the column with, if it doesn't exist yet.

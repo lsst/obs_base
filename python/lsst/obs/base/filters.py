@@ -46,27 +46,28 @@ class FilterDefinition:
     """
 
     physical_filter: str
-    """The name of a filter associated with a particular instrument: unique for
-    each piece of glass. This should match the exact filter name used in the
-    observatory's metadata.
+    """The name of a filter associated with a particular instrument.
 
-    This name is used to define the ``physical_filter`` gen3 Butler Dimension.
+    Unique for each piece of glass. This should match the exact filter name
+    used in the observatory's metadata.
+    This name is used to define the ``physical_filter`` Butler Dimension.
 
-    If neither ``band`` or ``afw_name`` is defined, this is used
-    as the `~lsst.afw.image.Filter` ``name``, otherwise it is added to the
-    list of `~lsst.afw.image.Filter` aliases.
+    If neither `band` nor `afw_name` is defined, this is used
+    as the `~lsst.afw.image.FilterLabel` ``name``, otherwise it is added to the
+    list of `~lsst.afw.image.FilterLabel` aliases.
     """
 
     band: str | None = None
     """The generic name of a filter not associated with a particular instrument
-    (e.g. `r` for the SDSS Gunn r-band, which could be on SDSS, LSST, or HSC).
+    (e.g. ``r`` for the SDSS Gunn r-band, which could be on SDSS, LSST, or
+    HSC).
 
     Not all filters have an abstract filter: engineering or test filters may
     not have a generically-termed filter name.
 
     If specified and if `afw_name` is None, this is used as the
-    `~lsst.afw.image.Filter` ``name`` field, otherwise it is added to the list
-    of `~lsst.afw.image.Filter` aliases.
+    `~lsst.afw.image.FilterLabel` ``name`` field, otherwise it is added to the
+    list of `~lsst.afw.image.FilterLabel` aliases.
     """
 
     doc: str | None = None
@@ -113,7 +114,7 @@ class FilterDefinitionCollection(Sequence[FilterDefinition]):
 
     Parameters
     ----------
-    filters : `Sequence`
+    *filters : `FilterDefinition`
         The filters in this collection.
     """
 

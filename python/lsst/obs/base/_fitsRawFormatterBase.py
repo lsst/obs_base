@@ -87,11 +87,12 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             If not provided, will be read from ``metadata`` on first use.
         storageClass : `lsst.daf.butler.StorageClass`, optional
             StorageClass for this file.  If not provided, the formatter will
-            only support `makeWcs`, `makeVisitInfo`, `makeFilter`, and other
-            operations that operate purely on metadata and not the actual file.
+            only support `makeWcs`, `makeVisitInfo`, `makeFilterLabel`, and
+            other operations that operate purely on metadata and not the actual
+            file.
         location : `lsst.daf.butler.Location`, optional.
             Location of the file.  If not provided, the formatter will only
-            support `makeWcs`, `makeVisitInfo`, `makeFilter`, and other
+            support `makeWcs`, `makeVisitInfo`, `makeFilterLabel`, and other
             operations that operate purely on metadata and not the actual file.
 
         Returns
