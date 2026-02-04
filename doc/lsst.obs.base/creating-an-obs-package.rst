@@ -7,9 +7,9 @@ How to create a new LSST obs package
 ####################################
 
 These instructions describe how to create a package that allows the LSST Science Pipelines to read raw data from a telescope and instrument using the gen3 middleware and ingest it into an LSST repository.
-"Ingestion" is the process of reading raw files, interpreting their metadata, and formatting the data in a way the :py:mod:`Data Butler <lsst.daf.butler>` can read.
+"Ingestion" is the process of reading raw files, interpreting their metadata, and formatting the data in a way the `Data Butler`_ can read.
 
-This guide describes how to create an interface between the :ref:`Data Butler <lsst.daf.butler>` and your raw files, so that users do not have to know any details about a particular instrument.
+This guide describes how to create an interface between the `Data Butler`_ and your raw files, so that users do not have to know any details about a particular instrument.
 These instructions are necessary, but not sufficient: camera geometry, config overrides for tasks, and defects and other curated calibration are other necessary components not described here.
 You will have successfully made an obs package when an :ref:`ingestion test <testing>` passes.
 This demonstrates that the butler can read data ingested from your instrument.
@@ -23,9 +23,9 @@ Here we put the code in a ``lsst.obs`` module hierarchy but this is not required
 MetadataTranslator
 ==================
 
-The :ref:`astro_metadata_translator` package abstracts away reading metadata from raw images of a given telescope+instrument.
+The `astro_metadata_translator` package abstracts away reading metadata from raw images of a given telescope+instrument.
 For example, the time of the observation, temperature, and filter for a given observation might each be stored in each raw file's FITS header as ``"OBSTIME"``, ``"TEMP_W"``, ``"FILTOBS"``.
-The translator knows how to get all of this relevant metadata out of the raw files, so that they can be loaded into the :py:mod:`Data Butler <lsst.daf.butler>`.
+The translator knows how to get all of this relevant metadata out of the raw files, so that they can be loaded into the `Data Butler`_.
 
 Creating a ``MetadataTranslator`` derived from `~astro_metadata_translator.MetadataTranslator` or `~astro_metadata_translator.FitsTranslator` is the first step in building an obs_package.
 Your new metadata translator can live in a separate package as you are developing it, but you should eventually make a pull request to `astro_metadata_translator` itself, so that other people can readily use it.
@@ -141,7 +141,7 @@ If they do not, you can use the test output to determine what parts of the Instr
 Ingest tests
 ============
 
-In order to test how your new gen3 obs package works with the :py:mod:`Data Butler <lsst.daf.butler>`, you need to write a test that ingests raw data.
+In order to test how your new gen3 obs package works with the `Data Butler`_, you need to write a test that ingests raw data.
 `~lsst.obs.base.ingest_tests.IngestTestBase` provides a base class for those tests, requiring only that you specify the input data that will be tested, and the :ref:`dataIds <lsst.daf.butler-dimensions_data_ids>` to use to check that the data was correctly ingested.
 This is how our system tests that your ``Formatter`` works correctly and that the ingest process can extract the required metadata from the files.
 
@@ -188,3 +188,5 @@ This is how our system tests that your ``Formatter`` works correctly and that th
 
 The ingest tests do not check pixel values, so it is acceptable to run the ingest on stripped data files where the pixel values have been set to a single value and the data compressed with ``fpack``.
 This can result in a very small file that can be included directly in your obs package.
+
+.. _Data Butler: https://pipelines.lsst.io/modules/lsst.daf.butler/index.html

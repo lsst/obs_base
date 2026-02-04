@@ -8,7 +8,7 @@ lsst.obs.base
 
 The ``lsst.obs.base`` module provides the framework and common API for telescope/camera specific "obs" packages.
 New cameras will derive from the classes defined here.
-`lsst.obs.base.tests` provides the tests that all "obs" packages should pass.
+``lsst.obs.base.tests`` provides the tests that all "obs" packages should pass.
 
 .. _lsst.ctrl.mpexec-changes:
 
@@ -71,4 +71,10 @@ Python API reference
    :no-main-docstr:
 
 .. automodapi:: lsst.obs.base.butler_tests
+   :no-main-docstr:
+
+.. automodapi:: lsst.obs.base.instrument_tests
+   :no-main-docstr:
+
+.. automodapi:: lsst.obs.base.ingest_tests
    :no-main-docstr:

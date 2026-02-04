@@ -251,7 +251,8 @@ class Instrument(InstrumentBase):
             collection, and it must not have any datasets that would conflict
             with those inserted by this method.  If `None`, a collection name
             is worked out automatically from the instrument name and other
-            metadata by calling `makeCalibrationCollectionName`, but this
+            metadata by calling
+            `~lsst.obs.base.Instrument.makeCalibrationCollectionName`, but this
             default name may not work well for long-lived repositories unless
             ``labels`` is also provided (and changed every time curated
             calibrations are ingested).
@@ -301,7 +302,8 @@ class Instrument(InstrumentBase):
             collection, and it must not have any datasets that would conflict
             with those inserted by this method.  If `None`, a collection name
             is worked out automatically from the instrument name and other
-            metadata by calling `makeCalibrationCollectionName`, but this
+            metadata by calling
+            `~lsst.obs.base.Instrument.makeCalibrationCollectionName`, but this
             default name may not work well for long-lived repositories unless
             ``labels`` is also provided (and changed every time curated
             calibrations are ingested).
@@ -336,7 +338,8 @@ class Instrument(InstrumentBase):
             collection, and it must not have any datasets that would conflict
             with those inserted by this method.  If `None`, a collection name
             is worked out automatically from the instrument name and other
-            metadata by calling `makeCalibrationCollectionName`, but this
+            metadata by calling
+            `~lsst.obs.base.Instrument.makeCalibrationCollectionName`, but this
             default name may not work well for long-lived repositories unless
             ``labels`` is also provided (and changed every time curated
             calibrations are ingested).
@@ -381,7 +384,8 @@ class Instrument(InstrumentBase):
             collection, and it must not have any datasets that would conflict
             with those inserted by this method.  If `None`, a collection name
             is worked out automatically from the instrument name and other
-            metadata by calling `makeCalibrationCollectionName`, but this
+            metadata by calling
+            `~lsst.obs.base.Instrument.makeCalibrationCollectionName`, but this
             default name may not work well for long-lived repositories unless
             ``labels`` is also provided (and changed every time curated
             calibrations are ingested).

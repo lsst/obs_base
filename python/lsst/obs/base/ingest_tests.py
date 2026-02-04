@@ -58,7 +58,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
     """
 
     ingestDir: str = ""
-    """Root path to ingest files into. Typically `obs_package/tests/`; the
+    """Root path to ingest files into. Typically ``obs_package/tests/``; the
     actual directory will be a tempdir under this one.
     """
 
@@ -462,7 +462,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
 
     def testWriteCuratedCalibrations(self) -> None:
         """Test that we can ingest the curated calibrations, and read them
-        with `loadCamera` both before and after.
+        with `~lsst.obs.base.loadCamera` both before and after.
         """
         if self.curatedCalibrationDatasetTypes is None:
             raise unittest.SkipTest("Class requests disabling of writeCuratedCalibrations test")

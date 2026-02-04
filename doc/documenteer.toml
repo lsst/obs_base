@@ -14,6 +14,8 @@ extensions = [
 nitpick_ignore = [
     ["py:obj", "multiprocessing.Pool"],  # No docs for this.
     ["py:obj", "RegistryInstanceDict"],  # Private pex_config class.
+    ["py:obj", "lsst.daf.butler.DataId"],  # Type aliases do not work.
+    ["py:class", "lsst.daf.butler.formatters.typeless.TypelessFormatter"],  # Currently not published.
 ]
 nitpick_ignore_regex = [
     ['py:.*', 'lsst\.afw\..*'],  # Not all afw APIs are not known to sphinx.
