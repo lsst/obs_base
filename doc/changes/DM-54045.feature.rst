@@ -1,0 +1,1 @@
+Added ``--skip-conflicting`` option to ``butler define-visits`` which allows new visits to be defined without changing any existing definitions.
