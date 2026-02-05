@@ -181,8 +181,8 @@ class ButlerGetTests:
         self._test_exposure("flat")
 
     def test_raw_header_wcs(self):
-        """Test that `raw_header_wcs` returns the unmodified header of the raw
-        image.
+        """Test that ``raw_header_wcs`` returns the unmodified header of the
+        raw image.
         """
         if self.butler_get_data.raw_header_wcs is None:
             self.skipTest("Skipping raw header WCS test since no reference provided.")

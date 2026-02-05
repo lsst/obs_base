@@ -35,6 +35,7 @@ def defineVisits(
     where: str | None = None,
     update_records: bool = False,
     incremental: bool = False,
+    skip_conflicting: bool = False,
 ) -> None:
     """Implement the command line interface `butler define-visits` subcommand,
     should only be called by command line tools and unit test code that tests
@@ -64,6 +65,11 @@ def defineVisits(
         Declare that the visit definitions are being run in a situation
         where data from multi-snap visits are being ingested incrementally
         and so the visit definition could change as new data arrive.
+    skip_conflicting : `bool`, optional
+        If `True` do not raise an error if there is a change in an existing
+        visit definition. This can be used if you solely want to define
+        visits that were somehow missed previously. It has no effect if
+        ``update_records`` is `True` or incremental mode is enabled.
 
     Notes
     -----
@@ -107,4 +113,5 @@ def defineVisits(
             collections=collections,
             update_records=update_records,
             incremental=incremental,
+            skip_conflicting=skip_conflicting,
         )

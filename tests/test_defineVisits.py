@@ -29,6 +29,7 @@ from collections import defaultdict
 
 import lsst.daf.butler.tests as butlerTests
 from lsst.daf.butler import DataCoordinate, DimensionRecord, SerializedDimensionRecord
+from lsst.daf.butler.registry import ConflictingDefinitionError
 from lsst.obs.base import DefineVisitsConfig, DefineVisitsTask
 from lsst.obs.base.instrument_tests import DummyCam
 from lsst.utils.iteration import ensure_iterable
@@ -48,7 +49,7 @@ class DefineVisitsBase:
         records.
         """
         self.root = tempfile.mkdtemp(dir=TESTDIR)
-        self.creatorButler = butlerTests.makeTestRepo(self.root, [])
+        self.creatorButler = butlerTests.makeTestRepo(self.root, {})
         self.enterContext(self.creatorButler)
         self.butler = butlerTests.makeTestCollection(self.creatorButler, uniqueId=self.id())
         self.enterContext(self.butler)
@@ -269,6 +270,83 @@ class DefineVisitsGroupingRecordsTestCase(DefineVisitsGroupingTestCase):
     """Test using dimension records instead of Data IDs."""
 
     use_data_ids = False
+
+
+class DefineVisitsOneToOneTestCase(unittest.TestCase, DefineVisitsBase):
+    """Test visit grouping by group metadata."""
+
+    def setUp(self):
+        self.setUpExposures()
+
+    def tearDown(self):
+        if self.root is not None:
+            shutil.rmtree(self.root, ignore_errors=True)
+
+    def get_config(self) -> DefineVisitsConfig:
+        config = DefineVisitsTask.ConfigClass()
+        config.groupExposures.name = "one-to-one"
+        return config
+
+    def test_defineVisits(self):
+        # Test visit definition with all the records.
+        self.define_visits([list(self.records.values())], incremental=False)  # list inside a list
+        self.assertVisits()
+
+    def assertVisits(self):
+        """Check that the visits were registered as expected."""
+        visits = list(self.butler.registry.queryDimensionRecords("visit"))
+        self.assertEqual(len(visits), 3)
+
+        # For one-to-one the visit ID is the exposure ID.
+        visit_ids = [rec.id for rec in self.records.values()]
+        self.assertEqual({visit.id for visit in visits}, set(visit_ids))
+
+        # Ensure that the definitions are correct (ignoring order).
+        defmap = defaultdict(set)
+        definitions = list(self.butler.registry.queryDimensionRecords("visit_definition"))
+        for defn in definitions:
+            defmap[defn.visit].add(defn.exposure)
+
+        self.assertEqual(
+            dict(defmap),
+            {
+                visit_ids[0]: {2022040500347},
+                visit_ids[1]: {2022040500348},
+                visit_ids[2]: {2022040500349},
+            },
+        )
+
+    def test_update_records(self):
+        self.define_visits([list(self.records.values())], incremental=False)  # list inside a list
+        self.assertVisits()
+
+        # Modify one of the records.
+        records = self.records
+        simple = records[348].to_simple()
+        simple.record["target_name"] = "new target"
+        records[348] = DimensionRecord.from_simple(simple, universe=self.butler.dimensions)
+        self.butler.registry.syncDimensionData("exposure", records[348], update=True)
+
+        # Re-run without updates or skipping should fail.
+        with self.assertRaises(ConflictingDefinitionError):
+            self.task.run(records.values())
+
+        result = self.task.run(records.values(), skip_conflicting=True)
+        self.assertEqual(result.n_skipped, 3, str(result))
+
+        # Check that the visit definition did not change.
+        visit_348 = self.butler.query_dimension_records("visit", where="visit.seq_num = 348")[0]
+        self.assertEqual(visit_348.target_name, "LATISS_E6A_00000040", visit_348)
+
+        # Run with forced update.
+        result = self.task.run(records.values(), skip_conflicting=True, update_records=True)
+
+        # Every record reports it was updated if we are updating, even if
+        # a record was not really changed.
+        self.assertEqual(result.n_skipped, 0, str(result))
+        self.assertEqual(result.n_fully_updated, 3, str(result))
+        visit_348 = self.butler.query_dimension_records("visit", where="visit.seq_num = 348")[0]
+        self.assertEqual(visit_348.target_name, "new target", visit_348)
 
 
 if __name__ == "__main__":

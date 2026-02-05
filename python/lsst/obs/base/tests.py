@@ -55,6 +55,8 @@ class ObsTests(butler_tests.ButlerGetTests, camera_tests.CameraTests):
 
     Inherit from this class, then lsst.utils.tests.TestCase, in that order.
 
+    Examples
+    --------
     Example subclass:
 
     .. code-block:: python

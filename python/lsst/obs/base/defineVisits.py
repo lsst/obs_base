@@ -22,6 +22,8 @@
 from __future__ import annotations
 
 __all__ = [
+    "ComputeVisitRegionsConfig",
+    "ComputeVisitRegionsTask",
     "DefineVisitsConfig",
     "DefineVisitsTask",
     "GroupExposuresConfig",
@@ -43,6 +45,7 @@ from typing import Any, ClassVar, TypeVar, cast
 import lsst.geom
 from lsst.afw.cameraGeom import FOCAL_PLANE, PIXELS
 from lsst.daf.butler import Butler, DataId, DimensionRecord, Progress, Timespan
+from lsst.daf.butler.registry import ConflictingDefinitionError
 from lsst.geom import Box2D
 from lsst.pex.config import Config, Field, makeRegistry, registerConfigurable
 from lsst.pipe.base import Struct, Task
@@ -179,7 +182,7 @@ class GroupExposuresTask(Task, metaclass=ABCMeta):
     config : `GroupExposuresConfig`
         Configuration information.
     **kwargs
-        Additional keyword arguments forwarded to the `lsst.pipe.baseTask`
+        Additional keyword arguments forwarded to the `lsst.pipe.base.Task`
         constructor.
     """
 
@@ -256,7 +259,7 @@ class GroupExposuresTask(Task, metaclass=ABCMeta):
 
         Returns
         -------
-        visits : `Iterable` [ `VisitDefinitionData` ]
+        visits : `~collections.abc.Iterable` [ `VisitDefinitionData` ]
             Structs identifying the visits and the exposures associated with
             them.  This may be an iterator or a container.
         """
@@ -268,7 +271,7 @@ class GroupExposuresTask(Task, metaclass=ABCMeta):
 
         Returns
         -------
-        visit_systems : `Set` [`VisitSystem`]
+        visit_systems : `set` [`VisitSystem`]
             The visit systems used by this algorithm.
         """
         raise NotImplementedError()
@@ -305,7 +308,8 @@ class ComputeVisitRegionsTask(Task, metaclass=ABCMeta):
     butler : `lsst.daf.butler.Butler`
         The butler to use.
     **kwargs
-        Additional keyword arguments forwarded to the `Task` constructor.
+        Additional keyword arguments forwarded to the `~lsst.pipe.base.Task`
+        constructor.
     """
 
     def __init__(self, config: ComputeVisitRegionsConfig, *, butler: Butler, **kwargs: Any):
@@ -359,7 +363,7 @@ class ComputeVisitRegionsTask(Task, metaclass=ABCMeta):
         ----------
         visit : `VisitDefinitionData`
             Struct describing the visit and the exposures associated with it.
-        collections : `Sequence` [ `str` ] or `str` or `None`
+        collections : `collections.abc.Sequence` [ `str` ] or `str` or `None`
             Collections to be searched for camera geometry, overriding
             ``self.butler.collections.defaults``. Can be any of the types
             supported by the ``collections`` argument to butler construction.
@@ -477,7 +481,7 @@ class DefineVisitsTask(Task):
         definition : `VisitDefinitionData`
             Struct with identifiers for the visit and records for its
             constituent exposures.
-        collections : `Sequence` [ `str` ] or `str` or `None`
+        collections : `collections.abc.Sequence` [ `str` ] or `str` or `None`
             Collections to be searched for camera geometry, overriding
             ``self.butler.collections.defaults``. Can be any of the types
             supported by the ``collections`` argument to butler construction.
@@ -626,18 +630,19 @@ class DefineVisitsTask(Task):
         collections: Sequence[str] | str | None = None,
         update_records: bool = False,
         incremental: bool = False,
+        skip_conflicting: bool = False,
     ) -> Struct:
         """Add visit definitions to the registry for the given exposures.
 
         Parameters
         ----------
-        dataIds_or_records : `Iterable` [ `dict` or \
+        dataIds_or_records : `~collections.abc.Iterable` [ `dict` or \
               `~lsst.daf.butler.DataCoordinate` or \
               `~lsst.daf.butler.DimensionRecord` ]
             Exposure-level data IDs or explicit exposure records.  These must
             all correspond to the same instrument, and are expected to be
             on-sky science exposures.
-        collections : `Sequence` [ `str` ] or `str` or `None`
+        collections : `~collections.abc.Sequence` [ `str` ] or `str` or `None`
             Collections to be searched for camera geometry, overriding
             ``self.butler.collections.defaults``. Can be any of the types
             supported by the ``collections`` argument to butler construction.
@@ -656,6 +661,11 @@ class DefineVisitsTask(Task):
             changes. If there is any risk that files are being ingested
             incrementally it is critical that this parameter is set to `True`
             and not to rely on ``update_records``.
+        skip_conflicting : `bool`, optional
+            If `True` do not raise an error if there is a change in an existing
+            visit definition. This can be used if you solely want to define
+            visits that were somehow missed previously. It has no effect if
+            ``update_records`` is `True` or incremental mode is enabled.
 
         Returns
         -------
@@ -778,11 +788,16 @@ class DefineVisitsTask(Task):
         ):
             visitRecords = self._buildVisitRecords(visitDefinition, collections=collections)
             with self.butler.registry.transaction():
-                inserted_or_updated = self.butler.registry.syncDimensionData(
-                    "visit",
-                    visitRecords.visit,
-                    update=(update_records or incremental),
-                )
+                try:
+                    inserted_or_updated = self.butler.registry.syncDimensionData(
+                        "visit",
+                        visitRecords.visit,
+                        update=(update_records or incremental),
+                    )
+                except ConflictingDefinitionError:
+                    if not skip_conflicting:
+                        raise
+                    inserted_or_updated = False
                 if inserted_or_updated or update_records:
                     if inserted_or_updated is True:
                         # This is a new visit, not an update to an existing

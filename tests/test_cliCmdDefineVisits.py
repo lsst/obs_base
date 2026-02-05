@@ -45,7 +45,12 @@ class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
         self.run_test(
             ["define-visits", "here", "a.b.c"],
             self.makeExpected(
-                repo="here", instrument="a.b.c", where="", update_records=False, incremental=False
+                repo="here",
+                instrument="a.b.c",
+                where="",
+                update_records=False,
+                incremental=False,
+                skip_conflicting=False,
             ),
         )
 
@@ -66,6 +71,7 @@ class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
                 "x=y",
                 "--incremental",
                 "--update-records",
+                "--skip-conflicting",
             ],
             self.makeExpected(
                 repo="here",
@@ -79,6 +85,7 @@ class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
                 where="x=y",
                 update_records=True,
                 incremental=True,
+                skip_conflicting=True,
             ),
         )
 

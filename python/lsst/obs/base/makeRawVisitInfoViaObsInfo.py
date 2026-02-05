@@ -68,9 +68,8 @@ class MakeRawVisitInfoViaObsInfo:
     Parameters
     ----------
     log : `logging.Logger` or None
-        Logger to use for messages.
-        (None to use
-        ``Log.getLogger("lsst.obs.base.makeRawVisitInfoViaObsInfo")``).
+        Logger to use for messages. If `None` uses a logger named
+        "lsst.obs.base.makeRawVisitInfoViaObsInfo".
     doStripHeader : `bool`, optional
         Strip header keywords from the metadata as they are used?
     """

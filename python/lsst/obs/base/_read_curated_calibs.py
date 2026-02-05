@@ -65,7 +65,7 @@ def read_one_calib(
     filter_name : `str` or None
         The identifier for the filter in question.  To be used in
         validation.
-    calib_class : `Any`
+    calib_class : `typing.Any`
         The class to use to read the curated calibration text file. Must
         support the ``readText()`` method.
 
@@ -208,7 +208,7 @@ def read_all(
         lower case.
     camera : `lsst.afw.cameraGeom.Camera`
         The camera that goes with the data being read.
-    calib_class : `Any`
+    calib_class : `typing.Any`
         The class to use to read the curated calibration text file. Must
         support the ``readText()`` and ``getMetadata()`` methods.
     required_dimensions : `list` [`str`]

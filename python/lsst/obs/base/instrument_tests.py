@@ -79,7 +79,7 @@ class DummyCamYamlWcsFormatter(YamlFormatter):
         """Class method to make a raw sky WCS from boresight and detector.
 
         This uses the API expected by define-visits. A working example
-        can be found in `FitsRawFormatterBase`.
+        can be found in `~lsst.obs.base.FitsRawFormatterBase`.
 
         Notes
         -----
@@ -140,7 +140,7 @@ class DummyCam(Instrument):
 
     def register(self, registry: Registry, *, update: bool = False) -> None:
         """Insert Instrument, physical_filter, and detector entries into a
-        `Registry`.
+        `~lsst.daf.butler.Registry`.
         """
         detector_max = 2
         dataId = {
@@ -166,7 +166,7 @@ class DummyCam(Instrument):
                 )
 
     def getRawFormatter(self, dataId: DataId) -> type[Formatter | FormatterV2]:
-        # Docstring inherited fromt Instrument.getRawFormatter.
+        # Docstring inherited from Instrument.getRawFormatter.
         return DummyCamYamlWcsFormatter
 
     def applyConfigOverrides(self, name: str, config: lsst.pex.config.Config) -> None:
@@ -215,10 +215,10 @@ class InstrumentTestData:
 
 
 class InstrumentTests(metaclass=abc.ABCMeta):
-    """Tests of sublcasses of Instrument.
+    """Tests of subclasses of Instrument.
 
-    TestCase subclasses must derive from this, then `TestCase`, and override
-    ``data`` and ``instrument``.
+    TestCase subclasses must derive from this, then `unittest.TestCase`, and
+    override ``data`` and ``instrument``.
     """
 
     if TYPE_CHECKING:

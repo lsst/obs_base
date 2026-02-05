@@ -43,7 +43,7 @@ def writeCuratedCalibrations(
         ranges.
         Can be `None` in which case the collection name will be determined
         automatically.
-    labels : `Sequence` [ `str` ]
+    labels : `collections.abc.Sequence` [ `str` ]
         Extra strings to include in the names of collections that datasets are
         inserted directly into, and if ``collection`` is `None`, the automatic
         calibration collection name as well.
