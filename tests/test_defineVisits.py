@@ -137,7 +137,9 @@ class DefineVisitsTestCase(unittest.TestCase, DefineVisitsBase):
             shutil.rmtree(self.root, ignore_errors=True)
 
     def get_config(self) -> DefineVisitsConfig:
-        return DefineVisitsTask.ConfigClass()
+        config = DefineVisitsTask.ConfigClass()
+        config.groupExposures.name = "one-to-one-and-by-counter"
+        return config
 
     def assertVisits(self):
         """Check that the visits were registered as expected."""
