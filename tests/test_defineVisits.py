@@ -306,7 +306,7 @@ class DefineVisitsOneToOneTestCase(unittest.TestCase, DefineVisitsBase):
         definitions = list(self.butler.registry.queryDimensionRecords("visit_definition"))
         for defn in definitions:
             defmap[defn.visit].add(defn.exposure)
-        print(definitions)
+
         self.assertEqual(
             dict(defmap),
             {
