@@ -384,7 +384,7 @@ class DefineVisitsConfig(Config):
 
     groupExposures = GroupExposuresTask.registry.makeField(
         doc="Algorithm for grouping exposures into visits.",
-        default="one-to-one-and-by-counter",
+        default="one-to-one",
     )
     computeVisitRegions = ComputeVisitRegionsTask.registry.makeField(
         doc="Algorithm from computing visit and visit+detector regions.",
