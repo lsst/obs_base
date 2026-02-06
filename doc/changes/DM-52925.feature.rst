@@ -1,3 +1,0 @@
-* Added support for ingest of raw zips.
-* Added new command ``update-exposures-from-raws`` to recalculate exposure records from raw image metadata.
-  This can work with zipped raws and standalone files.

@@ -1,3 +1,23 @@
+obs_base v30.0.2 (2026-02-06)
+=============================
+
+New Features
+------------
+
+- * Added support for ingest of raw zips.
+  * Added new command ``update-exposures-from-raws`` to recalculate exposure records from raw image metadata.
+    This can work with zipped raws and standalone files. (`DM-52925 <https://rubinobs.atlassian.net/browse/DM-52925>`_)
+- Optimized ingest raws to support summit operations.
+
+  * Now report timing information on ingest completion including separating out butler timings from metadata extraction.
+  * Added a new callback that is called whenever a dimension record is created.
+  * Changed defineVisits to allow it to be called with dimension records in addition to data coordinates.
+  * Switched from `multiprocessing.Pool` to `concurrent.futures.ThreadPoolExecutor`, resulting in significant speed ups for large numbers of files.
+  * Added ability to declare that there are no per-directory index files.
+  * Changed how sidecar files are read to prevent an unnecessary round trip to remote object stores if the file does exist. (`DM-53882 <https://rubinobs.atlassian.net/browse/DM-53882>`_)
+- Added ``--skip-conflicting`` option to ``butler define-visits`` which allows new visits to be defined without changing any existing definitions. (`DM-54045 <https://rubinobs.atlassian.net/browse/DM-54045>`_)
+
+
 obs_base v30.0.0 (2026-01-16)
 =============================
 
