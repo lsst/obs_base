@@ -24,7 +24,6 @@ from __future__ import annotations
 __all__ = ("Instrument", "loadCamera", "makeExposureRecordFromObsInfo")
 
 import logging
-import os.path
 import re
 from abc import abstractmethod
 from collections import defaultdict
@@ -47,6 +46,7 @@ from lsst.daf.butler import (
 )
 from lsst.daf.butler.registry import DataIdError
 from lsst.pipe.base import Instrument as InstrumentBase
+from lsst.resources import ResourcePath
 from lsst.utils import doImport, getPackageDir
 
 from ._read_curated_calibs import CuratedCalibration, read_all
@@ -202,10 +202,31 @@ class Instrument(InstrumentBase):
         dir : `str` or `None`
             The root of the relevant obs data package, or `None` if this
             instrument does not have one.
+
+        Notes
+        -----
+        This is a less portable version of ``getObsDataPackageRoot``. Please
+        use that method in new code.
         """
         if cls.obsDataPackage is None:
             return None
         return getPackageDir(cls.obsDataPackage)
+
+    @classmethod
+    @lru_cache
+    def getObsDataPackageRoot(cls) -> ResourcePath | None:
+        """Return the root of the obs data package that provides
+        specializations for this instrument.
+
+        Returns
+        -------
+        dir : `lsst.resources.ResourcePath` or `None`
+            The root URI of the file resources of the relevant obs data
+            package, or `None` if this instrument does not have one.
+        """
+        if cls.obsDataPackage is None:
+            return None
+        return ResourcePath(f"eups://{cls.obsDataPackage}/", forceDirectory=True)
 
     def _registerFilters(self, registry: Registry, update: bool = False) -> None:
         """Register the physical and abstract filter Dimension relationships.
@@ -425,7 +446,7 @@ class Instrument(InstrumentBase):
             )
 
     @classmethod
-    def _getSpecificCuratedCalibrationPath(cls, datasetTypeName: str) -> str | None:
+    def _getSpecificCuratedCalibrationPath(cls, datasetTypeName: str) -> ResourcePath | None:
         """Return the path of the curated calibration directory.
 
         Parameters
@@ -440,7 +461,7 @@ class Instrument(InstrumentBase):
             dataset type is not found or the obs data package is not
             available.
         """
-        data_package_dir = cls.getObsDataPackageDir()
+        data_package_dir = cls.getObsDataPackageRoot()
         if data_package_dir is None:
             # if there is no data package then there can't be datasets
             return None
@@ -448,9 +469,9 @@ class Instrument(InstrumentBase):
         if cls.policyName is None:
             raise TypeError(f"Instrument {cls.getName()} has an obs data package but no policy name.")
 
-        calibPath = os.path.join(data_package_dir, cls.policyName, datasetTypeName)
+        calibPath = data_package_dir.join(cls.policyName).join(datasetTypeName, forceDirectory=True)
 
-        if os.path.exists(calibPath):
+        if calibPath.exists():
             return calibPath
 
         return None
