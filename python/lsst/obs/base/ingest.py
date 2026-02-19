@@ -735,6 +735,7 @@ class RawIngestTask(Task):
                 bad_index_files.add(file)
                 continue
             self.log.debug("Extracted index metadata from zip file %s", str(file))
+            good_index_files.add(file)
 
             # All the metadata read from this index file with keys of full
             # path.
@@ -747,7 +748,9 @@ class RawIngestTask(Task):
             for path_in_zip in index:
                 if path_in_zip not in zip_info:
                     # Index entry exists but no file for it.
-                    self.log.info("File {path_in_zip} is in zip index but not in zip file {file}. Ignoring.")
+                    self.log.info(
+                        "File %s is in zip index but not in zip file %s. Ignoring.", path_in_zip, file
+                    )
                     continue
                 file_to_ingest = file.replace(fragment=f"zip-path={path_in_zip}")
                 index_entries[file_to_ingest] = index[path_in_zip]
@@ -927,7 +930,12 @@ class RawIngestTask(Task):
         # is good for testing but does have a cost if there are many
         # files when copying the good values out. A dict would have faster
         # lookups (using the files as keys) but use more memory.
-        ordered = [f for f in filtered if f in files]
+        ordered: list[ResourcePath] = []
+        seen: set[ResourcePath] = set()
+        for f in files:
+            if f in filtered and f not in seen:
+                ordered.append(f)
+                seen.add(f)
 
         return index_entries, ordered, good_index_files, bad_index_files
 
@@ -1202,7 +1210,7 @@ class RawIngestTask(Task):
 
         # Merge information from zips and standalone index files.
         good_index_files.update(good_zip_files)
-        bad_index_files.update(bad_index_files)
+        bad_index_files.update(bad_zip_files)
 
         # Now convert all the index file entries to standard form for ingest.
         processed_bad_index_files: list[ResourcePath] = []
