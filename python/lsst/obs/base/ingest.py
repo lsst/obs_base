@@ -930,7 +930,12 @@ class RawIngestTask(Task):
         # is good for testing but does have a cost if there are many
         # files when copying the good values out. A dict would have faster
         # lookups (using the files as keys) but use more memory.
-        ordered = [f for f in filtered if f in files]
+        ordered: list[ResourcePath] = []
+        seen: set[ResourcePath] = set()
+        for f in files:
+            if f in filtered and f not in seen:
+                ordered.append(f)
+                seen.add(f)
 
         return index_entries, ordered, good_index_files, bad_index_files
 
