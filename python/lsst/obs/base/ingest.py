@@ -747,7 +747,9 @@ class RawIngestTask(Task):
             for path_in_zip in index:
                 if path_in_zip not in zip_info:
                     # Index entry exists but no file for it.
-                    self.log.info("File {path_in_zip} is in zip index but not in zip file {file}. Ignoring.")
+                    self.log.info(
+                        "File %s is in zip index but not in zip file %s. Ignoring.", path_in_zip, file
+                    )
                     continue
                 file_to_ingest = file.replace(fragment=f"zip-path={path_in_zip}")
                 index_entries[file_to_ingest] = index[path_in_zip]
