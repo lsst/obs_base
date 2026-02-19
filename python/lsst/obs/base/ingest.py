@@ -1205,7 +1205,7 @@ class RawIngestTask(Task):
 
         # Merge information from zips and standalone index files.
         good_index_files.update(good_zip_files)
-        bad_index_files.update(bad_index_files)
+        bad_index_files.update(bad_zip_files)
 
         # Now convert all the index file entries to standard form for ingest.
         processed_bad_index_files: list[ResourcePath] = []
