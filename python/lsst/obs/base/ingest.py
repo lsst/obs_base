@@ -735,6 +735,7 @@ class RawIngestTask(Task):
                 bad_index_files.add(file)
                 continue
             self.log.debug("Extracted index metadata from zip file %s", str(file))
+            good_index_files.add(file)
 
             # All the metadata read from this index file with keys of full
             # path.
