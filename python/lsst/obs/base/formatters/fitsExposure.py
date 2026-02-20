@@ -165,6 +165,11 @@ class FitsImageFormatterBase(FormatterV2):
 
     def read_from_local_file(self, path: str, component: str | None = None, expected_size: int = -1) -> Any:
         # Docstring inherited.
+        if self.dataset_ref.datasetType.storageClass_name == "VisitImage":
+            from lsst.images import VisitImage
+
+            return VisitImage.read_legacy(path, component=component, preserve_quantization=True)
+
         # The methods doing the reading all currently assume local file
         # and assume that the file descriptor refers to a local file.
         # With FormatterV2 that file descriptor does not refer to a local
