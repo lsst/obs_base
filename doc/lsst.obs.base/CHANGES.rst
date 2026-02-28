@@ -1,3 +1,14 @@
+obs_base v30.0.5 (2026-02-28)
+=============================
+
+Other Changes and Additions
+---------------------------
+
+- * Added ``Instrument.getObsDataPackageRoot`` to specify data package locations in terms of generic URIs instead of EUPS package names.
+  * Modified write-curated-calibrations to internally work with ``lsst.resources.ResourcePath`` instead of local file paths.
+    This allows ``Instrument`` classes to specify data packages using ``resource`` or ``eups`` URIs as well as ``file`` URIs. (`DM-50999 <https://rubinobs.atlassian.net/browse/DM-50999>`_)
+
+
 obs_base v30.0.2 (2026-02-06)
 =============================
 
