@@ -1,4 +1,4 @@
-obs_base v30.0.5 (2026-02-28)
+obs_base v30.0.4 (2026-02-28)
 =============================
 
 Other Changes and Additions
