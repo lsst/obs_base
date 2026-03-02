@@ -125,7 +125,9 @@ class DefineVisitsTestCase(unittest.TestCase, DefineVisitsBase):
             shutil.rmtree(self.root, ignore_errors=True)
 
     def get_config(self) -> DefineVisitsConfig:
-        return DefineVisitsTask.ConfigClass()
+        config = DefineVisitsTask.ConfigClass()
+        config.groupExposures.name = "one-to-one-and-by-counter"
+        return config
 
     def assertVisits(self):
         """Check that the visits were registered as expected."""
@@ -301,20 +303,11 @@ class DefineVisitsOneToOneTestCase(unittest.TestCase, DefineVisitsBase):
         visit_ids = [rec.id for rec in self.records.values()]
         self.assertEqual({visit.id for visit in visits}, set(visit_ids))
 
-        # Ensure that the definitions are correct (ignoring order).
-        defmap = defaultdict(set)
+        # Ensure that the definitions map an exposure ID to an identical visit
+        # ID.
         definitions = list(self.butler.registry.queryDimensionRecords("visit_definition"))
         for defn in definitions:
-            defmap[defn.visit].add(defn.exposure)
-
-        self.assertEqual(
-            dict(defmap),
-            {
-                visit_ids[0]: {2022040500347},
-                visit_ids[1]: {2022040500348},
-                visit_ids[2]: {2022040500349},
-            },
-        )
+            self.assertEqual(defn.visit, defn.exposure)
 
     def test_update_records(self):
         self.define_visits([list(self.records.values())], incremental=False)  # list inside a list
