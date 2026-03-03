@@ -688,7 +688,7 @@ class DefineVisitsTask(Task):
         self.log.info("Preprocessing data IDs.")
         dimensions = self.universe.conform(["exposure"])
 
-        exposures: list[DimensionRecord] = []
+        exposure_records: set[DimensionRecord] = set()
         instruments: set[str] = set()
         instrument_cls_name: str | None = None
         instrument_record: DimensionRecord | None = None
@@ -726,7 +726,9 @@ class DefineVisitsTask(Task):
                     )
             instrument_name = record.instrument
             instruments.add(instrument_name)
-            exposures.append(record)
+            exposure_records.add(record)
+        # Downstream APIs expect a list of records, not a set.
+        exposures = list(exposure_records)
         if not exposures:
             self.log.info("No on-sky exposures found after filtering.")
             return Struct(n_visits=0, n_skipped=0, n_new=0, n_partially_updated=0, n_fully_updated=0)

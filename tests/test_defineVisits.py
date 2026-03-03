@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import logging
 import os
 import pickle
 import shutil
@@ -105,13 +106,24 @@ class DefineVisitsBase:
                         "day_obs", dict(instrument=rec.instrument, id=rec.day_obs)
                     )
 
-            self.butler.registry.insertDimensionData("exposure", *records)
+            deduped_records = set(records)
+            self.butler.registry.insertDimensionData("exposure", *deduped_records)
             # Include all records so far in definition.
             if self.use_data_ids:
                 dataIds = list(self.butler.registry.queryDataIds("exposure", instrument="DummyCam"))
             else:
                 dataIds = records
-            self.task.run(dataIds, incremental=incremental)
+
+            if not incremental:
+                # Force duplicate records in non-incremental mode to ensure
+                # that the task can deduplicate.
+                dataIds.extend(dataIds)
+                n_exposures = len(self.records)
+                with self.assertLogs(level=logging.INFO) as cm:
+                    self.task.run(dataIds, incremental=incremental)
+                self.assertIn(f"Grouping {n_exposures} exposure(s) into visits", "\n".join(cm.output))
+            else:
+                self.task.run(dataIds, incremental=incremental)
 
 
 class DefineVisitsTestCase(unittest.TestCase, DefineVisitsBase):
