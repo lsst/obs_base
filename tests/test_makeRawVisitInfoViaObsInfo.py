@@ -21,9 +21,15 @@
 
 import unittest
 
+import astropy.coordinates
 import astropy.units as u
 import numpy as np
 from astro_metadata_translator import FitsTranslator, ObservationInfo, StubTranslator
+from astro_metadata_translator.translators.helpers import (
+    altaz_from_degree_headers,
+    tracking_from_degree_headers,
+)
+from astropy.coordinates import EarthLocation
 from astropy.time import Time
 
 import lsst.afw.image
@@ -31,27 +37,47 @@ from lsst.daf.base import DateTime
 from lsst.obs.base import MakeRawVisitInfoViaObsInfo
 
 
+def _q_to_float(q: u.Quantity, unit: u.UnitBase | str) -> float:
+    values = q.to_value(unit=unit)
+    if isinstance(values, np.ndarray):
+        raise ValueError(
+            f"Converting quantity to a float failed because unexpectedly got more than one float: {values}"
+        )
+    return float(values)
+
+
 class NewTranslator(FitsTranslator, StubTranslator):
     """Metadata translator to use for tests."""
 
     _trivial_map = {
-        "exposure_time": "EXPTIME",
+        "exposure_time": ("EXPTIME", {"unit": u.s}),
+        "dark_time": ("DARKTM", {"unit": u.s}),
         "exposure_id": "EXP-ID",
+        "boresight_airmass": "AMASS",
+        "boresight_rotation_angle": ("SKYROT", {"unit": u.deg}),
+        "boresight_rotation_coord": "SKYC",
         "observation_type": "OBSTYPE",
         "science_program": "PROGRAM",
         "observation_reason": "REASON",
         "object": "OBJECT",
         "has_simulated_content": "SIMULATE",
+        "relative_humidity": "RELHUM",
+        "temperature": ("AIR_TEMP", {"unit": u.deg_C}),
+        "pressure": ("PRESSURE", {"unit": u.kPa}),
+        "focus_z": ("FOCUSZ", {"unit": u.mm}),
     }
 
     def to_location(self):
-        return None
+        return EarthLocation.from_geodetic(-70.747698, -30.244728, 2663.0)
 
     def to_detector_exposure_id(self):
         return self.to_exposure_id()
 
-    def to_focus_z(self):
-        return self._header["FOCUSZ"]
+    def to_tracking_radec(self) -> astropy.coordinates.SkyCoord | None:
+        return tracking_from_degree_headers(self, ["RADESYS"], (("RA_DEG", "DEC_DEG"),))
+
+    def to_altaz_begin(self) -> astropy.coordinates.AltAz | None:
+        return altaz_from_degree_headers(self, (("TELALT", "TELAZ"),), self.to_datetime_begin())
 
 
 class MakeTestableVisitInfo(MakeRawVisitInfoViaObsInfo):
@@ -66,10 +92,12 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
     def setUp(self):
         # Reference values
         self.exposure_time = 6.2 * u.s
+        self.dark_time = 7.0 * u.s
+        self.boresight_airmass = 1.5
         self.exposure_id = 54321
         self.datetime_begin = Time("2001-01-02T03:04:05.123456789", format="isot", scale="utc")
         self.datetime_begin.precision = 9
-        self.datetime_end = Time("2001-01-02T03:04:07.123456789", format="isot", scale="utc")
+        self.datetime_end = self.datetime_begin + self.exposure_time
         self.datetime_end.precision = 9
         self.focus_z = 1.5 * u.mm
 
@@ -79,9 +107,12 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
             "INSTRUME": "SomeCamera",
             "TELESCOP": "LSST",
             "TIMESYS": "UTC",
-            "EXPTIME": self.exposure_time,
+            "SKYROT": 45.0,
+            "SKYC": "sky",
+            "EXPTIME": _q_to_float(self.exposure_time, u.s),
+            "DARKTM": _q_to_float(self.dark_time, u.s),
             "EXP-ID": self.exposure_id,
-            "FOCUSZ": self.focus_z,
+            "FOCUSZ": _q_to_float(self.focus_z, u.mm),
             "EXTRA1": "an abitrary key and value",
             "EXTRA2": 5,
             "OBSTYPE": "test type",
@@ -89,6 +120,15 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
             "REASON": "test reason",
             "OBJECT": "test object",
             "SIMULATE": True,
+            "RELHUM": 42.0,
+            "AIR_TEMP": 1.0,
+            "PRESSURE": 101.0,
+            "AMASS": self.boresight_airmass,
+            "RADESYS": "FK5",
+            "RA_DEG": 45.0,
+            "DEC_DEG": -30.0,
+            "TELALT": 60.0,
+            "TELAZ": 180.0,
         }
 
     def testMakeRawVisitInfoViaObsInfo(self):
@@ -98,17 +138,16 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
         # Capture the warnings from StubTranslator since they are
         # confusing to people but irrelevant for the test.
         with self.assertWarns(UserWarning):
-            with self.assertLogs(level="WARNING"):
-                visitInfo = maker(self.header)
+            visitInfo = maker(self.header)
 
-        self.assertAlmostEqual(visitInfo.getExposureTime(), self.exposure_time.to_value("s"))
+        self.assertAlmostEqual(visitInfo.getExposureTime(), _q_to_float(self.exposure_time, u.s))
         self.assertEqual(visitInfo.id, self.exposure_id)
-        self.assertEqual(visitInfo.getDate(), DateTime("2001-01-02T03:04:06.123456789Z", DateTime.UTC))
+        self.assertEqual(visitInfo.getDate(), DateTime("2001-01-02T03:04:08.223456789Z", DateTime.UTC))
         # The header can possibly grow with header fix up provenance.
         self.assertGreaterEqual(len(self.header), beforeLength)
         self.assertEqual(visitInfo.getInstrumentLabel(), "SomeCamera")
         # Check focusZ with default value from astro_metadata_translator
-        self.assertEqual(visitInfo.getFocusZ(), self.focus_z.to_value("mm"))
+        self.assertEqual(visitInfo.getFocusZ(), _q_to_float(self.focus_z, u.mm))
         self.assertEqual(visitInfo.observationType, "test type")
         self.assertEqual(visitInfo.scienceProgram, "test program")
         self.assertEqual(visitInfo.observationReason, "test reason")
@@ -134,15 +173,67 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
         with self.assertWarns(UserWarning):
             obsInfo = ObservationInfo(self.header, translator_class=NewTranslator)
 
-        # No log specified so no log message should appear
+        # Check that a couple of values look correct.
         visitInfo = MakeRawVisitInfoViaObsInfo.observationInfo2visitInfo(obsInfo)
         self.assertIsInstance(visitInfo, lsst.afw.image.VisitInfo)
-        self.assertAlmostEqual(visitInfo.getExposureTime(), self.exposure_time.to_value("s"))
+        self.assertAlmostEqual(visitInfo.getExposureTime(), _q_to_float(self.exposure_time, u.s))
         self.assertEqual(visitInfo.id, self.exposure_id)
-        self.assertEqual(visitInfo.getDate(), DateTime("2001-01-02T03:04:06.123456789Z", DateTime.UTC))
-        self.assertEqual(visitInfo.getInstrumentLabel(), "SomeCamera")
-        # Check focusZ with default value from astro_metadata_translator
-        self.assertEqual(visitInfo.getFocusZ(), self.focus_z.to_value("mm"))
+
+        # Convert it back to an ObservationInfo.
+        obsInfo2 = MakeRawVisitInfoViaObsInfo.visitInfo2observationInfo(visitInfo)
+
+        # We can not compare all fields because some fields are lost in
+        # conversion to VisitInfo.
+        to_compare = (
+            "datetime_begin",
+            "altaz_begin",
+            "boresight_airmass",
+            "boresight_rotation_angle",
+            "boresight_rotation_coord",
+            "dark_time",
+            "datetime_end",
+            "exposure_group",
+            "exposure_id",
+            "exposure_time",
+            "exposure_time_requested",
+            "focus_z",
+            "has_simulated_content",
+            "location",
+            "object",
+            "observation_reason",
+            "observation_type",
+            "observing_day",
+            "pressure",
+            "relative_humidity",
+            "science_program",
+            "temperature",
+            "tracking_radec",
+        )
+
+        for prop in to_compare:
+            previous = getattr(obsInfo, prop)
+            new = getattr(obsInfo2, prop)
+            with self.subTest(prop=prop):
+                match new:
+                    case astropy.coordinates.AltAz():
+                        self.assertAlmostEqual(new.az, previous.az)
+                        self.assertAlmostEqual(new.alt, previous.alt)
+                    case astropy.coordinates.SkyCoord():
+                        self.assertAlmostEqual(new.icrs.ra, previous.icrs.ra)
+                        self.assertAlmostEqual(new.icrs.dec, previous.icrs.dec)
+                    case astropy.coordinates.EarthLocation():
+                        for new_pos, previous_pos in zip(
+                            new.to_geocentric(), previous.to_geocentric(), strict=True
+                        ):
+                            self.assertAlmostEqual(new_pos, previous_pos)
+                    case astropy.time.Time():
+                        self.assertEqual(new, previous)
+                    case float() | u.Quantity():
+                        self.assertEqual(new, previous, f"Comparing float-like property {prop}")
+                    case int() | str():
+                        self.assertEqual(new, previous, f"Comparing int or string property {prop}")
+                    case _:
+                        raise RuntimeError(f"Encountered unexpected type for property {prop}")
 
 
 if __name__ == "__main__":
