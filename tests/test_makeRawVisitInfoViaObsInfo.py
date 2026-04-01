@@ -100,6 +100,7 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
         self.datetime_end = self.datetime_begin + self.exposure_time
         self.datetime_end.precision = 9
         self.focus_z = 1.5 * u.mm
+        self.pressure = 101.0 * u.kPa
 
         self.header = {
             "DATE-OBS": self.datetime_begin.isot,
@@ -122,7 +123,7 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
             "SIMULATE": True,
             "RELHUM": 42.0,
             "AIR_TEMP": 1.0,
-            "PRESSURE": 101.0,
+            "PRESSURE": _q_to_float(self.pressure, u.kPa),
             "AMASS": self.boresight_airmass,
             "RADESYS": "FK5",
             "RA_DEG": 45.0,
@@ -141,11 +142,25 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
             visitInfo = maker(self.header)
 
         self.assertAlmostEqual(visitInfo.getExposureTime(), _q_to_float(self.exposure_time, u.s))
+        self.assertAlmostEqual(visitInfo.getDarkTime(), _q_to_float(self.dark_time, u.s))
         self.assertEqual(visitInfo.id, self.exposure_id)
         self.assertEqual(visitInfo.getDate(), DateTime("2001-01-02T03:04:08.223456789Z", DateTime.UTC))
         # The header can possibly grow with header fix up provenance.
         self.assertGreaterEqual(len(self.header), beforeLength)
         self.assertEqual(visitInfo.getInstrumentLabel(), "SomeCamera")
+        self.assertAlmostEqual(visitInfo.getBoresightRaDec().getRa().asDegrees(), 45.0, places=5)
+        self.assertAlmostEqual(visitInfo.getBoresightRaDec().getDec().asDegrees(), -30.0, places=5)
+        self.assertAlmostEqual(visitInfo.getBoresightAzAlt().getLongitude().asDegrees(), 180.0, places=7)
+        self.assertAlmostEqual(visitInfo.getBoresightAzAlt().getLatitude().asDegrees(), 60.0, places=7)
+        self.assertEqual(visitInfo.getBoresightAirmass(), self.boresight_airmass)
+        self.assertAlmostEqual(visitInfo.getBoresightRotAngle().asDegrees(), 45.0)
+        self.assertEqual(visitInfo.getRotType(), lsst.afw.image.RotType.SKY)
+        self.assertAlmostEqual(visitInfo.getObservatory().getLongitude().asDegrees(), -70.747698)
+        self.assertAlmostEqual(visitInfo.getObservatory().getLatitude().asDegrees(), -30.244728)
+        self.assertAlmostEqual(visitInfo.getObservatory().getElevation(), 2663.0)
+        self.assertEqual(visitInfo.getWeather().getHumidity(), 42.0)
+        self.assertEqual(visitInfo.getWeather().getAirTemperature(), 1.0)
+        self.assertEqual(visitInfo.getWeather().getAirPressure(), _q_to_float(self.pressure, u.Pa))
         # Check focusZ with default value from astro_metadata_translator
         self.assertEqual(visitInfo.getFocusZ(), _q_to_float(self.focus_z, u.mm))
         self.assertEqual(visitInfo.observationType, "test type")
