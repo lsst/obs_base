@@ -41,11 +41,11 @@ except ImportError:
 
     ErfaWarning = None
 
-from astro_metadata_translator import MetadataTranslator, ObservationInfo
+from astro_metadata_translator import MetadataTranslator, ObservationInfo, VisitInfoTranslator
 
 from lsst.afw.coord import Observatory, Weather
-from lsst.afw.image import RotType, VisitInfo
-from lsst.daf.base import DateTime
+from lsst.afw.image import RotType, VisitInfo, setVisitInfoMetadata
+from lsst.daf.base import DateTime, PropertyList
 from lsst.geom import SpherePoint, degrees, radians
 
 if TYPE_CHECKING:
@@ -234,3 +234,34 @@ class MakeRawVisitInfoViaObsInfo:
                 del argDict[key]
 
         return VisitInfo(**argDict)
+
+    @staticmethod
+    def visitInfo2observationInfo(visitInfo: lsst.afw.image.VisitInfo) -> ObservationInfo:
+        """Construct a `~astro_metadata_translator.ObservationInfo` from a
+        `~lsst.afw.image.VisitInfo`.
+
+        Parameters
+        ----------
+        visitInfo : `lsst.afw.image.VisitInfo`
+            The object to convert.
+
+        Returns
+        -------
+        observationInfo : `~astro_metadata_translator.ObservationInfo`
+            New `~astro_metadata_translator.ObservationInfo` derived from
+            the supplied  `~lsst.afw.image.VisitInfo`.
+
+        Notes
+        -----
+        Since a `~lsst.afw.image.VisitInfo` has less information than a
+        `~astro_metadata_translator.ObservationInfo`, many fields in the
+        returned object will be `None`.
+        """
+        pl = PropertyList()
+        setVisitInfoMetadata(pl, visitInfo)
+
+        # Try the given header looking for VisitInfo hints.
+        # We get lots of warnings if nothing can be found. Currently
+        # no way to disable those without capturing them.
+        obs_info = ObservationInfo.from_header(pl, translator_class=VisitInfoTranslator, quiet=True)
+        return obs_info

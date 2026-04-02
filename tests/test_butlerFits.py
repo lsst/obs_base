@@ -29,6 +29,7 @@ import unittest.mock
 import uuid
 
 import astropy.table
+from astro_metadata_translator import ObservationInfo
 
 import lsst.afw.cameraGeom.testUtils  # for test asserts injected into TestCase
 import lsst.afw.image
@@ -374,6 +375,11 @@ class ButlerFitsTests(lsst.utils.tests.TestCase):
             outBBox = subset.getBBox()
             self.assertEqual(inBBox, outBBox)
             self.assertImagesEqual(subset.getImage(), exposure.subset(inBBox, origin=LOCAL).getImage())
+
+        # Check that VisitInfo converts properly.
+        obs_info = self.butler.get(ref.makeComponentRef("visitInfo"), storageClass="ObservationInfo")
+        self.assertIsInstance(obs_info, ObservationInfo)
+        self.assertEqual(obs_info.object, "STRIPE82L", f"{obs_info}")
 
         return ref
 
