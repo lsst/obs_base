@@ -1,1 +1,0 @@
-Fixed bug in visit definition that led to a slowdown in visit definitions due to exposure records not being deduplicated when extracting them from a list of data coordinates.
