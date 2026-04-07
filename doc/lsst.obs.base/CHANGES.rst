@@ -1,3 +1,18 @@
+obs_base v30.0.6 (2026-04-06)
+=============================
+
+New Features
+------------
+
+- Added ``visitInfo2observationInfo`` to convert a legacy ``VisitInfo`` back into an ``ObservationInfo``. (`DM-54514 <https://rubinobs.atlassian.net/browse/DM-54514>`_)
+
+
+Bug Fixes
+---------
+
+- Fixed bug in visit definition that led to a slowdown in visit definitions due to exposure records not being deduplicated when extracting them from a list of data coordinates. (`DM-54297 <https://rubinobs.atlassian.net/browse/DM-54297>`_)
+
+
 obs_base v30.0.4 (2026-02-28)
 =============================
 

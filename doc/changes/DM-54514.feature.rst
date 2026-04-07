@@ -1,1 +1,0 @@
-Added ``visitInfo2observationInfo`` to convert a legacy ``VisitInfo`` back into an ``ObservationInfo``.
