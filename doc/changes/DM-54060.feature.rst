@@ -1,0 +1,2 @@
+Changed the default visit definition to one-to-one.
+Rubin pipelines no longer expect to use multi-exposure visits and any previous visits taken in multi-exposure mode will now be treated as individual single-exposure visits.
