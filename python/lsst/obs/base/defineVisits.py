@@ -44,7 +44,7 @@ from typing import Any, ClassVar, TypeVar, cast
 
 import lsst.geom
 from lsst.afw.cameraGeom import FOCAL_PLANE, PIXELS
-from lsst.daf.butler import Butler, DataId, DimensionRecord, Progress, Timespan
+from lsst.daf.butler import Butler, DataCoordinate, DataId, DimensionRecord, Progress, Timespan
 from lsst.daf.butler.registry import ConflictingDefinitionError
 from lsst.geom import Box2D
 from lsst.pex.config import Config, Field, makeRegistry, registerConfigurable
@@ -688,7 +688,7 @@ class DefineVisitsTask(Task):
         self.log.info("Preprocessing data IDs.")
         dimensions = self.universe.conform(["exposure"])
 
-        exposure_records: set[DimensionRecord] = set()
+        exposure_records: dict[DataCoordinate, DimensionRecord] = {}
         instruments: set[str] = set()
         instrument_cls_name: str | None = None
         instrument_record: DimensionRecord | None = None
@@ -726,9 +726,9 @@ class DefineVisitsTask(Task):
                     )
             instrument_name = record.instrument
             instruments.add(instrument_name)
-            exposure_records.add(record)
-        # Downstream APIs expect a list of records, not a set.
-        exposures = list(exposure_records)
+            exposure_records[record.dataId] = record
+        # Downstream APIs expect a list of records, not a dict.
+        exposures = list(exposure_records.values())
         if not exposures:
             self.log.info("No on-sky exposures found after filtering.")
             return Struct(n_visits=0, n_skipped=0, n_new=0, n_partially_updated=0, n_fully_updated=0)
