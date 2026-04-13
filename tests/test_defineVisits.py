@@ -170,6 +170,20 @@ class DefineVisitsTestCase(unittest.TestCase, DefineVisitsBase):
         self.define_visits([list(self.records.values())], incremental=False)  # list inside a list
         self.assertVisits()
 
+    def test_prefilter(self):
+        self.define_visits([list(self.records.values())], incremental=False)
+        self.assertVisits()
+        with self.assertLogs(level=logging.INFO) as cm:
+            result = self.task.run(self.records.values(), incremental=False, prefilter=True)
+        self.assertIn(
+            f"Filtered out {len(self.records)} on-sky exposure(s) (of {len(self.records)}) that were "
+            "already associated with a visit.",
+            "\n".join(cm.output),
+        )
+        self.assertEqual(result.n_filtered, len(self.records))
+        self.assertEqual(result.n_visits, 0)
+        self.assertEqual(result.n_skipped, 0)
+
     def test_incremental_cumulative(self):
         # Define the visits after each exposure.
         self.define_visits(list(self.records.values()), incremental=True)

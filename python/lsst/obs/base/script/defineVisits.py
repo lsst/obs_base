@@ -36,6 +36,7 @@ def defineVisits(
     update_records: bool = False,
     incremental: bool = False,
     skip_conflicting: bool = False,
+    prefilter: bool = False,
 ) -> None:
     """Implement the command line interface `butler define-visits` subcommand,
     should only be called by command line tools and unit test code that tests
@@ -70,6 +71,12 @@ def defineVisits(
         visit definition. This can be used if you solely want to define
         visits that were somehow missed previously. It has no effect if
         ``update_records`` is `True` or incremental mode is enabled.
+    prefilter : `bool`, optional
+        If `True`, filter out exposures that already have a visit defined
+        by querying in advance.  This is not compatible with
+        ``incremental=True`` or ``update_records=True``.  Note that for
+        exposures that may be associated with multiple visits, the presence
+        of any existing visit will cause that exposure to be skipped entirely.
 
     Notes
     -----
@@ -114,4 +121,5 @@ def defineVisits(
             update_records=update_records,
             incremental=incremental,
             skip_conflicting=skip_conflicting,
+            prefilter=prefilter,
         )

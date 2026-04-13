@@ -51,6 +51,7 @@ class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
                 update_records=False,
                 incremental=False,
                 skip_conflicting=False,
+                prefilter=False,
             ),
         )
 
@@ -86,6 +87,7 @@ class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
                 update_records=True,
                 incremental=True,
                 skip_conflicting=True,
+                prefilter=False,
             ),
         )
 

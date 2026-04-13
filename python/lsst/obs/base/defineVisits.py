@@ -39,12 +39,14 @@ import math
 import operator
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
+from contextlib import contextmanager
 from typing import Any, ClassVar, TypeVar, cast
 
 import lsst.geom
 from lsst.afw.cameraGeom import FOCAL_PLANE, PIXELS
 from lsst.daf.butler import Butler, DataCoordinate, DataId, DimensionRecord, Progress, Timespan
+from lsst.daf.butler.queries import Query
 from lsst.daf.butler.registry import ConflictingDefinitionError
 from lsst.geom import Box2D
 from lsst.pex.config import Config, Field, makeRegistry, registerConfigurable
@@ -631,6 +633,7 @@ class DefineVisitsTask(Task):
         update_records: bool = False,
         incremental: bool = False,
         skip_conflicting: bool = False,
+        prefilter: bool = False,
     ) -> Struct:
         """Add visit definitions to the registry for the given exposures.
 
@@ -666,6 +669,13 @@ class DefineVisitsTask(Task):
             visit definition. This can be used if you solely want to define
             visits that were somehow missed previously. It has no effect if
             ``update_records`` is `True` or incremental mode is enabled.
+        prefilter : `bool`, optional
+            If `True`, filter out exposures that already have a visit defined
+            by querying in advance.  This is not compatible with
+            ``incremental=True`` or ``update_records=True``.  Note that for
+            exposures that may be associated with multiple visits, the
+            presence of any existing visit will cause that exposure to be
+            skipped entirely.
 
         Returns
         -------
@@ -676,7 +686,9 @@ class DefineVisitsTask(Task):
             - n_skipped: number of visits that were already present left alone
             - n_new: number of new visits inserted
             - n_fully_updated: number of existing visits fully updated
-            - n_partially_updated: number of visits with non-geometry updates.
+            - n_partially_updated: number of visits with non-geometry updates
+            - n_filtered: number of exposures dropped because they were
+              already associated with visits.
 
         Raises
         ------
@@ -684,6 +696,9 @@ class DefineVisitsTask(Task):
             Raised if a visit ID conflict is detected and the existing visit
             differs from the new one.
         """
+        if prefilter and (update_records or incremental):
+            raise TypeError("prefilter=True cannot be used with update_records=True or incremental=True")
+
         # Normalize, expand, and deduplicate data IDs.
         self.log.info("Preprocessing data IDs.")
         dimensions = self.universe.conform(["exposure"])
@@ -727,11 +742,24 @@ class DefineVisitsTask(Task):
             instrument_name = record.instrument
             instruments.add(instrument_name)
             exposure_records[record.dataId] = record
+
+        n_filtered = 0
+        if prefilter:
+            with self._query_exposures(exposure_records) as query:
+                n_filtered = self._prefilter(exposure_records, query)
+
         # Downstream APIs expect a list of records, not a dict.
         exposures = list(exposure_records.values())
         if not exposures:
             self.log.info("No on-sky exposures found after filtering.")
-            return Struct(n_visits=0, n_skipped=0, n_new=0, n_partially_updated=0, n_fully_updated=0)
+            return Struct(
+                n_visits=0,
+                n_skipped=0,
+                n_new=0,
+                n_partially_updated=0,
+                n_fully_updated=0,
+                n_filtered=n_filtered,
+            )
         if len(instruments) > 1:
             raise RuntimeError(
                 "All data IDs passed to DefineVisitsTask.run must be "
@@ -896,7 +924,27 @@ class DefineVisitsTask(Task):
             n_new=n_new,
             n_fully_updated=n_fully_updated,
             n_partially_updated=n_partially_updated,
+            n_filtered=n_filtered,
         )
+
+    @contextmanager
+    def _query_exposures(self, exposure_records: dict[DataCoordinate, DimensionRecord]) -> Iterator[Query]:
+        with self.butler.query() as query:
+            yield query.join_data_coordinates(exposure_records.keys())
+
+    def _prefilter(self, exposure_records: dict[DataCoordinate, DimensionRecord], query: Query) -> int:
+        n_filtered: int = 0
+        exposure_dimension_group = self.butler.dimensions["exposure"].minimal_group
+        for dual_data_id in query.data_ids(["exposure", "visit"]):
+            if exposure_records.pop(dual_data_id.subset(exposure_dimension_group), None) is not None:
+                n_filtered += 1
+        if n_filtered:
+            self.log.info(
+                "Filtered out %d on-sky exposure(s) (of %d) that were already associated with a visit.",
+                n_filtered,
+                n_filtered + len(exposure_records),
+            )
+        return n_filtered
 
 
 _T = TypeVar("_T")
