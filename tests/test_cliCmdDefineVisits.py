@@ -52,6 +52,7 @@ class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
                 incremental=False,
                 skip_conflicting=False,
                 prefilter=False,
+                check_detector_regions=False,
             ),
         )
 
@@ -88,6 +89,7 @@ class DefineVisitsTest(CliCmdTestBase, unittest.TestCase):
                 incremental=True,
                 skip_conflicting=True,
                 prefilter=False,
+                check_detector_regions=False,
             ),
         )
 

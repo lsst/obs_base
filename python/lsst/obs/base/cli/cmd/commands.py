@@ -92,6 +92,14 @@ fits_re = r"\.fit[s]?\b"
         "--incremental."
     ),
 )
+@click.option(
+    "--check-detector-regions/--no-check-detector-regions",
+    default=False,
+    help=(
+        "Whether to check that already-defined visits have the full set of detector regions defined, "
+        "in order to insert missing ones."
+    ),
+)
 @options_file_option()
 def define_visits(*args: Any, **kwargs: Any) -> None:
     """Define visits from exposures in the butler registry.
