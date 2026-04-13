@@ -1090,6 +1090,7 @@ class RawIngestTask(Task):
         if "day_obs" in exposure.implied:
             if (offset := getattr(obsInfo, "observing_day_offset")) is not None:
                 offset_int = round(offset.to_value("s"))
+                assert obsInfo.observing_day is not None
                 timespan = Timespan.from_day_obs(obsInfo.observing_day, offset_int)
             else:
                 timespan = None

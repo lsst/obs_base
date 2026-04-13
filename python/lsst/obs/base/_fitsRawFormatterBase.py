@@ -335,6 +335,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             Object that identifies the filter for this image.
         """
         physical = self.observationInfo.physical_filter
+        assert physical is not None
         filter_definitions = self.filterDefinitions
         assert filter_definitions is not None
         band = filter_definitions.physical_to_band[physical]
@@ -350,8 +351,10 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         elif component == "visitInfo":
             return self.makeVisitInfo()
         elif component == "detector":
+            assert self.observationInfo.detector_num is not None
             return self.getDetector(self.observationInfo.detector_num)
         elif component == "wcs":
+            assert self.observationInfo.detector_num is not None
             detector = self.getDetector(self.observationInfo.detector_num)
             visitInfo = self.makeVisitInfo()
             return self.makeWcs(visitInfo, detector)
@@ -362,6 +365,7 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
 
     def readFull(self) -> Any:
         # Docstring inherited.
+        assert self.observationInfo.detector_num is not None
         amplifier, detector, _ = standardizeAmplifierParameters(
             self.checked_parameters,
             self.getDetector(self.observationInfo.detector_num),
