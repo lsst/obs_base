@@ -838,6 +838,7 @@ class DefineVisitsTask(Task):
                     if not skip_conflicting:
                         raise
                     inserted_or_updated = False
+                    self.log.verbose("Skipping visit %d due to conflict.", visitRecords.visit.id)
                 needs_visit_detector_region_inserts = (
                     visits_with_complete_regions is not None
                     and visitRecords.visit.dataId not in visits_with_complete_regions
