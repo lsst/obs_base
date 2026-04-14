@@ -110,7 +110,7 @@ class DefineVisitsBase:
             self.butler.registry.insertDimensionData("exposure", *deduped_records)
             # Include all records so far in definition.
             if self.use_data_ids:
-                dataIds = list(self.butler.registry.queryDataIds("exposure", instrument="DummyCam"))
+                dataIds = sorted(self.butler.registry.queryDataIds("exposure", instrument="DummyCam"))
             else:
                 dataIds = records
 
