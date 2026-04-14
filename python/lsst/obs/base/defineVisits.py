@@ -834,8 +834,9 @@ class DefineVisitsTask(Task):
                         visitRecords.visit,
                         update=(update_records or incremental),
                     )
-                except ConflictingDefinitionError:
+                except ConflictingDefinitionError as err:
                     if not skip_conflicting:
+                        err.add_note(f"on visit {visitDefinition.id}")
                         raise
                     inserted_or_updated = False
                     self.log.verbose("Skipping visit %d due to conflict.", visitRecords.visit.id)
