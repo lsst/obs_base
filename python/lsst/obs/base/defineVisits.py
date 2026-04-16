@@ -39,12 +39,14 @@ import math
 import operator
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
+from contextlib import contextmanager
 from typing import Any, ClassVar, TypeVar, cast
 
 import lsst.geom
 from lsst.afw.cameraGeom import FOCAL_PLANE, PIXELS
-from lsst.daf.butler import Butler, DataId, DimensionRecord, Progress, Timespan
+from lsst.daf.butler import Butler, DataCoordinate, DataId, DimensionRecord, Progress, Timespan
+from lsst.daf.butler.queries import Query
 from lsst.daf.butler.registry import ConflictingDefinitionError
 from lsst.geom import Box2D
 from lsst.pex.config import Config, Field, makeRegistry, registerConfigurable
@@ -631,6 +633,8 @@ class DefineVisitsTask(Task):
         update_records: bool = False,
         incremental: bool = False,
         skip_conflicting: bool = False,
+        prefilter: bool = False,
+        check_detector_regions: bool = False,
     ) -> Struct:
         """Add visit definitions to the registry for the given exposures.
 
@@ -666,6 +670,18 @@ class DefineVisitsTask(Task):
             visit definition. This can be used if you solely want to define
             visits that were somehow missed previously. It has no effect if
             ``update_records`` is `True` or incremental mode is enabled.
+        prefilter : `bool`, optional
+            If `True`, filter out exposures that already have a visit defined
+            by querying in advance.  This is not compatible with
+            ``incremental=True`` or ``update_records=True``.  Note that for
+            exposures that may be associated with multiple visits, the
+            presence of any existing visit will cause that exposure to be
+            skipped entirely.
+        check_detector_regions : `bool`, optional
+            If `True`, check existing visits to see if they have a
+            ``visit_detector_region`` record for every detector.  The default
+            is to assume that if a ``visit`` record is present, the
+            ``visit_detector_region`` records are as well.
 
         Returns
         -------
@@ -676,7 +692,9 @@ class DefineVisitsTask(Task):
             - n_skipped: number of visits that were already present left alone
             - n_new: number of new visits inserted
             - n_fully_updated: number of existing visits fully updated
-            - n_partially_updated: number of visits with non-geometry updates.
+            - n_partially_updated: number of visits with non-geometry updates
+            - n_filtered: number of exposures dropped because they were
+              already associated with visits.
 
         Raises
         ------
@@ -684,11 +702,14 @@ class DefineVisitsTask(Task):
             Raised if a visit ID conflict is detected and the existing visit
             differs from the new one.
         """
+        if prefilter and (update_records or incremental):
+            raise TypeError("prefilter=True cannot be used with update_records=True or incremental=True")
+
         # Normalize, expand, and deduplicate data IDs.
         self.log.info("Preprocessing data IDs.")
         dimensions = self.universe.conform(["exposure"])
 
-        exposure_records: set[DimensionRecord] = set()
+        exposure_records: dict[DataCoordinate, DimensionRecord] = {}
         instruments: set[str] = set()
         instrument_cls_name: str | None = None
         instrument_record: DimensionRecord | None = None
@@ -726,12 +747,29 @@ class DefineVisitsTask(Task):
                     )
             instrument_name = record.instrument
             instruments.add(instrument_name)
-            exposure_records.add(record)
-        # Downstream APIs expect a list of records, not a set.
-        exposures = list(exposure_records)
+            exposure_records[record.dataId] = record
+
+        n_filtered = 0
+        visits_with_complete_regions: set[DataCoordinate] | None = None
+        if prefilter or check_detector_regions:
+            with self._query_exposures(exposure_records) as query:
+                if check_detector_regions:
+                    visits_with_complete_regions = self._find_visits_with_all_detector_regions(query)
+                if prefilter:
+                    n_filtered = self._prefilter(exposure_records, query, visits_with_complete_regions)
+
+        # Downstream APIs expect a list of records, not a dict.
+        exposures = list(exposure_records.values())
         if not exposures:
             self.log.info("No on-sky exposures found after filtering.")
-            return Struct(n_visits=0, n_skipped=0, n_new=0, n_partially_updated=0, n_fully_updated=0)
+            return Struct(
+                n_visits=0,
+                n_skipped=0,
+                n_new=0,
+                n_partially_updated=0,
+                n_fully_updated=0,
+                n_filtered=n_filtered,
+            )
         if len(instruments) > 1:
             raise RuntimeError(
                 "All data IDs passed to DefineVisitsTask.run must be "
@@ -796,11 +834,17 @@ class DefineVisitsTask(Task):
                         visitRecords.visit,
                         update=(update_records or incremental),
                     )
-                except ConflictingDefinitionError:
+                except ConflictingDefinitionError as err:
                     if not skip_conflicting:
+                        err.add_note(f"on visit {visitDefinition.id}")
                         raise
                     inserted_or_updated = False
-                if inserted_or_updated or update_records:
+                    self.log.verbose("Skipping visit %d due to conflict.", visitRecords.visit.id)
+                needs_visit_detector_region_inserts = (
+                    visits_with_complete_regions is not None
+                    and visitRecords.visit.dataId not in visits_with_complete_regions
+                )
+                if inserted_or_updated or update_records or needs_visit_detector_region_inserts:
                     if inserted_or_updated is True:
                         # This is a new visit, not an update to an existing
                         # one, so insert visit definition.
@@ -844,10 +888,19 @@ class DefineVisitsTask(Task):
                     # Cast below is because MyPy can't determine that
                     # inserted_or_updated can only be False if update_records
                     # is True.
-                    elif update_records or "region" in cast(dict, inserted_or_updated):
+                    elif (
+                        update_records
+                        or needs_visit_detector_region_inserts
+                        or "region" in cast(dict, inserted_or_updated)
+                    ):
+                        if needs_visit_detector_region_inserts:
+                            self.log.info(
+                                "Visit %d was missing detector region records.", visitRecords.visit.id
+                            )
                         # Replace visit-detector regions if we were told to
                         # update records explicitly, or if the visit region
-                        # changed in an incremental=True update.
+                        # changed in an incremental=True update, or if this
+                        # visit didn't have complete detector regions.
                         self.butler.registry.insertDimensionData(
                             "visit_detector_region",
                             *visitRecords.visit_detector_region,
@@ -896,7 +949,55 @@ class DefineVisitsTask(Task):
             n_new=n_new,
             n_fully_updated=n_fully_updated,
             n_partially_updated=n_partially_updated,
+            n_filtered=n_filtered,
         )
+
+    @contextmanager
+    def _query_exposures(self, exposure_records: dict[DataCoordinate, DimensionRecord]) -> Iterator[Query]:
+        with self.butler.query() as query:
+            yield query.join_data_coordinates(exposure_records.keys())
+
+    def _prefilter(
+        self,
+        exposure_records: dict[DataCoordinate, DimensionRecord],
+        query: Query,
+        visits_with_complete_regions: set[DataCoordinate] | None,
+    ) -> int:
+        n_filtered: int = 0
+        exposure_dimension_group = self.butler.dimensions["exposure"].minimal_group
+        visit_dimension_group = self.butler.dimensions["visit"].minimal_group
+        for dual_data_id in query.data_ids(["exposure", "visit"]):
+            if (
+                visits_with_complete_regions is None
+                or dual_data_id.subset(visit_dimension_group) in visits_with_complete_regions
+            ):
+                if exposure_records.pop(dual_data_id.subset(exposure_dimension_group), None) is not None:
+                    n_filtered += 1
+        if n_filtered:
+            self.log.info(
+                "Filtered out %d on-sky exposure(s) (of %d) that were already associated with a visit.",
+                n_filtered,
+                n_filtered + len(exposure_records),
+            )
+        return n_filtered
+
+    def _find_visits_with_all_detector_regions(self, query: Query) -> set[DataCoordinate]:
+        all_detectors: dict[str, set[int]] = {}
+        for detector_data_id in query.data_ids(["detector"]):
+            all_detectors.setdefault(cast(str, detector_data_id["instrument"]), set()).add(
+                cast(int, detector_data_id["detector"])
+            )
+        visit_dimension_group = self.butler.dimensions["visit"].minimal_group
+        detectors_with_regions_by_visit: dict[DataCoordinate, set[int]] = {}
+        for vdr in query.dimension_records("visit_detector_region"):
+            detectors_with_regions_by_visit.setdefault(vdr.dataId.subset(visit_dimension_group), set()).add(
+                vdr.detector
+            )
+        result: set[DataCoordinate] = set()
+        for visit_data_id, detectors_for_visit in detectors_with_regions_by_visit.items():
+            if len(detectors_for_visit) == len(all_detectors[cast(str, visit_data_id["instrument"])]):
+                result.add(visit_data_id)
+        return result
 
 
 _T = TypeVar("_T")

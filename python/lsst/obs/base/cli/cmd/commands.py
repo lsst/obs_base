@@ -83,6 +83,23 @@ fits_re = r"\.fit[s]?\b"
     "with a different value and you are not sure whether to accept the new "
     "value. Ignored if incremental or update mode is enabled.",
 )
+@click.option(
+    "--prefilter/--no-prefilter",
+    default=False,
+    help=(
+        "Whether to filter out exposures that are already associated with a visit before computing "
+        "the visits they would be associated with now.  This is incompatible with --update-records and "
+        "--incremental."
+    ),
+)
+@click.option(
+    "--check-detector-regions/--no-check-detector-regions",
+    default=False,
+    help=(
+        "Whether to check that already-defined visits have the full set of detector regions defined, "
+        "in order to insert missing ones."
+    ),
+)
 @options_file_option()
 def define_visits(*args: Any, **kwargs: Any) -> None:
     """Define visits from exposures in the butler registry.

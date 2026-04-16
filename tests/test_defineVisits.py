@@ -29,7 +29,7 @@ import warnings
 from collections import defaultdict
 
 import lsst.daf.butler.tests as butlerTests
-from lsst.daf.butler import DataCoordinate, DimensionRecord, SerializedDimensionRecord
+from lsst.daf.butler import Butler, DataCoordinate, DimensionRecord, SerializedDimensionRecord
 from lsst.daf.butler.registry import ConflictingDefinitionError
 from lsst.obs.base import DefineVisitsConfig, DefineVisitsTask
 from lsst.obs.base.instrument_tests import DummyCam
@@ -110,7 +110,7 @@ class DefineVisitsBase:
             self.butler.registry.insertDimensionData("exposure", *deduped_records)
             # Include all records so far in definition.
             if self.use_data_ids:
-                dataIds = list(self.butler.registry.queryDataIds("exposure", instrument="DummyCam"))
+                dataIds = sorted(self.butler.registry.queryDataIds("exposure", instrument="DummyCam"))
             else:
                 dataIds = records
 
@@ -169,6 +169,60 @@ class DefineVisitsTestCase(unittest.TestCase, DefineVisitsBase):
         # Test visit definition with all the records.
         self.define_visits([list(self.records.values())], incremental=False)  # list inside a list
         self.assertVisits()
+
+    def test_prefilter(self):
+        self.define_visits([list(self.records.values())], incremental=False)
+        self.assertVisits()
+        with self.assertLogs(level=logging.INFO) as cm:
+            result = self.task.run(self.records.values(), incremental=False, prefilter=True)
+        self.assertIn(
+            f"Filtered out {len(self.records)} on-sky exposure(s) (of {len(self.records)}) that were "
+            "already associated with a visit.",
+            "\n".join(cm.output),
+        )
+        self.assertEqual(result.n_filtered, len(self.records))
+        self.assertEqual(result.n_visits, 0)
+        self.assertEqual(result.n_skipped, 0)
+
+    def test_check_detector_regions(self):
+        self.define_visits([list(self.records.values())], incremental=False)
+        self.assertVisits()
+        # We can't remove dimension records from a repository, so to test
+        # fixing a case of missing visit_detector regions, we have to make a
+        # new butler repository and transfer only some records to it (this is
+        # actually what happens in the production context where we need this
+        # functionality).
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as new_butler_root:
+            config = Butler.makeRepo(new_butler_root)
+            butler = Butler.from_config(config, writeable=True)
+            # We can't even use transfer_dimension_records_from because that's
+            # too careful to include everything, including the detector
+            # regions.
+            for element_name in (
+                "instrument",
+                "physical_filter",
+                "day_obs",
+                "visit",
+                "group",
+                "exposure",
+                "visit_system",
+                "visit_definition",
+                "visit_system_membership",
+                "detector",
+            ):
+                butler.registry.insertDimensionData(
+                    element_name, *self.butler.query_dimension_records(element_name)
+                )
+            task = DefineVisitsTask(config=self.config, butler=butler)
+            with self.assertLogs(level=logging.INFO) as cm:
+                task.run(
+                    self.records.values(), incremental=False, prefilter=True, check_detector_regions=True
+                )
+            self.assertIn("missing detector region records", "\n".join(cm.output))
+            self.assertCountEqual(
+                butler.query_dimension_records("visit_detector_region"),
+                self.butler.query_dimension_records("visit_detector_region"),
+            )
 
     def test_incremental_cumulative(self):
         # Define the visits after each exposure.

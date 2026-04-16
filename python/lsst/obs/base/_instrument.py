@@ -660,6 +660,7 @@ def makeExposureRecordFromObsInfo(
         ra = float(icrs.ra.degree)
         dec = float(icrs.dec.degree)
         if obsInfo.boresight_rotation_coord == "sky":
+            assert obsInfo.boresight_rotation_angle is not None
             sky_angle = float(obsInfo.boresight_rotation_angle.degree)
     if obsInfo.altaz_begin is not None:
         zenith_angle = float(obsInfo.altaz_begin.zen.degree)
@@ -691,6 +692,7 @@ def makeExposureRecordFromObsInfo(
     # timespan that will not work correctly with calibration lookups. Instead
     # force the end time to be the begin time.
     datetime_end = obsInfo.datetime_end
+    assert obsInfo.datetime_begin is not None
     if datetime_end < obsInfo.datetime_begin:
         datetime_end = obsInfo.datetime_begin
         _LOG.warning(
@@ -699,6 +701,7 @@ def makeExposureRecordFromObsInfo(
             obsInfo.observation_id,
         )
 
+    assert obsInfo.exposure_time_requested is not None
     return dimension.RecordClass(
         instrument=obsInfo.instrument,
         id=obsInfo.exposure_id,
