@@ -340,7 +340,7 @@ class RawIngestTask(Task):
 
     def __init__(
         self,
-        config: RawIngestConfig,
+        config: RawIngestConfig | None = None,
         *,
         butler: Butler,
         on_success: Callable[[list[FileDataset]], Any] = _do_nothing,
@@ -349,6 +349,8 @@ class RawIngestTask(Task):
         on_exposure_record: Callable[[DimensionRecord], Any] = _do_nothing,
         **kwargs: Any,
     ):
+        if config is None:
+            config = RawIngestConfig()
         config.validate()  # Not a CmdlineTask nor PipelineTask, so have to validate the config here.
         super().__init__(config, **kwargs)
         self.butler = butler
