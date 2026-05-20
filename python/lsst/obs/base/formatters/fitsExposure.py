@@ -165,10 +165,18 @@ class FitsImageFormatterBase(FormatterV2):
 
     def read_from_local_file(self, path: str, component: str | None = None, expected_size: int = -1) -> Any:
         # Docstring inherited.
-        if self.dataset_ref.datasetType.storageClass_name == "VisitImage":
+        if _is_future_visit_image(self.file_descriptor.readStorageClass.name, component):
             from lsst.images import VisitImage
 
-            return VisitImage.read_legacy(path, component=component, preserve_quantization=True)
+            return VisitImage.read_legacy(
+                path,
+                component=component,
+                preserve_quantization=self.checked_parameters.get("preserve_quantization", False),
+            )
+        elif self.checked_parameters.get("preserve_quantization", False):
+            raise NotImplementedError(
+                "preserve_quantization=True only works when converting to VisitImage on read."
+            )
 
         # The methods doing the reading all currently assume local file
         # and assume that the file descriptor refers to a local file.
@@ -551,13 +559,10 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         # could work with cutouts.
         self._reader = None  # Guarantee things are reset.
 
-        if uri.ospath is not None and self.dataset_ref.datasetType.storageClass_name == "VisitImage":
-            from lsst.images import VisitImage
-
-            return VisitImage.read_legacy(uri.ospath, component=component, preserve_quantization=True)
-
+        parameters = self.checked_parameters.copy()
+        preserve_quantization = parameters.pop("preserve_quantization", False)
         # Full read, always use local file read.
-        if not component and not self.checked_parameters:
+        if preserve_quantization or (not component and not parameters):
             return NotImplemented
 
         if not _ALWAYS_USE_ASTROPY_FOR_COMPONENT_READ and uri.isLocal:
@@ -588,10 +593,10 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         if not component:
             # Try to support PARENT and LOCAL origin but if there are any
             # other parameters do not attempt a cutout.
-            if self.checked_parameters.keys() - {"bbox", "origin"}:
+            if parameters.keys() - {"bbox", "origin"}:
                 return NotImplemented
-            bbox = self.checked_parameters["bbox"]
-            origin = self.checked_parameters.get("origin", lsst.afw.image.PARENT)
+            bbox = parameters["bbox"]
+            origin = parameters.get("origin", lsst.afw.image.PARENT)
             # For larger cutouts use the full file.
             max_cutout_size = 500 * 500
             if not _ALWAYS_USE_ASTROPY_FOR_COMPONENT_READ and bbox.width * bbox.height > max_cutout_size:
@@ -888,3 +893,31 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
                 ),
             )
         return data_id_filter_label
+
+
+def _is_future_visit_image(storage_class_name: str, component: str | None) -> bool:
+    match storage_class_name, component:
+        case ("VisitImage", None):
+            return True
+        case ("ImageV2", "image" | "variance"):
+            return True
+        case ("MaskV2", "mask"):
+            return True
+        case ("BoxV2", "bbox"):
+            return True
+        case ("PointSpreadFunction", "psf"):
+            return True
+        case ("DetectorV2", "detector"):
+            return True
+        # The components below can't be used unless we fix daf_butler
+        # restrictions on component names (they're checked against the original
+        # storage class component names).
+        case ("ObservationSummaryStats", "summary_stats"):
+            return True
+        case ("ObservationInfo", "obs_info"):
+            return True
+        case ("StructuredDataDict", "aperture_corrections"):
+            return True
+        case ("ImageField", "photometric_scaling"):
+            return True
+    return False
