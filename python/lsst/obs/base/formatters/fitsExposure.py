@@ -551,6 +551,11 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         # could work with cutouts.
         self._reader = None  # Guarantee things are reset.
 
+        if uri.ospath is not None and self.dataset_ref.datasetType.storageClass_name == "VisitImage":
+            from lsst.images import VisitImage
+
+            return VisitImage.read_legacy(uri.ospath, component=component, preserve_quantization=True)
+
         # Full read, always use local file read.
         if not component and not self.checked_parameters:
             return NotImplemented
