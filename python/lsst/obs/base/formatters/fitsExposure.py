@@ -165,10 +165,8 @@ class FitsImageFormatterBase(FormatterV2):
 
     def read_from_local_file(self, path: str, component: str | None = None, expected_size: int = -1) -> Any:
         # Docstring inherited.
-        if _is_future_visit_image(self.file_descriptor.readStorageClass.name, component):
-            from lsst.images import VisitImage
-
-            return VisitImage.read_legacy(
+        if future_type := _get_future_image_type(self.file_descriptor.readStorageClass.name, component):
+            return future_type.read_legacy(
                 path,
                 component=component,
                 preserve_quantization=self.checked_parameters.get("preserve_quantization", False),
@@ -895,29 +893,35 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         return data_id_filter_label
 
 
-def _is_future_visit_image(storage_class_name: str, component: str | None) -> bool:
+def _get_future_image_type(storage_class_name: str, component: str | None) -> type[Any] | None:
     match storage_class_name, component:
-        case ("VisitImage", None):
-            return True
-        case ("ImageV2", "image" | "variance"):
-            return True
-        case ("MaskV2", "mask"):
-            return True
-        case ("BoxV2", "bbox"):
-            return True
-        case ("PointSpreadFunction", "psf"):
-            return True
-        case ("DetectorV2", "detector"):
-            return True
+        case (
+            ("VisitImage", None)
+            | ("PointSpreadFunction", "psf")
+            | ("DetectorV2", "detector")
+            | ("BoxV2", "bbox")  # MaskedImage has bbox, but its read_legacy doesn't support it.
+        ):
+            from lsst.images import VisitImage
+
+            return VisitImage
+        case ("DifferenceImage", None):
+            from lsst.images import DifferenceImage
+
+            return DifferenceImage
+        case ("ImageV2", "image" | "variance") | ("MaskV2", "mask"):
+            from lsst.images import MaskedImage
+
+            return MaskedImage
         # The components below can't be used unless we fix daf_butler
         # restrictions on component names (they're checked against the original
         # storage class component names).
-        case ("ObservationSummaryStats", "summary_stats"):
-            return True
-        case ("ObservationInfo", "obs_info"):
-            return True
-        case ("StructuredDataDict", "aperture_corrections"):
-            return True
-        case ("ImageField", "photometric_scaling"):
-            return True
-    return False
+        case (
+            ("ObservationSummaryStats", "summary_stats")
+            | ("ObservationInfo", "obs_info")
+            | ("StructuredDataDict", "aperture_corrections")
+            | ("ImageField", "photometric_scaling")
+        ):
+            from lsst.images import VisitImage
+
+            return VisitImage
+    return None
