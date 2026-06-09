@@ -1,3 +1,18 @@
+obs_base v30.0.8 (2026-06-09)
+=============================
+
+New Features
+------------
+
+- Changed the default visit definition to one-to-one.
+  Rubin pipelines no longer expect to use multi-exposure visits and any previous visits taken in multi-exposure mode will now be treated as individual single-exposure visits. (`DM-54060 <https://rubinobs.atlassian.net/browse/DM-54060>`_)
+- Added ``--prefilter`` and ``--check-detector-regions`` options to ``butler define-visits`` for recovering cases where regions for some detectors are missing due to incomplete transfers. (`DM-54634 <https://rubinobs.atlassian.net/browse/DM-54634>`_)
+
+Other Changes and Additions
+---------------------------
+
+- Added support in the Exposure formatter code for requesting new-style ``lsst.images`` models from legacy dataset types. (`DM-54556 <https://rubinobs.atlassian.net/browse/DM-54556>`_)
+
 obs_base v30.0.6 (2026-04-06)
 =============================
 
