@@ -47,7 +47,7 @@ from lsst.daf.butler import (
 from lsst.daf.butler.registry import DataIdError
 from lsst.pipe.base import Instrument as InstrumentBase
 from lsst.resources import ResourcePath
-from lsst.utils import doImport, getPackageDir
+from lsst.utils import doImport
 
 from ._read_curated_calibs import CuratedCalibration, read_all
 
@@ -208,9 +208,17 @@ class Instrument(InstrumentBase):
         This is a less portable version of ``getObsDataPackageRoot``. Please
         use that method in new code.
         """
-        if cls.obsDataPackage is None:
+        root = cls.getObsDataPackageRoot()
+        if root is None:
             return None
-        return getPackageDir(cls.obsDataPackage)
+        if not root.exists():
+            raise LookupError(f"Package {cls.obsDataPackage} not found")
+        # ResourcePath does not expose ``ospath`` for a proxied (``eups://``)
+        # directory URI, but ``to_fsspec`` yields the backing local filesystem
+        # path when the package is available locally. This avoids requiring an
+        # EUPS environment via ``getPackageDir``.
+        _, path = root.to_fsspec()
+        return path
 
     @classmethod
     @lru_cache
