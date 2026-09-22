@@ -554,6 +554,8 @@ class IngestTestBase(metaclass=abc.ABCMeta):
             self.assertEqual(len(detectorVisitDataIds), len(camera))
             for dataId in detectorVisitDataIds:
                 assert isinstance(foundVisit.region, lsst.sphgeom.Region)
+                # Use bare assert for mypy.
+                assert dataId.region is not None
                 self.assertTrue(foundVisit.region.contains(dataId.region))
 
         # Check obscore table again.
