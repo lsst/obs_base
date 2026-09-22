@@ -1476,7 +1476,7 @@ class _ComputeVisitRegionsFromSingleRawWcsTask(ComputeVisitRegionsTask):
         else:
             detectorBounds = self.computeExposureBounds(visit.exposures[0], collections=collections)
         visitBounds = []
-        detectorRegions = {}
+        detectorRegions: dict[int, Region] = {}
         for detectorId, bounds in detectorBounds.items():
             detectorRegions[detectorId] = ConvexPolygon.convexHull(bounds)
             visitBounds.extend(bounds)
