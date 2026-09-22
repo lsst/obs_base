@@ -556,7 +556,7 @@ class IngestTestBase(metaclass=abc.ABCMeta):
                 assert isinstance(foundVisit.region, lsst.sphgeom.Region)
                 # Use bare assert for mypy.
                 assert dataId.region is not None
-                self.assertTrue(foundVisit.region.contains(dataId.region))
+                self.assertTrue(foundVisit.region.contains(dataId.region))  # type: ignore[call-overload]
 
         # Check obscore table again.
         self._check_obscore(butler.registry, has_visits=True)
