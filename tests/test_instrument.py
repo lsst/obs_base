@@ -24,7 +24,13 @@
 import datetime
 import unittest
 
-from lsst.obs.base import Instrument
+import astropy.units as u
+from astro_metadata_translator import ObservationInfo
+from astropy.coordinates import SkyCoord
+from astropy.time import Time
+
+from lsst.daf.butler import DimensionUniverse
+from lsst.obs.base import Instrument, makeExposureRecordFromObsInfo
 from lsst.obs.base.instrument_tests import DummyCam, InstrumentTestData, InstrumentTests
 
 
@@ -68,6 +74,27 @@ class InstrumentTestCase(InstrumentTests, unittest.TestCase):
         self.assertEqual(self.instrument.group_name_to_group_id("1:234-5.6"), 123456)
         with self.assertRaises(ValueError):
             self.instrument.group_name_to_group_id("no_int")
+
+    def test_sky_angle_case_insensitive(self):
+        """Test that makeExposureRecordFromObsInfo transfers sky_angle
+        regardless of the boresight_rotation_coord capitalization.
+        """
+        obs_info = ObservationInfo(
+            instrument="DummyCam",
+            exposure_id=1,
+            exposure_time=10.0 * u.s,
+            exposure_time_requested=10.0 * u.s,
+            datetime_begin=Time("2025-01-01T00:00:00", scale="utc"),
+            datetime_end=Time("2025-01-01T00:00:10", scale="utc"),
+            observing_day=20250101,
+            observation_type="science",
+            physical_filter="g",
+            tracking_radec=SkyCoord("00:00:00.0 +00:00:00.0", unit="deg"),
+            boresight_rotation_angle=45.0 * u.deg,
+            boresight_rotation_coord="SKY",
+        )
+        record = makeExposureRecordFromObsInfo(obs_info, DimensionUniverse())
+        self.assertEqual(record.sky_angle, 45.0)
 
 
 if __name__ == "__main__":
