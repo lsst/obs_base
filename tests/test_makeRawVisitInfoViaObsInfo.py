@@ -250,6 +250,14 @@ class TestMakeRawVisitInfoViaObsInfo(unittest.TestCase):
                     case _:
                         raise RuntimeError(f"Encountered unexpected type for property {prop}")
 
+    def test_sky_uppercase(self):
+        with self.assertWarns(UserWarning):
+            obs_info = ObservationInfo(self.header, translator_class=NewTranslator)
+        with obs_info.edit_copy() as obs_info:
+            obs_info.boresight_rotation_coord = "SKY"
+        visit_info = MakeRawVisitInfoViaObsInfo.observationInfo2visitInfo(obs_info)
+        self.assertEqual(visit_info.getRotType(), lsst.afw.image.RotType.SKY)
+
 
 if __name__ == "__main__":
     unittest.main()
