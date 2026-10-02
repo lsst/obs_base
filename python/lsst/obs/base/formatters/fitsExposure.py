@@ -165,16 +165,13 @@ class FitsImageFormatterBase(FormatterV2):
 
     def read_from_local_file(self, path: str, component: str | None = None, expected_size: int = -1) -> Any:
         # Docstring inherited.
-        if future_type := _get_future_image_type(self.file_descriptor.readStorageClass.name, component):
-            return future_type.read_legacy(
-                path,
-                component=component,
-                preserve_quantization=self.checked_parameters.get("preserve_quantization", False),
-            )
-        elif self.checked_parameters.get("preserve_quantization", False):
-            raise NotImplementedError(
-                "preserve_quantization=True only works when converting to VisitImage on read."
-            )
+        future_type, read_kwargs = _get_future_image_type_and_kwargs(
+            self.file_descriptor.readStorageClass.name,
+            component=component,
+            parameters=self.checked_parameters,
+        )
+        if future_type is not None:
+            return future_type.read_legacy(path, component=component, **read_kwargs)
 
         # The methods doing the reading all currently assume local file
         # and assume that the file descriptor refers to a local file.
@@ -893,7 +890,12 @@ class FitsExposureFormatter(FitsMaskedImageFormatter):
         return data_id_filter_label
 
 
-def _get_future_image_type(storage_class_name: str, component: str | None) -> type[Any] | None:
+def _get_future_image_type_and_kwargs(
+    storage_class_name: str, component: str | None, parameters: dict[str, Any]
+) -> tuple[type[Any] | None, dict[str, Any]]:
+    future_type: type[Any] | None = None
+    needs_exposure_record: bool = False
+    read_kwargs: dict[str, Any] = {}
     match storage_class_name, component:
         case (
             ("VisitImage", None)
@@ -903,15 +905,17 @@ def _get_future_image_type(storage_class_name: str, component: str | None) -> ty
         ):
             from lsst.images import VisitImage
 
-            return VisitImage
+            future_type = VisitImage
+            needs_exposure_record = True
         case ("DifferenceImage", None):
             from lsst.images import DifferenceImage
 
-            return DifferenceImage
+            future_type = DifferenceImage
+            needs_exposure_record = True
         case ("ImageV2", "image" | "variance") | ("MaskV2", "mask"):
             from lsst.images import MaskedImage
 
-            return MaskedImage
+            future_type = MaskedImage
         # The components below can't be used unless we fix daf_butler
         # restrictions on component names (they're checked against the original
         # storage class component names).
@@ -923,5 +927,35 @@ def _get_future_image_type(storage_class_name: str, component: str | None) -> ty
         ):
             from lsst.images import VisitImage
 
-            return VisitImage
-    return None
+            future_type = VisitImage
+            needs_exposure_record = True
+
+    exposure_record = parameters.get("exposure_record")
+    if needs_exposure_record:
+        if exposure_record is None:
+            raise ValueError(
+                "Converting a legacy lsst.afw.image.Exposure to VisitImage or DifferenceImage "
+                "requires the 'exposure_record' parameter (lsst.daf.butler.DimensionRecord)."
+            )
+        read_kwargs["exposure_record"] = exposure_record
+    elif exposure_record is not None:
+        raise ValueError(
+            "The 'exposure_record' parameter is only valid when converting from a "
+            "legacy lsst.afw.image.Exposure to a VisitImage or DifferenceImage."
+        )
+
+    if "preserve_quantization" in parameters:
+        if future_type is None:
+            raise NotImplementedError(
+                "preserve_quantization=True only works when converting to lsst.images types on read."
+            )
+        read_kwargs["preserve_quantization"] = parameters["preserve_quantization"]
+
+    if future_type is not None and (
+        extra := parameters.keys() - {"preserve_quantization", "exposure_record"}
+    ):
+        raise NotImplementedError(
+            f"Parameter(s) {extra} are not supported when converting to lsst.images types on read."
+        )
+
+    return future_type, read_kwargs

@@ -203,7 +203,7 @@ class MakeRawVisitInfoViaObsInfo:
 
         if obsInfo.boresight_rotation_coord is not None:
             rotType = RotType.UNKNOWN
-            if obsInfo.boresight_rotation_coord == "sky":
+            if obsInfo.boresight_rotation_coord.lower() == "sky":
                 rotType = RotType.SKY
             argDict["rotType"] = rotType
 

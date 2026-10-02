@@ -659,7 +659,7 @@ def makeExposureRecordFromObsInfo(
         icrs = obsInfo.tracking_radec.icrs
         ra = float(icrs.ra.degree)
         dec = float(icrs.dec.degree)
-        if obsInfo.boresight_rotation_coord == "sky":
+        if (coord := obsInfo.boresight_rotation_coord) is not None and coord.lower() == "sky":
             assert obsInfo.boresight_rotation_angle is not None
             sky_angle = float(obsInfo.boresight_rotation_angle.degree)
     if obsInfo.altaz_begin is not None:
