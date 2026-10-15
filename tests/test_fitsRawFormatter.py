@@ -251,6 +251,13 @@ class FitsRawFormatterTestCase(lsst.utils.tests.TestCase):
                 #   anyway;
                 # - these are kind of expensive tests.
 
+    def test_obsInfo(self) -> None:
+        """Test that obsInfo headers can embedded in metadata."""
+        md = self.formatter.addObsInfoToMetadata()
+        self.assertIn("OBS_INFO TRACKING_RADEC_0", md)
+        new_obs_info = self.formatter.observationInfo.from_flat_dict(md)
+        self.assertEqual(new_obs_info, self.formatter.observationInfo)
+
 
 class MemoryTester(lsst.utils.tests.MemoryTestCase):
     """Check for file leaks."""

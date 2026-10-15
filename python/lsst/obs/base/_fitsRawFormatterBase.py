@@ -23,11 +23,12 @@ from __future__ import annotations
 
 __all__ = ("FitsRawFormatterBase",)
 
+import copy
 import logging
 from abc import abstractmethod
 from typing import TYPE_CHECKING, Any, ClassVar, Self
 
-from astro_metadata_translator import ObservationInfo, fix_header
+from astro_metadata_translator import FITS_FLAT_DICT_PREFIX, FITS_FLAT_DICT_SEP, ObservationInfo, fix_header
 
 import lsst.afw.fits
 import lsst.afw.geom
@@ -359,8 +360,11 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             visitInfo = self.makeVisitInfo()
             return self.makeWcs(visitInfo, detector)
         elif component == "metadata":
+            # Translate the full header before stripping removes cards
+            # that the translator uses (such as RADESYS).
+            _ = self.observationInfo
             self.stripMetadata()
-            return self.metadata
+            return self.addObsInfoToMetadata()
         return None
 
     def readFull(self) -> Any:
@@ -406,6 +410,23 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
             )
         return self._observationInfo
 
+    def addObsInfoToMetadata(self) -> lsst.daf.base.PropertyList:
+        """Add serialized ObservationInfo to metadata and return it.
+
+        Returns
+        -------
+        md : `lsst.daf.base.PropertyList`
+            Raw metadata with `~astro_metadata_translator.ObservationInfo`
+            headers embedded. This is a copy so the original metadata is
+            not affected.
+        """
+        obs_info_md = self.observationInfo.to_flat_dict(
+            prefix=FITS_FLAT_DICT_PREFIX, sep=FITS_FLAT_DICT_SEP, encode_non_finite=True
+        )
+        md = copy.deepcopy(self.metadata)
+        md.update(obs_info_md)
+        return md
+
     def attachComponentsFromMetadata(self, exposure: lsst.afw.image.Exposure) -> None:
         """Attach all `lsst.afw.image.Exposure` components derived from
         metadata (including the stripped metadata itself).
@@ -423,4 +444,4 @@ class FitsRawFormatterBase(FitsImageFormatterBase):
         info.setWcs(self.makeWcs(info.getVisitInfo(), info.getDetector()))
 
         self.stripMetadata()
-        exposure.setMetadata(self.metadata)
+        exposure.setMetadata(self.addObsInfoToMetadata())
