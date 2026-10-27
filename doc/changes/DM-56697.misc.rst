@@ -1,2 +1,0 @@
-Added ``ObservationInfo`` information to the FITS header created by the raw formatter.
-This allows us to recover the full information downstream independently of ``VisitInfo`` lossy conversion and stripping of headers.
