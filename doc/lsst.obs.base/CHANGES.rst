@@ -1,3 +1,13 @@
+obs_base v30.0.12 (2026-10-27)
+==============================
+
+Other Changes and Additions
+---------------------------
+
+- Added ``ObservationInfo`` information to the FITS header created by the raw formatter.
+  This allows us to recover the full information downstream independently of ``VisitInfo`` lossy conversion and stripping of headers. (`DM-56697 <https://rubinobs.atlassian.net/browse/DM-56697>`_)
+
+
 obs_base v30.0.8 (2026-06-09)
 =============================
 
